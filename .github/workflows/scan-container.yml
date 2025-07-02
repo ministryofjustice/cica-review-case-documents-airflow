@@ -1,0 +1,19 @@
+---
+name: Scan Container
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions: {}
+
+jobs:
+  scan-container:
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    uses: ministryofjustice/analytical-platform-airflow-github-actions/.github/workflows/shared-scan-container.yml@39e4c8e5bdde50a537934e2a29d9e3d02b5ca1ce # v2.2.1
+    with:
+      runtime: python
