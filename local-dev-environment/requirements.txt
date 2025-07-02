@@ -1,0 +1,3 @@
+opensearch-py
+sentence-transformers
+requests_aws4auth
