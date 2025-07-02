@@ -12,3 +12,4 @@ terraform.tfstate
 .venv/
 .coverage
 **/__pycache__/*
+local-dev-environment/.venv/
