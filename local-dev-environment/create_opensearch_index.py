@@ -11,7 +11,7 @@ INDEX_NAME = "documents"
 OPENSEARCH_HOST = os.getenv("OPENSEARCH_HOST", "localhost")
 OPENSEARCH_PORT = int(os.getenv("OPENSEARCH_PORT", 9200))
 OPENSEARCH_USERNAME = os.getenv("OPENSEARCH_USERNAME", "admin") # Default for local OpenSearch
-OPENSEARCH_PASSWORD = os.getenv("OPENSEARCH_PASSWORD", "admin") # Default for local OpenSearch
+OPENSEARCH_PASSWORD = os.getenv("OPENSEARCH_PASSWORD", "strongPassword123!") # Default for local OpenSearch
 
 # --- Initialize SentenceTransformer to get embedding dimension ---
 print(f"Loading SentenceTransformer model: {MODEL_NAME}...")
