@@ -1,3 +1,5 @@
 opensearch-py
 sentence-transformers
+pip
 requests_aws4auth
+awscli
