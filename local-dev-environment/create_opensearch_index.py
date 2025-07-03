@@ -10,8 +10,8 @@ MODEL_NAME = "all-MiniLM-L6-v2"
 INDEX_NAME = "documents"
 OPENSEARCH_HOST = os.getenv("OPENSEARCH_HOST", "localhost")
 OPENSEARCH_PORT = int(os.getenv("OPENSEARCH_PORT", 9200))
-OPENSEARCH_USERNAME = os.getenv("OPENSEARCH_USERNAME", "admin") # Default for local OpenSearch
-OPENSEARCH_PASSWORD = os.getenv("OPENSEARCH_PASSWORD", "strongPassword123!") # Default for local OpenSearch
+OPENSEARCH_USERNAME = os.getenv("OPENSEARCH_USERNAME", "admin") 
+OPENSEARCH_PASSWORD = os.getenv("OPENSEARCH_PASSWORD", "strongPassword123!") 
 
 # --- Initialize SentenceTransformer to get embedding dimension ---
 print(f"Loading SentenceTransformer model: {MODEL_NAME}...")
@@ -39,7 +39,6 @@ client = OpenSearch(
     connection_class=RequestsHttpConnection
 )
 
-# --- Define the index body ---
 index_body = {
     "settings": {
         "index": {
@@ -62,9 +61,17 @@ index_body = {
                     }
                 }
             },
-            # You can add other fields here if needed, e.g., for movie metadata
-            "title": {"type": "text"},
-            "genre": {"type": "keyword"}
+            "s3_uri": {"type": "keyword"},  # Changed from text - keyword is better for exact filtering
+            "case_ref": {"type": "keyword"},
+            "correspondence_type": {"type": "keyword"},
+            "page_count": {"type": "integer"},  # Better for range filtering
+            "page_number": {"type": "integer"},  # Better for range filtering
+            "chunk_id": {"type": "keyword"},
+            "chunk_text": {"type": "text", "index": False},  # Not searchable, saves space
+            "received_date": {
+                "type": "date",
+                "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"
+            }
         }
     }
 }
