@@ -9,3 +9,5 @@ env/
 *.sha256
 terraform.tfstate
 local-dev-environment/.venv/
+localstack/.venv/bin/activate
+local-dev-enviroment/.venv/
