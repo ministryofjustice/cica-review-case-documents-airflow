@@ -14,4 +14,3 @@ terraform.tfstate
 **/__pycache__/*
 local-dev-environment/.venv/
 localstack/.venv/bin/activate
-local-dev-enviroment/.venv/
