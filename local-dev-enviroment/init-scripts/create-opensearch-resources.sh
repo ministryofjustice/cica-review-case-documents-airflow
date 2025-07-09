@@ -73,4 +73,4 @@ curl -XPUT -u 'admin:really-secure-passwordAa!1' "http://${DIRECT_OPENSEARCH_END
 }
 ' || echo "Warning: Failed to create OpenSearch index"
 
-echo "LocalStack resources configuration completed."
+echo "LocalStack Opensearch resources configuration completed."
