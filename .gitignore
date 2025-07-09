@@ -11,3 +11,5 @@ env/
 terraform.tfstate
 .venv/
 local-dev-environment/.venv/
+localstack/.venv/bin/activate
+local-dev-enviroment/.venv/
