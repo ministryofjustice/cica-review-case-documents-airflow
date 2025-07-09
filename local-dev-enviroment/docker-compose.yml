@@ -1,0 +1,56 @@
+services:
+  opensearch:
+    container_name: opensearch
+    image: opensearchproject/opensearch:2.11.0
+    environment:
+      - node.name=opensearch
+      - cluster.name=opensearch-docker-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "DISABLE_SECURITY_PLUGIN=true"
+    ports:
+      - "9200:9200"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - data01:/usr/share/opensearch/data
+
+  localstack:
+    container_name: "${LOCALSTACK_DOCKER_NAME:-localstack-main}"
+    image: localstack/localstack
+    ports:
+      - "127.0.0.1:4566:4566"            # LocalStack Gateway
+      - "127.0.0.1:4510-4559:4510-4559"  # external services port range
+    depends_on:
+      - opensearch
+    environment:
+      - AWS_DEFAULT_REGION=eu-west-2
+      - OPENSEARCH_CUSTOM_BACKEND=http://opensearch:9200
+      - DEBUG=${DEBUG:-1}
+      - SKIP_SSL_CERT_DOWNLOAD=1
+    volumes:
+      - ./init-scripts:/etc/localstack/init/ready.d
+      - "/var/run/docker.sock:/var/run/docker.sock"
+
+  opensearch-dashboards:
+    container_name: opensearch-dashboards
+    image: opensearchproject/opensearch-dashboards:2.11.0 # Or the version you need
+    ports:
+      - "5601:5601" # OpenSearch Dashboards UI
+    environment:
+      # These credentials apply to Dashboards connecting to LocalStack's OpenSearch
+      - OPENSEARCH_HOSTS=http://opensearch:9200 # Use service name for host
+      - OPENSEARCH_USERNAME=admin # Default for LocalStack's OpenSearch
+      - OPENSEARCH_PASSWORD=really-secure-passwordAa!1 
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+    # Dashboards depends on LocalStack being up and its OpenSearch domain being ready
+    depends_on:
+      localstack:
+        condition: service_healthy # Wait for LocalStack to report health
+
+volumes:
+  data01:
+    driver: local

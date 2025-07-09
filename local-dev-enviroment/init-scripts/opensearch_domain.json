@@ -1,0 +1,28 @@
+{
+  "DomainName": "case-document-search-domain",
+  "EngineVersion": "OpenSearch_2.11",
+  "ClusterConfig": {
+    "InstanceType": "t3.small.search",
+    "InstanceCount": 1
+  },
+  "EBSOptions": {
+    "EBSEnabled": true,
+    "VolumeType": "gp2",
+    "VolumeSize": 10
+  },
+  "AccessPolicies": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"*\"},\"Action\":\"es:*\",\"Resource\":\"arn:aws:es:eu-west-2:000000000000:domain/case-document-search-domain/*\"}]}",
+  "AdvancedSecurityOptions": {
+    "Enabled": true,
+    "InternalUserDatabaseEnabled": true,
+    "MasterUserOptions": {
+      "MasterUserName": "admin",
+      "MasterUserPassword": "really-secure-passwordAa!1"
+    }
+  },
+  "NodeToNodeEncryptionOptions": {
+    "Enabled": true
+  },
+  "EncryptionAtRestOptions": {
+    "Enabled": true
+  }
+}
