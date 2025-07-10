@@ -1,76 +1,102 @@
 #!/bin/bash
+set -euo pipefail 
 
-# Create an OpenSearch domain
-awslocal opensearch create-domain --cli-input-json file:///etc/localstack/init/ready.d/opensearch_domain.json
+echo "Starting LocalStack OpenSearch domain and index setup..."
 
-# Wait for the domain to become active
-echo "Waiting for OpenSearch domain to be created..."
-until awslocal opensearch describe-domain --domain-name case-document-search-domain | grep '"Processing": false'; do
-  sleep 5
-done
-echo "OpenSearch domain created."
-
-# Create an index in the domain
-DOMAIN_ENDPOINT=$(awslocal opensearch describe-domain --domain-name case-document-search-domain | grep -o '"Endpoint": "[^"]*' | grep -o '[^"]*$')
-echo "DOMAIN_ENDPOINT: ${DOMAIN_ENDPOINT}"
-
+LOCALSTACK_OPENSEARCH_DOMAIN_NAME="case-document-search-domain"
 
 DIRECT_OPENSEARCH_ENDPOINT="opensearch:9200"
+OPENSEARCH_AUTH="admin:really-secure-passwordAa!1" # Credentials for direct OpenSearch access
 
-echo "Waiting for OpenSearch to be ready..."
+# --- Step 1: Create the OpenSearch domain within LocalStack ---
+# This step tells LocalStack to emulate an OpenSearch domain.
+# As OPENSEARCH_CUSTOM_BACKEND is set in docker-compose, this domain
+# will point to your 'opensearch' container.
+echo "Creating LocalStack OpenSearch domain '${LOCALSTACK_OPENSEARCH_DOMAIN_NAME}'..."
+# Check if domain already exists to make script idempotent
+if awslocal opensearch describe-domain --domain-name "${LOCALSTACK_OPENSEARCH_DOMAIN_NAME}" 2>/dev/null; then
+  echo "LocalStack OpenSearch domain '${LOCALSTACK_OPENSEARCH_DOMAIN_NAME}' already exists."
+else
+  awslocal opensearch create-domain --cli-input-json file:///etc/localstack/init/ready.d/opensearch_domain.json
+  echo "LocalStack OpenSearch domain creation initiated."
+fi
 
-# Loop until the OpenSearch health endpoint returns a successful status
-# We use curl's --silent and --fail flags. 
-# --fail causes curl to return a non-zero exit code on server errors (like 404 or 503),
-# which is perfect for this check.
-until curl --silent --fail -u 'admin:really-secure-passwordAa!1' "http://${DIRECT_OPENSEARCH_ENDPOINT}/_cluster/health" > /dev/null; do
-    printf '.'
+
+# --- Step 2: Wait for the LocalStack-managed domain to become active ---
+echo "Waiting for LocalStack OpenSearch domain '${LOCALSTACK_OPENSEARCH_DOMAIN_NAME}' to be active..."
+until awslocal opensearch describe-domain --domain-name "${LOCALSTACK_OPENSEARCH_DOMAIN_NAME}" | grep '"Processing": false' > /dev/null; do
+  echo -n "."
+  sleep 5
+done
+echo -e "\nLocalStack OpenSearch domain '${LOCALSTACK_OPENSEARCH_DOMAIN_NAME}' is active."
+
+
+# --- Step 3: Wait for the actual OpenSearch container to be ready ---
+# This is crucial as LocalStack's domain being "active" doesn't mean your
+# 'opensearch' container is fully initialized and ready for requests.
+echo "Waiting for actual OpenSearch container at ${DIRECT_OPENSEARCH_ENDPOINT} to be ready..."
+until curl --silent --fail -u "${OPENSEARCH_AUTH}" "http://${DIRECT_OPENSEARCH_ENDPOINT}/_cluster/health" > /dev/null; do
+    echo -n "."
     sleep 2
 done
+echo -e "\nActual OpenSearch container is ready!"
 
+# --- Step 4: Create the index in the actual OpenSearch container ---
 INDEX_NAME="case-documents"
 
-echo -e "\nOpenSearch is ready! Creating index '${INDEX_NAME}'..."
+# Check if the index already exists to ensure idempotency
+if curl --silent --fail -u "${OPENSEARCH_AUTH}" "http://${DIRECT_OPENSEARCH_ENDPOINT}/${INDEX_NAME}" > /dev/null; then
+  echo "Index '${INDEX_NAME}' already exists. Skipping creation."
+else
+  echo "Creating index '${INDEX_NAME}'..."
+  CREATE_RESPONSE=$(curl -XPUT -u "${OPENSEARCH_AUTH}" "http://${DIRECT_OPENSEARCH_ENDPOINT}/${INDEX_NAME}" -H 'Content-Type: application/json' -d'
+  {
+      "settings": {
+          "index": {
+              "knn": true,
+              "knn.algo_param.ef_search": 100
+          }
+      },
+      "mappings": {
+          "properties": {
+              "embedding": {
+                  "type": "knn_vector",
+                  "dimension": 384,
+                  "method": {
+                      "name": "hnsw",
+                      "space_type": "l2",
+                      "engine": "nmslib",
+                      "parameters": {
+                          "ef_construction": 128,
+                          "m": 24
+                      }
+                  }
+              },
+              "s3_uri": {"type": "keyword"},
+              "case_ref": {"type": "keyword"},
+              "correspondence_type": {"type": "keyword"},
+              "page_count": {"type": "integer"},
+              "page_number": {"type": "integer"},
+              "chunk_id": {"type": "keyword"},
+              "chunk_text": {"type": "text", "index": false},
+              "received_date": {
+                  "type": "date",
+                  "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"
+              }
+          }
+      }
+  }
+  ')
 
-# To change the embedding model, you can modify the "dimension" field in the index settings.    
-# For example, if you are using a different embedding model with a different dimension size, update it accordingly.
-curl -XPUT -u 'admin:really-secure-passwordAa!1' "http://${DIRECT_OPENSEARCH_ENDPOINT}/${INDEX_NAME}" -H 'Content-Type: application/json' -d'
-{
-    "settings": {
-        "index": {
-            "knn": true,
-            "knn.algo_param.ef_search": 100
-        }
-    },
-    "mappings": {
-        "properties": {
-            "embedding": {
-                "type": "knn_vector",
-                "dimension": 384,
-                "method": {
-                    "name": "hnsw",
-                    "space_type": "l2",
-                    "engine": "nmslib",
-                    "parameters": {
-                        "ef_construction": 128,
-                        "m": 24
-                    }
-                }
-            },
-            "s3_uri": {"type": "keyword"},
-            "case_ref": {"type": "keyword"},
-            "correspondence_type": {"type": "keyword"},
-            "page_count": {"type": "integer"},
-            "page_number": {"type": "integer"},
-            "chunk_id": {"type": "keyword"},
-            "chunk_text": {"type": "text", "index": false},
-            "received_date": {
-                "type": "date",
-                "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"
-            }
-        }
-    }
-}
-' || echo "Warning: Failed to create OpenSearch index"
+  if echo "${CREATE_RESPONSE}" | grep -q '"acknowledged":true'; then
+    echo "Index '${INDEX_NAME}' created successfully."
+  else
+    echo "Failed to create index '${INDEX_NAME}'. Response: ${CREATE_RESPONSE}"
+    exit 1 # Fail the script if index creation wasn't acknowledged
+  fi
+fi
 
-echo "LocalStack Opensearch resources configuration completed."
+# --- Step 5: Create a marker file for the LocalStack health check ---
+# This signals that all custom initialization steps are complete.
+touch /tmp/opensearch_index_ready
+echo "LocalStack OpenSearch Domain and Index resources completed."

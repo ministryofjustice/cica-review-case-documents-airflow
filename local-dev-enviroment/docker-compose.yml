@@ -8,32 +8,46 @@ services:
       - discovery.type=single-node
       - bootstrap.memory_lock=true
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
-      - "DISABLE_SECURITY_PLUGIN=true"
+      - "DISABLE_SECURITY_PLUGIN=true" # Acceptable for CI testing and Local Development
     ports:
       - "9200:9200"
     ulimits:
       memlock:
         soft: -1
         hard: -1
-    volumes:
-      - data01:/usr/share/opensearch/data
+    # Uncomment if you want persistent data
+    # volumes:  
+    #   - data01:/usr/share/opensearch/data
+    healthcheck: # Added healthcheck for more robust dependencies
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health?wait_for_status=yellow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s # Give it time to initialize
 
   localstack:
     container_name: "${LOCALSTACK_DOCKER_NAME:-localstack-main}"
     image: localstack/localstack
     ports:
-      - "127.0.0.1:4566:4566"            # LocalStack Gateway
-      - "127.0.0.1:4510-4559:4510-4559"  # external services port range
+      - "127.0.0.1:4566:4566"  # LocalStack Gateway
+      # external services port range, uncomment if required
+      # - "127.0.0.1:4510-4559:4510-4559"  
     depends_on:
-      - opensearch
+      opensearch:
+        condition: service_healthy
     environment:
       - AWS_DEFAULT_REGION=eu-west-2
       - OPENSEARCH_CUSTOM_BACKEND=http://opensearch:9200
-      - DEBUG=${DEBUG:-1}
+      - DEBUG=${DEBUG:-0} #  Set to 1 for debugging LocalStack issues.
       - SKIP_SSL_CERT_DOWNLOAD=1
     volumes:
       - ./init-scripts:/etc/localstack/init/ready.d
-      - "/var/run/docker.sock:/var/run/docker.sock"
+    healthcheck: # Custom healthcheck for LocalStack, ensuring index creation
+      test: ["CMD-SHELL", "test -f /tmp/aws_resources_ready && test -f /tmp/opensearch_index_ready && curl -f http://localhost:4566/_localstack/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s # Give LocalStack time to execute init scripts and for index creation
 
   opensearch-dashboards:
     container_name: opensearch-dashboards
