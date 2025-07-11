@@ -95,6 +95,7 @@ def embed_and_index_paragraph(client, index_name, paragraph_text, metadata):
 
     except Exception as e:
         logging.info(f"Error embedding or indexing document: {e}")
+        # Add failures to a DLQ
 
 
 # --- Main Execution ---

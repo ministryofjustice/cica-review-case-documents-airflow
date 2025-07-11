@@ -33,6 +33,27 @@ sqs = boto3.client(
     aws_secret_access_key="dummy",
 )
 
+# Send message to SQS queue
+sqsResponse = sqs.send_message(
+    QueueUrl=queue_url,
+    MessageBody="This is a test message for the CICA document search queue.",
+    MessageAttributes={
+        "s3_uri": {
+            "StringValue": "s3://local-kta-documents-bucket/25-712345",
+            "DataType": "String",
+        },
+        "type": {"StringValue": "TC19", "DataType": "String"},
+        "FILE_NAME": {
+            "StringValue": "medical-letter-instructions.docx",
+            "DataType": "String",
+        },
+    },
+)
+
+message = response["Messages"][0]
+
+logging.info("SQS message sent: %s", response)
+
 
 # Receive message from SQS queue
 response = sqs.receive_message(
@@ -47,11 +68,14 @@ response = sqs.receive_message(
 message = response["Messages"][0]
 receipt_handle = message["ReceiptHandle"]
 
-# Delete received message from queue
-# sqs.delete_message(
-#     QueueUrl=queue_url,
-#     ReceiptHandle=receipt_handle
-# )
+logging.info("Received message: %s", message)
+
+# Uncomment to Delete received message from queue
+# You can also find the Receipt Handle message attribute within LocalStack
+sqs.delete_message(
+    QueueUrl=queue_url,
+    ReceiptHandle=receipt_handle,
+)
 
 
-logging.info("Received and deleted message: %s", message)
+logging.info("Deleted message: %s", message)
