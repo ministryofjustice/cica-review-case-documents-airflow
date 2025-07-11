@@ -106,3 +106,11 @@ def run_dashboards(c):
 
     print("Starting OpenSearch Dashboards...")
     c.run(cmd, pty=True, shell=True)
+
+
+@task(name="create-kernel")
+def create_kernel(c, name):
+    """
+    Create a jupyter notebook kernel.
+    """
+    c.run(f"python -m ipykernel install --user --name={name}")

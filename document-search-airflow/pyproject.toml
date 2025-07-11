@@ -12,11 +12,12 @@ dependencies = [
     "invoke (>=2.2.0,<3.0.0)",
     "opensearch-py (>=3.0.0,<4.0.0)",
     "python-dotenv (>=1.1.1,<2.0.0)",
+    "sentence-transformers (>=5.0.0,<6.0.0)",
+    "ipykernel (>=6.29.5,<7.0.0)",
+    "pypdf (>=5.7.0,<6.0.0)",
+    "langchain-text-splitters (>=0.3.8,<0.4.0)",
+    "ipywidgets (>=8.1.7,<9.0.0)",
 ]
-
-[tool.poetry]
-package-mode = false
-
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
