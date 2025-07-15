@@ -12,3 +12,6 @@ terraform.tfstate
 .venv/
 local-dev-environment/.venv/
 localstack/.venv/bin/activate
+data/
+*.log
+*.pyc
