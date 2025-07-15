@@ -1,9 +1,8 @@
 import logging
-import sys
 
 import boto3
 
-logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 s3 = boto3.client(
     service_name="s3",
@@ -52,7 +51,7 @@ sqsResponse = sqs.send_message(
 
 message = response["Messages"][0]
 
-logging.info("SQS message sent: %s", response)
+logger.info("SQS message sent: %s", response)
 
 
 # Receive message from SQS queue
@@ -68,7 +67,7 @@ response = sqs.receive_message(
 message = response["Messages"][0]
 receipt_handle = message["ReceiptHandle"]
 
-logging.info("Received message: %s", message)
+logger.info("Received message: %s", message)
 
 # Uncomment to Delete received message from queue
 # You can also find the Receipt Handle message attribute within LocalStack
@@ -78,4 +77,4 @@ sqs.delete_message(
 )
 
 
-logging.info("Deleted message: %s", message)
+logger.info("Deleted message: %s", message)
