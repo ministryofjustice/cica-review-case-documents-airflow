@@ -12,3 +12,8 @@ repos:
       - id: gitleaks
         args: ["--verbose", "--redact"]
         stages: [pre-commit, pre-push]
+
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.8.1
+    hooks:
+    - id: nbstripout
