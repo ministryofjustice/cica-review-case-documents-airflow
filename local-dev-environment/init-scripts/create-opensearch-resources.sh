@@ -65,7 +65,7 @@ else
                   "method": {
                       "name": "hnsw",
                       "space_type": "l2",
-                      "engine": "nmslib",
+                      "engine": "faiss",
                       "parameters": {
                           "ef_construction": 128,
                           "m": 24
@@ -78,6 +78,7 @@ else
               "page_count": {"type": "integer"},
               "page_number": {"type": "integer"},
               "chunk_id": {"type": "keyword"},
+              "chunk_index": {"type": "integer"},
               "chunk_text": {"type": "text", "index": false},
               "received_date": {
                   "type": "date",

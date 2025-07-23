@@ -23,7 +23,7 @@ Navigate into the local-dev-environment folder
 
 and run
 
-```docker compose up```
+```docker compose up -d --force-recreate```
 
 You should see 
 

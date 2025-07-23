@@ -8,3 +8,7 @@ env/
 *.code-workspace
 *.sha256
 terraform.tfstate
+data/
+*.log
+*.pyc
+.coverage
