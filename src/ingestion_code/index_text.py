@@ -1,7 +1,7 @@
 import json
 import logging
 
-from opensearchpy import OpenSearch
+from opensearchpy import OpenSearch, OpenSearchException
 
 from ingestion_code.config import settings
 from ingestion_code.extract_text import count_pages_in_pdf
@@ -26,55 +26,69 @@ def get_opensearch_client() -> OpenSearch:
             ssl_show_warn=False,  # Disable SSL warnings
             timeout=30,
         )
-        logger.info("OpenSearch client initialized.")
+        logger.info("OpenSearch client initialised.")
         return client
     except Exception as e:
-        logger.info(f"Error initializing OpenSearch client: {e}")
-        exit(1)
+        logger.exception("Failed to initialise OpenSearch client.")
+        raise RuntimeError("Error initialising OpenSearch client.") from e
 
 
 def index_text_to_opensearch(
     pdf_filename: str,
     chunks_with_embeddings: list[tuple[int, str, list[str], list[list[float]]]],
 ) -> None:
+    """Stores text chunks with embeddings in an OpenSearch database."""
     client = get_opensearch_client()
-    try:
-        logger.info(f"Indexing document into '{settings.OPENSEARCH_INDEX_NAME}'...")
-        for page_number, page_text, chunks, embeddings in chunks_with_embeddings:
-            for chunk_index, (chunk_text, embedding) in enumerate(
-                zip(chunks, embeddings)
-            ):
-                metadata = {
-                    "s3_uri": pdf_filename,
-                    "case_ref": "25/771234",
-                    "correspondence_type": "TC19",
-                    "page_count": count_pages_in_pdf(pdf_filename),
-                    "page_number": page_number,
-                    "chunk_id": f"{pdf_filename}_{page_number}_{chunk_index}",
-                    "received_date": "2023-01-15 10:30:00",
-                    "chunk_index": chunk_index,
-                }
-                document = {
-                    "chunk_text": chunk_text,
-                    "embedding": embedding,
-                    **metadata,  # Unpack additional metadata
-                }
+    logger.info(
+        f"Indexing chunks with embeddings into '{settings.OPENSEARCH_INDEX_NAME}'..."
+    )
+    for page_number, page_text, chunks, embeddings in chunks_with_embeddings:
+        for chunk_index, (chunk_text, embedding) in enumerate(zip(chunks, embeddings)):
+            chunk_id = f"{pdf_filename}_{page_number}_{chunk_index}"
+            metadata = {
+                "s3_uri": pdf_filename,
+                "case_ref": "25/771234",
+                "correspondence_type": "TC19",
+                "page_count": count_pages_in_pdf(pdf_filename),
+                "page_number": page_number,
+                "chunk_id": chunk_id,
+                "received_date": "2023-01-15 10:30:00",
+                "chunk_index": chunk_index,
+            }
+            document = {
+                "chunk_text": chunk_text,
+                "embedding": embedding,
+                **metadata,  # Unpack additional metadata
+            }
+            try:
                 response = client.index(
                     index=settings.OPENSEARCH_INDEX_NAME,
                     body=document,
-                    id=metadata.get("chunk_id"),
+                    id=chunk_id,
                 )
-                logger.info(f"Indexing response: {json.dumps(response, indent=2)}")
-                if response.get("result") in ["created", "updated"]:
-                    logger.info(
-                        f"Document indexed successfully with ID: {response.get('_id')}"
-                    )
-                else:
-                    logger.info(
-                        f"Failed to index document. Result: {response.get('result')}"
-                    )
-        logger.info(
-            f"Finished indexing documents into '{settings.OPENSEARCH_INDEX_NAME}'"
-        )
-    except Exception as e:
-        logger.info(f"Error indexing document: {e}")
+                logger.debug("Indexing response:\n%s", json.dumps(response, indent=2))
+            except OpenSearchException as e:
+                logger.error(
+                    "OpenSearch indexing failed for chunk with ID: %s.",
+                    chunk_id,
+                    exc_info=True,
+                )
+                raise RuntimeError(f"Error indexing chunk {chunk_id}") from e
+            result = response.get("result")
+            if result in ("created", "updated"):
+                logger.debug("Chunk indexed successfully with ID: %s", chunk_id)
+            else:
+                logger.error(
+                    "Failed to index chunk with ID %s: %s",
+                    chunk_id,
+                    result,
+                    exc_info=True,
+                )
+                raise RuntimeError(
+                    f"Unexpected result with indexing chunk with ID: {chunk_id}."
+                )
+    logger.info(
+        "Finished indexing %d chunks into '%s'",
+        sum(len(c[2]) for c in chunks_with_embeddings),
+        settings.OPENSEARCH_INDEX_NAME,
+    )

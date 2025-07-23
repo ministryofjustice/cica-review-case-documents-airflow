@@ -1,6 +1,6 @@
 import logging
 
-from ingestion_code.model import model
+from ingestion_code.model import get_sentence_transformers_model
 
 logger = logging.getLogger(__name__)
 
@@ -17,18 +17,18 @@ def embed_text_with_local_model(
     Returns:
         list[tuple[int, str, list[str]]]: A list of (page_number, page_text, chunks).
     """
-    try:
-        logger.info("Embedding text chunks.")
-        extracted_data = []
-        for page_number, page_text, chunks in page_chunks:
+    model = get_sentence_transformers_model()
+    logger.info("Embedding text chunks.")
+    extracted_data = []
+    for page_number, page_text, chunks in page_chunks:
+        try:
             embeddings = model.encode(
                 chunks, batch_size=32, show_progress_bar=True
             ).tolist()
             extracted_data.append((page_number, page_text, chunks, embeddings))
-        logger.info("Text embedded successfully.")
+        except Exception as e:
+            logger.exception("Failed to embed chunks on page: %s", page_number)
+            raise RuntimeError("Error with embedding page chunks") from e
 
-        return extracted_data
-
-    except Exception as e:
-        logger.info(f"Error embedding text: {e}")
-        exit(1)
+    logger.info("Chunks embedded successfully.")
+    return extracted_data
