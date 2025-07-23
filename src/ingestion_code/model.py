@@ -7,11 +7,19 @@ from ingestion_code.config import settings
 logger = logging.getLogger(__name__)
 
 # --- Initialize Embedding Model ---
-try:
-    # print(f"Loading SentenceTransformer model: {MODEL_NAME}...")
-    logger.info(f"Loading SentenceTransformer model: {settings.MODEL_NAME}...")
-    model = SentenceTransformer(settings.MODEL_NAME)
-    logger.info("Model loaded successfully.")
-except Exception as e:
-    logger.info(f"Error loading model: {e}")
-    exit(1)
+
+
+def get_sentence_transformers_model() -> SentenceTransformer:
+    """Load a SentenceTransformer model."""
+    try:
+        logger.info("Loading SentenceTransformer model: %s", settings.MODEL_NAME)
+        model = SentenceTransformer(settings.MODEL_NAME)
+        logger.info("Model %s loaded successfully.", settings.MODEL_NAME)
+        return model
+    except Exception as e:
+        logger.exception(
+            "Failed to load SentenceTransformer model %s", settings.MODEL_NAME
+        )
+        raise RuntimeError(
+            f"Error loading embedding model '{settings.MODEL_NAME}'"
+        ) from e
