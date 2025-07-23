@@ -14,9 +14,9 @@ To install the project dependencies, run in the terminal from the root folder:
 ## Document ingestion
 
 The code inside `src/ingestion_code` will:
-- Extract text from a pdf with text.
+- Extract text from a pdf (with text) stored in a root level folder whose name is defined by the `DATA_DIR` variable.
 - Split the text into chunks.
-- Embed the chunks with a local embedding model.
+- Embed the chunks with an embedding model.
 - Insert the chunks (documents) into an OpenSearch index.
 
 To run the whole process, run in the terminal from the root folder:
@@ -25,7 +25,7 @@ To run the whole process, run in the terminal from the root folder:
 
 Logs will be written to a local log file at root level `ingestion.log`.
 
-Configuration settings and secrets should be stored in a `.env` file.
+Secrets and environement variables should be defined in a `.env` file. These and other configuration is stored in a `settings` object defined in `src/ingestion_code/config.py`.
 
 ## Testing
 
