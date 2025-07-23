@@ -17,17 +17,17 @@ logger = logging.getLogger(__name__)
 
 
 def main():
-    # Extract text from pdf
+    # -- Step 1: Extract text from pdf --
     pdf_filename = "ai-04-00049.pdf"
     pages = extract_text_from_pdf(pdf_filename)
 
-    # Split page text into chunks
+    # -- Step 2: Split page text into chunks --
     chunks = chunk_text_for_local_model(pages)
 
-    # Create chunk embeddings
+    # -- Step 3: Create chunk embeddings --
     chunks_with_embeddings = embed_text_with_local_model(chunks)
 
-    # Index documents to OpenSearch
+    # -- Step 4: Index documents to OpenSearch --
     index_text_to_opensearch(pdf_filename, chunks_with_embeddings)
 
     logger.info("Script finished.")
