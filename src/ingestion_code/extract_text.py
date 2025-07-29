@@ -39,7 +39,9 @@ def extract_text_from_pdf(pdf_filename: str) -> List[Tuple[int, str]]:
             raise PDFExtractionError(
                 f"Error extracting text on page {page_num} from {pdf_filename}."
             ) from e
-    logger.info("Successfully extracted text from pdf pages.")
+    logger.info(
+        "Successfully extracted text from %d pages of %r", len(pages), pdf_filename
+    )
 
     return pages
 
@@ -55,5 +57,9 @@ def count_pages_in_pdf(pdf_filename: str) -> int:
         int: The number of pages in the pdf
     """
     pdf_path = get_pdf_path(pdf_filename)
-    reader = PdfReader(str(pdf_path))
-    return reader.get_num_pages()
+    try:
+        reader = PdfReader(str(pdf_path))
+        return reader.get_num_pages()
+    except Exception as e:
+        logger.exception("Failed to count pages in %r", pdf_filename)
+        raise PDFExtractionError(f"Could not count pages in '{pdf_filename}'") from e
