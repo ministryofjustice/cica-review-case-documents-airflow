@@ -140,10 +140,7 @@ def call_textract(bucket: str, prefix: str) -> None:
             logger.exception("Unexpected error processing %r", key)
 
 
-def save_pdf_pages_as_images(
-    bucket: str = S3_BUCKET,
-    prefix: str = S3_PREFIX,
-) -> None:
+def save_pdf_pages_as_images(bucket: str, prefix: str) -> None:
     """
     Downloads PDFs locally from S3, renders each page to PNG, ane uploads back to S3.
     """
@@ -164,9 +161,7 @@ def save_pdf_pages_as_images(
 
                 # 3) Upload each page
                 out_key = (
-                    prefix
-                    + "/extracted/images/"
-                    + f"{base_name}_page_{page_index + 1:03}.png"
+                    prefix + "/images/" + f"{base_name}_page_{page_index + 1:03}.png"
                 )
                 s3.put_object(
                     Bucket=bucket, Key=out_key, Body=img_data, ContentType="image/png"
