@@ -22,6 +22,8 @@ class Settings(BaseSettings):  # type: ignore
     AWS_SESSION_TOKEN: str = "aws_session_token"
     AWS_REGION: str = "aws_region"
     S3_BUCKET_NAME: str = "s3_bucket_name"
+    BEDROCK_TOKENIZER_NAME: str = "cl100k_base"
+    BEDROCK_CHUNK_SIZE: int = 7900
 
 
 settings = Settings()
