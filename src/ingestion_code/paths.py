@@ -38,3 +38,13 @@ def get_pdf_path(pdf_filename: str) -> Path:
         raise FileNotFoundError(f"Invalid PDF path: {pdf_path}")
 
     return pdf_path
+
+
+def get_json_paths(folder_name: str) -> list[str]:
+    """
+    Return a list of all .json file paths in data/{folder_name}/extracted/
+    """
+    repo_root = get_repo_root()
+    base_dir = repo_root / settings.DATA_DIR / folder_name / "extracted"
+    # If you only want the top‐level files, otherwise use rglob
+    return [str(p) for p in base_dir.glob("*.json") if p.is_file()]
