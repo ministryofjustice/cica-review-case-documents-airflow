@@ -33,15 +33,18 @@ def extract_text_from_pdf(bucket: str, key: str) -> list[dict[str, Any]]:
     Submit the PDF to Textract, wait for completion, and return a list of detected text.
     """
     # 1) start the async job
-    resp = textract.start_document_text_detection(
-        DocumentLocation={"S3Object": {"Bucket": bucket, "Name": key}}
+    resp = textract.start_document_analysis(
+        DocumentLocation={"S3Object": {"Bucket": bucket, "Name": key}},
+        FeatureTypes=["TABLES", "FORMS", "LAYOUT"],
     )
     job_id = resp["JobId"]
     logger.info("Started Textract text extraction job %s for %r", job_id, key)
 
     # 2) poll until done
+    # TO DO: Get the completion status from the Amazon SNS topic, using an Amazon SQS
+    # queue or an AWS Lambda function.
     while True:
-        status = textract.get_document_text_detection(JobId=job_id)["JobStatus"]
+        status = textract.get_document_analysis(JobId=job_id)["JobStatus"]
         if status in ("SUCCEEDED", "FAILED"):
             break
         logger.debug("Waiting for Textract job %s… status=%s", job_id, status)
@@ -53,71 +56,50 @@ def extract_text_from_pdf(bucket: str, key: str) -> list[dict[str, Any]]:
         raise RuntimeError(msg)
 
     # 3) # collect blocks, grouping by page
-    pages: dict[int, dict[str, Any]] = {}
+    # pages: dict[int, dict[str, Any]] = {}
     next_token = None
+    responses = []
     while True:
         kwargs = {"JobId": job_id}
         if next_token:
             kwargs["NextToken"] = next_token
-        page = textract.get_document_text_detection(**kwargs)
+        response = textract.get_document_analysis(**kwargs)
+        responses.append(response)
 
-        # Loop over response blocks to store required info
-        for block in page["Blocks"]:
-            pg = block["Page"]  # page number
-            slot = pages.setdefault(pg, {"lines": [], "words": []})
-            if block["BlockType"] == "LINE":
-                slot["lines"].append(block["Text"])
-            elif block["BlockType"] == "WORD":
-                slot["words"].append(
-                    {
-                        "text": block["Text"],
-                        "bounding_box": block["Geometry"]["BoundingBox"],
-                        "confidence": block["Confidence"],
-                    }
-                )
-
-        next_token = page.get("NextToken")
+        next_token = response.get("NextToken")
+        # If this is the end of the response
         if not next_token:
             break
 
-    # 4) build ordered list of page dicts
-    result: list[dict[str, Any]] = []
-    for pg, data in sorted(pages.items()):
-        result.append(
-            {
-                "page_number": pg,
-                "text": "\n".join(data["lines"]),
-                "words": data["words"],
-            }
-        )
-    return result
+    return responses
 
 
-def _upload_page_json(
-    bucket: str, prefix: str, doc_key: str, page: dict[str, Any]
+def _upload_json(
+    bucket: str, prefix: str, doc_key: str, responses: list[dict[str, Any]]
 ) -> None:
     """
-    Upload a single-page JSON blob (with words+boxes+confidence).
+    Upload a JSON blobs containing the full Textract response.
     """
-    payload = {"document_key": doc_key, **page}
-    body = json.dumps(payload)
+    for part, resp in enumerate(responses, start=1):
+        payload = {"document_key": doc_key, **resp}
+        body = json.dumps(payload)
 
-    base = doc_key.replace(prefix, f"{prefix}/extracted")
-    out_key = f"{base.rstrip('.pdf')}_page_{page['page_number']:03}.json"
+        base = doc_key.replace(prefix, f"{prefix}/extracted")
+        out_key = f"{base.rstrip('.pdf')}_part_{part:02}.json"
 
-    s3.put_object(
-        Bucket=bucket,
-        Key=out_key,
-        Body=body.encode("utf-8"),
-        ContentType="application/json",
-    )
-    logger.info(
-        "Saved page %d JSON of %r to s3://%s/%s",
-        page["page_number"],
-        doc_key,
-        bucket,
-        out_key,
-    )
+        s3.put_object(
+            Bucket=bucket,
+            Key=out_key,
+            Body=body.encode("utf-8"),
+            ContentType="application/json",
+        )
+        logger.info(
+            "Saved part %d from Textract response JSON of %r to s3://%s/%s",
+            part,
+            doc_key,
+            bucket,
+            out_key,
+        )
 
 
 def call_textract(bucket: str, prefix: str) -> None:
@@ -129,10 +111,9 @@ def call_textract(bucket: str, prefix: str) -> None:
 
     for key in pdf_keys:
         try:
-            pages = extract_text_from_pdf(bucket, key)
+            responses = extract_text_from_pdf(bucket, key)
 
-            for page in pages:
-                _upload_page_json(bucket, prefix, key, page)
+            _upload_json(bucket, prefix, key, responses)
 
         except ClientError as e:
             logger.error("S3 error processing %r: %s", key, e)
