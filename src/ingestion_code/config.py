@@ -3,10 +3,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):  # type: ignore
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    LOCAL: bool = False
     # Data directory (relative to root)
     DATA_DIR: str = "data"
     # Embedding model
-    MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
+    LOCAL_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
     # Chunking setting
     TOKEN_OVERLAP: int = 0
     # OpenSearch client
@@ -21,9 +22,12 @@ class Settings(BaseSettings):  # type: ignore
     AWS_SECRET_ACCESS_KEY: str = "aws_secret_access_key"
     AWS_SESSION_TOKEN: str = "aws_session_token"
     AWS_REGION: str = "aws_region"
-    S3_BUCKET_NAME: str = "s3_bucket_name"
+    S3_BUCKET_NAME: str = "alpha-a2j-projects"
+    S3_PREFIX: str = "textract-test"
+    POLL_INTERVAL_SECONDS: int = 5  # for checking Textract job status
     BEDROCK_TOKENIZER_NAME: str = "cl100k_base"
-    BEDROCK_CHUNK_SIZE: int = 7900
+    BEDROCK_CHUNK_SIZE: int = 300  # 100 tokens ~ 75 words (1 token ~ (3/4) words)
+    BEDROCK_EMBEDDING_MODEL_ID: str = "cohere.embed-english-v3"
 
 
 settings = Settings()

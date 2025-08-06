@@ -2,7 +2,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from ingestion_code.paths import get_pdf_path, get_repo_root
+from ingestion_code.utils import get_pdf_path, get_repo_root
 
 # --- Test get_repo_root ---
 
