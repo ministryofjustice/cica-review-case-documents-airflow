@@ -1,5 +1,11 @@
+import json
 import logging
+from typing import Any
 
+from botocore.exceptions import ClientError
+
+from ingestion_code.aws_clients import bedrock
+from ingestion_code.config import settings
 from ingestion_code.model import get_sentence_transformers_model
 
 logger = logging.getLogger(__name__)
@@ -32,3 +38,112 @@ def embed_text_with_local_model(
 
     logger.info("Chunks embedded successfully.")
     return extracted_data
+
+
+def embed_text_with_titan_model(chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """
+    Embed a list of text chunks using the Amazon Titan model on Bedrock.
+
+    Args:
+        chunks: List of dicts, each with 'text' and 'metadata' fields.
+        model_id: Bedrock model ID (default is Titan embedding model).
+
+    Returns:
+        List of dicts with 'text', 'embedding', and 'metadata' for each chunk.
+    """
+    logger.info("Starting embedding of stext chunks with a Bedrock model.")
+    results = []
+
+    for chunk in chunks:
+        text = chunk["text"]
+
+        # Prepare the payload
+        payload = {"inputText": text}
+
+        try:
+            response = bedrock.invoke_model(
+                modelId=settings.BEDROCK_EMBEDDING_MODEL_ID,
+                body=json.dumps(payload),
+                contentType="application/json",
+                accept="application/json",
+            )
+            # Parse the Titan V2 response
+            body = json.loads(response["body"].read())
+            embedding = body["embeddingsByType"]["float"]
+
+            results.append(
+                {"embedding": embedding, "text": text, "metadata": chunk["metadata"]}
+            )
+
+        except ClientError as e:
+            page = chunk["metadata"]["page"]
+            msg = "Bedrock InvokeModel failed for Titan embed on page %s: %r" % (
+                page,
+                e,
+            )
+            logger.exception(msg)
+            raise
+
+    logger.info("Chunks embedded successfully.")
+
+    return results
+
+
+def embed_text_with_cohere_model(chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """
+    Embed a list of text chunks using the Cohere Embed English v3 model on Bedrock.
+
+    Args:
+        chunks: List of dicts, each with 'text' and 'metadata'.
+
+    Returns:
+        List of dicts with keys:
+          - 'embedding': List[float] (1024-dim vector)
+          - 'text' : the chunk text
+          - 'metadata': original metadata dict
+    """
+    results = []
+
+    # Process in batches of up to _MAX_BATCH_SIZE texts
+    _MAX_BATCH_SIZE = 96
+    for i in range(0, len(chunks), 96):
+        batch = chunks[i : i + _MAX_BATCH_SIZE]
+        texts = [c["text"] for c in batch]
+
+        payload = {
+            "texts": texts,
+            "input_type": "search_document",
+            "truncate": "NONE",
+        }
+
+        try:
+            response = bedrock.invoke_model(
+                modelId=settings.BEDROCK_EMBEDDING_MODEL_ID,
+                body=json.dumps(payload),
+                contentType="application/json",
+                accept="application/json",
+            )
+            # Parse the response
+            body = json.loads(response["body"].read())
+            embeddings = body.get("embeddings")
+            if not embeddings or not isinstance(embeddings, list):
+                raise KeyError("No 'embeddings' key in response body: %r" % body)
+
+            # Match each embedding to its chunk
+            for chunk_dict, vector in zip(batch, embeddings):
+                results.append(
+                    {
+                        "embedding": vector,
+                        "text": chunk_dict["text"],
+                        "metadata": chunk_dict["metadata"],
+                    }
+                )
+
+        except ClientError as e:
+            msg = "Bedrock InvokeModel failed for Cohere embed: %r" % e
+            logger.exception(msg)
+            raise
+
+    logger.info("Chunks embedded successfully.")
+
+    return results
