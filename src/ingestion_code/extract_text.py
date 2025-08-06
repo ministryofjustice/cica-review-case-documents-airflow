@@ -1,9 +1,8 @@
 import logging
-from typing import List, Tuple
 
 from pypdf import PdfReader
 
-from ingestion_code.paths import get_pdf_path
+from ingestion_code.utils import get_local_pdf_path
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +11,7 @@ class PDFExtractionError(RuntimeError):
     """Raised when text extraction from PDF pages fails."""
 
 
-def extract_text_from_pdf(pdf_filename: str) -> List[Tuple[int, str]]:
+def extract_text_from_pdf(pdf_filename: str) -> list[tuple[int, str]]:
     """
     Extracts text from each page of a PDF file with text.
 
@@ -22,7 +21,7 @@ def extract_text_from_pdf(pdf_filename: str) -> List[Tuple[int, str]]:
     Returns:
         List[Tuple[int, str]]: A list of (page_number, page_text) tuples.
     """
-    pdf_path = get_pdf_path(pdf_filename)
+    pdf_path = get_local_pdf_path(pdf_filename)
     logger.info("Starting text extraction from pdf.")
     try:
         reader = PdfReader(str(pdf_path))
@@ -51,12 +50,12 @@ def count_pages_in_pdf(pdf_filename: str) -> int:
     Counts the number of pages in a pdf.
 
     Args:
-        pdf_path (str): Path to the PDF file.
+        pdf_path (str): Path to the PDF file in the local filesystem.
 
     Returns:
         int: The number of pages in the pdf
     """
-    pdf_path = get_pdf_path(pdf_filename)
+    pdf_path = get_local_pdf_path(pdf_filename)
     try:
         reader = PdfReader(str(pdf_path))
         return reader.get_num_pages()

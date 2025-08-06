@@ -3,117 +3,143 @@ import logging
 import os
 import tempfile
 import time
-from typing import Any, Iterator
+from enum import Enum
+from typing import Any
 
-import boto3
 import fitz
 from botocore.exceptions import ClientError
 
+from ingestion_code.aws_clients import s3, textract
+from ingestion_code.config import settings
+from ingestion_code.utils import get_s3_keys
+
 logger = logging.getLogger(__name__)
 
-s3 = boto3.client("s3")
-textract = boto3.client("textract")
-POLL_INTERVAL_SECONDS = 5
-S3_BUCKET = "alpha-a2j-projects"
-S3_PREFIX = "textract-test"
+
+class TextractMode(Enum):
+    TEXT_DETECTION = "text-detection"
+    DOCUMENT_ANALYSIS = "document-analysis"
 
 
-def list_pdfs(bucket: str, prefix: str) -> Iterator[str]:
-    """Yield all .pdf keys under the given bucket/prefix."""
-    paginator = s3.get_paginator("list_objects_v2")
-    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
-        for obj in page.get("Contents", []):
-            key = obj["Key"]
-            if key.lower().endswith(".pdf"):
-                yield key
-
-
-def extract_text_from_pdf(bucket: str, key: str) -> list[dict[str, Any]]:
+def run_textract_on_pdf(
+    bucket: str, key: str, mode: TextractMode, features: str | None = None
+) -> list[dict[str, Any]]:
     """
-    Submit the PDF to Textract, wait for completion, and return a list of detected text.
+    Run Textract on a PDF, wait for completion, and return the response as a dictionary.
     """
+
+    document_location = {"S3Object": {"Bucket": bucket, "Name": key}}
+
     # 1) start the async job
-    resp = textract.start_document_analysis(
-        DocumentLocation={"S3Object": {"Bucket": bucket, "Name": key}},
-        FeatureTypes=["TABLES", "FORMS", "LAYOUT"],
-    )
+    if mode == TextractMode.TEXT_DETECTION:
+        resp = textract.start_document_text_detection(
+            DocumentLocation=document_location
+        )
+    elif mode == TextractMode.DOCUMENT_ANALYSIS:
+        if not features:
+            raise ValueError("Feature types are required for document_analysis.")
+        resp = textract.start_document_analysis(
+            DocumentLocation=document_location, FeatureTypes=features
+        )
+    else:
+        raise ValueError(f"Unsupported mode: {mode}")
+
     job_id = resp["JobId"]
-    logger.info("Started Textract text extraction job %s for %r", job_id, key)
+    logger.info("Started Textract %s job %s for %r", mode, job_id, key)
 
     # 2) poll until done
     # TO DO: Get the completion status from the Amazon SNS topic, using an Amazon SQS
-    # queue or an AWS Lambda function.
-    while True:
-        status = textract.get_document_analysis(JobId=job_id)["JobStatus"]
-        if status in ("SUCCEEDED", "FAILED"):
-            break
-        logger.debug("Waiting for Textract job %s… status=%s", job_id, status)
-        time.sleep(POLL_INTERVAL_SECONDS)
-
-    if status != "SUCCEEDED":
-        msg = f"Textract job {job_id} failed for {key!r}"
-        logger.error(msg)
-        raise RuntimeError(msg)
-
-    # 3) # collect blocks, grouping by page
-    # pages: dict[int, dict[str, Any]] = {}
-    next_token = None
+    # queue, or an AWS Lambda function.
     responses = []
     while True:
-        kwargs = {"JobId": job_id}
-        if next_token:
-            kwargs["NextToken"] = next_token
-        response = textract.get_document_analysis(**kwargs)
-        responses.append(response)
-
-        next_token = response.get("NextToken")
-        # If this is the end of the response
-        if not next_token:
+        if mode == TextractMode.TEXT_DETECTION:
+            response = textract.get_document_text_detection(JobId=job_id)
+        elif mode == TextractMode.DOCUMENT_ANALYSIS:
+            response = textract.get_document_analysis(JobId=job_id)
+        else:
+            raise ValueError("Invalid mode for result retrieval.")
+        status = response["JobStatus"]
+        if status == "SUCCEEDED":
+            responses.append(response)
+            while "NextToken" in response:
+                next_token = response["NextToken"]
+                if mode == TextractMode.TEXT_DETECTION:
+                    response = textract.get_document_text_detection(
+                        JobId=job_id, NextToken=next_token
+                    )
+                else:
+                    response = textract.get_document_analysis(
+                        JobId=job_id, NextToken=next_token
+                    )
+                responses.append(response)
+            logger.info("Finished Textract %s job %s for %r", mode, job_id, key)
             break
+        elif status == "FAILED":
+            raise RuntimeError("Textract job failed.")
+        else:
+            logger.debug("Waiting for Textract job %s… status=%s", job_id, status)
+            time.sleep(settings.POLL_INTERVAL_SECONDS)
 
     return responses
 
 
 def _upload_json(
-    bucket: str, prefix: str, doc_key: str, responses: list[dict[str, Any]]
+    bucket: str,
+    prefix: str,
+    doc_key: str,
+    mode: TextractMode,
+    responses: list[dict[str, Any]],
 ) -> None:
     """
-    Upload a JSON blobs containing the full Textract response.
+    Upload the Textract responses in a single JSON file for a single document.
     """
-    for part, resp in enumerate(responses, start=1):
-        payload = {"document_key": doc_key, **resp}
-        body = json.dumps(payload)
+    total_pages = responses[0]["DocumentMetadata"]["Pages"]
+    # Combine all response blocks into a single list of blocks
+    all_blocks = []
+    for resp in responses:
+        all_blocks.extend(resp["Blocks"])
 
-        base = doc_key.replace(prefix, f"{prefix}/extracted")
-        out_key = f"{base.rstrip('.pdf')}_part_{part:02}.json"
+    # Store in a unified dictionary
+    full_document = {
+        "document_key": doc_key,
+        "DocumentMetadata": {"Pages": total_pages},
+        "Blocks": all_blocks,
+    }
 
-        s3.put_object(
-            Bucket=bucket,
-            Key=out_key,
-            Body=body.encode("utf-8"),
-            ContentType="application/json",
-        )
-        logger.info(
-            "Saved part %d from Textract response JSON of %r to s3://%s/%s",
-            part,
-            doc_key,
-            bucket,
-            out_key,
-        )
+    body = json.dumps(full_document)
+    base = doc_key.replace(prefix, f"{prefix}/{mode.value}")
+    out_key = f"{base.rstrip('.pdf')}.json"
+
+    # Upload object to S3
+    s3.put_object(
+        Bucket=bucket,
+        Key=out_key,
+        Body=body.encode("utf-8"),
+        ContentType="application/json",
+    )
+
+    logger.info(
+        "Saved complete Textract response as a JSON file of %r to s3://%s/%s",
+        doc_key,
+        bucket,
+        out_key,
+    )
 
 
-def call_textract(bucket: str, prefix: str) -> None:
+def run_textract_and_upload_responses(
+    bucket: str, prefix: str, mode: TextractMode, features: str | None = None
+) -> None:
     """Use Textract to extract text from PDFs in S3 and save it to JSON files."""
-    pdf_keys = list(list_pdfs(bucket, prefix))
+    pdf_keys = get_s3_keys(bucket, prefix, ".pdf")
     if not pdf_keys:
         logger.warning("No PDF files found under %s", prefix)
         return
 
     for key in pdf_keys:
         try:
-            responses = extract_text_from_pdf(bucket, key)
+            responses = run_textract_on_pdf(bucket, key, mode, features)
 
-            _upload_json(bucket, prefix, key, responses)
+            _upload_json(bucket, prefix, key, mode, responses)
 
         except ClientError as e:
             logger.error("S3 error processing %r: %s", key, e)
@@ -125,7 +151,7 @@ def save_pdf_pages_as_images(bucket: str, prefix: str) -> None:
     """
     Downloads PDFs locally from S3, renders each page to PNG, ane uploads back to S3.
     """
-    for key in list_pdfs(bucket, prefix):
+    for key in get_s3_keys(bucket, prefix, ".pdf"):
         try:
             # 1) Download PDF to a temp file
             with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
