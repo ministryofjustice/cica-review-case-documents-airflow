@@ -1,23 +1,22 @@
 FROM ghcr.io/ministryofjustice/analytical-platform-airflow-python-base:1.17.0@sha256:1d1574e2485cca22b9d245583b1655833f7aa94f170b72ca2f97bf10e74c6318
 
-# Below is an example of how to use the base image
 
 # Switch to root user to install packages
-# USER root                 
+USER root                 
                        
 # Copy requirements.txt
-# COPY requirements.txt requirements.txt 
+COPY requirements.txt requirements.txt 
 
 # Copy application code
-# COPY src/ .
+COPY src/ .
 
 # Install requirements
-# RUN <<EOF
-# pip install --no-cache-dir --requirement requirements.txt
-# EOF
+RUN <<EOF
+pip install --no-cache-dir --requirement requirements.txt
+EOF
 
 # Switch back to non-root user (analyticalplatform)
-# USER ${CONTAINER_UID}
+USER ${CONTAINER_UID}
 
 # Execute main.py script
-# ENTRYPOINT ["python3", "main.py"]
+ENTRYPOINT ["python3", "main.py"]
