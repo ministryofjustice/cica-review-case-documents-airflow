@@ -19,7 +19,7 @@ Docker and LocalStack resorces to be created:
 
 Navigate into the local-dev-environment folder 
 
-```cd cica-document-search-airflow/local-dev-enviroment```
+```cd cica-review-case-documents-airflow/local-dev-enviroment```
 
 and run
 
@@ -28,7 +28,7 @@ and run
 You should see 
 
 ```
-:~/cica-document-search-airflow/local-dev-enviroment$ docker compose up -d --force-recreate
+:~/cica-review-case-documents-airflow/local-dev-enviroment$ docker compose up -d --force-recreate
 [+] Running 5/5
  ✔ Network local-dev-enviroment_default  Created                                             
  ✔ Volume "local-dev-enviroment_data01"  Created                                         
