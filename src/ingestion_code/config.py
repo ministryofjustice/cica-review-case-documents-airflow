@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):  # type: ignore
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
-    LOCAL: bool = False
+    LOCAL: bool = True
     # Data directory (relative to root)
     DATA_DIR: str = "data"
     # Embedding model
@@ -27,7 +27,10 @@ class Settings(BaseSettings):  # type: ignore
     POLL_INTERVAL_SECONDS: int = 5  # for checking Textract job status
     BEDROCK_TOKENIZER_NAME: str = "cl100k_base"
     BEDROCK_CHUNK_SIZE: int = 300  # 100 tokens ~ 75 words (1 token ~ (3/4) words)
-    BEDROCK_EMBEDDING_MODEL_ID: str = "cohere.embed-english-v3"
+    # Cohere model
+    # BEDROCK_EMBEDDING_MODEL_ID: str = "cohere.embed-english-v3"
+    # or Titan model
+    BEDROCK_EMBEDDING_MODEL_ID: str = "amazon.titan-embed-text-v2:0"
 
 
 settings = Settings()
