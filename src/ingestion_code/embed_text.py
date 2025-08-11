@@ -51,7 +51,7 @@ def embed_text_with_titan_model(chunks: list[dict[str, Any]]) -> list[dict[str, 
     Returns:
         List of dicts with 'text', 'embedding', and 'metadata' for each chunk.
     """
-    logger.info("Starting embedding of stext chunks with a Bedrock model.")
+    logger.info("Starting embedding of text chunks with the Titan Bedrock model.")
     results = []
 
     for chunk in chunks:
