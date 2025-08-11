@@ -61,7 +61,7 @@ else
           "properties": {
               "embedding": {
                   "type": "knn_vector",
-                  "dimension": 384,
+                  "dimension": 1024,
                   "method": {
                       "name": "hnsw",
                       "space_type": "l2",
