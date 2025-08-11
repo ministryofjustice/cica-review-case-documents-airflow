@@ -153,6 +153,6 @@ def index_textract_text_to_opensearch(
             )
     logger.info(
         "Finished indexing %d chunks into '%s'",
-        sum(len(c[2]) for c in chunks_with_embeddings),
+        len(chunks_with_embeddings),
         settings.OPENSEARCH_INDEX_NAME,
     )
