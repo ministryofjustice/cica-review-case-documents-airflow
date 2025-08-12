@@ -1,7 +1,7 @@
 services:
   opensearch:
     container_name: opensearch
-    image: opensearchproject/opensearch:2.11.0
+    image: opensearchproject/opensearch:2.19.3
     environment:
       - node.name=opensearch
       - cluster.name=opensearch-docker-cluster
@@ -51,7 +51,7 @@ services:
 
   opensearch-dashboards:
     container_name: opensearch-dashboards
-    image: opensearchproject/opensearch-dashboards:2.11.0 # Or the version you need
+    image: opensearchproject/opensearch-dashboards:2.19.3 # Or the version you need
     ports:
       - "5601:5601" # OpenSearch Dashboards UI
     environment:
