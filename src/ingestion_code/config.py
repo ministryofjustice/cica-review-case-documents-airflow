@@ -6,18 +6,18 @@ class Settings(BaseSettings):  # type: ignore
     LOCAL: bool = True
     # Data directory (relative to root)
     DATA_DIR: str = "data"
-    # Embedding model
+    # -- Local Embedding model --
     LOCAL_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
-    # Chunking setting
+    # -- Chunking --
     TOKEN_OVERLAP: int = 0
-    # OpenSearch client
+    # -- OpenSearch client --
+    OPENSEARCH_HOST: str = "localhost"
+    OPENSEARCH_URL_PREFIX: str = "/opensearch/eu-west-2/case-document-search-domain"
     OPENSEARCH_PORT: int = 4566
-    OPENSEARCH_HOST: str = (
-        "case-document-search-domain.eu-west-2.opensearch.localhost.localstack.cloud"
-    )
     OPENSEARCH_USERNAME: str = "username"
     OPENSEARCH_PASSWORD: str = "password"
     OPENSEARCH_INDEX_NAME: str = "case-documents"
+    # -- AWS --
     AWS_ACCESS_KEY_ID: str = "aws_access_key_id"
     AWS_SECRET_ACCESS_KEY: str = "aws_secret_access_key"
     AWS_SESSION_TOKEN: str = "aws_session_token"
