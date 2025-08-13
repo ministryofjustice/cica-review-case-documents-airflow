@@ -19,7 +19,11 @@ The code inside `src/ingestion_code` will:
 - Embed the chunks with an embedding model.
 - Insert the chunks (documents) into an OpenSearch index.
 
-To run the whole process, run in the terminal from the root folder:
+To run the whole process, first activate the virtual environment:
+
+```source .venv/bin/activate```
+
+Then run in the terminal from the root folder:
 
 ```python -m ingestion_code```
 
