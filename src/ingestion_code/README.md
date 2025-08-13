@@ -2,7 +2,7 @@
 
 ## Pre-requisites
 
-- Follow instructions in the README inside `local-dev-environment`.
+- Follow instructions in the README inside `local-dev-environment` to spin up the Local Stack environement.
 - Install Poetry using instructions [here](https://python-poetry.org/docs/#installation)
 
 ## Setup
@@ -22,6 +22,8 @@ The code inside `src/ingestion_code` will:
 To run the whole process, first activate the virtual environment:
 
 ```source .venv/bin/activate```
+
+Ensure a `.env` file exists in the root of the repo with the correct AWS credentials copied in.
 
 Then run in the terminal from the root folder:
 
