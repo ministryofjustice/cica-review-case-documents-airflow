@@ -79,7 +79,7 @@ else
               "page_number": {"type": "integer"},
               "chunk_id": {"type": "keyword"},
               "chunk_index": {"type": "integer"},
-              "chunk_text": {"type": "text", "index": false},
+              "chunk_text": {"type": "text"},
               "received_date": {
                   "type": "date",
                   "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"
