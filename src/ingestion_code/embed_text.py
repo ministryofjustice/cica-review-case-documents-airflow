@@ -89,6 +89,18 @@ def embed_text_with_titan_model(chunks: list[dict[str, Any]]) -> list[dict[str, 
     return results
 
 
+def embed_query_with_titan_model(query: str):
+    payload = {"inputText": query, "normalize": False}
+    resp = bedrock.invoke_model(
+        modelId=settings.BEDROCK_EMBEDDING_MODEL_ID,
+        body=json.dumps(payload),
+        contentType="application/json",
+        accept="application/json",
+    )
+    data = json.loads(resp["body"].read())
+    return data["embeddingsByType"]["float"]
+
+
 def embed_text_with_cohere_model(chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Embed a list of text chunks using the Cohere Embed English v3 model on Bedrock.
