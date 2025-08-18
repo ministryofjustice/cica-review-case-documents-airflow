@@ -1,14 +1,13 @@
 import logging
 from typing import Any
 
+from config import settings
+from ingestion_code.model import get_sentence_transformers_model
 from langchain_text_splitters import (
     SentenceTransformersTokenTextSplitter,
     TokenTextSplitter,
 )
 from textractor.parsers import response_parser
-
-from ingestion_code.config import settings
-from ingestion_code.model import get_sentence_transformers_model
 
 logger = logging.getLogger(__name__)
 
