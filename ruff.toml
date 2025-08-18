@@ -1,7 +1,7 @@
 # Specify cache directory
 cache-dir = "~/.cache/ruff"
 target-version = "py310"
-line-length = 90
+line-length = 120
 
 # Exclude specific directories from being linted
 exclude = [
@@ -19,7 +19,7 @@ exclude = [
 ]
 
 # default to no fixes
-fix=false
+fix = false
 respect-gitignore = true
 
 [lint]
@@ -52,7 +52,7 @@ select = [
     # isort (sort imports)
     "I001",
     # flake8-print
-    "T20"
+    "T20",
 ]
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
