@@ -1,9 +1,9 @@
 import logging
 
+from config import settings
 from ingestion_code.chunk_text import (
     chunk_textract_responses_for_bedrock,
 )
-from ingestion_code.config import settings
 from ingestion_code.embed_text import (
     # embed_text_with_cohere_model,
     embed_text_with_titan_model,
@@ -21,8 +21,7 @@ logging.basicConfig(
     filemode="w",
     level=logging.INFO,
     force=True,
-    format="%(asctime)s %(levelname)s [%(filename)s:%(funcName)s:%(lineno)d] %(name)s: "
-    "%(message)s",
+    format="%(asctime)s %(levelname)s [%(filename)s:%(funcName)s:%(lineno)d] %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -58,9 +57,7 @@ def main():
     if settings.LOCAL:
         responses = load_local_jsons("redacted-black")
     else:
-        responses = load_s3_jsons(
-            settings.S3_BUCKET_NAME, settings.S3_PREFIX + "/text-detection"
-        )
+        responses = load_s3_jsons(settings.S3_BUCKET_NAME, settings.S3_PREFIX + "/text-detection")
     chunks = chunk_textract_responses_for_bedrock(responses)
 
     # -- Run on AP or local machine --

@@ -2,10 +2,9 @@ import json
 import logging
 from typing import Any
 
-from opensearchpy import OpenSearch, OpenSearchException
-
-from ingestion_code.config import settings
+from config import settings
 from ingestion_code.extract_text import count_pages_in_pdf
+from opensearchpy import OpenSearch, OpenSearchException
 
 logger = logging.getLogger(__name__)
 
@@ -18,9 +17,7 @@ def get_opensearch_client() -> OpenSearch:
     """
     try:
         client = OpenSearch(
-            hosts=[
-                {"host": settings.OPENSEARCH_HOST, "port": settings.OPENSEARCH_PORT}
-            ],
+            hosts=[{"host": settings.OPENSEARCH_HOST, "port": settings.OPENSEARCH_PORT}],
             http_auth=(settings.OPENSEARCH_USERNAME, settings.OPENSEARCH_PASSWORD),
             use_ssl=False,  # Changed to False for LocalStack HTTP connection
             verify_certs=False,  # Disable certificate verification
@@ -40,9 +37,7 @@ def index_text_to_opensearch(
 ) -> None:
     """Stores text chunks with embeddings in an OpenSearch database."""
     client = get_opensearch_client()
-    logger.info(
-        f"Indexing chunks with embeddings into '{settings.OPENSEARCH_INDEX_NAME}'..."
-    )
+    logger.info(f"Indexing chunks with embeddings into '{settings.OPENSEARCH_INDEX_NAME}'...")
     for page_number, page_text, chunks, embeddings in chunks_with_embeddings:
         for chunk_index, (chunk_text, embedding) in enumerate(zip(chunks, embeddings)):
             chunk_id = f"{pdf_filename}_{page_number}_{chunk_index}"
@@ -85,9 +80,7 @@ def index_text_to_opensearch(
                     result,
                     exc_info=True,
                 )
-                raise RuntimeError(
-                    f"Unexpected result with indexing chunk with ID: {chunk_id}."
-                )
+                raise RuntimeError(f"Unexpected result with indexing chunk with ID: {chunk_id}.")
     logger.info(
         "Finished indexing %d chunks into '%s'",
         sum(len(c[2]) for c in chunks_with_embeddings),
@@ -100,9 +93,7 @@ def index_textract_text_to_opensearch(
 ) -> None:
     """Stores text chunks with embeddings in an OpenSearch database."""
     client = get_opensearch_client()
-    logger.info(
-        f"Indexing chunks with embeddings into '{settings.OPENSEARCH_INDEX_NAME}'..."
-    )
+    logger.info(f"Indexing chunks with embeddings into '{settings.OPENSEARCH_INDEX_NAME}'...")
     for chunk_index, chunk in enumerate(chunks_with_embeddings):
         metadata = chunk["metadata"]
         page_number = metadata["page"]
@@ -148,9 +139,7 @@ def index_textract_text_to_opensearch(
                 result,
                 exc_info=True,
             )
-            raise RuntimeError(
-                f"Unexpected result with indexing chunk with ID: {chunk_id}."
-            )
+            raise RuntimeError(f"Unexpected result with indexing chunk with ID: {chunk_id}.")
     logger.info(
         "Finished indexing %d chunks into '%s'",
         len(chunks_with_embeddings),

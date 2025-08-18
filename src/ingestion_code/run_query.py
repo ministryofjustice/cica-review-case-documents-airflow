@@ -1,10 +1,9 @@
 from typing import Any
 
-from opensearchpy import NotFoundError
-
-from ingestion_code.config import settings
+from config import settings
 from ingestion_code.embed_text import embed_query_with_titan_model
 from ingestion_code.index_text import get_opensearch_client
+from opensearchpy import NotFoundError
 
 client = get_opensearch_client()
 
@@ -31,9 +30,7 @@ def create_search_pipeline() -> dict[str, Any]:
     client.search_pipeline.put(id=pipeline_id, body=pipeline_def)
 
     # --- Read it back ---
-    pipeline = client.transport.perform_request(
-        "GET", f"/_search/pipeline/{pipeline_id}"
-    )
+    pipeline = client.transport.perform_request("GET", f"/_search/pipeline/{pipeline_id}")
 
     # --- Set it as the index’s default search pipeline ---
     client.indices.put_settings(
