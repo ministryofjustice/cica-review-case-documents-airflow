@@ -1,6 +1,5 @@
 import boto3
-
-from ingestion_code.config import settings
+from config import settings
 
 if settings.LOCAL:
     session = boto3.Session(

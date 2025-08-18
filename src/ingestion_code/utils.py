@@ -3,9 +3,8 @@ import logging
 from pathlib import Path
 
 from botocore.exceptions import ClientError
-
+from config import settings
 from ingestion_code.aws_clients import s3
-from ingestion_code.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -83,9 +82,7 @@ def get_s3_keys(bucket: str, prefix: str, extension: str) -> list[str]:
         raise ClientError(msg) from e
 
     if not keys:
-        raise FileNotFoundError(
-            f"No '{extension}' files found at s3://{bucket}/{prefix}"
-        )
+        raise FileNotFoundError(f"No '{extension}' files found at s3://{bucket}/{prefix}")
 
     return keys
 

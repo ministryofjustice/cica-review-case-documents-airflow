@@ -8,9 +8,8 @@ from typing import Any
 
 import fitz
 from botocore.exceptions import ClientError
-
+from config import settings
 from ingestion_code.aws_clients import s3, textract
-from ingestion_code.config import settings
 from ingestion_code.utils import get_s3_keys
 
 logger = logging.getLogger(__name__)
@@ -21,9 +20,7 @@ class TextractMode(Enum):
     DOCUMENT_ANALYSIS = "document-analysis"
 
 
-def run_textract_on_pdf(
-    bucket: str, key: str, mode: TextractMode, features: str | None = None
-) -> list[dict[str, Any]]:
+def run_textract_on_pdf(bucket: str, key: str, mode: TextractMode, features: str | None = None) -> list[dict[str, Any]]:
     """
     Run Textract on a PDF, wait for completion, and return the response as a dictionary.
     """
@@ -32,15 +29,11 @@ def run_textract_on_pdf(
 
     # 1) start the async job
     if mode == TextractMode.TEXT_DETECTION:
-        resp = textract.start_document_text_detection(
-            DocumentLocation=document_location
-        )
+        resp = textract.start_document_text_detection(DocumentLocation=document_location)
     elif mode == TextractMode.DOCUMENT_ANALYSIS:
         if not features:
             raise ValueError("Feature types are required for document_analysis.")
-        resp = textract.start_document_analysis(
-            DocumentLocation=document_location, FeatureTypes=features
-        )
+        resp = textract.start_document_analysis(DocumentLocation=document_location, FeatureTypes=features)
     else:
         raise ValueError(f"Unsupported mode: {mode}")
 
@@ -64,13 +57,9 @@ def run_textract_on_pdf(
             while "NextToken" in response:
                 next_token = response["NextToken"]
                 if mode == TextractMode.TEXT_DETECTION:
-                    response = textract.get_document_text_detection(
-                        JobId=job_id, NextToken=next_token
-                    )
+                    response = textract.get_document_text_detection(JobId=job_id, NextToken=next_token)
                 else:
-                    response = textract.get_document_analysis(
-                        JobId=job_id, NextToken=next_token
-                    )
+                    response = textract.get_document_analysis(JobId=job_id, NextToken=next_token)
                 responses.append(response)
             logger.info("Finished Textract %s job %s for %r", mode, job_id, key)
             break
@@ -167,12 +156,8 @@ def save_pdf_pages_as_images(bucket: str, prefix: str) -> None:
                 img_data = pix.tobytes("png")
 
                 # 3) Upload each page
-                out_key = (
-                    prefix + "/images/" + f"{base_name}_page_{page_index + 1:03}.png"
-                )
-                s3.put_object(
-                    Bucket=bucket, Key=out_key, Body=img_data, ContentType="image/png"
-                )
+                out_key = prefix + "/images/" + f"{base_name}_page_{page_index + 1:03}.png"
+                s3.put_object(Bucket=bucket, Key=out_key, Body=img_data, ContentType="image/png")
                 logger.info(
                     "Uploaded image for %r page %d to s3://%s/%s",
                     key,

@@ -3,9 +3,8 @@ import logging
 from typing import Any
 
 from botocore.exceptions import ClientError
-
+from config import settings
 from ingestion_code.aws_clients import bedrock
-from ingestion_code.config import settings
 from ingestion_code.model import get_sentence_transformers_model
 
 logger = logging.getLogger(__name__)
@@ -28,9 +27,7 @@ def embed_text_with_local_model(
     extracted_data = []
     for page_number, page_text, chunks in page_chunks:
         try:
-            embeddings = model.encode(
-                chunks, batch_size=32, show_progress_bar=True
-            ).tolist()
+            embeddings = model.encode(chunks, batch_size=32, show_progress_bar=True).tolist()
             extracted_data.append((page_number, page_text, chunks, embeddings))
         except Exception as e:
             logger.exception("Failed to embed chunks on page: %s", page_number)
@@ -71,9 +68,7 @@ def embed_text_with_titan_model(chunks: list[dict[str, Any]]) -> list[dict[str, 
             body = json.loads(response["body"].read())
             embedding = body["embeddingsByType"]["float"]
 
-            results.append(
-                {"embedding": embedding, "text": text, "metadata": chunk["metadata"]}
-            )
+            results.append({"embedding": embedding, "text": text, "metadata": chunk["metadata"]})
 
         except ClientError as e:
             page = chunk["metadata"]["page"]
