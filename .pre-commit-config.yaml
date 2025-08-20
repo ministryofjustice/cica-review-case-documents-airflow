@@ -5,7 +5,7 @@ repos:
       - id: ruff-format
 
       - id: ruff
-        args: [--fix, --exit-non-zero-on-fix]
+        args: [--fix]
         stages: [pre-commit, pre-push]
 
   - repo: https://github.com/zricethezav/gitleaks
