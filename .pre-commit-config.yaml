@@ -2,8 +2,13 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.4.4
     hooks:
+      # Run the formatter first
+      - id: ruff-format
+      # Then run the linter with fixes.
+      # The `--exit-non-zero-on-fix` is a good practice to
+      # force a second commit after fixes are applied.
       - id: ruff
-        args: [--fix]
+        args: [--fix, --exit-non-zero-on-fix]
         stages: [pre-commit, pre-push]
 
   - repo: https://github.com/zricethezav/gitleaks
@@ -16,4 +21,20 @@ repos:
   - repo: https://github.com/kynan/nbstripout
     rev: 0.8.1
     hooks:
-    - id: nbstripout
+      - id: nbstripout
+
+  - repo: local
+    hooks:
+      - id: pytest-check
+        name: pytest-coverage
+        entry: poetry run pytest
+        language: system
+        types: [python]
+        args:
+          [
+            "--cov=src",
+            "--cov-fail-under=80",
+            "--cov-report=term-missing",
+            "--cov-report=html",
+          ]
+        pass_filenames: false
