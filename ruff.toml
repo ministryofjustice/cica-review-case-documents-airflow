@@ -19,7 +19,6 @@ exclude = [
 ]
 
 # default to no fixes
-fix = false
 respect-gitignore = true
 
 [lint]
