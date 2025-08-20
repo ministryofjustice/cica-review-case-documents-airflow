@@ -69,8 +69,9 @@ def extract_layout_chunks(
     for page in doc.pages:
         # The correct way to get layout elements is to iterate through page.layouts
         for layout_block in page.layouts:
-            # We are only interested in blocks identified as standard text layouts.
-            if layout_block.layout_type == "LAYOUT_TEXT":
+            # We are only interested in blocks identified as standard text layouts for the moment
+            # AND ensure the text content is not empty after stripping whitespace.
+            if layout_block.layout_type == "LAYOUT_TEXT" and layout_block.text.strip():
                 chunk = _create_opensearch_chunk(
                     block=layout_block,
                     page=page,

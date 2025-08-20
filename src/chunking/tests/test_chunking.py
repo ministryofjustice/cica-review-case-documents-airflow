@@ -152,3 +152,172 @@ def test_extract_single_layout_chunk(textract_response):
     assert isinstance(actual_chunks, list), "Function should return a list"
     assert len(actual_chunks) == 1, "There should be exactly one layout chunk"
     assert actual_chunks[0] == expected_chunk, "The generated chunk does not match the expected output"
+
+
+def test_multiple_layout_text_blocks_on_single_page():
+    """
+    Tests that multiple LAYOUT_TEXT blocks on the same page are extracted as
+    separate chunks with correctly incrementing chunk indices.
+    """
+    # Arrange
+    document_definition = [
+        [  # Page 1
+            {"type": "LAYOUT_TEXT", "lines": ["This is the first paragraph."]},
+            {"type": "LAYOUT_TITLE", "lines": ["An Ignored Title"]},
+            {"type": "LAYOUT_TEXT", "lines": ["This is the second paragraph."]},
+        ]
+    ]
+    mock_doc = textractor_document_factory(document_definition)
+
+    # Act
+    actual_chunks = extract_layout_chunks(
+        doc=mock_doc,
+        ingested_doc_id="multi-chunk-doc",
+        s3_image_uri_prefix="s3://my-bucket/multi-chunk-doc",
+        uploaded_file_name="multi_chunk.pdf",
+        page_count=1,
+    )
+
+    # Assert
+    assert len(actual_chunks) == 2, "Should create two chunks from the two LAYOUT_TEXT blocks"
+
+    # Check first chunk
+    assert actual_chunks[0]["chunk_text"] == "This is the first paragraph."
+    assert actual_chunks[0]["page_number"] == 1
+    assert actual_chunks[0]["chunk_index"] == 0
+    assert actual_chunks[0]["chunk_id"] == "multi-chunk-doc_p1_c0"
+
+    # Check second chunk
+    assert actual_chunks[1]["chunk_text"] == "This is the second paragraph."
+    assert actual_chunks[1]["page_number"] == 1
+    assert actual_chunks[1]["chunk_index"] == 1
+    assert actual_chunks[1]["chunk_id"] == "multi-chunk-doc_p1_c1"
+
+
+def test_page_with_no_layout_text_blocks_is_skipped():
+    """
+    Tests that a page containing no LAYOUT_TEXT blocks is skipped, and processing
+    continues on subsequent pages, with the chunk index incrementing correctly.
+    """
+    # Arrange
+    document_definition = [
+        [{"type": "LAYOUT_TEXT", "lines": ["Content on page one."]}],  # Page 1
+        [{"type": "LAYOUT_TITLE", "lines": ["Page 2 has no text blocks."]}],  # Page 2 (should be skipped)
+        [{"type": "LAYOUT_TEXT", "lines": ["Content on page three."]}],  # Page 3
+    ]
+    mock_doc = textractor_document_factory(document_definition)
+
+    # Act
+    actual_chunks = extract_layout_chunks(
+        doc=mock_doc,
+        ingested_doc_id="skip-page-doc",
+        s3_image_uri_prefix="s3://my-bucket/skip-page-doc",
+        uploaded_file_name="skip_page.pdf",
+        page_count=3,
+    )
+
+    # Assert
+    assert len(actual_chunks) == 2, "Should only find chunks on pages 1 and 3"
+
+    # Check first chunk from Page 1
+    assert actual_chunks[0]["chunk_text"] == "Content on page one."
+    assert actual_chunks[0]["page_number"] == 1
+    assert actual_chunks[0]["chunk_index"] == 0
+
+    # Check second chunk from Page 3
+    assert actual_chunks[1]["chunk_text"] == "Content on page three."
+    assert actual_chunks[1]["page_number"] == 3
+    assert actual_chunks[1]["chunk_index"] == 1, "Chunk index should continue from the previous valid chunk"
+
+
+def test_ignores_non_text_layout_blocks():
+    """
+    Tests that layout blocks of types other than LAYOUT_TEXT are ignored.
+    """
+    # Arrange
+    document_definition = [
+        [  # Page 1
+            {"type": "LAYOUT_TITLE", "lines": ["A Document Title"]},
+            {"type": "LAYOUT_HEADER", "lines": ["Page Header"]},
+            {"type": "LAYOUT_TEXT", "lines": ["This is the only content to be chunked."]},
+            {"type": "LAYOUT_FIGURE", "lines": ["A figure."]},
+            {"type": "LAYOUT_TABLE", "lines": ["Some table data."]},
+            {"type": "LAYOUT_FOOTER", "lines": ["Page Footer"]},
+        ]
+    ]
+    mock_doc = textractor_document_factory(document_definition)
+
+    # Act
+    actual_chunks = extract_layout_chunks(
+        doc=mock_doc,
+        ingested_doc_id="ignore-types-doc",
+        s3_image_uri_prefix="s3://my-bucket/ignore-types-doc",
+        uploaded_file_name="ignore_types.pdf",
+        page_count=1,
+    )
+
+    # Assert
+    assert len(actual_chunks) == 1
+    assert actual_chunks[0]["chunk_text"] == "This is the only content to be chunked."
+    assert actual_chunks[0]["chunk_type"] == "LAYOUT_TEXT"
+
+
+def test_empty_or_whitespace_layout_text_block_is_ignored():
+    """
+    Tests that LAYOUT_TEXT blocks containing no text or only whitespace are ignored
+    and not created as chunks.
+    """
+    # Arrange
+    document_definition = [
+        [  # Page 1
+            {"type": "LAYOUT_TEXT", "lines": ["This is a valid chunk."]},
+            {"type": "LAYOUT_TEXT", "lines": ["   \t\n   "]},  # Whitespace only
+            {"type": "LAYOUT_TEXT", "lines": []},  # Empty lines array
+            {"type": "LAYOUT_TEXT", "lines": ["Another valid chunk."]},
+        ]
+    ]
+    mock_doc = textractor_document_factory(document_definition)
+
+    # Act
+    actual_chunks = extract_layout_chunks(
+        doc=mock_doc,
+        ingested_doc_id="empty-block-doc",
+        s3_image_uri_prefix="s3://my-bucket/empty-block-doc",
+        uploaded_file_name="empty_block.pdf",
+        page_count=1,
+    )
+
+    # Assert
+    assert len(actual_chunks) == 2, "Should ignore empty and whitespace-only blocks"
+    assert actual_chunks[0]["chunk_text"] == "This is a valid chunk."
+    assert actual_chunks[0]["chunk_index"] == 0
+    assert actual_chunks[1]["chunk_text"] == "Another valid chunk."
+    assert actual_chunks[1]["chunk_index"] == 1
+
+
+def test_handles_missing_optional_metadata():
+    """
+    Tests that the function runs without error and sets default values
+    when optional arguments like `uploaded_file_name` and `page_count` are omitted.
+    """
+    # Arrange
+    document_definition = [[{"type": "LAYOUT_TEXT", "lines": ["Simple content."]}]]
+    mock_doc = textractor_document_factory(document_definition)
+
+    # Act: Call the function without optional arguments
+    # TODO review this, there should be no optional arguments in the function signature
+    actual_chunks = extract_layout_chunks(
+        doc=mock_doc,
+        ingested_doc_id="default-meta-doc",
+        s3_image_uri_prefix="s3://my-bucket/default-meta-doc",
+    )
+
+    # Assert
+    assert len(actual_chunks) == 1
+    chunk = actual_chunks[0]
+
+    # Assert that the default values from the function signature are used
+    assert chunk["source_file_name"] == ""
+    assert chunk["page_count"] == 0
+    assert chunk["chunk_text"] == "Simple content."
+    assert chunk["ingested_doc_id"] == "default-meta-doc"
