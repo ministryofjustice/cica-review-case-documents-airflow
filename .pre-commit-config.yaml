@@ -1,18 +1,15 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.4
+    rev: v0.12.9
     hooks:
-      # Run the formatter first
       - id: ruff-format
-      # Then run the linter with fixes.
-      # The `--exit-non-zero-on-fix` is a good practice to
-      # force a second commit after fixes are applied.
+
       - id: ruff
-        args: [--fix, --exit-non-zero-on-fix]
+        args: [--fix]
         stages: [pre-commit, pre-push]
 
   - repo: https://github.com/zricethezav/gitleaks
-    rev: v8.18.2
+    rev: v8.28.0
     hooks:
       - id: gitleaks
         args: ["--verbose", "--redact"]

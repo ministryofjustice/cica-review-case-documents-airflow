@@ -21,7 +21,7 @@ def _create_opensearch_chunk(
     page: Page,
     ingested_doc_id: str,
     chunk_index: int,
-    doc_meta: dict,
+    page_count: int,
     s3_page_image_uri: str,
     file_name: str,
 ) -> dict:
@@ -42,7 +42,7 @@ def _create_opensearch_chunk(
         "source_file_name": file_name,
         "s3_page_image_uri": s3_page_image_uri,
         "correspondence_type": None,
-        "page_count": doc_meta.get("Pages"),
+        "page_count": page_count,
         "page_number": page.page_num,
         "chunk_index": chunk_index,
         # Use the layout_type attribute from the Layout object
@@ -52,21 +52,16 @@ def _create_opensearch_chunk(
     }
 
 
-def extract_layout_chunks(textract_response: dict, ingested_doc_id: str, s3_image_uri_prefix: str) -> list[dict]:
+def extract_layout_chunks(
+    doc: Document, ingested_doc_id: str, s3_image_uri_prefix: str, uploaded_file_name: str = "", page_count: int = 0
+) -> list[dict]:
     """
     Parses a Textract response and extracts LAYOUT_TEXT blocks as structured chunks.
 
     :param textract_response: The raw JSON dictionary from an Amazon Textract AnalyzeDocument call.
     :param document_id: A unique identifier for the source document.
     :param s3_image_uri_prefix: The S3 prefix for where page images are stored (e.g., s3://bucket/doc-id).
-    :return: A list of dictionaries, where each dictionary represents a chunk.
-    """
-    doc = Document.open(textract_response)
-    doc_meta = textract_response.get("DocumentMetadata", {})
-
-    # It's safer to get the filename from metadata if available, as 'UploadedFileName' isn't always present.
-    # For this test, we assume 'UploadedFileName' is present in the mock data.
-    uploaded_file_name = textract_response.get("UploadedFileName", "")
+    :return: A list of dictionaries, where each dictionary represents a chunk."""
 
     chunks = []
     chunk_index_counter = 0
@@ -81,7 +76,7 @@ def extract_layout_chunks(textract_response: dict, ingested_doc_id: str, s3_imag
                     page=page,
                     ingested_doc_id=ingested_doc_id,
                     chunk_index=chunk_index_counter,
-                    doc_meta=doc_meta,
+                    page_count=page_count,
                     s3_page_image_uri=s3_image_uri_prefix,
                     file_name=uploaded_file_name,
                 )

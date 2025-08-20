@@ -37,9 +37,7 @@ ignore = [
     "Q002",
     "Q003",
     "COM812", # Missing trailing comma
-    "COM819", # Trailing comma is missing
-    "ISC001", # isort found unsorted imports
-    "ISC002", # isort found ungrouped imports
+    "COM819", # Trailing comma is missing   
 ]
 select = [
     # pycodestyle (default)
@@ -49,7 +47,7 @@ select = [
     # Whitespace warnings
     "W",
     # isort (sort imports)
-    "I001",
+    "I",
     # flake8-print
     "T20",
 ]
@@ -59,6 +57,7 @@ unfixable = []
 
 [lint.isort]
 combine-as-imports = true
+force-single-line = false
 
 [lint.flake8-errmsg]
 max-string-length = 50
