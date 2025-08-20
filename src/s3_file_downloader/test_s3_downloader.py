@@ -65,7 +65,3 @@ class TestS3Downloader(unittest.TestCase):
         # Optionally, assert details about the exception
         self.assertEqual(cm.exception.response["Error"]["Code"], "404")
         self.assertFalse(os.path.exists(local_file_path))
-
-
-if __name__ == "__main__":
-    unittest.main(argv=["first-arg-is-ignored"], exit=False)
