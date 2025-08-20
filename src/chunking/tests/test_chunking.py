@@ -3,7 +3,10 @@ from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock
 
 import pytest
+from textractor.entities.document import Document
+
 from chunking.chunker import _create_opensearch_chunk, extract_layout_chunks
+from chunking.tests.utils.textract_response_builder import textractor_document_factory
 
 # Define the path to our test data
 TEXTRACT_JSON_PATH = Path(__file__).parent / "data" / "single_text_layout_textract_response.json"
@@ -30,7 +33,7 @@ def test_create_opensearch_chunk_formats_correctly():
         page=mock_page,
         ingested_doc_id="unique-UUID",  # Use a unique generated ID for the scanned pdf
         chunk_index=3,
-        doc_meta={"Key": "Value"},
+        page_count=10,
         s3_page_image_uri="s3://test-kta-document-images/25-787878/unique-UUID/page_5.png",
         file_name="test_file.pdf",
     )
@@ -54,8 +57,42 @@ def test_create_opensearch_chunk_formats_correctly():
     assert chunk["case_ref"] is None
     assert chunk["received_date"] is None
     assert chunk["correspondence_type"] is None
-    assert chunk["page_count"] is None
+    assert chunk["page_count"] == 10
     assert chunk["chunk_type"] == "LAYOUT_TEXT"
+
+
+def test_multiple_pages_with_layout_text():
+    document_definition = [
+        [{"type": "LAYOUT_TEXT", "lines": ["Content on the first page."]}],  # Page 1
+        [
+            {"type": "LAYOUT_TEXT", "lines": ["First paragraph on page two."]},
+            {"type": "LAYOUT_TITLE", "lines": ["Ignored Title."]},
+            {"type": "LAYOUT_TEXT", "lines": ["Second paragraph on page two."]},
+        ],  # Page 2
+    ]
+
+    mock_doc = textractor_document_factory(document_definition)
+
+    mock_uploaded_filename = "test_document_multipage.pdf"
+    mock_page_count = len(mock_doc.pages)  # Get the page count from our mock object
+
+    actual_chunks = extract_layout_chunks(
+        doc=mock_doc,
+        ingested_doc_id="doc-final-test",
+        s3_image_uri_prefix="s3://my-bucket/doc-final-test",
+        uploaded_file_name=mock_uploaded_filename,
+        page_count=mock_page_count,
+    )
+
+    assert len(actual_chunks) == 3
+
+    assert actual_chunks[0]["page_number"] == 1
+    assert actual_chunks[0]["source_file_name"] == "test_document_multipage.pdf"
+    assert actual_chunks[0]["page_count"] == 2
+
+    assert actual_chunks[1]["page_number"] == 2
+    assert actual_chunks[1]["source_file_name"] == "test_document_multipage.pdf"
+    assert actual_chunks[1]["page_count"] == 2
 
 
 @pytest.fixture
@@ -70,15 +107,19 @@ def test_extract_single_layout_chunk(textract_response):
     Tests that a single LAYOUT_TEXT block is correctly processed
     into an OpenSearch chunk document.
     """
-    # --- Input parameters for our function ---
-    document_id = "unique-UUID"
+    ingested_doc_id = "unique-UUID"
     s3_image_uri_prefix = "s3://case-kta-document-images-bucket/25-787878/unique-UUID_page/page_1.png"
 
-    # --- Call the function we are testing (which doesn't exist yet) ---
-    actual_chunks = extract_layout_chunks(textract_response, document_id, s3_image_uri_prefix)
+    doc = Document.open(textract_response)
 
-    # --- Define the EXACT output we expect ---
-    # Manually combine the text from the two LINE blocks that are children of the LAYOUT_TEXT block
+    actual_chunks = extract_layout_chunks(
+        doc,
+        ingested_doc_id,
+        s3_image_uri_prefix,
+        uploaded_file_name="document_single_layout_response.pdf",
+        page_count=1,
+    )
+
     expected_text = (
         "We have discussed with our patient, who has requested we release all medical records from the "
         "date of the incident, from birth. Please find these attached."
