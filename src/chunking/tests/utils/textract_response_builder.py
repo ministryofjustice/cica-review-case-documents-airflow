@@ -16,36 +16,59 @@ def _create_dummy_bbox() -> BoundingBox:
 def _build_layout_block(layout_def: dict, reading_order: int) -> Layout:
     """Builds a single Layout object from a simplified definition."""
     lines = []
+
+    # --- CHANGE: Define a starting y-position and line height for layout ---
+    current_y = 0.1
+    line_height = 0.05
+    word_spacing = 0.01
+
     for line_text in layout_def.get("lines", []):
-        words = [
-            Word(
-                entity_id=f"word-{uuid.uuid4()}",
-                bbox=_create_dummy_bbox(),
-                text=word_text,
-                confidence=99,
+        words = []
+
+        # --- CHANGE: Define a starting x-position for words in this line ---
+        current_x = 0.1
+
+        word_texts = line_text.split()
+        for i, word_text in enumerate(word_texts):
+            # Create a bbox for the word with an incrementing x-position
+            word_width = len(word_text) * 0.01  # Approximate width
+            word_bbox = BoundingBox(x=current_x, y=current_y, width=word_width, height=line_height * 0.8)
+            words.append(
+                Word(
+                    entity_id=f"word-{uuid.uuid4()}",
+                    bbox=word_bbox,
+                    text=word_text,
+                    confidence=99,
+                )
             )
-            for word_text in line_text.split()
-        ]
-        line = Line(entity_id=f"line-{uuid.uuid4()}", bbox=_create_dummy_bbox(), words=words)
+            # Move x-position for the next word
+            current_x += word_width + word_spacing
+
+        # --- CHANGE: Create the Line's bounding box with the current_y position ---
+        # The line's Bbox should encompass all its words
+        line_bbox = BoundingBox.enclosing_bbox([w.bbox for w in words]) if words else _create_dummy_bbox()
+        line = Line(entity_id=f"line-{uuid.uuid4()}", bbox=line_bbox, words=words)
         lines.append(line)
+
+        # --- CHANGE: Increment the y-position for the next line ---
+        current_y += line_height
 
     layout_type = layout_def.get("type", "LAYOUT_TEXT")
     layout_confidence = layout_def.get("confidence", 60.0)
 
-    # The constructor correctly handles the confidence value.
-    # It takes a value like 60.0 and stores it as 0.60 in `_confidence`.
+    # The overall layout block should encompass all its lines
+    layout_bbox = BoundingBox.enclosing_bbox([line.bbox for line in lines]) if lines else _create_dummy_bbox()
+
     layout_block = Layout(
         entity_id=f"layout-{uuid.uuid4()}",
-        bbox=_create_dummy_bbox(),
+        bbox=layout_bbox,
         confidence=layout_confidence,
         reading_order=reading_order,
         label=layout_type,
     )
 
-    # Assign to the private _children attribute because .children is read-only.
     layout_block._children = lines
 
-    # Establish the parent-child links for full realism.
     for line in layout_block._children:
         line.parent = layout_block
         for word in line.children:
