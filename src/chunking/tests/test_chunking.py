@@ -95,6 +95,60 @@ def test_multiple_pages_with_layout_text():
     assert actual_chunks[1]["page_count"] == 2
 
 
+def test_page_with_layout_text_with_mutliple_lines():
+    document_definition = [
+        [
+            {
+                "type": "LAYOUT_TEXT",
+                "lines": [
+                    "First line on paragraph one ",
+                    "Second line on paragraph one ",
+                    "Third line on paragraph one ",
+                ],
+            },
+            {"type": "LAYOUT_TEXT", "lines": ["First line on paragraph two."]},
+            {"type": "LAYOUT_TEXT", "lines": ["First line on paragraph three.", "Second line on paragraph three."]},
+        ],  # Page 1
+    ]
+
+    mock_doc = textractor_document_factory(document_definition)
+
+    mock_uploaded_filename = "test_document_multipage.pdf"
+    mock_page_count = len(mock_doc.pages)  # Get the page count from our mock object
+
+    actual_chunks = extract_layout_chunks(
+        doc=mock_doc,
+        ingested_doc_id="doc-final-test",
+        s3_image_uri_prefix="s3://my-bucket/doc-final-test",
+        uploaded_file_name=mock_uploaded_filename,
+        page_count=mock_page_count,
+    )
+
+    assert len(actual_chunks) == 3
+
+    assert actual_chunks[0]["page_number"] == 1
+    assert actual_chunks[0]["source_file_name"] == "test_document_multipage.pdf"
+    assert actual_chunks[0]["page_count"] == 1
+    assert (
+        actual_chunks[0]["chunk_text"]
+        == "First line on paragraph one Second line on paragraph one Third line on paragraph one"
+    ), "The generated chunk does not match the expected output"
+
+    assert actual_chunks[1]["page_number"] == 1
+    assert actual_chunks[1]["source_file_name"] == "test_document_multipage.pdf"
+    assert actual_chunks[1]["page_count"] == 1
+    assert actual_chunks[1]["chunk_text"] == "First line on paragraph two.", (
+        "The generated chunk does not match the expected output"
+    )
+
+    assert actual_chunks[2]["page_number"] == 1
+    assert actual_chunks[2]["source_file_name"] == "test_document_multipage.pdf"
+    assert actual_chunks[2]["page_count"] == 1
+    assert actual_chunks[2]["chunk_text"] == "First line on paragraph three. Second line on paragraph three.", (
+        "The generated chunk does not match the expected output"
+    )
+
+
 @pytest.fixture
 def textract_response():
     """Loads the sample Textract JSON response from a file."""
@@ -306,6 +360,7 @@ def test_handles_missing_optional_metadata():
 
     # Act: Call the function without optional arguments
     # TODO review this, there should be no optional arguments in the function signature
+    # However some of the metadata may be moved to the pages index
     actual_chunks = extract_layout_chunks(
         doc=mock_doc,
         ingested_doc_id="default-meta-doc",
