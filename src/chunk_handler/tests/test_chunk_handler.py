@@ -4,18 +4,17 @@ from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock
 
 import pytest
+from textractor.entities.bbox import BoundingBox
 from textractor.entities.document import Document
 
-from chunk_handler.chunk_extractor import (
-    DocumentMetadata,
-    OpenSearchChunk,
-    extract_layout_chunks,
-)
+from chunk_handler.chunk_extractor import ChunkingConfig, DocumentMetadata, OpenSearchChunk, extract_layout_chunks
 from chunk_handler.tests.utils.textract_response_builder import textractor_document_factory
 from data_models.chunk_models import BoundingBoxDict
 
 # Define the path to our test data
 TEXTRACT_JSON_PATH = Path(__file__).parent / "data" / "single_text_layout_textract_response.json"
+
+maximum_chunk_size = ChunkingConfig.maximum_chunk_size  # Define the maximum chunk size for splitting
 
 
 @pytest.fixture
@@ -94,10 +93,10 @@ def test_extract_single_layout_chunk(textract_response, document_metadata_factor
     chunk1.chunk_type = "LAYOUT_TEXT"  # Set chunk_type to match expected value
     chunk1.confidence = 0.60009765625  # Set confidence to match
     chunk1.bounding_box = BoundingBoxDict(
-        Width=0.7254804372787476,
-        Height=0.02834956906735897,
-        Left=0.12123029679059982,
-        Top=0.4854643642902374,
+        width=0.7254804372787476,
+        height=0.02834956906735897,
+        left=0.12123029679059982,
+        top=0.4854643642902374,
     )
 
 
@@ -115,10 +114,10 @@ def test_create_opensearch_chunk_formats_correctly(document_metadata_factory):
     type(mock_page).page_num = PropertyMock(return_value=5)
 
     expected_bbox = BoundingBoxDict(
-        Width=mock_bbox.width,
-        Height=mock_bbox.height,
-        Left=mock_bbox.x,
-        Top=mock_bbox.y,
+        width=mock_bbox.width,
+        height=mock_bbox.height,
+        left=mock_bbox.x,
+        top=mock_bbox.y,
     )
 
     mock_metadata = document_metadata_factory(
@@ -383,18 +382,15 @@ def test_empty_or_whitespace_layout_text_block_is_ignored(document_metadata_fact
 
 def test_handles_missing_pdf_id_metadata_throws_error(document_metadata_factory):
     """
-    Tests that the function runs without error and sets default values
-    when optional arguments like `uploaded_file_name` and `page_count` are omitted.
+    Tests that the function throws an error when required metadata is missing.
     """
     # Arrange
     document_definition = [[{"type": "LAYOUT_TEXT", "lines": ["Simple content."]}]]
-    mock_doc = textractor_document_factory(document_definition)
+    textractor_document_factory(document_definition)
 
-    mock_metadata = document_metadata_factory(ingested_doc_id="")
-
-    with pytest.raises(ValueError) as chunkingError:
-        extract_layout_chunks(doc=mock_doc, metadata=mock_metadata)
-    assert str(chunkingError.value) == "DocumentMetadata cannot be None and its string fields cannot be empty."
+    # Act & Assert
+    with pytest.raises(ValueError, match="DocumentMetadata string fields cannot be empty"):
+        document_metadata_factory(ingested_doc_id="")
 
 
 def test_handles_missing_s3_page_image_uri_metadata_throws_error(document_metadata_factory):
@@ -402,15 +398,9 @@ def test_handles_missing_s3_page_image_uri_metadata_throws_error(document_metada
     Tests that the function runs without error and sets default values
     when optional arguments like `uploaded_file_name` and `page_count` are omitted.
     """
-    # Arrange
-    document_definition = [[{"type": "LAYOUT_TEXT", "lines": ["Simple content."]}]]
-    mock_doc = textractor_document_factory(document_definition)
 
-    mock_metadata = document_metadata_factory(s3_page_image_uri="")
-
-    with pytest.raises(ValueError) as chunkingError:
-        extract_layout_chunks(doc=mock_doc, metadata=mock_metadata)
-    assert str(chunkingError.value) == "DocumentMetadata cannot be None and its string fields cannot be empty."
+    with pytest.raises(ValueError, match="DocumentMetadata string fields cannot be empty."):
+        document_metadata_factory(s3_page_image_uri="")
 
 
 def test_handles_missing_source_file_name_metadata_throws_error(document_metadata_factory):
@@ -418,15 +408,9 @@ def test_handles_missing_source_file_name_metadata_throws_error(document_metadat
     Tests that the function runs without error and sets default values
     when optional arguments like `uploaded_file_name` and `page_count` are omitted.
     """
-    # Arrange
-    document_definition = [[{"type": "LAYOUT_TEXT", "lines": ["Simple content."]}]]
-    mock_doc = textractor_document_factory(document_definition)
 
-    mock_metadata = document_metadata_factory(source_file_name="")
-
-    with pytest.raises(ValueError) as chunkingError:
-        extract_layout_chunks(doc=mock_doc, metadata=mock_metadata)
-    assert str(chunkingError.value) == "DocumentMetadata cannot be None and its string fields cannot be empty."
+    with pytest.raises(ValueError, match="DocumentMetadata string fields cannot be empty."):
+        document_metadata_factory(source_file_name="")
 
 
 def test_handles_zero_page_count_metadata_throws_error(document_metadata_factory):
@@ -434,15 +418,9 @@ def test_handles_zero_page_count_metadata_throws_error(document_metadata_factory
     Tests that the function runs without error and sets default values
     when optional arguments like `uploaded_file_name` and `page_count` are omitted.
     """
-    # Arrange
-    document_definition = [[{"type": "LAYOUT_TEXT", "lines": ["Simple content."]}]]
-    mock_doc = textractor_document_factory(document_definition)
 
-    mock_metadata = document_metadata_factory(page_count=0)
-
-    with pytest.raises(ValueError) as chunkingError:
-        extract_layout_chunks(doc=mock_doc, metadata=mock_metadata)
-    assert str(chunkingError.value) == "DocumentMetadata.page_count must be a positive integer."
+    with pytest.raises(ValueError, match="DocumentMetadata.page_count must be a positive integer."):
+        document_metadata_factory(page_count=0)
 
 
 def test_handles_negative_page_count_metadata_throws_error(document_metadata_factory):
@@ -450,17 +428,204 @@ def test_handles_negative_page_count_metadata_throws_error(document_metadata_fac
     Tests that the function runs without error and sets default values
     when optional arguments like `uploaded_file_name` and `page_count` are omitted.
     """
-    # Arrange
-    document_definition = [[{"type": "LAYOUT_TEXT", "lines": ["Simple content."]}]]
-    mock_doc = textractor_document_factory(document_definition)
 
-    mock_metadata = document_metadata_factory(page_count=-7)
-
-    with pytest.raises(ValueError) as chunkingError:
-        extract_layout_chunks(doc=mock_doc, metadata=mock_metadata)
-    assert str(chunkingError.value) == "DocumentMetadata.page_count must be a positive integer."
+    with pytest.raises(ValueError, match="DocumentMetadata.page_count must be a positive integer."):
+        document_metadata_factory(page_count=-7)
 
 
 # Given layout text is greater than max chunk size
 # the layout text should be split into multiple chunks.
 # The split should be at complete lines
+
+
+def create_long_line_data(num_lines: int, line_length: int = 100) -> list[dict]:
+    """Helper to create a layout block with many long lines."""
+    line_text = "a" * (line_length - 1) + " "
+    lines = [{"text": line_text, "bbox": BoundingBox(0.1, 0.1, 0.8, 0.01)} for _ in range(num_lines)]
+    return [{"type": "LAYOUT_TEXT", "lines": lines}]
+
+
+def test_single_layout_block_splits_into_multiple_chunks_by_line_count(document_metadata_factory):
+    """
+    Tests that a single LAYOUT_TEXT block with many lines exceeding the
+    maximum_chunk_size is correctly split into multiple chunks, with
+    correct chunk text and index.
+    """
+    # Arrange
+    # Create a document with one block containing lines that exceed the max size
+    line_length = 500  # Two lines will fit, three won't
+    line_one_text = "a" * 499
+    line_two_text = "b" * line_length
+    line_three_text = "c" * line_length
+
+    document_definition = [
+        [
+            {
+                "type": "LAYOUT_TEXT",
+                "lines": [
+                    {"text": line_one_text, "bbox": BoundingBox(0.1, 0.1, 0.8, 0.01)},
+                    {"text": line_two_text, "bbox": BoundingBox(0.1, 0.2, 0.8, 0.01)},
+                    {"text": line_three_text, "bbox": BoundingBox(0.1, 0.3, 0.8, 0.01)},
+                ],
+            }
+        ]
+    ]
+
+    mock_doc = textractor_document_factory(document_definition)
+    mock_metadata = document_metadata_factory()
+
+    # Act
+    actual_chunks = extract_layout_chunks(doc=mock_doc, metadata=mock_metadata)
+
+    # Assert
+    assert len(actual_chunks) == 2, "Expected two chunks to be created"
+
+    # Check first chunk
+    chunk1 = actual_chunks[0]
+    expected_text1 = f"{line_one_text} {line_two_text}"
+    assert chunk1.chunk_text == expected_text1.strip()
+    assert chunk1.chunk_index == 0
+    assert chunk1.bounding_box is not None
+    # Verify the combined bounding box logic for the first chunk
+    assert chunk1.bounding_box.left == pytest.approx(0.1)
+    assert chunk1.bounding_box.top == pytest.approx(0.1)
+    assert chunk1.bounding_box.width == pytest.approx(0.8)
+    assert chunk1.bounding_box.height == pytest.approx(0.11)
+
+    # Check second chunk
+    chunk2 = actual_chunks[1]
+    expected_text2 = line_three_text
+    assert chunk2.chunk_text == expected_text2.strip()
+    assert chunk2.chunk_index == 1
+    assert chunk2.bounding_box is not None
+    # Verify the bounding box for the second chunk (a single line)
+    # It should match the line's bbox exactly
+    assert chunk2.bounding_box.left == pytest.approx(0.1)
+    assert chunk2.bounding_box.top == pytest.approx(0.3)
+    assert chunk2.bounding_box.width == pytest.approx(0.8)
+    assert chunk2.bounding_box.height == pytest.approx(0.01)
+
+
+def test_chunk_splitting_handles_exact_size_limit(document_metadata_factory):
+    """
+    Tests the edge case where the combined text size is exactly the
+    maximum_chunk_size, ensuring the next line triggers a new chunk.
+    """
+    # Arrange
+    # The first line's length is precisely calculated to make the first chunk
+    # exactly the maximum size, causing the split on the next line.
+    # We add 1 for the space that separates lines.
+    # The first line text length plus the space should be 1000.
+    line1_text = "a" * (maximum_chunk_size)
+    line2_text = "b"
+
+    document_definition = [
+        [
+            {
+                "type": "LAYOUT_TEXT",
+                "lines": [
+                    {"text": line1_text, "bbox": BoundingBox(0.1, 0.1, 0.8, 0.01)},
+                    {"text": line2_text, "bbox": BoundingBox(0.1, 0.2, 0.8, 0.01)},
+                ],
+            }
+        ]
+    ]
+
+    mock_doc = textractor_document_factory(document_definition)
+    mock_metadata = document_metadata_factory()
+
+    # Act
+    actual_chunks = extract_layout_chunks(doc=mock_doc, metadata=mock_metadata)
+
+    # Assert
+    assert len(actual_chunks) == 2, "Chunk should be split into two"
+    assert actual_chunks[0].chunk_text.strip() == line1_text.strip()
+    assert actual_chunks[1].chunk_text.strip() == line2_text.strip()
+    assert actual_chunks[0].chunk_index == 0
+    assert actual_chunks[1].chunk_index == 1
+
+
+def test_multiple_long_layout_blocks_are_all_split(document_metadata_factory):
+    """
+    Tests that multiple layout blocks, each requiring splitting, are handled correctly
+    and create a sequence of new chunks.
+    """
+    # Arrange
+    long_lines_1 = create_long_line_data(3, line_length=400)  # Two chunks from this block
+    long_lines_2 = create_long_line_data(3, line_length=400)  # Two more chunks from this block
+
+    document_definition = [
+        [
+            {"type": "LAYOUT_TEXT", "lines": long_lines_1[0]["lines"]},
+            {"type": "LAYOUT_TEXT", "lines": long_lines_2[0]["lines"]},
+        ]
+    ]
+
+    mock_doc = textractor_document_factory(document_definition)
+    mock_metadata = document_metadata_factory()
+
+    # Act
+    actual_chunks = extract_layout_chunks(doc=mock_doc, metadata=mock_metadata)
+
+    # Assert
+    assert len(actual_chunks) == 4, "Expected a total of four chunks"
+    assert actual_chunks[0].chunk_index == 0
+    assert actual_chunks[1].chunk_index == 1
+    assert actual_chunks[2].chunk_index == 2
+    assert actual_chunks[3].chunk_index == 3
+
+
+def test_bounding_box_is_correctly_combined_for_split_chunks(document_metadata_factory):
+    """
+    Tests that when a chunk is split, the bounding box for each new chunk is
+    correctly calculated by combining the bounding boxes of the lines it contains.
+    """
+    # Arrange
+    line_1_bbox = BoundingBox(x=0.1, y=0.1, width=0.7, height=0.02)
+    line_2_bbox = BoundingBox(x=0.2, y=0.15, width=0.6, height=0.03)
+    line_3_bbox = BoundingBox(x=0.3, y=0.2, width=0.5, height=0.04)
+
+    line1_text = "a" * 400
+    line2_text = "b" * 400
+    line3_text = "c" * 400
+
+    document_definition = [
+        [
+            {
+                "type": "LAYOUT_TEXT",
+                "lines": [
+                    {"text": line1_text, "bbox": line_1_bbox},
+                    {"text": line2_text, "bbox": line_2_bbox},
+                    {"text": line3_text, "bbox": line_3_bbox},
+                ],
+            }
+        ]
+    ]
+    mock_doc = textractor_document_factory(document_definition)
+    mock_metadata = document_metadata_factory()
+
+    # Act
+    actual_chunks = extract_layout_chunks(doc=mock_doc, metadata=mock_metadata)
+
+    # Assert
+    assert len(actual_chunks) == 2, "Expected the block to be split"
+
+    # Verify the first chunk's bounding box
+    chunk1_bbox = actual_chunks[0].bounding_box
+    assert chunk1_bbox is not None
+    assert chunk1_bbox.left == min(line_1_bbox.x, line_2_bbox.x)
+    assert chunk1_bbox.top == min(line_1_bbox.y, line_2_bbox.y)
+    assert chunk1_bbox.width == (
+        max(line_1_bbox.x + line_1_bbox.width, line_2_bbox.x + line_2_bbox.width) - min(line_1_bbox.x, line_2_bbox.x)
+    )
+    assert chunk1_bbox.height == (
+        max(line_1_bbox.y + line_1_bbox.height, line_2_bbox.y + line_2_bbox.height) - min(line_1_bbox.y, line_2_bbox.y)
+    )
+
+    # Verify the second chunk's bounding box (single line)
+    chunk2_bbox = actual_chunks[1].bounding_box
+    assert chunk2_bbox is not None
+    assert chunk2_bbox.left == pytest.approx(line_3_bbox.x)
+    assert chunk2_bbox.top == pytest.approx(line_3_bbox.y)
+    assert chunk2_bbox.width == pytest.approx(line_3_bbox.width)
+    assert chunk2_bbox.height == pytest.approx(line_3_bbox.height)

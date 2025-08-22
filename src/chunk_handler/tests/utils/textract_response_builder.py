@@ -1,6 +1,6 @@
 import uuid
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 from textractor.entities.bbox import BoundingBox
 from textractor.entities.document import Document
@@ -93,22 +93,40 @@ class LineBuilder:
         self.word_builder = word_builder
         self.bbox_calc = bbox_calculator
 
-    def build_line(self, line_text: str, y: float) -> Optional[Line]:
-        """Build a Line object from text, returning None for empty lines."""
-        if not line_text.strip():
+    def build_line(self, line_def: Union[str, dict], y: float) -> Optional[Line]:
+        """Build a Line object from a string or dictionary definition."""
+        if isinstance(line_def, str):
+            line_text = line_def
+            line_bbox = None  # No predefined bbox, so we'll calculate it
+        elif isinstance(line_def, dict):
+            line_text = line_def.get("text", "").strip()
+            line_bbox = line_def.get("bbox")
+        else:
             return None
 
-        words = self.word_builder.build_words_for_line(line_text, y)
-        if not words:
+        if not line_text:
             return None
 
-        line_bbox = self.bbox_calc.calculate_line_bbox(words)
+        # If a bbox was not provided, we calculate one based on the words
+        if not line_bbox:
+            words = self.word_builder.build_words_for_line(line_text, y)
+            if not words:
+                return None
+            line_bbox = self.bbox_calc.calculate_line_bbox(words)
+        else:
+            # If a bbox was provided, we create a single word to represent the line's text and bbox
+            words = [
+                Word(
+                    entity_id=f"word-{uuid.uuid4()}",
+                    bbox=line_bbox,
+                    text=line_text,
+                    confidence=self.word_builder.config.default_confidence,
+                )
+            ]
+
         line = Line(entity_id=f"line-{uuid.uuid4()}", bbox=line_bbox, words=words)
 
-        # Set line reference on words (Word class uses line_id and line_bbox attributes)
-        # This follows the same pattern used in Line.get_text_and_words()
         for word in words:
-            # Use setattr to avoid type checker issues with potentially restrictive type hints
             setattr(word, "line_id", line.id)
             setattr(word, "line_bbox", line.bbox)
 
@@ -128,13 +146,13 @@ class LayoutBuilder:
         lines = []
         current_y = self.config.page_margin
 
-        line_texts = layout_def.get("lines", [])
-        if not line_texts:
+        line_definitions = layout_def.get("lines", [])
+        if not line_definitions:
             return None
 
         # Build lines with proper positioning
-        for line_text in line_texts:
-            line = self.line_builder.build_line(line_text, current_y)
+        for line_def in line_definitions:
+            line = self.line_builder.build_line(line_def, current_y)
             if line:  # Only add non-empty lines
                 lines.append(line)
             current_y += self.config.line_height
@@ -236,6 +254,7 @@ class TextractorDocumentFactory:
         self.word_builder = WordBuilder(self.bbox_calc, self.config)
         self.line_builder = LineBuilder(self.word_builder, self.bbox_calc)
         self.layout_builder = LayoutBuilder(self.line_builder, self.bbox_calc, self.config)
+        self.page_builder = PageBuilder(self.layout_builder, self.config)
         self.page_builder = PageBuilder(self.layout_builder, self.config)
 
     def create_document(self, page_definitions: List[List[Dict]]) -> Document:
