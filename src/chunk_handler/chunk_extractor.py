@@ -24,10 +24,7 @@ class ChunkingConfig:
     """Configuration for chunking behavior."""
 
     maximum_chunk_size: int = 1000
-    overlap_size: int = 50
     strategy: ChunkingStrategy = ChunkingStrategy.LINE_BASED
-    preserve_sentence_boundaries: bool = True
-    min_chunk_size: int = 100
 
 
 class ChunkExtractor:
@@ -88,28 +85,13 @@ class ChunkExtractor:
         chunks = []
         chunk_index = chunk_index_start
 
-        s3_page_image_uri = f"{metadata.s3_page_image_uri}/page_{page.page_num}.png"
-        page_metadata = self._create_page_metadata(metadata, s3_page_image_uri)
-
         for layout_block in page.layouts:
             if self._should_process_block(layout_block, desired_layout_types):
-                block_chunks = self._extract_chunks_from_block(layout_block, page, page_metadata, chunk_index)
+                block_chunks = self._extract_chunks_from_block(layout_block, page, metadata, chunk_index)
                 chunks.extend(block_chunks)
                 chunk_index += len(block_chunks)
 
         return chunks
-
-    def _create_page_metadata(self, metadata: DocumentMetadata, s3_page_image_uri: str) -> DocumentMetadata:
-        """Create page-specific metadata."""
-        return DocumentMetadata(
-            ingested_doc_id=metadata.ingested_doc_id,
-            s3_page_image_uri=s3_page_image_uri,
-            source_file_name=metadata.source_file_name,
-            page_count=metadata.page_count,
-            case_ref=metadata.case_ref,
-            received_date=metadata.received_date,
-            correspondence_type=metadata.correspondence_type,
-        )
 
     def _should_process_block(self, layout_block, desired_layout_types: Set[str]) -> bool:
         """Determine if a layout block should be processed."""
@@ -188,10 +170,6 @@ class ChunkExtractor:
         """Create a chunk from accumulated lines and bounding boxes."""
         combined_bbox = self._combine_bounding_boxes(bboxes)
         chunk_text = " ".join(lines)
-
-        # Skip chunks that are too small
-        if len(chunk_text) < self.config.min_chunk_size:
-            logger.debug(f"Skipping small chunk of size {len(chunk_text)}")
 
         return OpenSearchChunk.from_textractor_layout_and_text(
             block=layout_block,
