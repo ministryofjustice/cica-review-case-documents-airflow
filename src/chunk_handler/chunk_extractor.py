@@ -119,8 +119,6 @@ class ChunkExtractor:
 
         for child_block in layout_block.children:
             line_text = child_block.text.strip()
-            if not line_text:  # Skip empty lines
-                continue
 
             line_bbox = child_block.bbox
 
@@ -200,19 +198,3 @@ class ChunkExtractor:
             x=min_left,
             y=min_top,
         )
-
-
-# Convenience function for backward compatibility
-def extract_layout_chunks(
-    doc: Document,
-    metadata: DocumentMetadata,
-    desired_layout_types: Optional[Set[str]] = None,
-    config: Optional[ChunkingConfig] = None,
-) -> List[OpenSearchChunk]:
-    """
-    Legacy function wrapper for the ChunkExtractor class.
-
-    Deprecated: Use ChunkExtractor class directly for better control.
-    """
-    extractor = ChunkExtractor(config)
-    return extractor.extract_layout_chunks(doc, metadata, desired_layout_types)
