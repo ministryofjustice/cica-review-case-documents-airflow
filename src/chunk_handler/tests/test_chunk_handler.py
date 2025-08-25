@@ -9,14 +9,18 @@ import pytest
 from textractor.entities.bbox import BoundingBox
 from textractor.entities.document import Document
 
-from chunk_handler.chunk_extractor import ChunkExtractor, ChunkingConfig, DocumentMetadata, OpenSearchChunk
+from chunk_handler.chunk_extractor import (
+    ChunkExtractor,
+    ChunkingConfig,
+    ChunkingStrategy,
+    DocumentMetadata,
+    OpenSearchChunk,
+)
 from chunk_handler.tests.utils.textract_response_builder import textractor_document_factory
 from data_models.chunk_models import BoundingBoxDict
 
-# Define the path to our test data
+# Define the path to our singular realistic test data
 TEXTRACT_JSON_PATH = Path(__file__).parent / "data" / "single_text_layout_textract_response.json"
-
-maximum_chunk_size = ChunkingConfig.maximum_chunk_size  # Define the maximum chunk size for splitting
 
 
 @dataclass
@@ -480,7 +484,6 @@ def test_empty_document_throws_error(document_metadata_factory):
     Tests that an empty Textract Document raises an Exception.
     """
     mock_doc = Document()
-
     mock_metadata = document_metadata_factory()
     extractor = ChunkExtractor()
     with pytest.raises(Exception, match="Document cannot be None and must contain pages."):
@@ -500,10 +503,9 @@ def test_single_layout_block_splits_into_multiple_chunks_by_line_count(document_
     maximum_chunk_size is correctly split into multiple chunks, with
     correct chunk text and index.
     """
-    # Arrange
     # Create a document with one block containing lines that exceed the max size
-    line_length = 500  # Two lines will fit, three won't
-    line_one_text = "a" * 499
+    line_length = 5  # Two lines will fit, three won't
+    line_one_text = "a" * 4
     line_two_text = "b" * line_length
     line_three_text = "c" * line_length
 
@@ -523,7 +525,9 @@ def test_single_layout_block_splits_into_multiple_chunks_by_line_count(document_
     mock_doc = textractor_document_factory(document_definition)
     mock_metadata = document_metadata_factory()
 
-    extractor = ChunkExtractor()
+    # Set the maximum_chunk_size to 10 for this test
+    chunking_config = ChunkingConfig(maximum_chunk_size=10, strategy=ChunkingStrategy.LINE_BASED)
+    extractor = ChunkExtractor(chunking_config)
     actual_chunks: list[OpenSearchChunk] = extractor.extract_layout_chunks(doc=mock_doc, metadata=mock_metadata)
 
     # Assert
@@ -560,11 +564,10 @@ def test_chunk_splitting_handles_exact_size_limit(document_metadata_factory):
     Tests the edge case where the combined text size is exactly the
     maximum_chunk_size, ensuring the next line triggers a new chunk.
     """
-    # Arrange
+
     # The first line's length is precisely calculated to make the first chunk
     # exactly the maximum size, causing the split on the next line.
-    # We add 1 for the space that separates lines.
-    # The first line text length plus the space should be 1000.
+    maximum_chunk_size = 10
     line1_text = "a" * (maximum_chunk_size)
     line2_text = "b"
 
@@ -583,7 +586,9 @@ def test_chunk_splitting_handles_exact_size_limit(document_metadata_factory):
     mock_doc = textractor_document_factory(document_definition)
     mock_metadata = document_metadata_factory()
 
-    extractor = ChunkExtractor()
+    # Set the maximum_chunk_size to 10 for this test
+    chunking_config = ChunkingConfig(maximum_chunk_size, strategy=ChunkingStrategy.LINE_BASED)
+    extractor = ChunkExtractor(chunking_config)
     actual_chunks: list[OpenSearchChunk] = extractor.extract_layout_chunks(doc=mock_doc, metadata=mock_metadata)
 
     assert len(actual_chunks) == 2, "Chunk should be split into two"
@@ -598,9 +603,9 @@ def test_multiple_long_layout_blocks_are_all_split(document_metadata_factory):
     Tests that multiple layout blocks, each requiring splitting, are handled correctly
     and create a sequence of new chunks.
     """
-    # Arrange
-    long_lines_1 = create_long_line_data(3, line_length=400)  # Two chunks from this block
-    long_lines_2 = create_long_line_data(3, line_length=400)  # Two more chunks from this block
+    maximum_chunk_size = 10
+    long_lines_1 = create_long_line_data(3, line_length=4)  # Two chunks from this block
+    long_lines_2 = create_long_line_data(3, line_length=4)  # Two more chunks from this block
 
     document_definition = [
         [
@@ -611,7 +616,9 @@ def test_multiple_long_layout_blocks_are_all_split(document_metadata_factory):
 
     mock_doc = textractor_document_factory(document_definition)
     mock_metadata = document_metadata_factory()
-    extractor = ChunkExtractor()
+    # Set the maximum_chunk_size to 10 for this test
+    chunking_config = ChunkingConfig(maximum_chunk_size, strategy=ChunkingStrategy.LINE_BASED)
+    extractor = ChunkExtractor(chunking_config)
     actual_chunks: list[OpenSearchChunk] = extractor.extract_layout_chunks(doc=mock_doc, metadata=mock_metadata)
 
     assert len(actual_chunks) == 4, "Expected a total of four chunks"
