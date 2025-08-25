@@ -42,7 +42,6 @@ def document_metadata_factory():
 
         defaults = {
             "ingested_doc_id": "unique_ingested_doc_UUID",
-            "s3_page_image_uri": f"s3://kta-document-images-bucket/{case_ref}/unique_ingested_doc_UUID",
             "source_file_name": "test_ingested_document.pdf",
             "page_count": 1,
             "case_ref": case_ref,
@@ -121,7 +120,6 @@ def test_create_opensearch_chunk_formats_correctly(document_metadata_factory):
     )
 
     mock_metadata = document_metadata_factory(
-        s3_page_image_uri="s3://kta-document-images-bucket/25-787878/unique_ingested_doc_UUID/page_5.png",
         page_count=10,
     )
 
@@ -138,7 +136,6 @@ def test_create_opensearch_chunk_formats_correctly(document_metadata_factory):
     assert chunk.confidence == 0.95
     assert chunk.bounding_box == expected_bbox
     assert chunk.source_file_name == "test_ingested_document.pdf"
-    assert chunk.s3_page_image_uri == "s3://kta-document-images-bucket/25-787878/unique_ingested_doc_UUID/page_5.png"
     assert chunk.embedding is None
     assert chunk.case_ref == "25-787878"
     assert chunk.received_date == date.fromisoformat("2025-08-21")
@@ -172,7 +169,6 @@ def test_multiple_pages_with_layout_text(document_metadata_factory):
     assert chunk1.source_file_name == "test_ingested_document.pdf"
     assert chunk1.page_count == 2
     assert chunk1.chunk_index == 0
-    assert chunk1.s3_page_image_uri == "s3://kta-document-images-bucket/25-787878/unique_ingested_doc_UUID/page_1.png"
 
     chunk2 = actual_chunks[1]
     assert isinstance(chunk2, OpenSearchChunk)
@@ -181,7 +177,6 @@ def test_multiple_pages_with_layout_text(document_metadata_factory):
     assert chunk2.source_file_name == "test_ingested_document.pdf"
     assert chunk2.page_count == 2
     assert chunk2.chunk_index == 1  # TODO should each page have its own chunk index?
-    assert chunk2.s3_page_image_uri == "s3://kta-document-images-bucket/25-787878/unique_ingested_doc_UUID/page_2.png"
 
     chunk3 = actual_chunks[2]
     assert isinstance(chunk3, OpenSearchChunk)
@@ -190,7 +185,6 @@ def test_multiple_pages_with_layout_text(document_metadata_factory):
     assert chunk3.source_file_name == "test_ingested_document.pdf"
     assert chunk3.page_count == 2
     assert chunk3.chunk_index == 2
-    assert chunk3.s3_page_image_uri == "s3://kta-document-images-bucket/25-787878/unique_ingested_doc_UUID/page_2.png"
 
 
 def test_page_with_layout_text_with_mutliple_lines(document_metadata_factory):
@@ -224,7 +218,6 @@ def test_page_with_layout_text_with_mutliple_lines(document_metadata_factory):
     assert chunk1.source_file_name == "test_ingested_document.pdf"
     assert chunk1.page_count == 1
     assert chunk1.chunk_index == 0
-    assert chunk1.s3_page_image_uri == "s3://kta-document-images-bucket/25-787878/unique_ingested_doc_UUID/page_1.png"
 
     chunk2 = actual_chunks[1]
     assert isinstance(chunk2, OpenSearchChunk)
@@ -233,7 +226,6 @@ def test_page_with_layout_text_with_mutliple_lines(document_metadata_factory):
     assert chunk2.source_file_name == "test_ingested_document.pdf"
     assert chunk2.page_count == 1
     assert chunk2.chunk_index == 1
-    assert chunk2.s3_page_image_uri == "s3://kta-document-images-bucket/25-787878/unique_ingested_doc_UUID/page_1.png"
 
     chunk3 = actual_chunks[2]
     assert isinstance(chunk3, OpenSearchChunk)
@@ -242,7 +234,6 @@ def test_page_with_layout_text_with_mutliple_lines(document_metadata_factory):
     assert chunk3.source_file_name == "test_ingested_document.pdf"
     assert chunk3.page_count == 1
     assert chunk3.chunk_index == 2
-    assert chunk3.s3_page_image_uri == "s3://kta-document-images-bucket/25-787878/unique_ingested_doc_UUID/page_1.png"
 
 
 def test_multiple_layout_text_blocks_on_single_page(document_metadata_factory):
@@ -391,16 +382,6 @@ def test_handles_missing_pdf_id_metadata_throws_error(document_metadata_factory)
     # Act & Assert
     with pytest.raises(ValueError, match="DocumentMetadata string fields cannot be empty"):
         document_metadata_factory(ingested_doc_id="")
-
-
-def test_handles_missing_s3_page_image_uri_metadata_throws_error(document_metadata_factory):
-    """
-    Tests that the function runs without error and sets default values
-    when optional arguments like `uploaded_file_name` and `page_count` are omitted.
-    """
-
-    with pytest.raises(ValueError, match="DocumentMetadata string fields cannot be empty."):
-        document_metadata_factory(s3_page_image_uri="")
 
 
 def test_handles_missing_source_file_name_metadata_throws_error(document_metadata_factory):
