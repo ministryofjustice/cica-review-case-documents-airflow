@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Optional, Set
+from typing import List, Optional, Sequence, Set
 
 from textractor.entities.bbox import BoundingBox
 from textractor.entities.document import Document
@@ -181,10 +181,10 @@ class ChunkExtractor:
         )
 
     @staticmethod
-    def _combine_bounding_boxes(bboxes: List[BoundingBox]) -> BoundingBox:
+    def _combine_bounding_boxes(bboxes: Sequence[BoundingBox]) -> BoundingBox:
         """Combines a list of BoundingBox objects into a single encompassing BoundingBox."""
         if not bboxes:
-            return BoundingBox(0, 0, 0, 0)
+            raise ValueError("Bounding box combination requires at least one box.")
 
         min_left = min(bbox.x for bbox in bboxes)
         min_top = min(bbox.y for bbox in bboxes)
@@ -216,7 +216,3 @@ def extract_layout_chunks(
     """
     extractor = ChunkExtractor(config)
     return extractor.extract_layout_chunks(doc, metadata, desired_layout_types)
-
-
-# Remove the standalone metadata_validator function since validation
-# is now handled in DocumentMetadata.__post_init__
