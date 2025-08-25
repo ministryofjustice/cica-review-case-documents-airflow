@@ -1,13 +1,21 @@
 import json
+from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
+from typing import List, cast
 from unittest.mock import MagicMock, PropertyMock
 
 import pytest
 from textractor.entities.bbox import BoundingBox
 from textractor.entities.document import Document
 
-from chunk_handler.chunk_extractor import ChunkingConfig, DocumentMetadata, OpenSearchChunk, extract_layout_chunks
+from chunk_handler.chunk_extractor import (
+    ChunkExtractor,
+    ChunkingConfig,
+    DocumentMetadata,
+    OpenSearchChunk,
+    extract_layout_chunks,
+)
 from chunk_handler.tests.utils.textract_response_builder import textractor_document_factory
 from data_models.chunk_models import BoundingBoxDict
 
@@ -15,6 +23,18 @@ from data_models.chunk_models import BoundingBoxDict
 TEXTRACT_JSON_PATH = Path(__file__).parent / "data" / "single_text_layout_textract_response.json"
 
 maximum_chunk_size = ChunkingConfig.maximum_chunk_size  # Define the maximum chunk size for splitting
+
+
+@dataclass
+class MockBoundingBox:
+    width: float
+    height: float
+    x: float
+    y: float
+
+
+# Textractor BoundingBox mock Patch
+ChunkExtractor._combine_bounding_boxes.__globals__["BoundingBox"] = MockBoundingBox
 
 
 @pytest.fixture
@@ -53,6 +73,57 @@ def document_metadata_factory():
         return DocumentMetadata(**final_args)
 
     return _factory
+
+
+def test_combine_bounding_boxes_multiple_boxes():
+    """Test combining multiple bounding boxes."""
+    # Arrange: Create mock bounding boxes
+    bbox1 = MockBoundingBox(width=10, height=20, x=100, y=50)  # top-left
+    bbox2 = MockBoundingBox(width=5, height=5, x=115, y=60)  # middle
+    bbox3 = MockBoundingBox(width=30, height=40, x=80, y=80)  # bottom-left
+    bbox4 = MockBoundingBox(width=10, height=10, x=150, y=40)  # top-right
+
+    bboxes = [bbox1, bbox2, bbox3, bbox4]
+
+    # Act: Call the method to be tested
+    combined_bbox = ChunkExtractor._combine_bounding_boxes(cast(List[BoundingBox], bboxes))
+
+    # Assert: Verify the combined bounding box coordinates and dimensions
+    assert combined_bbox.x == 80.0, "The minimum x should be 80."
+    assert combined_bbox.y == 40.0, "The minimum y should be 40."
+
+    # Calculate expected max right and max bottom
+    max_right = max(bbox.x + bbox.width for bbox in bboxes)
+    max_bottom = max(bbox.y + bbox.height for bbox in bboxes)
+
+    assert combined_bbox.x + combined_bbox.width == max_right, "The combined right edge is incorrect."
+    assert combined_bbox.y + combined_bbox.height == max_bottom, "The combined bottom edge is incorrect."
+
+    assert combined_bbox.width == (150 + 10) - 80, "Combined width is incorrect."
+    assert combined_bbox.height == (80 + 40) - 40, "Combined height is incorrect."
+
+
+def test_combine_bounding_boxes_single_box():
+    """Test combining a single bounding box."""
+    # Arrange
+    single_bbox = MockBoundingBox(width=50, height=75, x=20, y=10)
+    bboxes = [single_bbox]
+
+    # Act
+    combined_bbox = ChunkExtractor._combine_bounding_boxes(cast(List[BoundingBox], bboxes))
+
+    # Assert
+    assert combined_bbox == single_bbox, "Single box should return the same box."
+
+
+def test_combine_bounding_boxes_empty_list():
+    """Test that an empty list raises a ValueError."""
+    # Arrange
+    bboxes = []
+
+    # Act & Assert
+    with pytest.raises(ValueError, match="Bounding box combination requires at least one box."):
+        ChunkExtractor._combine_bounding_boxes(bboxes)
 
 
 def test_extract_single_layout_chunk(textract_response, document_metadata_factory):
@@ -150,6 +221,49 @@ def test_multiple_pages_with_layout_text(document_metadata_factory):
         [
             {"type": "LAYOUT_TEXT", "lines": ["First paragraph on page two."]},
             {"type": "LAYOUT_TITLE", "lines": ["Ignored Title."]},
+            {"type": "LAYOUT_TEXT", "lines": ["Second paragraph on page two."]},
+        ],  # Page 2
+    ]
+
+    mock_doc = textractor_document_factory(document_definition)
+
+    mock_metadata = document_metadata_factory(page_count=2)
+
+    actual_chunks: list[OpenSearchChunk] = extract_layout_chunks(doc=mock_doc, metadata=mock_metadata)
+
+    assert len(actual_chunks) == 3
+    chunk1 = actual_chunks[0]
+    assert isinstance(chunk1, OpenSearchChunk)
+
+    assert chunk1.chunk_text == "Content on the first page."
+    assert chunk1.page_number == 1
+    assert chunk1.source_file_name == "test_ingested_document.pdf"
+    assert chunk1.page_count == 2
+    assert chunk1.chunk_index == 0
+
+    chunk2 = actual_chunks[1]
+    assert isinstance(chunk2, OpenSearchChunk)
+    assert chunk2.chunk_text == "First paragraph on page two."
+    assert chunk2.page_number == 2
+    assert chunk2.source_file_name == "test_ingested_document.pdf"
+    assert chunk2.page_count == 2
+    assert chunk2.chunk_index == 1  # TODO should each page have its own chunk index?
+
+    chunk3 = actual_chunks[2]
+    assert isinstance(chunk3, OpenSearchChunk)
+    assert chunk3.chunk_text == "Second paragraph on page two."
+    assert chunk3.page_number == 2
+    assert chunk3.source_file_name == "test_ingested_document.pdf"
+    assert chunk3.page_count == 2
+    assert chunk3.chunk_index == 2
+
+
+def test_empty_lines_are_skipped(document_metadata_factory):
+    document_definition = [
+        [{"type": "LAYOUT_TEXT", "lines": ["Content on the first page."]}],  # Page 1
+        [
+            {"type": "LAYOUT_TEXT", "lines": ["First paragraph on page two. \n                  "]},
+            {"type": "LAYOUT_TEXT", "lines": ["                             "]},
             {"type": "LAYOUT_TEXT", "lines": ["Second paragraph on page two."]},
         ],  # Page 2
     ]
@@ -375,10 +489,6 @@ def test_handles_missing_pdf_id_metadata_throws_error(document_metadata_factory)
     """
     Tests that the function throws an error when required metadata is missing.
     """
-    # Arrange
-    document_definition = [[{"type": "LAYOUT_TEXT", "lines": ["Simple content."]}]]
-    textractor_document_factory(document_definition)
-
     # Act & Assert
     with pytest.raises(ValueError, match="DocumentMetadata string fields cannot be empty"):
         document_metadata_factory(ingested_doc_id="")
@@ -414,9 +524,16 @@ def test_handles_negative_page_count_metadata_throws_error(document_metadata_fac
         document_metadata_factory(page_count=-7)
 
 
-# Given layout text is greater than max chunk size
-# the layout text should be split into multiple chunks.
-# The split should be at complete lines
+def test_empty_document_throws_error(document_metadata_factory):
+    """
+    Tests that an empty Textract Document raises an Exception.
+    """
+    mock_doc = Document()
+
+    mock_metadata = document_metadata_factory()
+
+    with pytest.raises(Exception, match="Document cannot be None and must contain pages."):
+        extract_layout_chunks(doc=mock_doc, metadata=mock_metadata)
 
 
 def create_long_line_data(num_lines: int, line_length: int = 100) -> list[dict]:
