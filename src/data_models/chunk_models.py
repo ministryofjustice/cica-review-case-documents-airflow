@@ -41,7 +41,6 @@ class DocumentMetadata:
     """Immutable document metadata."""
 
     ingested_doc_id: str
-    s3_page_image_uri: str
     source_file_name: str
     page_count: int
     case_ref: str
@@ -53,7 +52,6 @@ class DocumentMetadata:
         if not all(
             [
                 self.ingested_doc_id,
-                self.s3_page_image_uri,
                 self.source_file_name,
             ]
         ):
@@ -71,7 +69,6 @@ class OpenSearchChunk:
     ingested_doc_id: str
     chunk_text: str
     source_file_name: str
-    s3_page_image_uri: str
     page_count: int
     page_number: int
     chunk_index: int
@@ -105,7 +102,6 @@ class OpenSearchChunk:
             ingested_doc_id=metadata.ingested_doc_id,
             chunk_text=text_content,
             source_file_name=metadata.source_file_name,
-            s3_page_image_uri=metadata.s3_page_image_uri,
             page_count=metadata.page_count,
             page_number=page.page_num,
             chunk_index=chunk_index,
@@ -139,7 +135,6 @@ class OpenSearchChunk:
             ingested_doc_id=metadata.ingested_doc_id,
             chunk_text=chunk_text,
             source_file_name=metadata.source_file_name,
-            s3_page_image_uri=metadata.s3_page_image_uri,
             page_count=metadata.page_count,
             page_number=page.page_num,
             chunk_index=chunk_index,
@@ -163,7 +158,6 @@ class OpenSearchChunk:
             "ingested_doc_id": self.ingested_doc_id,
             "chunk_text": self.chunk_text,
             "source_file_name": self.source_file_name,
-            "s3_page_image_uri": self.s3_page_image_uri,
             "page_count": self.page_count,
             "page_number": self.page_number,
             "chunk_index": self.chunk_index,
