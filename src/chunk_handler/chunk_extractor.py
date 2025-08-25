@@ -76,8 +76,6 @@ class ChunkExtractor:
         if not doc or not doc.pages:
             raise ValueError("Document cannot be None and must contain pages.")
 
-        # Metadata validation is now handled in DocumentMetadata.__post_init__
-
     def _process_page(
         self, page, metadata: DocumentMetadata, desired_layout_types: Set[str], chunk_index_start: int
     ) -> List[OpenSearchChunk]:
@@ -104,7 +102,7 @@ class ChunkExtractor:
         if self.config.strategy == ChunkingStrategy.LINE_BASED:
             return self._extract_line_based_chunks(layout_block, page, metadata, chunk_index_start)
         else:
-            # Future: implement other strategies
+            # Future: implement other strategies if needed
             raise NotImplementedError(f"Strategy {self.config.strategy} not yet implemented")
 
     def _extract_line_based_chunks(

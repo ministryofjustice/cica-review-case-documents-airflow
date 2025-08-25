@@ -76,10 +76,10 @@ def document_metadata_factory():
 def test_combine_bounding_boxes_multiple_boxes():
     """Test combining multiple bounding boxes."""
     # Arrange: Create mock bounding boxes
-    bbox1 = MockBoundingBox(width=10, height=20, x=100, y=50)  # top-left
-    bbox2 = MockBoundingBox(width=5, height=5, x=115, y=60)  # middle
-    bbox3 = MockBoundingBox(width=30, height=40, x=80, y=80)  # bottom-left
-    bbox4 = MockBoundingBox(width=10, height=10, x=150, y=40)  # top-right
+    bbox1 = MockBoundingBox(width=10, height=20, x=100, y=50)
+    bbox2 = MockBoundingBox(width=5, height=5, x=115, y=60)
+    bbox3 = MockBoundingBox(width=30, height=40, x=80, y=80)
+    bbox4 = MockBoundingBox(width=10, height=10, x=150, y=40)
 
     bboxes = [bbox1, bbox2, bbox3, bbox4]
 
@@ -128,7 +128,7 @@ def test_extract_single_layout_chunk(textract_response, document_metadata_factor
     """
     Tests that a single LAYOUT_TEXT block is correctly processed
     into an OpenSearch chunk document.
-    This is test usign an actutal Textract response.
+    This is test using an actutal Textract response.
     """
 
     mock_doc = Document.open(textract_response)
@@ -147,19 +147,19 @@ def test_extract_single_layout_chunk(textract_response, document_metadata_factor
         "date of the incident, from birth. Please find these attached."
     )
 
-    chunk1.chunk_id = "unique_ingested_doc_UUID_p1_c0"  # Set chunk_id to match expected value for assertion
-    chunk1.ingested_doc_id = "unique_ingested_doc_UUID"  # Set ingested_doc_id to match expected value for assertion
-    chunk1.source_file_name = "document_single_layout_response.pdf"  # Set source_file_name to match expected value
-    chunk1.chunk_text = expected_text  # Set chunk_text to match expected value
-    chunk1.embedding = None  # We will handle embedding later
-    chunk1.case_ref = None  # Metadata to be added later
-    chunk1.received_date = None  # Metadata to be added later
-    chunk1.correspondence_type = None  # Metadata to be added later
-    chunk1.page_count = 1  # Set page_count to match expected value
-    chunk1.page_number = 1  # Set page_number to match expected value
-    chunk1.chunk_index = 0  # Set chunk_index to match expected value
-    chunk1.chunk_type = "LAYOUT_TEXT"  # Set chunk_type to match expected value
-    chunk1.confidence = 0.60009765625  # Set confidence to match
+    chunk1.chunk_id = "unique_ingested_doc_UUID_p1_c0"
+    chunk1.ingested_doc_id = "unique_ingested_doc_UUID"
+    chunk1.source_file_name = "document_single_layout_response.pdf"
+    chunk1.chunk_text = expected_text
+    chunk1.embedding = None  # Metadata to be added later
+    chunk1.case_ref = None
+    chunk1.received_date = None
+    chunk1.correspondence_type = None
+    chunk1.page_count = 1
+    chunk1.page_number = 1
+    chunk1.chunk_index = 0
+    chunk1.chunk_type = "LAYOUT_TEXT"
+    chunk1.confidence = 0.60009765625
     chunk1.bounding_box = BoundingBoxDict(
         width=0.7254804372787476,
         height=0.02834956906735897,
@@ -198,7 +198,7 @@ def test_create_opensearch_chunk_formats_correctly(document_metadata_factory):
 
     # Assert
     assert chunk.chunk_id == "unique_ingested_doc_UUID_p5_c3"
-    assert chunk.chunk_text == "Some text."  # Test the .strip()
+    assert chunk.chunk_text == "Some text."
     assert chunk.page_number == 5
     assert chunk.chunk_index == 3
     assert chunk.ingested_doc_id == "unique_ingested_doc_UUID"
@@ -603,6 +603,7 @@ def test_multiple_long_layout_blocks_are_all_split(document_metadata_factory):
     Tests that multiple layout blocks, each requiring splitting, are handled correctly
     and create a sequence of new chunks.
     """
+    # Set the maximum_chunk_size to 10 for this test
     maximum_chunk_size = 10
     long_lines_1 = create_long_line_data(3, line_length=4)  # Two chunks from this block
     long_lines_2 = create_long_line_data(3, line_length=4)  # Two more chunks from this block
@@ -616,7 +617,7 @@ def test_multiple_long_layout_blocks_are_all_split(document_metadata_factory):
 
     mock_doc = textractor_document_factory(document_definition)
     mock_metadata = document_metadata_factory()
-    # Set the maximum_chunk_size to 10 for this test
+
     chunking_config = ChunkingConfig(maximum_chunk_size, strategy=ChunkingStrategy.LINE_BASED)
     extractor = ChunkExtractor(chunking_config)
     actual_chunks: list[OpenSearchChunk] = extractor.extract_layout_chunks(doc=mock_doc, metadata=mock_metadata)
