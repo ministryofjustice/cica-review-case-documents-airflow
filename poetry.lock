@@ -474,6 +474,18 @@ files = [
 ]
 
 [[package]]
+name = "chardet"
+version = "5.2.0"
+description = "Universal encoding detector for Python 3"
+optional = false
+python-versions = ">=3.7"
+groups = ["main"]
+files = [
+    {file = "chardet-5.2.0-py3-none-any.whl", hash = "sha256:e1cf59446890a00105fe7b7912492ea04b6e6f06d4b742b2c788469e34c82970"},
+    {file = "chardet-5.2.0.tar.gz", hash = "sha256:1b3b6ff479a8c414bc3fa2c0852995695c4a026dcd6d0633b2dd092ca39c1cf7"},
+]
+
+[[package]]
 name = "charset-normalizer"
 version = "3.4.2"
 description = "The Real First Universal Charset Detector. Open, modern and actively maintained alternative to Chardet."
@@ -2616,6 +2628,27 @@ qa = ["flake8 (==5.0.4)", "mypy (==0.971)", "types-setuptools (==67.2.0.1)"]
 testing = ["docopt", "pytest"]
 
 [[package]]
+name = "pdfminer-six"
+version = "20250506"
+description = "PDF parser and analyzer"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "pdfminer_six-20250506-py3-none-any.whl", hash = "sha256:d81ad173f62e5f841b53a8ba63af1a4a355933cfc0ffabd608e568b9193909e3"},
+    {file = "pdfminer_six-20250506.tar.gz", hash = "sha256:b03cc8df09cf3c7aba8246deae52e0bca7ebb112a38895b5e1d4f5dd2b8ca2e7"},
+]
+
+[package.dependencies]
+charset-normalizer = ">=2.0.0"
+cryptography = ">=36.0.0"
+
+[package.extras]
+dev = ["atheris ; python_version < \"3.12\"", "black", "mypy (==0.931)", "nox", "pytest"]
+docs = ["sphinx", "sphinx-argparse"]
+image = ["Pillow"]
+
+[[package]]
 name = "pexpect"
 version = "4.9.0"
 description = "Pexpect allows easy control of interactive console applications."
@@ -2788,6 +2821,17 @@ files = [
 [package.extras]
 dev = ["pre-commit", "tox"]
 testing = ["coverage", "pytest", "pytest-benchmark"]
+
+[[package]]
+name = "pluginbase"
+version = "1.0.1"
+description = "PluginBase is a module for Python that enables the development of flexible plugin systems in Python."
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "pluginbase-1.0.1.tar.gz", hash = "sha256:ff6c33a98fce232e9c73841d787a643de574937069f0d18147028d70d7dee287"},
+]
 
 [[package]]
 name = "pre-commit"
@@ -4179,6 +4223,23 @@ tornado = ">=6.1.0"
 docs = ["myst-parser", "pydata-sphinx-theme", "sphinx"]
 test = ["pre-commit", "pytest (>=7.0)", "pytest-timeout"]
 typing = ["mypy (>=1.6,<2.0)", "traitlets (>=5.11.1)"]
+
+[[package]]
+name = "textractor"
+version = "0.1.2"
+description = "Extract text content from many filetypes."
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "TExtractor-0.1.2-py3-none-any.whl", hash = "sha256:a4c7e77e786731000035064217f2ef9fbd8e7116bd497c3d46151229535d6c5a"},
+    {file = "TExtractor-0.1.2.tar.gz", hash = "sha256:cd4e5af2eb6d343815f83d6c900d9390ed6ea518071aeeb7a6b0224d8f9a0a20"},
+]
+
+[package.dependencies]
+chardet = "*"
+"pdfminer.six" = "*"
+pluginbase = "*"
 
 [[package]]
 name = "threadpoolctl"
