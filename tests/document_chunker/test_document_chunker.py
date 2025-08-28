@@ -7,14 +7,15 @@ import pytest
 from textractor.entities.bbox import BoundingBox
 from textractor.entities.document import Document
 
-from data_models.chunk_models import BoundingBoxDict, DocumentMetadata
-from document_chunker.document_chunker import (
+from src.data_models.chunk_models import BoundingBoxDict, DocumentMetadata
+from src.document_chunker.document_chunker import (
     ChunkingConfig,
     ChunkingStrategy,
     DocumentChunker,
     OpenSearchChunk,
 )
-from document_chunker.tests.utils.textract_response_builder import textractor_document_factory
+
+from .test_utils.textract_response_builder import textractor_document_factory
 
 # Define the path to our singular realistic test data
 TEXTRACT_JSON_PATH = Path(__file__).parent / "data" / "single_text_layout_textract_response.json"
