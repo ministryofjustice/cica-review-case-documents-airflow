@@ -58,7 +58,7 @@ def document_metadata_factory():
     return _factory
 
 
-def test_extract_single_layout_chunk(textract_response, document_metadata_factory):
+def test_extract_single_layout_chunk_from_actual_textract_response(textract_response, document_metadata_factory):
     """
     Tests that a single LAYOUT_TEXT block is correctly processed
     into an OpenSearch chunk document.
@@ -127,7 +127,7 @@ def test_create_opensearch_chunk_formats_correctly(document_metadata_factory):
     )
 
     chunk = OpenSearchChunk.from_textractor_layout(
-        block=mock_block, page=mock_page, metadata=mock_metadata, chunk_index=3
+        block=mock_block, page_number=5, metadata=mock_metadata, chunk_index=3
     )
 
     # Assert
