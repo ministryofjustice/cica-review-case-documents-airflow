@@ -34,14 +34,24 @@ class DocumentChunker:
 
     def __init__(self, config: Optional[ChunkingConfig] = None):
         self.config = config or ChunkingConfig()
-
-        self.strategy_handlers: Dict[str, ChunkingStrategyHandler] = {
-            "LAYOUT_TEXT": LineBasedChunkingHandler(self.config.maximum_chunk_size),
-            # "LAYOUT_TABLE": TableChunkingHandler(self.config.maximum_chunk_size), # Future
-            # "LAYOUT_LIST": ListChunkingHandler(self.config.maximum_chunk_size),   # Future
-        }
+        self.strategy_handlers = self._create_strategy_handlers()
         # A default handler for any types not explicitly mapped
-        self.default_handler = LineBasedChunkingHandler(self.config.maximum_chunk_size)
+        self.default_handler = self._create_default_handler()
+
+    def _create_strategy_handlers(self) -> Dict[str, ChunkingStrategyHandler]:
+        """Factory method for creating strategy handlers."""
+        # This centralizes handler creation, making it easier to override in tests
+        return {
+            "LAYOUT_TEXT": LineBasedChunkingHandler(self.config.maximum_chunk_size),
+            # "LAYOUT_TABLE": TableChunkingHandler(self.config.maximum_chunk_size),
+            # "LAYOUT_LIST": ListChunkingHandler(self.config.maximum_chunk_size),
+        }
+
+    def _create_default_handler(self) -> ChunkingStrategyHandler:
+        """Factory method for the default handler."""
+        return LineBasedChunkingHandler(self.config.maximum_chunk_size)
+
+    # ... (the rest of the class remains identical) ...
 
     def chunk(
         self, doc: Document, metadata: DocumentMetadata, desired_layout_types: Optional[Set[str]] = None
@@ -66,16 +76,16 @@ class DocumentChunker:
             if desired_layout_types is None:
                 desired_layout_types = {"LAYOUT_TEXT"}
 
-            chunks = []
+            all_chunks = []
             chunk_index_counter = 0
 
             for page in doc.pages:
                 page_chunks = self._process_page(page, metadata, desired_layout_types, chunk_index_counter)
-                chunks.extend(page_chunks)
+                all_chunks.extend(page_chunks)
                 chunk_index_counter += len(page_chunks)
 
-            logger.info(f"Extracted {len(chunks)} chunks from document {metadata.ingested_doc_id}")
-            return chunks
+            logger.info(f"Extracted {len(all_chunks)} chunks from document {metadata.ingested_doc_id}")
+            return all_chunks
 
         except Exception as e:
             logger.error(f"Error extracting chunks from document {metadata.ingested_doc_id}: {str(e)}")
@@ -90,18 +100,20 @@ class DocumentChunker:
         self, page, metadata: DocumentMetadata, desired_layout_types: Set[str], chunk_index_start: int
     ) -> List[OpenSearchChunk]:
         """Process a single page and return its chunks."""
-        chunks = []
-        chunk_index = chunk_index_start
+        page_chunks = []
+        current_chunk_index = chunk_index_start
 
         for layout_block in page.layouts:
             if self._should_process_block(layout_block, desired_layout_types):
                 block_type = layout_block.layout_type
                 handler_to_use = self.strategy_handlers.get(block_type, self.default_handler)
-                block_chunks = handler_to_use.chunk(layout_block, page.page_num, metadata, chunk_index)
-                chunks.extend(block_chunks)
-                chunk_index += len(block_chunks)
 
-        return chunks
+                block_chunks = handler_to_use.chunk(layout_block, page.page_num, metadata, current_chunk_index)
+
+                page_chunks.extend(block_chunks)
+                current_chunk_index += len(block_chunks)
+
+        return page_chunks
 
     def _should_process_block(self, layout_block, desired_layout_types: Set[str]) -> bool:
         """Determine if a layout block should be processed."""
