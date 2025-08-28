@@ -1,6 +1,6 @@
 import pytest
 
-from src.document_chunker.strategies.base import ChunkingStrategyHandler  # Adjust import path
+from src.document_chunker.strategies.base import ChunkingStrategyHandler
 
 
 def test_cannot_instantiate_abstract_class():
