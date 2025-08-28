@@ -68,7 +68,6 @@ def test_extract_single_layout_chunk_from_actual_textract_response(textract_resp
 
     mock_doc = Document.open(textract_response)
 
-    # Call the factory, providing overrides for this specific test case
     mock_metadata = document_metadata_factory()
     extractor = DocumentChunker()
     actual_chunks: list[OpenSearchChunk] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
@@ -109,7 +108,7 @@ def test_create_opensearch_chunk_formats_correctly(document_metadata_factory):
     type(mock_block).text = PropertyMock(return_value="  Some text.  ")
     type(mock_block).layout_type = PropertyMock(return_value="LAYOUT_TEXT")
     type(mock_block).confidence = PropertyMock(return_value=0.95)
-    # Mock the bbox object and its properties
+
     mock_bbox = MagicMock()
     type(mock_bbox).width = PropertyMock(return_value=0.1)
     type(mock_block).bbox = PropertyMock(return_value=mock_bbox)
@@ -245,7 +244,7 @@ def test_multiple_layout_text_blocks_on_single_page(document_metadata_factory):
     Tests that multiple LAYOUT_TEXT blocks on the same page are extracted as
     separate chunks with correctly incrementing chunk indices.
     """
-    # Arrange
+
     document_definition = [
         [  # Page 1
             {"type": "LAYOUT_TEXT", "lines": ["This is the first paragraph."]},
@@ -283,7 +282,7 @@ def test_page_with_no_layout_text_blocks_is_skipped(document_metadata_factory):
     Tests that a page containing no LAYOUT_TEXT blocks is skipped, and processing
     continues on subsequent pages, with the chunk index incrementing correctly.
     """
-    # Arrange
+
     document_definition = [
         [{"type": "LAYOUT_TEXT", "lines": ["Content on page one."]}],  # Page 1
         [{"type": "LAYOUT_TITLE", "lines": ["Page 2 has no text blocks."]}],  # Page 2 (should be skipped)
@@ -317,7 +316,7 @@ def test_ignores_non_text_layout_blocks(document_metadata_factory):
     """
     Tests that layout blocks of types other than LAYOUT_TEXT are ignored.
     """
-    # Arrange
+
     document_definition = [
         [  # Page 1
             {"type": "LAYOUT_TITLE", "lines": ["A Document Title"]},
@@ -334,9 +333,7 @@ def test_ignores_non_text_layout_blocks(document_metadata_factory):
     extractor = DocumentChunker()
     actual_chunks: list[OpenSearchChunk] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
 
-    # Assert
     assert len(actual_chunks) == 1
-
     chunk1 = actual_chunks[0]
     assert isinstance(chunk1, OpenSearchChunk)
 
@@ -349,7 +346,7 @@ def test_empty_or_whitespace_layout_text_block_is_ignored(document_metadata_fact
     Tests that LAYOUT_TEXT blocks containing no text or only whitespace are ignored
     and not created as chunks.
     """
-    # Arrange
+
     document_definition = [
         [  # Page 1
             {"type": "LAYOUT_TEXT", "lines": ["This is a valid chunk."]},
@@ -379,7 +376,7 @@ def test_handles_missing_pdf_id_metadata_throws_error(document_metadata_factory)
     """
     Tests that the function throws an error when required metadata is missing.
     """
-    # Act & Assert
+
     with pytest.raises(ValueError, match="DocumentMetadata string fields cannot be empty"):
         document_metadata_factory(ingested_doc_id="")
 
@@ -439,6 +436,7 @@ def test_single_layout_block_splits_into_multiple_chunks_by_line_count(document_
     correct chunk text and index.
     """
     # Create a document with one block containing lines that exceed the max size
+    # maximum_chunk_size will be set to 10 for this test
     line_length = 5  # Two lines will fit, three won't
     line_one_text = "a" * 4
     line_two_text = "b" * line_length
@@ -465,7 +463,6 @@ def test_single_layout_block_splits_into_multiple_chunks_by_line_count(document_
     extractor = DocumentChunker(chunking_config)
     actual_chunks: list[OpenSearchChunk] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
 
-    # Assert
     assert len(actual_chunks) == 2, "Expected two chunks to be created"
 
     # Check first chunk
@@ -502,6 +499,7 @@ def test_chunk_splitting_handles_exact_size_limit(document_metadata_factory):
 
     # The first line's length is precisely calculated to make the first chunk
     # exactly the maximum size, causing the split on the next line.
+    # maximum_chunk_size set to 10 for this test
     maximum_chunk_size = 10
     line1_text = "a" * (maximum_chunk_size)
     line2_text = "b"
@@ -569,7 +567,6 @@ def test_bounding_box_is_correctly_combined_for_split_chunks(document_metadata_f
     Tests that when a chunk is split, the bounding box for each new chunk is
     correctly calculated by combining the bounding boxes of the lines it contains.
     """
-    # Arrange
     line_1_bbox = BoundingBox(x=0.1, y=0.1, width=0.7, height=0.02)
     line_2_bbox = BoundingBox(x=0.2, y=0.15, width=0.6, height=0.03)
     line_3_bbox = BoundingBox(x=0.3, y=0.2, width=0.5, height=0.04)
@@ -595,7 +592,6 @@ def test_bounding_box_is_correctly_combined_for_split_chunks(document_metadata_f
     extractor = DocumentChunker()
     actual_chunks: list[OpenSearchChunk] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
 
-    # Assert
     assert len(actual_chunks) == 2, "Expected the block to be split"
 
     # Verify the first chunk's bounding box

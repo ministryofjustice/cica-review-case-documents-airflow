@@ -11,11 +11,10 @@ def mock_dependencies(mocker):
     This fixture mocks the external dependencies of the Handler class.
     'mocker' is provided by the pytest-mock plugin.
     """
-    # The 'mocker.patch' function intercepts calls to these objects/functions.
+
     mock_opensearch_chunk = mocker.patch("src.document_chunker.strategies.line_based.OpenSearchChunk")
     mock_combine_bboxes = mocker.patch("src.document_chunker.strategies.line_based.combine_bounding_boxes")
 
-    # We can return the mocks if we need to inspect them further in the tests.
     return mock_opensearch_chunk, mock_combine_bboxes
 
 

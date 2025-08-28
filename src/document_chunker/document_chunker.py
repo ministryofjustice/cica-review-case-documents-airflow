@@ -51,8 +51,6 @@ class DocumentChunker:
         """Factory method for the default handler."""
         return LineBasedChunkingHandler(self.config.maximum_chunk_size)
 
-    # ... (the rest of the class remains identical) ...
-
     def chunk(
         self, doc: Document, metadata: DocumentMetadata, desired_layout_types: Optional[Set[str]] = None
     ) -> List[OpenSearchChunk]:
