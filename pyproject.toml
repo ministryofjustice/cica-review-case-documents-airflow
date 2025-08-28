@@ -2,9 +2,7 @@
 name = "cica-document-search-airflow"
 version = "0.1.0"
 description = ""
-authors = [
-    {name = "Marco Surace"}
-]
+authors = [{ name = "Marco Surace" }]
 readme = "README.md"
 requires-python = ">=3.12,<4"
 dependencies = [
@@ -23,6 +21,7 @@ dependencies = [
     "amazon-textract-textractor (>=1.9.2,<2.0.0)",
     "moto (>=5.1.10,<6.0.0)",
     "textractor (>=0.1.2,<0.2.0)",
+    "amazon-textract-response-parser (>=1.0.3,<2.0.0)",
 ]
 
 [tool.poetry]
