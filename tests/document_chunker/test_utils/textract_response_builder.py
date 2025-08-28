@@ -299,6 +299,7 @@ class TextractorDocumentFactory:
 
 
 # Convenience function to maintain backward compatibility
+# TODO remove this and fix the tests to use the class itself
 def textractor_document_factory(page_definitions: List[List[Dict]]) -> Document:
     """
     Legacy function for backward compatibility.
