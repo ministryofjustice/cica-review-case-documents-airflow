@@ -4,7 +4,6 @@ from typing import List, Optional
 
 from textractor.entities.bbox import BoundingBox
 from textractor.entities.layout import Layout
-from textractor.entities.page import Page
 
 
 @dataclass(frozen=True)
@@ -90,11 +89,11 @@ class OpenSearchChunk:
 
     @classmethod
     def from_textractor_layout(
-        cls, block: Layout, page: Page, metadata: DocumentMetadata, chunk_index: int
+        cls, block: Layout, page_number: int, metadata: DocumentMetadata, chunk_index: int
     ) -> "OpenSearchChunk":
         """Creates an OpenSearchChunk instance from a Textractor Layout block."""
         text_content = block.text.strip()
-        chunk_id = cls._generate_chunk_id(metadata.ingested_doc_id, page.page_num, chunk_index)
+        chunk_id = cls._generate_chunk_id(metadata.ingested_doc_id, page_number, chunk_index)
         bounding_box_dict = BoundingBoxDict.from_textractor_bbox(block.bbox)
 
         return cls(
@@ -103,7 +102,7 @@ class OpenSearchChunk:
             chunk_text=text_content,
             source_file_name=metadata.source_file_name,
             page_count=metadata.page_count,
-            page_number=page.page_num,
+            page_number=page_number,
             chunk_index=chunk_index,
             chunk_type=block.layout_type,
             confidence=block.confidence,
@@ -117,7 +116,7 @@ class OpenSearchChunk:
     def from_textractor_layout_and_text(
         cls,
         block: Layout,
-        page: Page,
+        page_num: int,
         metadata: DocumentMetadata,
         chunk_index: int,
         chunk_text: str,
@@ -127,7 +126,7 @@ class OpenSearchChunk:
         Creates an OpenSearchChunk from a Textractor Layout block using pre-computed
         text and a combined bounding box, useful for splitting large blocks.
         """
-        chunk_id = cls._generate_chunk_id(metadata.ingested_doc_id, page.page_num, chunk_index)
+        chunk_id = cls._generate_chunk_id(metadata.ingested_doc_id, page_num, chunk_index)
         bounding_box_dict = BoundingBoxDict.from_textractor_bbox(combined_bbox)
 
         return cls(
@@ -136,7 +135,7 @@ class OpenSearchChunk:
             chunk_text=chunk_text,
             source_file_name=metadata.source_file_name,
             page_count=metadata.page_count,
-            page_number=page.page_num,
+            page_number=page_num,
             chunk_index=chunk_index,
             chunk_type=block.layout_type,
             confidence=block.confidence,

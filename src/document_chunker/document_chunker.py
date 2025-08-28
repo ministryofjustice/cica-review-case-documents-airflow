@@ -6,7 +6,8 @@ from typing import Dict, List, Optional, Set
 from textractor.entities.document import Document
 
 from data_models.chunk_models import DocumentMetadata, OpenSearchChunk
-from document_chunker.chunking_strategies import ChunkingStrategyHandler, LineBasedChunkingHandler
+from document_chunker.strategies.base import ChunkingStrategyHandler
+from document_chunker.strategies.line_based import LineBasedChunkingHandler
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +96,7 @@ class DocumentChunker:
             if self._should_process_block(layout_block, desired_layout_types):
                 block_type = layout_block.layout_type
                 handler_to_use = self.strategy_handlers.get(block_type, self.default_handler)
-                block_chunks = handler_to_use.chunk(layout_block, page, metadata, chunk_index)
+                block_chunks = handler_to_use.chunk(layout_block, page.page_num, metadata, chunk_index)
                 chunks.extend(block_chunks)
                 chunk_index += len(block_chunks)
 
