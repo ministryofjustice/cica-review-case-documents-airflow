@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from data_models.chunk_models import DocumentMetadata, OpenSearchChunk
+from src.data_models.chunk_models import DocumentMetadata, OpenSearchChunk
 
 
 class ChunkingStrategyHandler(ABC):

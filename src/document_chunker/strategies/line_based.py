@@ -2,9 +2,9 @@ from typing import List
 
 from textractor.entities.bbox import BoundingBox
 
-from data_models.chunk_models import DocumentMetadata, OpenSearchChunk
-from document_chunker.strategies.base import ChunkingStrategyHandler
-from document_chunker.utils.bbox_utils import combine_bounding_boxes
+from src.data_models.chunk_models import DocumentMetadata, OpenSearchChunk
+from src.document_chunker.strategies.base import ChunkingStrategyHandler
+from src.document_chunker.utils.bbox_utils import combine_bounding_boxes
 
 
 class LineBasedChunkingHandler(ChunkingStrategyHandler):

@@ -6,7 +6,7 @@ from botocore.exceptions import ClientError
 from moto import mock_aws
 
 # Import the function to be tested
-from .s3_downloader import download_pdf_from_s3
+from src.s3_file_downloader.s3_downloader import download_pdf_from_s3
 
 
 @mock_aws

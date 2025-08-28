@@ -5,9 +5,10 @@ from typing import Dict, List, Optional, Set
 
 from textractor.entities.document import Document
 
-from data_models.chunk_models import DocumentMetadata, OpenSearchChunk
-from document_chunker.strategies.base import ChunkingStrategyHandler
-from document_chunker.strategies.line_based import LineBasedChunkingHandler
+from src.data_models.chunk_models import DocumentMetadata, OpenSearchChunk
+
+from .strategies.base import ChunkingStrategyHandler
+from .strategies.line_based import LineBasedChunkingHandler
 
 logger = logging.getLogger(__name__)
 
