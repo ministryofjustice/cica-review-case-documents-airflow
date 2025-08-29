@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Set
 
 from textractor.entities.document import Document
 
+from src.config import settings
 from src.data_models.chunk_models import DocumentMetadata, OpenSearchChunk
 
 from .strategies.base import ChunkingStrategyHandler
@@ -25,7 +26,8 @@ class ChunkingStrategy(Enum):
 class ChunkingConfig:
     """Configuration for chunking behavior."""
 
-    maximum_chunk_size: int = 1000
+    # TODO move to environment variable
+    maximum_chunk_size: int = settings.MAXIMUM_CHUNK_SIZE
     strategy: ChunkingStrategy = ChunkingStrategy.LINE_BASED
 
 

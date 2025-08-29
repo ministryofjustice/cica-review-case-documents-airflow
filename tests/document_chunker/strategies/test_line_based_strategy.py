@@ -153,9 +153,7 @@ def test_simple_strategy_handles_empty_block():
     [
         ([], "This line is too long", True),
         ([], "Short line", False),
-        # Corrected Logic: 5 + 1 + 5 + 1 + 7 = 19, which is NOT > 20. So this should be False.
         (["hello", "world"], "and you", False),
-        # 5 + 1 + 5 + 1 + 11 = 23, which IS > 20. So this should be True.
         (["hello", "world"], "and you too", True),
     ],
 )
