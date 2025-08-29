@@ -2,17 +2,17 @@ from typing import List
 
 from textractor.entities.bbox import BoundingBox
 
-from src.data_models.chunk_models import DocumentMetadata, OpenSearchChunk
-from src.document_chunker.strategies.base import ChunkingStrategyHandler
-from src.document_chunker.utils.bbox_utils import combine_bounding_boxes
+from src.chunking.schemas import DocumentMetadata, OpenSearchDocument
+from src.chunking.strategies.base import ChunkingStrategyHandler
+from src.chunking.utils.bbox_utils import combine_bounding_boxes
 
 
-class LineBasedChunkingHandler(ChunkingStrategyHandler):
+class LineBasedChunkingStrategy(ChunkingStrategyHandler):
     """Implements the line-based chunking strategy."""
 
     def chunk(
         self, layout_block, page_number: int, metadata: DocumentMetadata, chunk_index_start: int
-    ) -> List[OpenSearchChunk]:
+    ) -> List[OpenSearchDocument]:
         """Extract chunks using line-based splitting strategy."""
         chunks = []
         chunk_index = chunk_index_start
@@ -60,14 +60,14 @@ class LineBasedChunkingHandler(ChunkingStrategyHandler):
         page_number,
         metadata: DocumentMetadata,
         chunk_index: int,
-    ) -> OpenSearchChunk:
+    ) -> OpenSearchDocument:
         """Create a chunk from accumulated lines and bounding boxes."""
         combined_bbox = combine_bounding_boxes(bboxes)
         chunk_text = " ".join(lines)
 
-        return OpenSearchChunk.from_textractor_layout_and_text(
+        return OpenSearchDocument.from_textractor_layout_and_text(
             block=layout_block,
-            page_num=page_number,
+            page_number=page_number,
             metadata=metadata,
             chunk_index=chunk_index,
             chunk_text=chunk_text,

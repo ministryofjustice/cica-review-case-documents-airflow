@@ -4,15 +4,16 @@ from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock
 
 import pytest
+from pydantic import ValidationError
 from textractor.entities.bbox import BoundingBox
 from textractor.entities.document import Document
 
-from src.data_models.chunk_models import BoundingBoxDict, DocumentMetadata
-from src.document_chunker.document_chunker import (
+from src.chunking.schemas import DocumentBoundingBox, DocumentMetadata
+from src.chunking.textract import (
     ChunkingConfig,
     ChunkingStrategy,
-    DocumentChunker,
-    OpenSearchChunk,
+    OpenSearchDocument,
+    TextractDocumentChunker,
 )
 
 from .test_utils.textract_response_builder import textractor_document_factory
@@ -69,12 +70,12 @@ def test_extract_single_layout_chunk_from_actual_textract_response(textract_resp
     mock_doc = Document.open(textract_response)
 
     mock_metadata = document_metadata_factory()
-    extractor = DocumentChunker()
-    actual_chunks: list[OpenSearchChunk] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
+    extractor = TextractDocumentChunker()
+    actual_chunks: list[OpenSearchDocument] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
 
     assert len(actual_chunks) == 1
     chunk1 = actual_chunks[0]
-    assert isinstance(chunk1, OpenSearchChunk)
+    assert isinstance(chunk1, OpenSearchDocument)
 
     expected_text = (
         "We have discussed with our patient, who has requested we release all medical records from the "
@@ -94,11 +95,11 @@ def test_extract_single_layout_chunk_from_actual_textract_response(textract_resp
     chunk1.chunk_index = 0
     chunk1.chunk_type = "LAYOUT_TEXT"
     chunk1.confidence = 0.60009765625
-    chunk1.bounding_box = BoundingBoxDict(
-        width=0.7254804372787476,
-        height=0.02834956906735897,
-        left=0.12123029679059982,
-        top=0.4854643642902374,
+    chunk1.bounding_box = DocumentBoundingBox(
+        Width=0.7254804372787476,
+        Height=0.02834956906735897,
+        Left=0.12123029679059982,
+        Top=0.4854643642902374,
     )
 
 
@@ -115,18 +116,18 @@ def test_create_opensearch_chunk_formats_correctly(document_metadata_factory):
     mock_page = MagicMock()
     type(mock_page).page_num = PropertyMock(return_value=5)
 
-    expected_bbox = BoundingBoxDict(
-        width=mock_bbox.width,
-        height=mock_bbox.height,
-        left=mock_bbox.x,
-        top=mock_bbox.y,
+    expected_bbox = DocumentBoundingBox(
+        Width=mock_bbox.width,
+        Height=mock_bbox.height,
+        Left=mock_bbox.x,
+        Top=mock_bbox.y,
     )
 
     mock_metadata = document_metadata_factory(
         page_count=10,
     )
 
-    chunk = OpenSearchChunk.from_textractor_layout(
+    chunk = OpenSearchDocument.from_textractor_layout(
         block=mock_block, page_number=5, metadata=mock_metadata, chunk_index=3
     )
 
@@ -161,12 +162,12 @@ def test_multiple_pages_with_layout_text(document_metadata_factory):
 
     mock_metadata = document_metadata_factory(page_count=2)
 
-    extractor = DocumentChunker()
-    actual_chunks: list[OpenSearchChunk] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
+    extractor = TextractDocumentChunker()
+    actual_chunks: list[OpenSearchDocument] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
 
     assert len(actual_chunks) == 3
     chunk1 = actual_chunks[0]
-    assert isinstance(chunk1, OpenSearchChunk)
+    assert isinstance(chunk1, OpenSearchDocument)
 
     assert chunk1.chunk_text == "Content on the first page."
     assert chunk1.page_number == 1
@@ -175,7 +176,7 @@ def test_multiple_pages_with_layout_text(document_metadata_factory):
     assert chunk1.chunk_index == 0
 
     chunk2 = actual_chunks[1]
-    assert isinstance(chunk2, OpenSearchChunk)
+    assert isinstance(chunk2, OpenSearchDocument)
     assert chunk2.chunk_text == "First paragraph on page two."
     assert chunk2.page_number == 2
     assert chunk2.source_file_name == "test_ingested_document.pdf"
@@ -183,7 +184,7 @@ def test_multiple_pages_with_layout_text(document_metadata_factory):
     assert chunk2.chunk_index == 1  # TODO should each page have its own chunk index?
 
     chunk3 = actual_chunks[2]
-    assert isinstance(chunk3, OpenSearchChunk)
+    assert isinstance(chunk3, OpenSearchDocument)
     assert chunk3.chunk_text == "Second paragraph on page two."
     assert chunk3.page_number == 2
     assert chunk3.source_file_name == "test_ingested_document.pdf"
@@ -209,12 +210,12 @@ def test_page_with_layout_text_with_mutliple_lines(document_metadata_factory):
 
     mock_doc = textractor_document_factory(document_definition)
     mock_metadata = document_metadata_factory()
-    extractor = DocumentChunker()
-    actual_chunks: list[OpenSearchChunk] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
+    extractor = TextractDocumentChunker()
+    actual_chunks: list[OpenSearchDocument] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
 
     assert len(actual_chunks) == 3
     chunk1 = actual_chunks[0]
-    assert isinstance(chunk1, OpenSearchChunk)
+    assert isinstance(chunk1, OpenSearchDocument)
 
     assert chunk1.chunk_text == "First line on paragraph one Second line on paragraph one Third line on paragraph one"
     assert chunk1.page_number == 1
@@ -223,7 +224,7 @@ def test_page_with_layout_text_with_mutliple_lines(document_metadata_factory):
     assert chunk1.chunk_index == 0
 
     chunk2 = actual_chunks[1]
-    assert isinstance(chunk2, OpenSearchChunk)
+    assert isinstance(chunk2, OpenSearchDocument)
     assert chunk2.chunk_text == "First line on paragraph two."
     assert chunk2.page_number == 1
     assert chunk2.source_file_name == "test_ingested_document.pdf"
@@ -231,7 +232,7 @@ def test_page_with_layout_text_with_mutliple_lines(document_metadata_factory):
     assert chunk2.chunk_index == 1
 
     chunk3 = actual_chunks[2]
-    assert isinstance(chunk3, OpenSearchChunk)
+    assert isinstance(chunk3, OpenSearchDocument)
     assert chunk3.chunk_text == "First line on paragraph three. Second line on paragraph three."
     assert chunk3.page_number == 1
     assert chunk3.source_file_name == "test_ingested_document.pdf"
@@ -255,12 +256,12 @@ def test_multiple_layout_text_blocks_on_single_page(document_metadata_factory):
     mock_doc = textractor_document_factory(document_definition)
 
     mock_metadata = document_metadata_factory()
-    extractor = DocumentChunker()
-    actual_chunks: list[OpenSearchChunk] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
+    extractor = TextractDocumentChunker()
+    actual_chunks: list[OpenSearchDocument] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
 
     assert len(actual_chunks) == 2, "Should create two chunks from the two LAYOUT_TEXT blocks"
     chunk1 = actual_chunks[0]
-    assert isinstance(chunk1, OpenSearchChunk)
+    assert isinstance(chunk1, OpenSearchDocument)
 
     # Check first chunk
     assert chunk1.chunk_text == "This is the first paragraph."
@@ -270,7 +271,7 @@ def test_multiple_layout_text_blocks_on_single_page(document_metadata_factory):
 
     # Check second chunk
     chunk2 = actual_chunks[1]
-    assert isinstance(chunk2, OpenSearchChunk)
+    assert isinstance(chunk2, OpenSearchDocument)
     assert chunk2.chunk_text == "This is the second paragraph."
     assert chunk2.page_number == 1
     assert chunk2.chunk_index == 1
@@ -291,13 +292,13 @@ def test_page_with_no_layout_text_blocks_is_skipped(document_metadata_factory):
     mock_doc = textractor_document_factory(document_definition)
 
     mock_metadata = document_metadata_factory(page_count=3)
-    extractor = DocumentChunker()
-    actual_chunks: list[OpenSearchChunk] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
+    extractor = TextractDocumentChunker()
+    actual_chunks: list[OpenSearchDocument] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
 
     assert len(actual_chunks) == 2, "Should create two chunks from the two LAYOUT_TEXT blocks"
 
     chunk1 = actual_chunks[0]
-    assert isinstance(chunk1, OpenSearchChunk)
+    assert isinstance(chunk1, OpenSearchDocument)
 
     # Check first chunk from Page 1
     assert chunk1.chunk_text == "Content on page one."
@@ -306,7 +307,7 @@ def test_page_with_no_layout_text_blocks_is_skipped(document_metadata_factory):
 
     # Check second chunk from Page 3
     chunk2 = actual_chunks[1]
-    assert isinstance(chunk1, OpenSearchChunk)
+    assert isinstance(chunk1, OpenSearchDocument)
     assert chunk2.chunk_text == "Content on page three."
     assert chunk2.page_number == 3
     assert chunk2.chunk_index == 1, "Chunk index should continue from the previous valid chunk"
@@ -330,12 +331,12 @@ def test_ignores_non_text_layout_blocks(document_metadata_factory):
     mock_doc = textractor_document_factory(document_definition)
 
     mock_metadata = document_metadata_factory()
-    extractor = DocumentChunker()
-    actual_chunks: list[OpenSearchChunk] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
+    extractor = TextractDocumentChunker()
+    actual_chunks: list[OpenSearchDocument] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
 
     assert len(actual_chunks) == 1
     chunk1 = actual_chunks[0]
-    assert isinstance(chunk1, OpenSearchChunk)
+    assert isinstance(chunk1, OpenSearchDocument)
 
     assert chunk1.chunk_text == "This is the only content to be chunked."
     assert chunk1.chunk_type == "LAYOUT_TEXT"
@@ -358,16 +359,16 @@ def test_empty_or_whitespace_layout_text_block_is_ignored(document_metadata_fact
     mock_doc = textractor_document_factory(document_definition)
 
     mock_metadata = document_metadata_factory()
-    extractor = DocumentChunker()
-    actual_chunks: list[OpenSearchChunk] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
+    extractor = TextractDocumentChunker()
+    actual_chunks: list[OpenSearchDocument] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
 
     assert len(actual_chunks) == 2, "Should ignore empty and whitespace-only blocks"
     chunk1 = actual_chunks[0]
-    assert isinstance(chunk1, OpenSearchChunk)
+    assert isinstance(chunk1, OpenSearchDocument)
     assert chunk1.chunk_text == "This is a valid chunk."
     assert chunk1.chunk_index == 0
     chunk2 = actual_chunks[1]
-    assert isinstance(chunk2, OpenSearchChunk)
+    assert isinstance(chunk2, OpenSearchDocument)
     assert chunk2.chunk_text == "Another valid chunk."
     assert chunk2.chunk_index == 1
 
@@ -377,7 +378,7 @@ def test_handles_missing_pdf_id_metadata_throws_error(document_metadata_factory)
     Tests that the function throws an error when required metadata is missing.
     """
 
-    with pytest.raises(ValueError, match="DocumentMetadata string fields cannot be empty"):
+    with pytest.raises(ValidationError, match="String should have at least 1 character"):
         document_metadata_factory(ingested_doc_id="")
 
 
@@ -387,7 +388,7 @@ def test_handles_missing_source_file_name_metadata_throws_error(document_metadat
     when optional arguments like `uploaded_file_name` and `page_count` are omitted.
     """
 
-    with pytest.raises(ValueError, match="DocumentMetadata string fields cannot be empty."):
+    with pytest.raises(ValidationError, match="String should have at least 1 character"):
         document_metadata_factory(source_file_name="")
 
 
@@ -397,7 +398,7 @@ def test_handles_zero_page_count_metadata_throws_error(document_metadata_factory
     when optional arguments like `uploaded_file_name` and `page_count` are omitted.
     """
 
-    with pytest.raises(ValueError, match="DocumentMetadata.page_count must be a positive integer."):
+    with pytest.raises(ValidationError, match="Input should be greater than 0"):
         document_metadata_factory(page_count=0)
 
 
@@ -407,7 +408,7 @@ def test_handles_negative_page_count_metadata_throws_error(document_metadata_fac
     when optional arguments like `uploaded_file_name` and `page_count` are omitted.
     """
 
-    with pytest.raises(ValueError, match="DocumentMetadata.page_count must be a positive integer."):
+    with pytest.raises(ValidationError, match="Input should be greater than 0"):
         document_metadata_factory(page_count=-7)
 
 
@@ -417,7 +418,7 @@ def test_empty_document_throws_error(document_metadata_factory):
     """
     mock_doc = Document()
     mock_metadata = document_metadata_factory()
-    extractor = DocumentChunker()
+    extractor = TextractDocumentChunker()
     with pytest.raises(Exception, match="Document cannot be None and must contain pages."):
         extractor.chunk(doc=mock_doc, metadata=mock_metadata)
 
@@ -460,8 +461,8 @@ def test_single_layout_block_splits_into_multiple_chunks_by_line_count(document_
 
     # Set the maximum_chunk_size to 10 for this test
     chunking_config = ChunkingConfig(maximum_chunk_size=10, strategy=ChunkingStrategy.LINE_BASED)
-    extractor = DocumentChunker(chunking_config)
-    actual_chunks: list[OpenSearchChunk] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
+    extractor = TextractDocumentChunker(chunking_config)
+    actual_chunks: list[OpenSearchDocument] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
 
     assert len(actual_chunks) == 2, "Expected two chunks to be created"
 
@@ -521,8 +522,8 @@ def test_chunk_splitting_handles_exact_size_limit(document_metadata_factory):
 
     # Set the maximum_chunk_size to 10 for this test
     chunking_config = ChunkingConfig(maximum_chunk_size, strategy=ChunkingStrategy.LINE_BASED)
-    extractor = DocumentChunker(chunking_config)
-    actual_chunks: list[OpenSearchChunk] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
+    extractor = TextractDocumentChunker(chunking_config)
+    actual_chunks: list[OpenSearchDocument] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
 
     assert len(actual_chunks) == 2, "Chunk should be split into two"
     assert actual_chunks[0].chunk_text.strip() == line1_text.strip()
@@ -552,8 +553,8 @@ def test_multiple_long_layout_blocks_are_all_split(document_metadata_factory):
     mock_metadata = document_metadata_factory()
 
     chunking_config = ChunkingConfig(maximum_chunk_size, strategy=ChunkingStrategy.LINE_BASED)
-    extractor = DocumentChunker(chunking_config)
-    actual_chunks: list[OpenSearchChunk] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
+    extractor = TextractDocumentChunker(chunking_config)
+    actual_chunks: list[OpenSearchDocument] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
 
     assert len(actual_chunks) == 4, "Expected a total of four chunks"
     assert actual_chunks[0].chunk_index == 0
@@ -592,8 +593,8 @@ def test_bounding_box_is_correctly_combined_for_split_chunks(document_metadata_f
     mock_doc = textractor_document_factory(document_definition)
     mock_metadata = document_metadata_factory()
     chunking_config = ChunkingConfig(maximum_chunk_size, strategy=ChunkingStrategy.LINE_BASED)
-    extractor = DocumentChunker(chunking_config)
-    actual_chunks: list[OpenSearchChunk] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
+    extractor = TextractDocumentChunker(chunking_config)
+    actual_chunks: list[OpenSearchDocument] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
 
     assert len(actual_chunks) == 2, "Expected the block to be split"
 

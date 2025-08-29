@@ -6,10 +6,10 @@ from typing import Dict, List, Optional, Set
 from textractor.entities.document import Document
 
 from src.config import settings
-from src.data_models.chunk_models import DocumentMetadata, OpenSearchChunk
 
+from .schemas import DocumentMetadata, OpenSearchDocument
 from .strategies.base import ChunkingStrategyHandler
-from .strategies.line_based import LineBasedChunkingHandler
+from .strategies.line_based import LineBasedChunkingStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -26,36 +26,35 @@ class ChunkingStrategy(Enum):
 class ChunkingConfig:
     """Configuration for chunking behavior."""
 
-    # TODO move to environment variable
     maximum_chunk_size: int = settings.MAXIMUM_CHUNK_SIZE
     strategy: ChunkingStrategy = ChunkingStrategy.LINE_BASED
 
 
-class DocumentChunker:
+class TextractDocumentChunker:
     """Handles extraction of chunks from Textractor documents."""
 
     def __init__(self, config: Optional[ChunkingConfig] = None):
         self.config = config or ChunkingConfig()
         self.strategy_handlers = self._create_strategy_handlers()
         # A default handler for any types not explicitly mapped
-        self.default_handler = self._create_default_handler()
+        self.default_strategy = self._create_default_strategy()
 
     def _create_strategy_handlers(self) -> Dict[str, ChunkingStrategyHandler]:
         """Factory method for creating strategy handlers."""
         # This centralizes handler creation, making it easier to override in tests
         return {
-            "LAYOUT_TEXT": LineBasedChunkingHandler(self.config.maximum_chunk_size),
+            "LAYOUT_TEXT": LineBasedChunkingStrategy(self.config.maximum_chunk_size),
             # "LAYOUT_TABLE": TableChunkingHandler(self.config.maximum_chunk_size),
             # "LAYOUT_LIST": ListChunkingHandler(self.config.maximum_chunk_size),
         }
 
-    def _create_default_handler(self) -> ChunkingStrategyHandler:
+    def _create_default_strategy(self) -> ChunkingStrategyHandler:
         """Factory method for the default handler."""
-        return LineBasedChunkingHandler(self.config.maximum_chunk_size)
+        return LineBasedChunkingStrategy(self.config.maximum_chunk_size)
 
     def chunk(
         self, doc: Document, metadata: DocumentMetadata, desired_layout_types: Optional[Set[str]] = None
-    ) -> List[OpenSearchChunk]:
+    ) -> List[OpenSearchDocument]:
         """
         Parses a Textractor Document and extracts specified layout blocks as structured chunks.
 
@@ -98,7 +97,7 @@ class DocumentChunker:
 
     def _process_page(
         self, page, metadata: DocumentMetadata, desired_layout_types: Set[str], chunk_index_start: int
-    ) -> List[OpenSearchChunk]:
+    ) -> List[OpenSearchDocument]:
         """Process a single page and return its chunks."""
         page_chunks = []
         current_chunk_index = chunk_index_start
@@ -106,9 +105,9 @@ class DocumentChunker:
         for layout_block in page.layouts:
             if self._should_process_block(layout_block, desired_layout_types):
                 block_type = layout_block.layout_type
-                handler_to_use = self.strategy_handlers.get(block_type, self.default_handler)
+                chunking_strategy = self.strategy_handlers.get(block_type, self.default_strategy)
 
-                block_chunks = handler_to_use.chunk(layout_block, page.page_num, metadata, current_chunk_index)
+                block_chunks = chunking_strategy.chunk(layout_block, page.page_num, metadata, current_chunk_index)
 
                 page_chunks.extend(block_chunks)
                 current_chunk_index += len(block_chunks)

@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 import pytest
 from textractor.entities.document import Document
 
-from src.data_models.chunk_models import DocumentMetadata
-from src.document_chunker.document_chunker import DocumentChunker
+from src.chunking.schemas import DocumentMetadata
+from src.chunking.textract import TextractDocumentChunker
 
 
 @pytest.fixture
@@ -40,23 +40,23 @@ def document_metadata_factory():
 
 
 @pytest.fixture
-def mock_chunking_handler():
+def mock_default_strategy():
     """Provides a mock chunking handler that we can inspect."""
-    handler = MagicMock()
+    strategy = MagicMock()
     # Configure the mock to return a single chunk by default
-    handler.chunk.return_value = [MagicMock()]
-    return handler
+    strategy.chunk.return_value = [MagicMock()]
+    return strategy
 
 
 @pytest.fixture
-def chunker(monkeypatch, mock_chunking_handler):
+def chunker(monkeypatch, mock_default_strategy):
     """Provides a DocumentChunker instance with mocked-out strategy handlers."""
     # Use monkeypatch to replace the factory methods with ones that return our mock
     monkeypatch.setattr(
-        DocumentChunker, "_create_strategy_handlers", lambda self: {"LAYOUT_TEXT": mock_chunking_handler}
+        TextractDocumentChunker, "_create_strategy_handlers", lambda self: {"LAYOUT_TEXT": mock_default_strategy}
     )
-    monkeypatch.setattr(DocumentChunker, "_create_default_handler", lambda self: mock_chunking_handler)
-    return DocumentChunker()
+    monkeypatch.setattr(TextractDocumentChunker, "_create_default_strategy", lambda self: mock_default_strategy)
+    return TextractDocumentChunker()
 
 
 def create_mock_doc(page_definitions):
@@ -78,7 +78,7 @@ def create_mock_doc(page_definitions):
     return mock_doc
 
 
-def test_selects_correct_handler_for_mapped_type(chunker, document_metadata_factory, mock_chunking_handler):
+def test_selects_correct_handler_for_mapped_type(chunker, document_metadata_factory, mock_default_strategy):
     """
     Unit Test: Verifies that the chunker calls the specific handler
     mapped to LAYOUT_TEXT.
@@ -88,8 +88,8 @@ def test_selects_correct_handler_for_mapped_type(chunker, document_metadata_fact
 
     chunker.chunk(mock_doc, metadata)
 
-    mock_chunking_handler.chunk.assert_called_once()
-    args, kwargs = mock_chunking_handler.chunk.call_args
+    mock_default_strategy.chunk.assert_called_once()
+    args, kwargs = mock_default_strategy.chunk.call_args
     assert args[0] == mock_doc.pages[0].layouts[0]  # The layout block
     assert args[1] == 1  # The page number
     assert args[2] == metadata
@@ -105,10 +105,12 @@ def test_uses_default_handler_for_unmapped_type(chunker, document_metadata_facto
     mock_default_handler = MagicMock()
     mock_default_handler.chunk.return_value = [MagicMock()]
 
-    monkeypatch.setattr(DocumentChunker, "_create_strategy_handlers", lambda self: {"LAYOUT_TEXT": mock_text_handler})
-    monkeypatch.setattr(DocumentChunker, "_create_default_handler", lambda self: mock_default_handler)
+    monkeypatch.setattr(
+        TextractDocumentChunker, "_create_strategy_handlers", lambda self: {"LAYOUT_TEXT": mock_text_handler}
+    )
+    monkeypatch.setattr(TextractDocumentChunker, "_create_default_strategy", lambda self: mock_default_handler)
 
-    specific_chunker = DocumentChunker()
+    specific_chunker = TextractDocumentChunker()
 
     mock_doc = create_mock_doc([[{"type": "LAYOUT_TABLE", "text": "Table content."}]])
 
@@ -118,7 +120,7 @@ def test_uses_default_handler_for_unmapped_type(chunker, document_metadata_facto
     mock_default_handler.chunk.assert_called_once()
 
 
-def test_filters_blocks_by_type_and_content(chunker, document_metadata_factory, mock_chunking_handler):
+def test_filters_blocks_by_type_and_content(chunker, document_metadata_factory, mock_default_strategy):
     """
     Unit Test: Verifies the logic of _should_process_block is applied correctly.
     """
@@ -139,9 +141,9 @@ def test_filters_blocks_by_type_and_content(chunker, document_metadata_factory, 
     chunker.chunk(mock_doc, metadata, desired_layout_types={"LAYOUT_TEXT", "LAYOUT_TITLE"})
 
     # Assert that the handler was called exactly twice
-    assert mock_chunking_handler.chunk.call_count == 2
+    assert mock_default_strategy.chunk.call_count == 2
 
-    calls = mock_chunking_handler.chunk.call_args_list
+    calls = mock_default_strategy.chunk.call_args_list
 
     first_call_args = calls[0].args
     assert first_call_args[0].text == "Valid content."
@@ -152,12 +154,12 @@ def test_filters_blocks_by_type_and_content(chunker, document_metadata_factory, 
     assert second_call_args[3] == 1
 
 
-def test_aggregates_chunks_and_maintains_index(chunker, document_metadata_factory, mock_chunking_handler):
+def test_aggregates_chunks_and_maintains_index(chunker, document_metadata_factory, mock_default_strategy):
     """
     Unit Test: Verifies that chunks from multiple pages/blocks are aggregated
     and the chunk_index is passed correctly to the handler.
     """
-    mock_chunking_handler.chunk.side_effect = [
+    mock_default_strategy.chunk.side_effect = [
         [MagicMock(), MagicMock()],  # First call returns 2 chunks
         [MagicMock()],  # Second call returns 1 chunk
         [MagicMock(), MagicMock(), MagicMock()],  # Third call returns 3 chunks
@@ -177,8 +179,8 @@ def test_aggregates_chunks_and_maintains_index(chunker, document_metadata_factor
     assert len(result) == 2 + 1 + 3
 
     # Check that the handler was called with the correct, incrementing chunk_index
-    assert mock_chunking_handler.chunk.call_count == 3
-    calls = mock_chunking_handler.chunk.call_args_list
+    assert mock_default_strategy.chunk.call_count == 3
+    calls = mock_default_strategy.chunk.call_args_list
     # Call 1 (Block 1): started at index 0
     assert calls[0].args[3] == 0
     # Call 2 (Block 2): started at index 2 (because call 1 returned 2 chunks)
