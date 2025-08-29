@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+# TODO review these, some of them are hangovers from previous work
 class Settings(BaseSettings):  # type: ignore
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
     LOCAL: bool = True
@@ -31,6 +32,8 @@ class Settings(BaseSettings):  # type: ignore
     # BEDROCK_EMBEDDING_MODEL_ID: str = "cohere.embed-english-v3"
     # or Titan model
     BEDROCK_EMBEDDING_MODEL_ID: str = "amazon.titan-embed-text-v2:0"
+    # review this when we have a working system
+    MAXIMUM_CHUNK_SIZE: int = 300  # maximum chunk size
 
 
 settings = Settings()
