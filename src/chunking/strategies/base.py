@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from src.data_models.chunk_models import DocumentMetadata, OpenSearchChunk
+from src.chunking.schemas import DocumentMetadata, OpenSearchDocument
 
 
 class ChunkingStrategyHandler(ABC):
@@ -13,7 +13,7 @@ class ChunkingStrategyHandler(ABC):
     @abstractmethod
     def chunk(
         self, layout_block, page_number: int, metadata: DocumentMetadata, chunk_index_start: int
-    ) -> List[OpenSearchChunk]:
+    ) -> List[OpenSearchDocument]:
         """
         Extracts chunks from a single layout block based on the specific strategy.
 

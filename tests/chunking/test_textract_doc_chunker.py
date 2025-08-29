@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 import pytest
 from textractor.entities.document import Document
 
-from src.data_models.chunk_models import DocumentMetadata
-from src.document_chunker.document_chunker import DocumentChunker
+from src.chunking.schemas import DocumentMetadata
+from src.chunking.textract import TextractDocumentChunker
 
 
 @pytest.fixture
@@ -53,10 +53,10 @@ def chunker(monkeypatch, mock_chunking_handler):
     """Provides a DocumentChunker instance with mocked-out strategy handlers."""
     # Use monkeypatch to replace the factory methods with ones that return our mock
     monkeypatch.setattr(
-        DocumentChunker, "_create_strategy_handlers", lambda self: {"LAYOUT_TEXT": mock_chunking_handler}
+        TextractDocumentChunker, "_create_strategy_handlers", lambda self: {"LAYOUT_TEXT": mock_chunking_handler}
     )
-    monkeypatch.setattr(DocumentChunker, "_create_default_handler", lambda self: mock_chunking_handler)
-    return DocumentChunker()
+    monkeypatch.setattr(TextractDocumentChunker, "_create_default_handler", lambda self: mock_chunking_handler)
+    return TextractDocumentChunker()
 
 
 def create_mock_doc(page_definitions):
@@ -105,10 +105,12 @@ def test_uses_default_handler_for_unmapped_type(chunker, document_metadata_facto
     mock_default_handler = MagicMock()
     mock_default_handler.chunk.return_value = [MagicMock()]
 
-    monkeypatch.setattr(DocumentChunker, "_create_strategy_handlers", lambda self: {"LAYOUT_TEXT": mock_text_handler})
-    monkeypatch.setattr(DocumentChunker, "_create_default_handler", lambda self: mock_default_handler)
+    monkeypatch.setattr(
+        TextractDocumentChunker, "_create_strategy_handlers", lambda self: {"LAYOUT_TEXT": mock_text_handler}
+    )
+    monkeypatch.setattr(TextractDocumentChunker, "_create_default_handler", lambda self: mock_default_handler)
 
-    specific_chunker = DocumentChunker()
+    specific_chunker = TextractDocumentChunker()
 
     mock_doc = create_mock_doc([[{"type": "LAYOUT_TABLE", "text": "Table content."}]])
 

@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, call
 
 import pytest
 
-from src.document_chunker.strategies.line_based import LineBasedChunkingHandler
+from src.chunking.strategies.line_based import LineBasedChunkingHandler
 
 
 @pytest.fixture
@@ -12,8 +12,9 @@ def mock_dependencies(mocker):
     'mocker' is provided by the pytest-mock plugin.
     """
 
-    mock_opensearch_chunk = mocker.patch("src.document_chunker.strategies.line_based.OpenSearchChunk")
-    mock_combine_bboxes = mocker.patch("src.document_chunker.strategies.line_based.combine_bounding_boxes")
+    # TODO is there an alternative to this patching I dont like using the string version of the classpath
+    mock_opensearch_chunk = mocker.patch("src.chunking.strategies.line_based.OpenSearchDocument")
+    mock_combine_bboxes = mocker.patch("src.chunking.strategies.line_based.combine_bounding_boxes")
 
     return mock_opensearch_chunk, mock_combine_bboxes
 
@@ -62,7 +63,7 @@ def test_chunk_creates_a_single_chunk_for_short_text(mock_dependencies):
 
     call_args = mock_opensearch_chunk.from_textractor_layout_and_text.call_args
     assert call_args.kwargs["chunk_text"] == "This is the first line. This is the second line."
-    assert call_args.kwargs["page_num"] == 1
+    assert call_args.kwargs["page_number"] == 1
     assert call_args.kwargs["chunk_index"] == 0
 
 
@@ -92,7 +93,7 @@ def test_chunk_splits_text_into_multiple_chunks(mock_dependencies):
     expected_calls = [
         call(
             block=fake_layout_block,
-            page_num=3,
+            page_number=3,
             metadata=fake_metadata,
             chunk_index=5,
             chunk_text="This is the first chunk.",
@@ -100,7 +101,7 @@ def test_chunk_splits_text_into_multiple_chunks(mock_dependencies):
         ),
         call(
             block=fake_layout_block,
-            page_num=3,
+            page_number=3,
             metadata=fake_metadata,
             chunk_index=6,
             chunk_text="This line starts a new one.",
@@ -108,7 +109,7 @@ def test_chunk_splits_text_into_multiple_chunks(mock_dependencies):
         ),
         call(
             block=fake_layout_block,
-            page_num=3,
+            page_number=3,
             metadata=fake_metadata,
             chunk_index=7,
             chunk_text="And so does this.",

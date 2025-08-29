@@ -6,8 +6,8 @@ from typing import Dict, List, Optional, Set
 from textractor.entities.document import Document
 
 from src.config import settings
-from src.data_models.chunk_models import DocumentMetadata, OpenSearchChunk
 
+from .schemas import DocumentMetadata, OpenSearchDocument
 from .strategies.base import ChunkingStrategyHandler
 from .strategies.line_based import LineBasedChunkingHandler
 
@@ -31,7 +31,7 @@ class ChunkingConfig:
     strategy: ChunkingStrategy = ChunkingStrategy.LINE_BASED
 
 
-class DocumentChunker:
+class TextractDocumentChunker:
     """Handles extraction of chunks from Textractor documents."""
 
     def __init__(self, config: Optional[ChunkingConfig] = None):
@@ -55,7 +55,7 @@ class DocumentChunker:
 
     def chunk(
         self, doc: Document, metadata: DocumentMetadata, desired_layout_types: Optional[Set[str]] = None
-    ) -> List[OpenSearchChunk]:
+    ) -> List[OpenSearchDocument]:
         """
         Parses a Textractor Document and extracts specified layout blocks as structured chunks.
 
@@ -98,7 +98,7 @@ class DocumentChunker:
 
     def _process_page(
         self, page, metadata: DocumentMetadata, desired_layout_types: Set[str], chunk_index_start: int
-    ) -> List[OpenSearchChunk]:
+    ) -> List[OpenSearchDocument]:
         """Process a single page and return its chunks."""
         page_chunks = []
         current_chunk_index = chunk_index_start
