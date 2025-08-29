@@ -567,6 +567,8 @@ def test_bounding_box_is_correctly_combined_for_split_chunks(document_metadata_f
     Tests that when a chunk is split, the bounding box for each new chunk is
     correctly calculated by combining the bounding boxes of the lines it contains.
     """
+    # Set the maximum_chunk_size to 1000 for this test
+    maximum_chunk_size = 1000
     line_1_bbox = BoundingBox(x=0.1, y=0.1, width=0.7, height=0.02)
     line_2_bbox = BoundingBox(x=0.2, y=0.15, width=0.6, height=0.03)
     line_3_bbox = BoundingBox(x=0.3, y=0.2, width=0.5, height=0.04)
@@ -589,7 +591,8 @@ def test_bounding_box_is_correctly_combined_for_split_chunks(document_metadata_f
     ]
     mock_doc = textractor_document_factory(document_definition)
     mock_metadata = document_metadata_factory()
-    extractor = DocumentChunker()
+    chunking_config = ChunkingConfig(maximum_chunk_size, strategy=ChunkingStrategy.LINE_BASED)
+    extractor = DocumentChunker(chunking_config)
     actual_chunks: list[OpenSearchChunk] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
 
     assert len(actual_chunks) == 2, "Expected the block to be split"
