@@ -10,3 +10,5 @@ env/
 *.sha256
 terraform.tfstate
 .venv/
+.coverage
+**/__pycache__/*

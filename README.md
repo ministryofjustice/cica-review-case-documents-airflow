@@ -1,8 +1,15 @@
-# Analytical Platform Airflow Python Template
+# CICA Review Case Documents Airflow Ingestion Pipeline
 
-[![Ministry of Justice Repository Compliance Badge](https://github-community.service.justice.gov.uk/repository-standards/api/analytical-platform-airflow-python-template/badge)](https://github-community.service.justice.gov.uk/repository-standards/analytical-platform-airflow-python-template)
+ [![Ministry of Justice Repository Compliance Badge](https://github-community.service.justice.gov.uk/repository-standards/api/cica-review-case-documents-airflow/badge)](https://github-community.service.justice.gov.uk/repository-standards/cica-review-case-documents-airflow)
 
-This template repository equips you with the default initial files required for an Analytical Platform Airflow workflow.
+Note: This project has been built from the Analytical Platform Airflow Python Template and contains an [Analytical Platform Airflow workflow](https://user-guidance.analytical-platform.service.justice.gov.uk/services/airflow/index.html#overview).
+
+Note: The project is under active private beta development, all features are still in development.
+
+## Description
+
+The aim of this project is to ingest CICA case documents, perform OCR to extract text and to store the extracted embedded text and text metadata within a vector database. The stored data will then be used to perform hybrid search and document highlighting.   
+
 
 ## Included Files
 
@@ -20,50 +27,89 @@ The repository comes with the following preset files:
 
 ## Setup Instructions
 
-Once you've created your repository using this template, ensure the following steps:
+See [Windows WSL setup](#windows-wsl-setup-instructions) instructions if developing on Windows
 
-### Update README
+If using VSCode install the Microsoft Python extensions, Python Debugger, Python, Pylance, Python Environments
 
-Edit this README.md file to document your project accurately. Take the time to create a clear, engaging, and informative README.md file. Include information like what your project does, how to install and run it, how to contribute, and any other pertinent details.
+### Environment/package management
 
-### Update repository description
+We recommend using [pyenv](https://pypi.org/project/pyenv/) to easily switch between multiple versions of Python.
 
-After you've created your repository, GitHub provides a brief description field that appears on the top of your repository's main page. This is a summary that gives visitors quick insight into the project. Using this field to provide a succinct overview of your repository is highly recommended.
+This project uses the [Poetry package](https://python-poetry.org/docs/) for packaging and dependency management. Version >=1.3.1 is advised to prevent errors when installing from the lock file.
 
-This description and your README.md will be one of the first things people see when they visit your repository. It's a good place to make a strong, concise first impression. Remember, this is often visible in search results on GitHub and search engines, so it's also an opportunity to help people discover your project.
+#### Installing Poetry
 
-### Grant Team Permissions
+To install `poetry`, follow the [installation docs](https://python-poetry.org/docs/#installation).
 
-Assign permissions to the appropriate Ministry of Justice teams. Ensure at least one team is granted Admin permissions. Whenever possible, assign permissions to teams rather than individual users.
+#### Install packages/dependencies
 
-### Read about the GitHub repository standards
+To install the project's package requirements and their versions defined in `pyproject.toml` and `poetry.lock`, run:
+
+```
+poetry install
+```
+
+The `poetry.lock` file is required to ensure the specific package versions defined there are installed, rather than their latest versions.
+
+#### Activating the environment
+
+To activate the virtual environment and use the installed packages when running code [activate the environment](https://python-poetry.org/docs/managing-environments/#activating-the-environment)
+
+
+If you need to run a Python script from outside the `poetry` environment, you can do so using the following format: `poetry run python script.py`
+
+#### Setting up pre-commit
+
+[Pre-commit hooks](https://pre-commit.com/) have been included in the repo to automatically perform actions when performing git commits, such as stripping the output from Jupyter notebooks.
+
+Pre-commit is framework for managing and maintaining pre-commit hooks.
+To set up pre-commit, run the following code in the terminal:
+
+```
+pre-commit install
+```
+
+After this, whenever you call `git commit` the defined pre-commit hooks will be ran against files staged for commit. Notification will be given where hooks fail and in some instances such as nbstrip out the failing file will be automatically modified. In these instances the modifications to the file will need to be added to the commit before calling `git commit` again.
+
+### Windows WSL setup instructions
+
+Microsoft recommends developing Pyhon Apps using WSL.
+[Windows WSL setup instructions](https://dsdmoj.atlassian.net/wiki/spaces/CICA/pages/5882806404/Set+up+instructions+for+WSL+for+windows)
+
+
+## Running the project
+
+The project has been designed to run as an airflow workflow, the project can also be run independently of airflow by running the project roots main.py file. 
+This is still under development and will have no impact at the moment. 
+
+### Testing the project
+
+The project uses [pytest](https://docs.pytest.org/en/stable/) to run tests see [pytest.ini](`.pytest.ini`) for test configuration.
+
+To run the tests with coverage, coverage reports can be found under ```htmlcov/index.html```
+
+```poetry run pytest```
+
+## Formatting
+
+Install the [Ruff](https://astral.sh/) VSCode Extension, [ruff.toml](ruff.toml) holds the ruff configuration. 
+
+## Signing commits
+
+The project has been set up to enforce signing commits, follow the [github signing-commits guide](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits)
+
+## Read about the GitHub repository standards
 
 Familiarise yourself with the Ministry of Justice GitHub Repository Standards. These standards ensure consistency, maintainability, and best practices across all our repositories.
 
-You can find the standards [here](https://user-guide.operations-engineering.service.justice.gov.uk/documentation/information/mojrepostandards.html).
+You can find the standards [here](https://github-community.service.justice.gov.uk/repository-standards/).
 
-Please read and understand these standards thoroughly and enable them when you feel comfortable.
 
-### Modify the GitHub Standards Badge
-
-Once you've ensured that all the [GitHub Repository Standards](https://user-guide.operations-engineering.service.justice.gov.uk/documentation/information/mojrepostandards.html) have been applied to your repository, it's time to update the Ministry of Justice (MoJ) Compliance Badge located in the README file.
-
-The badge demonstrates that your repository is compliant with MoJ's standards. Please follow these [instructions](https://user-guide.operations-engineering.service.justice.gov.uk/documentation/information/add-repo-badge.html) to modify the badge URL to reflect the status of your repository correctly.
-
-**Please note** the badge will not function correctly if your repository is internal or private. In this case, you may remove the badge from your README.
-
-### Manage Outside Collaborators
+## Manage Outside Collaborators
 
 To add an Outside Collaborator to the repository, follow the guidelines detailed [here](https://github.com/ministryofjustice/github-collaborators).
 
-### Update CODEOWNERS
+## Update CODEOWNERS
 
-(Optional) Modify the CODEOWNERS file to specify the teams or users authorized to approve pull requests.
+Modify the CODEOWNERS file to specify the teams or users authorized to approve pull requests.
 
-### Configure Dependabot
-
-Adapt the dependabot.yml file to match your project's [dependency manager](https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file#package-ecosystem) and to enable [automated pull requests for package updates](https://docs.github.com/en/code-security/supply-chain-security).
-
-### Dependency Review
-
-If your repository is private with no GitHub Advanced Security license, remove the `.github/workflows/dependency-review.yml` file.
