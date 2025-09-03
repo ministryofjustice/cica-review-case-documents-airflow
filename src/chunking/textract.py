@@ -5,11 +5,12 @@ from typing import Dict, List, Optional, Set
 
 from textractor.entities.document import Document
 
+from src.chunking.strategies.layout_table import LayoutTableChunkingStrategy
 from src.config import settings
 
 from .schemas import DocumentMetadata, OpenSearchDocument
 from .strategies.base import ChunkingStrategyHandler
-from .strategies.line_based import LineBasedChunkingStrategy
+from .strategies.layout_text import LayoutTextChunkingStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -17,9 +18,8 @@ logger = logging.getLogger(__name__)
 class ChunkingStrategy(Enum):
     """Available chunking strategies."""
 
-    LINE_BASED = "line_based"
-    # SENTENCE_BASED = "sentence_based"
-    # TOKEN_BASED = "token_based"
+    LAYOUT_TEXT = "LAYOUT_TEXT"
+    LAYOUT_TABLE = "LAYOUT_TABLE"
 
 
 @dataclass
@@ -27,7 +27,7 @@ class ChunkingConfig:
     """Configuration for chunking behavior."""
 
     maximum_chunk_size: int = settings.MAXIMUM_CHUNK_SIZE
-    strategy: ChunkingStrategy = ChunkingStrategy.LINE_BASED
+    strategy: ChunkingStrategy = ChunkingStrategy.LAYOUT_TEXT
 
 
 class TextractDocumentChunker:
@@ -36,21 +36,21 @@ class TextractDocumentChunker:
     def __init__(self, config: Optional[ChunkingConfig] = None):
         self.config = config or ChunkingConfig()
         self.strategy_handlers = self._create_strategy_handlers()
-        # A default handler for any types not explicitly mapped
+        #  default handler
         self.default_strategy = self._create_default_strategy()
 
     def _create_strategy_handlers(self) -> Dict[str, ChunkingStrategyHandler]:
         """Factory method for creating strategy handlers."""
         # This centralizes handler creation, making it easier to override in tests
         return {
-            "LAYOUT_TEXT": LineBasedChunkingStrategy(self.config.maximum_chunk_size),
-            # "LAYOUT_TABLE": TableChunkingHandler(self.config.maximum_chunk_size),
+            "LAYOUT_TEXT": LayoutTextChunkingStrategy(self.config.maximum_chunk_size),
+            "LAYOUT_TABLE": LayoutTableChunkingStrategy(self.config.maximum_chunk_size),
             # "LAYOUT_LIST": ListChunkingHandler(self.config.maximum_chunk_size),
         }
 
     def _create_default_strategy(self) -> ChunkingStrategyHandler:
         """Factory method for the default handler."""
-        return LineBasedChunkingStrategy(self.config.maximum_chunk_size)
+        return LayoutTextChunkingStrategy(self.config.maximum_chunk_size)
 
     def chunk(
         self, doc: Document, metadata: DocumentMetadata, desired_layout_types: Optional[Set[str]] = None

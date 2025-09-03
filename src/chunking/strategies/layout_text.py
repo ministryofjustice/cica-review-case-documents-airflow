@@ -7,7 +7,7 @@ from src.chunking.strategies.base import ChunkingStrategyHandler
 from src.chunking.utils.bbox_utils import combine_bounding_boxes
 
 
-class LineBasedChunkingStrategy(ChunkingStrategyHandler):
+class LayoutTextChunkingStrategy(ChunkingStrategyHandler):
     """Implements the line-based chunking strategy."""
 
     def chunk(
@@ -65,7 +65,7 @@ class LineBasedChunkingStrategy(ChunkingStrategyHandler):
         combined_bbox = combine_bounding_boxes(bboxes)
         chunk_text = " ".join(lines)
 
-        return OpenSearchDocument.from_textractor_layout_and_text(
+        return OpenSearchDocument.from_textractor_layout(
             block=layout_block,
             page_number=page_number,
             metadata=metadata,
