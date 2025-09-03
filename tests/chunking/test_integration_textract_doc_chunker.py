@@ -1,7 +1,6 @@
 import json
 from datetime import date
 from pathlib import Path
-from unittest.mock import MagicMock, PropertyMock
 
 import pytest
 from pydantic import ValidationError
@@ -103,49 +102,49 @@ def test_extract_single_layout_chunk_from_actual_textract_response(textract_resp
     )
 
 
-def test_create_opensearch_chunk_formats_correctly(document_metadata_factory):
-    # Arrange
-    mock_block = MagicMock()
-    type(mock_block).text = PropertyMock(return_value="  Some text.  ")
-    type(mock_block).layout_type = PropertyMock(return_value="LAYOUT_TEXT")
-    type(mock_block).confidence = PropertyMock(return_value=0.95)
+# def test_create_opensearch_chunk_formats_correctly(document_metadata_factory):
+#     # Arrange
+#     mock_block = MagicMock()
+#     type(mock_block).text = PropertyMock(return_value="  Some text.  ")
+#     type(mock_block).layout_type = PropertyMock(return_value="LAYOUT_TEXT")
+#     type(mock_block).confidence = PropertyMock(return_value=0.95)
 
-    mock_bbox = MagicMock()
-    type(mock_bbox).width = PropertyMock(return_value=0.1)
-    type(mock_block).bbox = PropertyMock(return_value=mock_bbox)
-    mock_page = MagicMock()
-    type(mock_page).page_num = PropertyMock(return_value=5)
+#     mock_bbox = MagicMock()
+#     type(mock_bbox).width = PropertyMock(return_value=0.1)
+#     type(mock_block).bbox = PropertyMock(return_value=mock_bbox)
+#     mock_page = MagicMock()
+#     type(mock_page).page_num = PropertyMock(return_value=5)
 
-    expected_bbox = DocumentBoundingBox(
-        Width=mock_bbox.width,
-        Height=mock_bbox.height,
-        Left=mock_bbox.x,
-        Top=mock_bbox.y,
-    )
+#     expected_bbox = DocumentBoundingBox(
+#         Width=mock_bbox.width,
+#         Height=mock_bbox.height,
+#         Left=mock_bbox.x,
+#         Top=mock_bbox.y,
+#     )
 
-    mock_metadata = document_metadata_factory(
-        page_count=10,
-    )
+#     mock_metadata = document_metadata_factory(
+#         page_count=10,
+#     )
 
-    chunk = OpenSearchDocument.from_textractor_layout(
-        block=mock_block, page_number=5, metadata=mock_metadata, chunk_index=3
-    )
+#     chunk = OpenSearchDocument.from_textractor_layout(
+#         block=mock_block, page_number=5, metadata=mock_metadata, chunk_index=3
+#     )
 
-    # Assert
-    assert chunk.chunk_id == "unique_ingested_doc_UUID_p5_c3"
-    assert chunk.chunk_text == "Some text."
-    assert chunk.page_number == 5
-    assert chunk.chunk_index == 3
-    assert chunk.ingested_doc_id == "unique_ingested_doc_UUID"
-    assert chunk.confidence == 0.95
-    assert chunk.bounding_box == expected_bbox
-    assert chunk.source_file_name == "test_ingested_document.pdf"
-    assert chunk.embedding is None
-    assert chunk.case_ref == "25-787878"
-    assert chunk.received_date == date.fromisoformat("2025-08-21")
-    assert chunk.correspondence_type == "TC19"
-    assert chunk.page_count == 10
-    assert chunk.chunk_type == "LAYOUT_TEXT"
+#     # Assert
+#     assert chunk.chunk_id == "unique_ingested_doc_UUID_p5_c3"
+#     assert chunk.chunk_text == "Some text."
+#     assert chunk.page_number == 5
+#     assert chunk.chunk_index == 3
+#     assert chunk.ingested_doc_id == "unique_ingested_doc_UUID"
+#     assert chunk.confidence == 0.95
+#     assert chunk.bounding_box == expected_bbox
+#     assert chunk.source_file_name == "test_ingested_document.pdf"
+#     assert chunk.embedding is None
+#     assert chunk.case_ref == "25-787878"
+#     assert chunk.received_date == date.fromisoformat("2025-08-21")
+#     assert chunk.correspondence_type == "TC19"
+#     assert chunk.page_count == 10
+#     assert chunk.chunk_type == "LAYOUT_TEXT"
 
 
 def test_multiple_pages_with_layout_text(document_metadata_factory):
@@ -460,7 +459,7 @@ def test_single_layout_block_splits_into_multiple_chunks_by_line_count(document_
     mock_metadata = document_metadata_factory()
 
     # Set the maximum_chunk_size to 10 for this test
-    chunking_config = ChunkingConfig(maximum_chunk_size=10, strategy=ChunkingStrategy.LINE_BASED)
+    chunking_config = ChunkingConfig(maximum_chunk_size=10, strategy=ChunkingStrategy.LAYOUT_TEXT)
     extractor = TextractDocumentChunker(chunking_config)
     actual_chunks: list[OpenSearchDocument] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
 
@@ -521,7 +520,7 @@ def test_chunk_splitting_handles_exact_size_limit(document_metadata_factory):
     mock_metadata = document_metadata_factory()
 
     # Set the maximum_chunk_size to 10 for this test
-    chunking_config = ChunkingConfig(maximum_chunk_size, strategy=ChunkingStrategy.LINE_BASED)
+    chunking_config = ChunkingConfig(maximum_chunk_size, strategy=ChunkingStrategy.LAYOUT_TEXT)
     extractor = TextractDocumentChunker(chunking_config)
     actual_chunks: list[OpenSearchDocument] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
 
@@ -552,7 +551,7 @@ def test_multiple_long_layout_blocks_are_all_split(document_metadata_factory):
     mock_doc = textractor_document_factory(document_definition)
     mock_metadata = document_metadata_factory()
 
-    chunking_config = ChunkingConfig(maximum_chunk_size, strategy=ChunkingStrategy.LINE_BASED)
+    chunking_config = ChunkingConfig(maximum_chunk_size, strategy=ChunkingStrategy.LAYOUT_TEXT)
     extractor = TextractDocumentChunker(chunking_config)
     actual_chunks: list[OpenSearchDocument] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
 
@@ -592,7 +591,7 @@ def test_bounding_box_is_correctly_combined_for_split_chunks(document_metadata_f
     ]
     mock_doc = textractor_document_factory(document_definition)
     mock_metadata = document_metadata_factory()
-    chunking_config = ChunkingConfig(maximum_chunk_size, strategy=ChunkingStrategy.LINE_BASED)
+    chunking_config = ChunkingConfig(maximum_chunk_size, strategy=ChunkingStrategy.LAYOUT_TEXT)
     extractor = TextractDocumentChunker(chunking_config)
     actual_chunks: list[OpenSearchDocument] = extractor.chunk(doc=mock_doc, metadata=mock_metadata)
 

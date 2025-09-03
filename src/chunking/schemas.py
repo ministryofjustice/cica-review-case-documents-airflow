@@ -69,34 +69,8 @@ class OpenSearchDocument(BaseModel):
 
     @classmethod
     def from_textractor_layout(
-        cls, block: Layout, page_number: int, metadata: DocumentMetadata, chunk_index: int
-    ) -> "OpenSearchDocument":
-        """Creates an OpenSearchChunk instance from a Textractor Layout block."""
-        text_content = block.text.strip()
-        chunk_id = cls._generate_chunk_id(metadata.ingested_doc_id, page_number, chunk_index)
-        bounding_box_model = DocumentBoundingBox.from_textractor_bbox(block.bbox)
-
-        # Pydantic validates the data upon instantiation here
-        return cls(
-            chunk_id=chunk_id,
-            ingested_doc_id=metadata.ingested_doc_id,
-            chunk_text=text_content,
-            source_file_name=metadata.source_file_name,
-            page_count=metadata.page_count,
-            page_number=page_number,
-            chunk_index=chunk_index,
-            chunk_type=block.layout_type,
-            confidence=block.confidence,
-            bounding_box=bounding_box_model,
-            case_ref=metadata.case_ref,
-            received_date=metadata.received_date,
-            correspondence_type=metadata.correspondence_type,
-        )
-
-    @classmethod
-    def from_textractor_layout_and_text(
         cls,
-        block: Layout,
+        block: Layout,  # TODO consider only passing in layout_type and confidence
         page_number: int,
         metadata: DocumentMetadata,
         chunk_index: int,
@@ -120,7 +94,7 @@ class OpenSearchDocument(BaseModel):
             page_number=page_number,
             chunk_index=chunk_index,
             chunk_type=block.layout_type,
-            confidence=block.confidence,
+            confidence=block.confidence,  # TODO does this need recalculated for combined chunks
             bounding_box=bounding_box_model,
             case_ref=metadata.case_ref,
             received_date=metadata.received_date,

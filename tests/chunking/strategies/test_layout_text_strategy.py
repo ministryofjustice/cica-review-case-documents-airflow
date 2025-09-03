@@ -2,7 +2,8 @@ from unittest.mock import MagicMock, call
 
 import pytest
 
-from src.chunking.strategies.line_based import LineBasedChunkingStrategy
+import src.chunking.strategies.layout_text as layout_text_module
+from src.chunking.strategies.layout_text import LayoutTextChunkingStrategy
 
 
 @pytest.fixture
@@ -12,9 +13,8 @@ def mock_dependencies(mocker):
     'mocker' is provided by the pytest-mock plugin.
     """
 
-    # TODO is there an alternative to this patching I dont like using the string version of the classpath
-    mock_opensearch_chunk = mocker.patch("src.chunking.strategies.line_based.OpenSearchDocument")
-    mock_combine_bboxes = mocker.patch("src.chunking.strategies.line_based.combine_bounding_boxes")
+    mock_opensearch_chunk = mocker.patch.object(layout_text_module, "OpenSearchDocument", autospec=True)
+    mock_combine_bboxes = mocker.patch.object(layout_text_module, "combine_bounding_boxes", autospec=True)
 
     return mock_opensearch_chunk, mock_combine_bboxes
 
@@ -46,7 +46,7 @@ def test_chunk_creates_a_single_chunk_for_short_text(mock_dependencies):
 
     mock_opensearch_chunk, _ = mock_dependencies
 
-    handler = LineBasedChunkingStrategy(maximum_chunk_size=500)
+    handler = LayoutTextChunkingStrategy(maximum_chunk_size=500)
     fake_lines = [
         create_fake_line("This is the first line."),
         create_fake_line("This is the second line."),
@@ -59,9 +59,9 @@ def test_chunk_creates_a_single_chunk_for_short_text(mock_dependencies):
     result_chunks = handler.chunk(fake_layout_block, page_number, fake_metadata, chunk_index_start)
     assert len(result_chunks) == 1
 
-    mock_opensearch_chunk.from_textractor_layout_and_text.assert_called_once()
+    mock_opensearch_chunk.from_textractor_layout.assert_called_once()
 
-    call_args = mock_opensearch_chunk.from_textractor_layout_and_text.call_args
+    call_args = mock_opensearch_chunk.from_textractor_layout.call_args
     assert call_args.kwargs["chunk_text"] == "This is the first line. This is the second line."
     assert call_args.kwargs["page_number"] == 1
     assert call_args.kwargs["chunk_index"] == 0
@@ -73,7 +73,7 @@ def test_chunk_splits_text_into_multiple_chunks(mock_dependencies):
     """
     mock_opensearch_chunk, mock_combine_bboxes = mock_dependencies
 
-    handler = LineBasedChunkingStrategy(maximum_chunk_size=30)
+    handler = LayoutTextChunkingStrategy(maximum_chunk_size=30)
 
     fake_lines = [
         create_fake_line("This is the first chunk."),  # len = 25
@@ -116,7 +116,7 @@ def test_chunk_splits_text_into_multiple_chunks(mock_dependencies):
             combined_bbox=mock_combine_bboxes.return_value,
         ),
     ]
-    mock_opensearch_chunk.from_textractor_layout_and_text.assert_has_calls(expected_calls)
+    mock_opensearch_chunk.from_textractor_layout.assert_has_calls(expected_calls)
 
 
 def test_simple_strategy_handles_empty_block():
@@ -124,7 +124,7 @@ def test_simple_strategy_handles_empty_block():
     Verifies that the strategy returns an empty list for an empty block.
     """
 
-    strategy = LineBasedChunkingStrategy(maximum_chunk_size=30)
+    strategy = LayoutTextChunkingStrategy(maximum_chunk_size=30)
 
     fake_lines = []
     fake_layout_block = MagicMock()
@@ -161,5 +161,5 @@ def test_simple_strategy_handles_empty_block():
 def test_would_exceed_size_limit(current_text, new_line, expected):
     """Tests the helper method directly with various inputs."""
 
-    handler = LineBasedChunkingStrategy(maximum_chunk_size=20)
+    handler = LayoutTextChunkingStrategy(maximum_chunk_size=20)
     assert handler._would_exceed_size_limit(current_text, new_line) is expected
