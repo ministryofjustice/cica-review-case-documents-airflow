@@ -1,33 +1,16 @@
 import logging
-from dataclasses import dataclass
-from enum import Enum
 from typing import Dict, List, Optional, Set
 
 from textractor.entities.document import Document
 
-from src.chunking.strategies.layout_table import LayoutTableChunkingStrategy
-from src.config import settings
+from src.chunking.strategies.table import LayoutTableChunkingStrategy
 
+from .config import ChunkingConfig
 from .schemas import DocumentMetadata, OpenSearchDocument
 from .strategies.base import ChunkingStrategyHandler
 from .strategies.layout_text import LayoutTextChunkingStrategy
 
 logger = logging.getLogger(__name__)
-
-
-class ChunkingStrategy(Enum):
-    """Available chunking strategies."""
-
-    LAYOUT_TEXT = "LAYOUT_TEXT"
-    LAYOUT_TABLE = "LAYOUT_TABLE"
-
-
-@dataclass
-class ChunkingConfig:
-    """Configuration for chunking behavior."""
-
-    maximum_chunk_size: int = settings.MAXIMUM_CHUNK_SIZE
-    strategy: ChunkingStrategy = ChunkingStrategy.LAYOUT_TEXT
 
 
 class TextractDocumentChunker:
@@ -40,17 +23,14 @@ class TextractDocumentChunker:
         self.default_strategy = self._create_default_strategy()
 
     def _create_strategy_handlers(self) -> Dict[str, ChunkingStrategyHandler]:
-        """Factory method for creating strategy handlers."""
-        # This centralizes handler creation, making it easier to override in tests
         return {
-            "LAYOUT_TEXT": LayoutTextChunkingStrategy(self.config.maximum_chunk_size),
-            "LAYOUT_TABLE": LayoutTableChunkingStrategy(self.config.maximum_chunk_size),
-            # "LAYOUT_LIST": ListChunkingHandler(self.config.maximum_chunk_size),
+            "LAYOUT_TEXT": LayoutTextChunkingStrategy(self.config),
+            "LAYOUT_TABLE": LayoutTableChunkingStrategy(self.config),
         }
 
     def _create_default_strategy(self) -> ChunkingStrategyHandler:
         """Factory method for the default handler."""
-        return LayoutTextChunkingStrategy(self.config.maximum_chunk_size)
+        return LayoutTextChunkingStrategy(self.config)
 
     def chunk(
         self, doc: Document, metadata: DocumentMetadata, desired_layout_types: Optional[Set[str]] = None
@@ -78,8 +58,18 @@ class TextractDocumentChunker:
             all_chunks = []
             chunk_index_counter = 0
 
+            raw_response = doc.response
+
+            if not raw_response:
+                logger.warning(
+                    f"Document {metadata.ingested_doc_id} does not have a raw response attached. "
+                    "Skipping the patch for orphaned lines in LAYOUT_TABLE blocks."
+                )
+
             for page in doc.pages:
-                page_chunks = self._process_page(page, metadata, desired_layout_types, chunk_index_counter)
+                page_chunks = self._process_page(
+                    page, metadata, desired_layout_types, chunk_index_counter, raw_response
+                )
                 all_chunks.extend(page_chunks)
                 chunk_index_counter += len(page_chunks)
 
@@ -96,7 +86,12 @@ class TextractDocumentChunker:
             raise ValueError("Document cannot be None and must contain pages.")
 
     def _process_page(
-        self, page, metadata: DocumentMetadata, desired_layout_types: Set[str], chunk_index_start: int
+        self,
+        page,
+        metadata: DocumentMetadata,
+        desired_layout_types: Set[str],
+        chunk_index_start: int,
+        raw_response: Optional[dict],
     ) -> List[OpenSearchDocument]:
         """Process a single page and return its chunks."""
         page_chunks = []
@@ -107,7 +102,9 @@ class TextractDocumentChunker:
                 block_type = layout_block.layout_type
                 chunking_strategy = self.strategy_handlers.get(block_type, self.default_strategy)
 
-                block_chunks = chunking_strategy.chunk(layout_block, page.page_num, metadata, current_chunk_index)
+                block_chunks = chunking_strategy.chunk(
+                    layout_block, page.page_num, metadata, current_chunk_index, raw_response
+                )
 
                 page_chunks.extend(block_chunks)
                 current_chunk_index += len(block_chunks)
@@ -116,4 +113,17 @@ class TextractDocumentChunker:
 
     def _should_process_block(self, layout_block, desired_layout_types: Set[str]) -> bool:
         """Determine if a layout block should be processed."""
+
+        if not (layout_block.layout_type in desired_layout_types and layout_block.text and layout_block.text.strip()):
+            block_text = layout_block.text if layout_block.text else "<No Text>"
+            logger.debug(
+                f"\n*********************************************************************************************"
+                f"\nSkipping layout block ID {layout_block.id} of type {layout_block.layout_type} "
+                f"text: \n\n{block_text} "
+                f"\n"
+                f"\nEnd of Skipped block. {layout_block.id} of type {layout_block.layout_type} *****\n"
+                f"*********************************************************************************************\n"
+            )
+            return False
+
         return layout_block.layout_type in desired_layout_types and layout_block.text and layout_block.text.strip()

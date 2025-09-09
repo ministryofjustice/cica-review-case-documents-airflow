@@ -3,7 +3,13 @@ from unittest.mock import MagicMock, call
 import pytest
 
 import src.chunking.strategies.layout_text as layout_text_module
+from src.chunking.config import ChunkingConfig
 from src.chunking.strategies.layout_text import LayoutTextChunkingStrategy
+
+
+@pytest.fixture
+def default_config():
+    return ChunkingConfig(maximum_chunk_size=600)
 
 
 @pytest.fixture
@@ -39,14 +45,14 @@ def create_fake_line(text: str):
     return line
 
 
-def test_chunk_creates_a_single_chunk_for_short_text(mock_dependencies):
+def test_chunk_creates_a_single_chunk_for_short_text(mock_dependencies, default_config):
     """
     Tests that text smaller than the maximum size results in a single chunk.
     """
 
     mock_opensearch_chunk, _ = mock_dependencies
 
-    handler = LayoutTextChunkingStrategy(maximum_chunk_size=500)
+    handler = LayoutTextChunkingStrategy(default_config)
     fake_lines = [
         create_fake_line("This is the first line."),
         create_fake_line("This is the second line."),
@@ -67,13 +73,13 @@ def test_chunk_creates_a_single_chunk_for_short_text(mock_dependencies):
     assert call_args.kwargs["chunk_index"] == 0
 
 
-def test_chunk_splits_text_into_multiple_chunks(mock_dependencies):
+def test_chunk_splits_text_into_multiple_chunks(mock_dependencies, default_config):
     """
     Tests that text larger than the maximum size is split into multiple chunks.
     """
     mock_opensearch_chunk, mock_combine_bboxes = mock_dependencies
-
-    handler = LayoutTextChunkingStrategy(maximum_chunk_size=30)
+    chunking_config = ChunkingConfig(maximum_chunk_size=30)
+    handler = LayoutTextChunkingStrategy(chunking_config)
 
     fake_lines = [
         create_fake_line("This is the first chunk."),  # len = 25
@@ -119,12 +125,12 @@ def test_chunk_splits_text_into_multiple_chunks(mock_dependencies):
     mock_opensearch_chunk.from_textractor_layout.assert_has_calls(expected_calls)
 
 
-def test_simple_strategy_handles_empty_block():
+def test_simple_strategy_handles_empty_block(default_config):
     """
     Verifies that the strategy returns an empty list for an empty block.
     """
 
-    strategy = LayoutTextChunkingStrategy(maximum_chunk_size=30)
+    strategy = LayoutTextChunkingStrategy(default_config)
 
     fake_lines = []
     fake_layout_block = MagicMock()
@@ -160,6 +166,53 @@ def test_simple_strategy_handles_empty_block():
 )
 def test_would_exceed_size_limit(current_text, new_line, expected):
     """Tests the helper method directly with various inputs."""
-
-    handler = LayoutTextChunkingStrategy(maximum_chunk_size=20)
+    chunking_config = ChunkingConfig(maximum_chunk_size=20)
+    handler = LayoutTextChunkingStrategy(chunking_config)
     assert handler._would_exceed_size_limit(current_text, new_line) is expected
+
+
+def test_chunk_handles_single_line_exceeding_max_size(mock_dependencies, default_config):
+    """
+    Tests that a single line longer than the maximum chunk size becomes its own chunk.
+    """
+    mock_opensearch_chunk, mock_combine_bboxes = mock_dependencies
+    chunking_config = ChunkingConfig(maximum_chunk_size=20)
+    handler = LayoutTextChunkingStrategy(chunking_config)
+
+    long_line = "This single line is far too long for the chunk size."  # len > 20
+    short_line = "This is a new line."
+
+    fake_lines = [
+        create_fake_line(long_line),
+        create_fake_line(short_line),
+    ]
+    fake_layout_block = MagicMock()
+    fake_layout_block.children = fake_lines
+    fake_metadata = MagicMock()
+    page_number = 1
+    chunk_index_start = 0
+
+    result_chunks = handler.chunk(fake_layout_block, page_number, fake_metadata, chunk_index_start)
+
+    # We expect two chunks: one for the oversized line, and one for the next line.
+    assert len(result_chunks) == 2
+
+    expected_calls = [
+        call(
+            block=fake_layout_block,
+            page_number=1,
+            metadata=fake_metadata,
+            chunk_index=0,
+            chunk_text=long_line,
+            combined_bbox=mock_combine_bboxes.return_value,
+        ),
+        call(
+            block=fake_layout_block,
+            page_number=1,
+            metadata=fake_metadata,
+            chunk_index=1,
+            chunk_text=short_line,
+            combined_bbox=mock_combine_bboxes.return_value,
+        ),
+    ]
+    mock_opensearch_chunk.from_textractor_layout.assert_has_calls(expected_calls)

@@ -7,17 +7,15 @@ from pydantic import ValidationError
 from textractor.entities.bbox import BoundingBox
 from textractor.entities.document import Document
 
+from src.chunking.config import ChunkingConfig, ChunkingStrategy
 from src.chunking.schemas import DocumentBoundingBox, DocumentMetadata
 from src.chunking.textract import (
-    ChunkingConfig,
-    ChunkingStrategy,
     OpenSearchDocument,
     TextractDocumentChunker,
 )
 
 from .test_utils.textract_response_builder import textractor_document_factory
 
-# Define the path to our singular realistic test data
 TEXTRACT_JSON_PATH = Path(__file__).parent / "data" / "single_text_layout_textract_response.json"
 
 
@@ -100,51 +98,6 @@ def test_extract_single_layout_chunk_from_actual_textract_response(textract_resp
         Left=0.12123029679059982,
         Top=0.4854643642902374,
     )
-
-
-# def test_create_opensearch_chunk_formats_correctly(document_metadata_factory):
-#     # Arrange
-#     mock_block = MagicMock()
-#     type(mock_block).text = PropertyMock(return_value="  Some text.  ")
-#     type(mock_block).layout_type = PropertyMock(return_value="LAYOUT_TEXT")
-#     type(mock_block).confidence = PropertyMock(return_value=0.95)
-
-#     mock_bbox = MagicMock()
-#     type(mock_bbox).width = PropertyMock(return_value=0.1)
-#     type(mock_block).bbox = PropertyMock(return_value=mock_bbox)
-#     mock_page = MagicMock()
-#     type(mock_page).page_num = PropertyMock(return_value=5)
-
-#     expected_bbox = DocumentBoundingBox(
-#         Width=mock_bbox.width,
-#         Height=mock_bbox.height,
-#         Left=mock_bbox.x,
-#         Top=mock_bbox.y,
-#     )
-
-#     mock_metadata = document_metadata_factory(
-#         page_count=10,
-#     )
-
-#     chunk = OpenSearchDocument.from_textractor_layout(
-#         block=mock_block, page_number=5, metadata=mock_metadata, chunk_index=3
-#     )
-
-#     # Assert
-#     assert chunk.chunk_id == "unique_ingested_doc_UUID_p5_c3"
-#     assert chunk.chunk_text == "Some text."
-#     assert chunk.page_number == 5
-#     assert chunk.chunk_index == 3
-#     assert chunk.ingested_doc_id == "unique_ingested_doc_UUID"
-#     assert chunk.confidence == 0.95
-#     assert chunk.bounding_box == expected_bbox
-#     assert chunk.source_file_name == "test_ingested_document.pdf"
-#     assert chunk.embedding is None
-#     assert chunk.case_ref == "25-787878"
-#     assert chunk.received_date == date.fromisoformat("2025-08-21")
-#     assert chunk.correspondence_type == "TC19"
-#     assert chunk.page_count == 10
-#     assert chunk.chunk_type == "LAYOUT_TEXT"
 
 
 def test_multiple_pages_with_layout_text(document_metadata_factory):
