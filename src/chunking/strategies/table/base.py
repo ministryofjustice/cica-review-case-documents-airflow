@@ -46,7 +46,7 @@ class BaseTableChunker(ABC):
         """Create an OpenSearch document chunk."""
         combined_bbox = BoundingBox.enclosing_bbox(bboxes) if bboxes else layout_block.bbox
 
-        logger.debug(f"Created chunk {chunk_index}: {chunk_text[:100]}...")
+        logger.debug(f"Table chunk : {chunk_text}")
 
         return OpenSearchDocument.from_textractor_layout(
             block=layout_block,

@@ -127,31 +127,40 @@ def test_chunk_skips_rows_with_no_text_content(default_config, mocker):
     assert mock_create_chunk.call_args.kwargs["chunk_text"] == "Real Content"
 
 
-def test_chunk_ignores_non_table_objects_in_layout(default_config, mocker):
+def test_chunk_raises_exception_for_non_table_object_in_layout(default_config):
     """
-    Tests that the chunker correctly ignores objects in layout_block.children
-    that are not instances of Table.
+    Tests that a ChunkException is raised if the layout_block's children list
+    contains an object that is not an instance of Table.
     """
+
     handler = CellTableChunker(default_config)
-    mock_create_chunk = mocker.patch.object(handler, "_create_chunk")
 
-    cell = create_fake_cell("Some Data", row=1, col=1, y=0.1)
-    fake_table = MagicMock(spec=Table)
-    fake_table.table_cells = [cell]
+    valid_table = MagicMock(spec=Table)
+    valid_table.table_cells = []
 
-    # A mock object that is NOT a table
-    not_a_table = MagicMock()
+    # Create an invalid object that will trigger the exception.
+    # We give it an ID because the exception message tries to access it.
+    invalid_object = MagicMock(spec=Layout)  # Using Layout as a plausible wrong type
+    invalid_object.id = "invalid-object-id"
 
+    invalid_object.__class__.__name__ = "Layout"
+
+    # The layout contains a valid table and our invalid object
     fake_layout_block = MagicMock(spec=Layout)
-    fake_layout_block.id = "fake-layout-block-cells"
-    # The layout contains a valid table and an invalid object
-    fake_layout_block.children = [fake_table, not_a_table]
+    fake_layout_block.id = "layout-block-with-invalid-child"
+    fake_layout_block.children = [valid_table, invalid_object]
+
     fake_metadata = MagicMock(spec=DocumentMetadata)
+    page_number = 1
+    chunk_index_start = 0
 
-    handler.chunk(fake_layout_block, 1, fake_metadata, 0)
+    with pytest.raises(ChunkException) as exc_info:
+        handler.chunk(fake_layout_block, page_number, fake_metadata, chunk_index_start)
 
-    # Should only be called once, for the content of the real table
-    mock_create_chunk.assert_called_once()
+    exception_message = str(exc_info.value)
+    assert f"Fatal error in table {invalid_object.id}" in exception_message
+    assert "Expected instance of Table objects" in exception_message
+    assert "found 'MagicMock'" in exception_message
 
 
 # BoundingBox and other dependencies mocks

@@ -118,12 +118,9 @@ class TextractDocumentChunker:
             block_text = layout_block.text if layout_block.text else "<No Text>"
             # Heavy logging for initial analysis of skipped blocks, will be removed later
             logger.debug(
-                f"\n*********************************************************************************************"
-                f"\nSkipping layout block ID {layout_block.id} of type {layout_block.layout_type} "
-                f"text: \n\n{block_text} "
-                f"\n"
-                f"\nEnd of Skipped block. {layout_block.id} of type {layout_block.layout_type} *****\n"
-                f"*********************************************************************************************\n"
+                f"******************** Skipping layout block of type {layout_block.layout_type} *******************\n"
+                f"{block_text}\n"
+                f"******************* Finished skipping layout block of type {layout_block.layout_type} *********"
             )
             return False
 
