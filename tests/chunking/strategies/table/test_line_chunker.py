@@ -62,7 +62,7 @@ class MockLine:
     text: str
     bbox: Optional[MockBoundingBox]  # <--- CORRECT: bbox can be None
     confidence: float = 99.0
-    raw_object: Optional[dict] = None
+    raw_object: object = None  # Accept any type for testing malformed data
 
     def __post_init__(self):
         if self.raw_object is None:
