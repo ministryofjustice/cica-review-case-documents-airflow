@@ -1,5 +1,3 @@
-# src/chunking/strategies/table/types.py (REVISED)
-
 from dataclasses import dataclass
 
 from textractor.entities.bbox import BoundingBox
@@ -10,7 +8,7 @@ class TextBlock:
     """Represents a text block from Textract with its geometry"""
 
     text: str
-    bbox: BoundingBox  # <-- The single source of truth for geometry
+    bbox: BoundingBox
     confidence: float = 0.0
 
     @property

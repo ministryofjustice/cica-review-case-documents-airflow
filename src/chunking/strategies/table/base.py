@@ -8,8 +8,6 @@ from textractor.entities.layout import Layout
 from src.chunking.config import ChunkingConfig
 from src.chunking.schemas import DocumentMetadata, OpenSearchDocument
 
-# from src.chunking.strategies.table.layout_table_strategy import LayoutTableChunkingStrategy
-
 logger = logging.getLogger(__name__)
 
 

@@ -116,6 +116,7 @@ class TextractDocumentChunker:
 
         if not (layout_block.layout_type in desired_layout_types and layout_block.text and layout_block.text.strip()):
             block_text = layout_block.text if layout_block.text else "<No Text>"
+            # Heavy logging for initial analysis of skipped blocks, will be removed later
             logger.debug(
                 f"\n*********************************************************************************************"
                 f"\nSkipping layout block ID {layout_block.id} of type {layout_block.layout_type} "
