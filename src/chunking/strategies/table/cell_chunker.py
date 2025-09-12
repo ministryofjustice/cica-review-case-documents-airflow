@@ -30,7 +30,7 @@ class CellTableChunker(BaseTableChunker):
         raw_response: Optional[dict] = None,
     ) -> List[OpenSearchDocument]:
         """Process cell-based table into row chunks"""
-        logger.debug(f"Processing cell-based table: {layout_block.id}")
+        logger.debug(f"++++++++++++++++++++ Processing cell-based table: {layout_block.id} ++++++++++++++")
 
         rows = self._group_cells_by_row(layout_block)
 
@@ -67,6 +67,13 @@ class CellTableChunker(BaseTableChunker):
                             f"Fatal error in table {table.id}: "
                             f"Expected only TableCell objects in table.table_cells, but found '{cell_type}'."
                         )
+            else:
+                # This is a data integrity error. The Table object is corrupt.
+                block_type = type(table).__name__
+                raise ChunkException(
+                    f"Fatal error in table {table.id}: "
+                    f"Expected instance of Table objects in layout_block.children, but found '{block_type}'."
+                )
 
         return rows
 

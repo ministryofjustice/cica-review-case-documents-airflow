@@ -77,7 +77,7 @@ class LayoutTextChunkingStrategy(ChunkingStrategyHandler):
         combined_bbox = combine_bounding_boxes(bboxes)
         chunk_text = " ".join(lines)
 
-        logger.debug(f"{chunk_text}")
+        logger.debug(f"Layout text chunk : {chunk_text}")
 
         return OpenSearchDocument.from_textractor_layout(
             block=layout_block,
