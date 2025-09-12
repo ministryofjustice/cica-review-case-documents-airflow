@@ -75,10 +75,11 @@ def create_mock_doc(page_definitions):
         page.layouts = layouts
         pages.append(page)
     mock_doc.pages = pages
+    mock_doc.response = page_definitions  # Simulate a raw response
     return mock_doc
 
 
-def test_selects_correct_handler_for_mapped_type(chunker, document_metadata_factory, mock_default_strategy):
+def test_selects_correct_handler_for_layout_text_block(chunker, document_metadata_factory, mock_default_strategy):
     """
     Unit Test: Verifies that the chunker calls the specific handler
     mapped to LAYOUT_TEXT.
@@ -86,7 +87,7 @@ def test_selects_correct_handler_for_mapped_type(chunker, document_metadata_fact
     mock_doc = create_mock_doc([[{"type": "LAYOUT_TEXT", "text": "Some content."}]])
     metadata = document_metadata_factory()
 
-    chunker.chunk(mock_doc, metadata)
+    chunker.chunk(mock_doc, metadata, desired_layout_types={"LAYOUT_TEXT"})
 
     mock_default_strategy.chunk.assert_called_once()
     args, kwargs = mock_default_strategy.chunk.call_args

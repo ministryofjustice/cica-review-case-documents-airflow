@@ -33,7 +33,7 @@ class Settings(BaseSettings):  # type: ignore
     # or Titan model
     BEDROCK_EMBEDDING_MODEL_ID: str = "amazon.titan-embed-text-v2:0"
     # review this when we have a working system
-    MAXIMUM_CHUNK_SIZE: int = 300  # maximum chunk size
+    MAXIMUM_CHUNK_SIZE: int = 600  # maximum chunk size
 
 
 settings = Settings()
