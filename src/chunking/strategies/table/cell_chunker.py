@@ -7,6 +7,7 @@ from textractor.entities.layout import Layout
 from textractor.entities.table import Table
 from textractor.entities.table_cell import TableCell
 
+from src.chunking.exceptions import ChunkException
 from src.chunking.schemas import DocumentMetadata, OpenSearchDocument
 from src.chunking.strategies.table.base import BaseTableChunker
 
@@ -59,6 +60,13 @@ class CellTableChunker(BaseTableChunker):
                 for cell in table.table_cells:
                     if isinstance(cell, TableCell):
                         rows[cell.row_index].append(cell)
+                    else:
+                        # This is a data integrity error. The Table object is corrupt.
+                        cell_type = type(cell).__name__
+                        raise ChunkException(
+                            f"Fatal error in table {table.id}: "
+                            f"Expected only TableCell objects in table.table_cells, but found '{cell_type}'."
+                        )
 
         return rows
 

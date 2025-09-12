@@ -11,6 +11,7 @@ from textractor.entities.table_cell import TableCell
 import src.chunking.strategies.table.base as base_module
 import src.chunking.strategies.table.cell_chunker as cell_chunker_module
 from src.chunking.config import ChunkingConfig
+from src.chunking.exceptions import ChunkException
 from src.chunking.schemas import DocumentMetadata
 from src.chunking.strategies.table.cell_chunker import CellTableChunker
 
@@ -324,3 +325,38 @@ def test_create_chunk_with_no_bboxes(chunker, monkeypatch):
     # Assert
     result_bbox = chunk.kwargs["combined_bbox"]
     assert result_bbox == layout_bbox
+
+
+def test_chunk_raises_exception_on_invalid_cell_type_in_table(default_config):
+    """
+    Tests that a ChunkException is raised if a Table's `table_cells` list
+    contains an object that is not a TableCell, indicating corrupt data.
+    """
+
+    handler = CellTableChunker(default_config)
+
+    # Create a valid cell to ensure the processing loop starts
+    valid_cell = create_fake_cell("Valid Cell", row=1, col=1, y=0.1)
+
+    # Create the corrupting object that will trigger the exception
+    invalid_object = "I am a string, not a TableCell object"
+
+    # Create a mock table containing the corrupted list of cells
+    fake_table = MagicMock(spec=Table)
+    fake_table.id = "corrupt-table-abc"
+    fake_table.table_cells = [valid_cell, invalid_object]
+
+    fake_layout_block = MagicMock(spec=Layout)
+    fake_layout_block.id = "layout-block-with-corrupt-table"
+    fake_layout_block.children = [fake_table]
+    fake_metadata = MagicMock(spec=DocumentMetadata)
+    page_number = 1
+    chunk_index_start = 0
+
+    with pytest.raises(ChunkException) as exc_info:
+        handler.chunk(fake_layout_block, page_number, fake_metadata, chunk_index_start)
+
+    exception_message = str(exc_info.value)
+    assert "Fatal error in table corrupt-table-abc" in exception_message
+    assert "Expected only TableCell objects" in exception_message
+    assert "found 'str'" in exception_message
