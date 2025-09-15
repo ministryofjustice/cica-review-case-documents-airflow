@@ -1,5 +1,3 @@
-# factories.py or similar
-
 from src.chunking.config import ChunkingConfig
 from src.chunking.strategies.layout_text import LayoutTextChunkingStrategy
 from src.chunking.strategies.table import LayoutTableChunkingStrategy
