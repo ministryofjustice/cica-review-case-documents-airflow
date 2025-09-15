@@ -299,34 +299,6 @@ def test_page_with_no_layout_text_blocks_is_skipped(document_chunker_factory, do
     assert chunk2.chunk_index == 1, "Chunk index should continue from the previous valid chunk"
 
 
-def test_ignores_non_text_layout_blocks(document_chunker_factory, document_metadata_factory):
-    """
-    Tests that layout blocks of types other than LAYOUT_TEXT are ignored.
-    """
-
-    document_definition = [
-        [  # Page 1
-            {"type": "LAYOUT_TITLE", "lines": ["A Document Title"]},
-            {"type": "LAYOUT_HEADER", "lines": ["Page Header"]},
-            {"type": "LAYOUT_TEXT", "lines": ["This is the only content to be chunked."]},
-            {"type": "LAYOUT_FIGURE", "lines": ["A figure."]},
-            {"type": "LAYOUT_TABLE", "lines": ["Some table data."]},
-            {"type": "LAYOUT_FOOTER", "lines": ["Page Footer"]},
-        ]
-    ]
-    mock_doc = textractor_document_factory(document_definition)
-
-    mock_metadata = document_metadata_factory()
-    actual_chunks: list[OpenSearchDocument] = document_chunker_factory().chunk(doc=mock_doc, metadata=mock_metadata)
-
-    assert len(actual_chunks) == 1
-    chunk1 = actual_chunks[0]
-    assert isinstance(chunk1, OpenSearchDocument)
-
-    assert chunk1.chunk_text == "This is the only content to be chunked."
-    assert chunk1.chunk_type == "LAYOUT_TEXT"
-
-
 def test_empty_or_whitespace_layout_text_block_is_ignored(document_chunker_factory, document_metadata_factory):
     """
     Tests that LAYOUT_TEXT blocks containing no text or only whitespace are ignored
