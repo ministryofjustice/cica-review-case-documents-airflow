@@ -18,11 +18,6 @@ class BaseTableChunker(ABC):
         self.config = config
 
     @abstractmethod
-    def can_handle(self, layout_block: Layout) -> bool:
-        """Check if this chunker can handle the given layout block"""
-        pass
-
-    @abstractmethod
     def chunk(
         self,
         layout_block: Layout,

@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, call
 import pytest
 from textractor.entities.bbox import BoundingBox, SpatialObject
 from textractor.entities.layout import Layout
+from textractor.entities.line import Line
 from textractor.entities.table import Table
 from textractor.entities.table_cell import TableCell
 
@@ -30,6 +31,7 @@ def create_fake_cell(text: str, row: int, col: int, y: float):
     mock_cell.row_index = row
     mock_cell.col_index = col
     mock_cell.bbox = BoundingBox(x=col * 0.2, y=y, width=0.18, height=0.05, spatial_object=page_dimensions)
+    mock_cell.text = text
     return mock_cell
 
 
@@ -139,11 +141,10 @@ def test_chunk_raises_exception_for_non_table_object_in_layout(default_config):
     valid_table.table_cells = []
 
     # Create an invalid object that will trigger the exception.
-    # We give it an ID because the exception message tries to access it.
-    invalid_object = MagicMock(spec=Layout)  # Using Layout as a plausible wrong type
+    invalid_object = MagicMock(spec=Line)  # Using Layout as a plausible wrong type
     invalid_object.id = "invalid-object-id"
 
-    invalid_object.__class__.__name__ = "Layout"
+    invalid_object.__class__.__name__ = "Line"
 
     # The layout contains a valid table and our invalid object
     fake_layout_block = MagicMock(spec=Layout)

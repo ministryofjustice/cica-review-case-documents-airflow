@@ -1,11 +1,15 @@
 from datetime import date
-from unittest.mock import MagicMock
+from typing import Sequence
+from unittest.mock import MagicMock, call
 
 import pytest
-from textractor.entities.document import Document
+from textractor.entities.bbox import BoundingBox
 
-from src.chunking.schemas import DocumentMetadata
-from src.chunking.textract import TextractDocumentChunker
+import src.chunking.strategies.layout_text as layout_text_module
+from src.chunking.config import ChunkingConfig
+from src.chunking.schemas import DocumentMetadata, OpenSearchDocument
+from src.chunking.strategies.layout_text import LayoutTextChunkingStrategy
+from src.chunking.utils.bbox_utils import combine_bounding_boxes
 
 
 @pytest.fixture
@@ -20,19 +24,14 @@ def document_metadata_factory():
         Inner factory function with default metadata values.
         Accepts keyword arguments to override any default.
         """
-        case_ref = "25-787878"
-        received_date = date.fromisoformat("2025-08-21")
-        correspondence_type = "TC19"
-
         defaults = {
             "ingested_doc_id": "unique_ingested_doc_UUID",
             "source_file_name": "test_ingested_document.pdf",
             "page_count": 1,
-            "case_ref": case_ref,
-            "received_date": received_date,
-            "correspondence_type": correspondence_type,
+            "case_ref": "25-787878",
+            "received_date": date.fromisoformat("2025-08-21"),
+            "correspondence_type": "TC19",
         }
-        # Merge the overrides into the defaults
         final_args = {**defaults, **overrides}
         return DocumentMetadata(**final_args)
 
@@ -40,160 +39,163 @@ def document_metadata_factory():
 
 
 @pytest.fixture
-def mock_default_strategy():
-    """Provides a mock chunking handler that we can inspect."""
-    strategy = MagicMock()
-    # Configure the mock to return a single chunk by default
-    strategy.chunk.return_value = [MagicMock()]
-    return strategy
+def mock_config():
+    """Provides a mock ChunkingConfig for the strategy."""
+    config = MagicMock(spec=ChunkingConfig)
+    config.maximum_chunk_size = 50
+    return config
 
 
 @pytest.fixture
-def chunker(monkeypatch, mock_default_strategy):
-    """Provides a DocumentChunker instance with mocked-out strategy handlers."""
-    # Use monkeypatch to replace the factory methods with ones that return our mock
-    monkeypatch.setattr(
-        TextractDocumentChunker, "_create_strategy_handlers", lambda self: {"LAYOUT_TEXT": mock_default_strategy}
-    )
-    monkeypatch.setattr(TextractDocumentChunker, "_create_default_strategy", lambda self: mock_default_strategy)
-    return TextractDocumentChunker()
+def strategy(mock_config):
+    """Provides an instance of the LayoutTextChunkingStrategy."""
+    return LayoutTextChunkingStrategy(config=mock_config)
 
 
-def create_mock_doc(page_definitions):
-    """Helper to create a mock Document object from a simpler definition."""
-    mock_doc = MagicMock(spec=Document)
-    pages = []
-    for i, layout_blocks_def in enumerate(page_definitions, 1):
-        page = MagicMock()
-        page.page_num = i
-        layouts = []
-        for block_def in layout_blocks_def:
-            block = MagicMock()
-            block.layout_type = block_def.get("type")
-            block.text = block_def.get("text")
-            layouts.append(block)
-        page.layouts = layouts
-        pages.append(page)
-    mock_doc.pages = pages
-    mock_doc.response = page_definitions  # Simulate a raw response
-    return mock_doc
+def create_mock_bbox(x: float, y: float, width: float, height: float) -> BoundingBox:
+    """Helper to create a configured BoundingBox mock."""
+    bbox = MagicMock(spec=BoundingBox)
+    bbox.x = x
+    bbox.y = y
+    bbox.width = width
+    bbox.height = height
+    return bbox
 
 
-def test_selects_correct_handler_for_layout_text_block(chunker, document_metadata_factory, mock_default_strategy):
+def create_mock_layout_block(lines_with_bboxes: Sequence[tuple[str, BoundingBox]]):
     """
-    Unit Test: Verifies that the chunker calls the specific handler
-    mapped to LAYOUT_TEXT.
+    Helper function to create a mock layout block with child 'line' blocks.
+    Each child has `text` and `bbox` attributes.
     """
-    mock_doc = create_mock_doc([[{"type": "LAYOUT_TEXT", "text": "Some content."}]])
+    mock_block = MagicMock()
+    mock_block.id = "block-123"
+    children = []
+    for text, bbox in lines_with_bboxes:
+        child = MagicMock()
+        child.text = text
+        child.bbox = bbox
+        children.append(child)
+    mock_block.children = children
+    return mock_block
+
+
+def test_single_chunk_created_when_text_fits(strategy, document_metadata_factory):
+    """
+    Unit Test: Verifies that a single chunk is created when all lines fit
+    within the maximum_chunk_size.
+    """
     metadata = document_metadata_factory()
-
-    chunker.chunk(mock_doc, metadata, desired_layout_types={"LAYOUT_TEXT"})
-
-    mock_default_strategy.chunk.assert_called_once()
-    args, kwargs = mock_default_strategy.chunk.call_args
-    assert args[0] == mock_doc.pages[0].layouts[0]  # The layout block
-    assert args[1] == 1  # The page number
-    assert args[2] == metadata
-    assert args[3] == 0  # The starting chunk index
-
-
-def test_uses_default_handler_for_unmapped_type(chunker, document_metadata_factory, monkeypatch):
-    """
-    Unit Test: Verifies that the chunker falls back to the default handler
-    for an unmapped layout type.
-    """
-    mock_text_handler = MagicMock()
-    mock_default_handler = MagicMock()
-    mock_default_handler.chunk.return_value = [MagicMock()]
-
-    monkeypatch.setattr(
-        TextractDocumentChunker, "_create_strategy_handlers", lambda self: {"LAYOUT_TEXT": mock_text_handler}
-    )
-    monkeypatch.setattr(TextractDocumentChunker, "_create_default_strategy", lambda self: mock_default_handler)
-
-    specific_chunker = TextractDocumentChunker()
-
-    mock_doc = create_mock_doc([[{"type": "LAYOUT_TABLE", "text": "Table content."}]])
-
-    specific_chunker.chunk(mock_doc, metadata=document_metadata_factory(), desired_layout_types={"LAYOUT_TABLE"})
-
-    mock_text_handler.chunk.assert_not_called()
-    mock_default_handler.chunk.assert_called_once()
-
-
-def test_filters_blocks_by_type_and_content(chunker, document_metadata_factory, mock_default_strategy):
-    """
-    Unit Test: Verifies the logic of _should_process_block is applied correctly.
-    """
-    mock_doc = create_mock_doc(
-        [
-            [
-                {"type": "LAYOUT_TEXT", "text": "Valid content."},  # Should be processed
-                {"type": "LAYOUT_TITLE", "text": "A title."},  # Should be processed
-                {"type": "LAYOUT_TEXT", "text": "    \n\t "},  # Should be ignored (whitespace only)
-                {"type": "LAYOUT_TEXT", "text": ""},  # Should be ignored (empty text)
-                {"type": "LAYOUT_TEXT", "text": None},  # Should be ignored (None text)
-            ]
-        ]
-    )
-    metadata = document_metadata_factory()
-
-    # Passing in both "LAYOUT_TEXT" AND "LAYOUT_TITLE"
-    chunker.chunk(mock_doc, metadata, desired_layout_types={"LAYOUT_TEXT", "LAYOUT_TITLE"})
-
-    # Assert that the handler was called exactly twice
-    assert mock_default_strategy.chunk.call_count == 2
-
-    calls = mock_default_strategy.chunk.call_args_list
-
-    first_call_args = calls[0].args
-    assert first_call_args[0].text == "Valid content."
-    assert first_call_args[3] == 0
-
-    second_call_args = calls[1].args
-    assert second_call_args[0].text == "A title."
-    assert second_call_args[3] == 1
-
-
-def test_aggregates_chunks_and_maintains_index(chunker, document_metadata_factory, mock_default_strategy):
-    """
-    Unit Test: Verifies that chunks from multiple pages/blocks are aggregated
-    and the chunk_index is passed correctly to the handler.
-    """
-    mock_default_strategy.chunk.side_effect = [
-        [MagicMock(), MagicMock()],  # First call returns 2 chunks
-        [MagicMock()],  # Second call returns 1 chunk
-        [MagicMock(), MagicMock(), MagicMock()],  # Third call returns 3 chunks
+    lines = [
+        ("First line.", create_mock_bbox(0.1, 0.1, 0.2, 0.05)),
+        ("Second line.", create_mock_bbox(0.1, 0.2, 0.2, 0.05)),
     ]
+    layout_block = create_mock_layout_block(lines)
 
-    mock_doc = create_mock_doc(
-        [
-            [{"type": "LAYOUT_TEXT", "text": "Block 1"}],  # Page 1
-            [{"type": "LAYOUT_TEXT", "text": "Block 2"}, {"type": "LAYOUT_TEXT", "text": "Block 3"}],  # Page 2
-        ]
-    )
+    with pytest.MonkeyPatch.context() as m:
+        mock_creator = MagicMock()
+        m.setattr(
+            layout_text_module.OpenSearchDocument, OpenSearchDocument.from_textractor_layout.__name__, mock_creator
+        )
+
+        chunks = strategy.chunk(layout_block, page_number=1, metadata=metadata, chunk_index_start=0)
+
+        assert len(chunks) == 1
+        mock_creator.assert_called_once()
+        call_args = mock_creator.call_args
+        assert call_args.kwargs["chunk_text"] == "First line. Second line."
+        assert call_args.kwargs["chunk_index"] == 0
+
+
+def test_multiple_chunks_created_on_size_limit(strategy, document_metadata_factory):
+    """
+    Unit Test: Verifies that text is split into multiple chunks when it
+    exceeds the maximum_chunk_size.
+    """
     metadata = document_metadata_factory()
+    lines = [
+        ("This is the first chunk, it is quite long.", create_mock_bbox(0.1, 0.1, 0.8, 0.05)),
+        ("This line will cause a split.", create_mock_bbox(0.1, 0.2, 0.7, 0.05)),
+        ("This is the start of the final chunk.", create_mock_bbox(0.1, 0.3, 0.8, 0.05)),
+    ]
+    layout_block = create_mock_layout_block(lines)
 
-    result = chunker.chunk(mock_doc, metadata)
+    with pytest.MonkeyPatch.context() as m:
+        mock_creator = MagicMock()
+        m.setattr(
+            layout_text_module.OpenSearchDocument, OpenSearchDocument.from_textractor_layout.__name__, mock_creator
+        )
 
-    # Check total chunks
-    assert len(result) == 2 + 1 + 3
+        chunks = strategy.chunk(layout_block, page_number=2, metadata=metadata, chunk_index_start=5)
 
-    # Check that the handler was called with the correct, incrementing chunk_index
-    assert mock_default_strategy.chunk.call_count == 3
-    calls = mock_default_strategy.chunk.call_args_list
-    # Call 1 (Block 1): started at index 0
-    assert calls[0].args[3] == 0
-    # Call 2 (Block 2): started at index 2 (because call 1 returned 2 chunks)
-    assert calls[1].args[3] == 2
-    # Call 3 (Block 3): started at index 3 (because call 2 returned 1 chunk)
-    assert calls[2].args[3] == 3
+        assert len(chunks) == 3
+        calls = mock_creator.call_args_list
+        assert calls[0].kwargs["chunk_text"] == "This is the first chunk, it is quite long."
+        assert calls[0].kwargs["chunk_index"] == 5
+        assert calls[1].kwargs["chunk_text"] == "This line will cause a split."
+        assert calls[1].kwargs["chunk_index"] == 6
+        assert calls[2].kwargs["chunk_text"] == "This is the start of the final chunk."
+        assert calls[2].kwargs["chunk_index"] == 7
 
 
-def test_empty_document_raises_value_error(chunker, document_metadata_factory):
-    """Unit Test: Verifies input validation for empty documents."""
-    empty_doc = MagicMock(spec=Document)
-    empty_doc.pages = []
+def test_single_line_exceeding_limit_creates_one_chunk(strategy, document_metadata_factory):
+    """
+    Unit Test: Verifies that a single line longer than the chunk limit
+    is placed into its own chunk.
+    """
+    metadata = document_metadata_factory()
+    long_line = "This single line is deliberately much longer than the configured maximum chunk size of fifty."
+    assert len(long_line) > strategy.maximum_chunk_size
 
-    with pytest.raises(ValueError, match="Document cannot be None and must contain pages."):
-        chunker.chunk(empty_doc, document_metadata_factory())
+    lines = [(long_line, create_mock_bbox(0.1, 0.1, 0.9, 0.05))]
+    layout_block = create_mock_layout_block(lines)
+
+    with pytest.MonkeyPatch.context() as m:
+        mock_creator = MagicMock()
+        m.setattr(
+            layout_text_module.OpenSearchDocument, OpenSearchDocument.from_textractor_layout.__name__, mock_creator
+        )
+
+        chunks = strategy.chunk(layout_block, page_number=1, metadata=metadata, chunk_index_start=0)
+
+        assert len(chunks) == 1
+        call_args = mock_creator.call_args
+        assert call_args.kwargs["chunk_text"] == long_line
+
+
+def test_empty_layout_block_returns_no_chunks(strategy, document_metadata_factory):
+    """
+    Unit Test: Verifies that if a layout block has no children, no chunks
+    are produced.
+    """
+    layout_block = create_mock_layout_block([])
+    chunks = strategy.chunk(layout_block, page_number=1, metadata=document_metadata_factory(), chunk_index_start=0)
+    assert chunks == []
+
+
+def test_bounding_boxes_are_combined_per_chunk(strategy, document_metadata_factory, monkeypatch):
+    """
+    Unit Test: Verifies that bounding boxes from lines within the same chunk
+    are correctly passed to the combination utility.
+    """
+    metadata = document_metadata_factory()
+    bbox1 = create_mock_bbox(0.1, 0.1, 0.3, 0.05)
+    bbox2 = create_mock_bbox(0.1, 0.2, 0.4, 0.05)
+    bbox3 = create_mock_bbox(0.1, 0.3, 0.5, 0.05)
+    lines = [
+        ("First part of chunk one.", bbox1),
+        ("Second part of chunk one.", bbox2),
+        ("This starts the second chunk.", bbox3),
+    ]
+    layout_block = create_mock_layout_block(lines)
+
+    mock_combiner = MagicMock()
+
+    monkeypatch.setattr(layout_text_module, combine_bounding_boxes.__name__, mock_combiner)
+    monkeypatch.setattr(
+        layout_text_module.OpenSearchDocument, OpenSearchDocument.from_textractor_layout.__name__, MagicMock()
+    )
+
+    strategy.chunk(layout_block, page_number=1, metadata=metadata, chunk_index_start=0)
+
+    assert mock_combiner.call_count == 2
+    mock_combiner.assert_has_calls([call([bbox1, bbox2]), call([bbox3])])
