@@ -84,7 +84,6 @@ def document_chunker_factory():
 
         return TextractDocumentChunker(
             strategy_handlers=strategy_handlers,
-            default_strategy=layout_text_strategy,
             config=config,
         )
 

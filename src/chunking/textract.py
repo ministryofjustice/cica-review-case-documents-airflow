@@ -18,12 +18,10 @@ class TextractDocumentChunker:
     def __init__(
         self,
         strategy_handlers: Dict[str, ChunkingStrategyHandler],
-        default_strategy: ChunkingStrategyHandler,
         config: Optional[ChunkingConfig] = None,
     ):
         self.config = config or ChunkingConfig()
         self.strategy_handlers = strategy_handlers
-        self.default_strategy = default_strategy
 
     def chunk(self, doc: Document, metadata: DocumentMetadata) -> List[OpenSearchDocument]:
         """
