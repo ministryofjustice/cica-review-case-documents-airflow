@@ -17,10 +17,6 @@ logger = logging.getLogger(__name__)
 class CellTableChunker(BaseTableChunker):
     """Handles tables with Cell/Table structure - one chunk per row"""
 
-    def can_handle(self, layout_block: Layout) -> bool:
-        """Check if layout contains Table objects"""
-        return any(isinstance(child, Table) for child in layout_block.children)
-
     def chunk(
         self,
         layout_block: Layout,
@@ -73,6 +69,7 @@ class CellTableChunker(BaseTableChunker):
                 raise ChunkException(
                     f"Fatal error in table {table.id}: "
                     f"Expected instance of Table objects in layout_block.children, but found '{block_type}'."
+                    f"Text: '{table.text}'."
                 )
 
         return rows

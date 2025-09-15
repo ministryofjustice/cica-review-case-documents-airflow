@@ -6,7 +6,7 @@ For example, other modules can now use:
 `from src.chunking.strategies.table import LayoutTableChunkingStrategy`
 """
 
-from .layout_table_strategy import LayoutTableChunkingStrategy
+from .layout_table import LayoutTableChunkingStrategy
 from .schemas import TextBlock
 
 __all__ = [

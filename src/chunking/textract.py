@@ -3,12 +3,9 @@ from typing import Dict, List, Optional, Set
 
 from textractor.entities.document import Document
 
-from src.chunking.strategies.table import LayoutTableChunkingStrategy
-
 from .config import ChunkingConfig
 from .schemas import DocumentMetadata, OpenSearchDocument
 from .strategies.base import ChunkingStrategyHandler
-from .strategies.layout_text import LayoutTextChunkingStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -16,21 +13,15 @@ logger = logging.getLogger(__name__)
 class TextractDocumentChunker:
     """Handles extraction of chunks from Textractor documents."""
 
-    def __init__(self, config: Optional[ChunkingConfig] = None):
+    def __init__(
+        self,
+        strategy_handlers: Dict[str, ChunkingStrategyHandler],
+        default_strategy: ChunkingStrategyHandler,
+        config: Optional[ChunkingConfig] = None,
+    ):
         self.config = config or ChunkingConfig()
-        self.strategy_handlers = self._create_strategy_handlers()
-        #  default handler
-        self.default_strategy = self._create_default_strategy()
-
-    def _create_strategy_handlers(self) -> Dict[str, ChunkingStrategyHandler]:
-        return {
-            "LAYOUT_TEXT": LayoutTextChunkingStrategy(self.config),
-            "LAYOUT_TABLE": LayoutTableChunkingStrategy(self.config),
-        }
-
-    def _create_default_strategy(self) -> ChunkingStrategyHandler:
-        """Factory method for the default handler."""
-        return LayoutTextChunkingStrategy(self.config)
+        self.strategy_handlers = strategy_handlers
+        self.default_strategy = default_strategy
 
     def chunk(
         self, doc: Document, metadata: DocumentMetadata, desired_layout_types: Optional[Set[str]] = None

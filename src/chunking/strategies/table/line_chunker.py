@@ -16,10 +16,6 @@ logger = logging.getLogger(__name__)
 class LineTableChunker(BaseTableChunker):
     """Handles tables with Line structure - groups lines into visual rows"""
 
-    def can_handle(self, layout_block: Layout) -> bool:
-        """Check if layout contains Line objects"""
-        return bool(layout_block.children) and isinstance(layout_block.children[0], Line)
-
     def chunk(
         self,
         layout_block: Layout,
