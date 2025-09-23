@@ -11,7 +11,7 @@ from textractor.entities.table_cell import TableCell
 
 import src.chunking.strategies.table.base as base_module
 import src.chunking.strategies.table.cell_chunker as cell_chunker_module
-from src.chunking.config import ChunkingConfig
+from src.chunking.chunking_config import ChunkingConfig
 from src.chunking.exceptions import ChunkException
 from src.chunking.schemas import DocumentMetadata
 from src.chunking.strategies.table.cell_chunker import CellTableChunker

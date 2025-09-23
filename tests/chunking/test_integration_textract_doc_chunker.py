@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from textractor.entities.bbox import BoundingBox
 from textractor.entities.document import Document
 
-from src.chunking.config import ChunkingConfig, ChunkingStrategy
+from src.chunking.chunking_config import ChunkingConfig, ChunkingStrategy
 from src.chunking.schemas import DocumentBoundingBox, DocumentMetadata
 from src.chunking.strategies.layout_text import LayoutTextChunkingStrategy
 from src.chunking.strategies.table import LayoutTableChunkingStrategy

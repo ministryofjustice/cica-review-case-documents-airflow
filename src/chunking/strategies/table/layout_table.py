@@ -4,7 +4,7 @@ from typing import List, Optional
 from textractor.entities.layout import Layout, Line
 from textractor.entities.table import Table
 
-from src.chunking.config import ChunkingConfig
+from src.chunking.chunking_config import ChunkingConfig
 from src.chunking.exceptions import ChunkException
 from src.chunking.schemas import DocumentMetadata, OpenSearchDocument
 from src.chunking.strategies.base import ChunkingStrategyHandler
@@ -41,13 +41,23 @@ class LayoutTableChunkingStrategy(ChunkingStrategyHandler):
         if not layout_block.children:
             # This is a fatal anomaly. A table block should have content.
             raise ChunkException(
-                f"Layout table block {layout_block.id} has no children. This indicates a parsing error."
+                f"Layout table block {layout_block.id} {layout_block.layout_type} has no children. "
+                "This indicates a parsing error."
             )
 
-        chunker_type = self._determine_chunker_type(layout_block)
-        chunker = self._get_chunker(chunker_type)
+        try:
+            chunker_type = self._determine_chunker_type(layout_block)
+        except Exception as e:
+            logger.error(
+                f"Error determining chunker type for block {layout_block.id} {layout_block.layout_type}: {str(e)}"
+            )
+            # TODO implement exception handling
+            raise ChunkException(f"Error determining chunker type for block {layout_block.id}: {str(e)}")
 
-        logger.debug(f"Selected {chunker.__class__.__name__} for block {layout_block.id}")
+        chunker = self._get_chunker(chunker_type)
+        logger.debug(
+            f"Selected {chunker.__class__.__name__} for block: {layout_block.id} type: {layout_block.layout_type}"
+        )
 
         return chunker.chunk(layout_block, page_number, metadata, chunk_index_start, raw_response)
 
@@ -64,7 +74,7 @@ class LayoutTableChunkingStrategy(ChunkingStrategyHandler):
         else:
             child_type = type(first_child).__name__
             raise ChunkException(
-                f"Unsupported table structure in block {layout_block.id}. "
+                f"Unsupported {layout_block.layout_type} structure in block {layout_block.id}. "
                 f"Children are of type '{child_type}', which is not supported."
             )
 

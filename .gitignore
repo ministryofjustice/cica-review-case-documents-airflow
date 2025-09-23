@@ -20,3 +20,4 @@ redacted_data/
 .coverage
 tests/chunking/data/redacted_retrieve_from_s3/
 tests/chunking/test_integration_layout_table_chunking.py
+logs/

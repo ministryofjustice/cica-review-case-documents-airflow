@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from src.chunking.config import ChunkingConfig  # ← Changed import
+from src.chunking.chunking_config import ChunkingConfig  # ← Changed import
 from src.chunking.schemas import DocumentMetadata, OpenSearchDocument
 
 
