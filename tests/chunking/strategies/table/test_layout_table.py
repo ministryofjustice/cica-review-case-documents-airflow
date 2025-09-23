@@ -4,7 +4,7 @@ import pytest
 from textractor.entities.layout import Layout, Line
 from textractor.entities.table import Table
 
-from src.chunking.config import ChunkingConfig
+from src.chunking.chunking_config import ChunkingConfig
 from src.chunking.exceptions import ChunkException
 from src.chunking.strategies.table import LayoutTableChunkingStrategy
 from src.chunking.strategies.table.cell_chunker import CellTableChunker
@@ -60,6 +60,7 @@ def test_dispatches_to_cell_chunker_when_first_child_table(mock_chunkers, defaul
     fake_layout_block = MagicMock(spec=Layout)
     fake_layout_block.id = "fake-layout-block-child-table"
     fake_layout_block.children = [MagicMock(spec=Table)]
+    fake_layout_block.layout_type = "LAYOUT_TABLE"
 
     strategy = LayoutTableChunkingStrategy(config=default_config)
 
@@ -81,7 +82,7 @@ def test_raises_exception_for_block_with_no_children(default_config, chunk_args)
     Verifies that a ChunkException is raised if the layout block is empty.
     """
 
-    mock_layout_block = MagicMock(spec=Layout, id="empty_block_id", children=[])
+    mock_layout_block = MagicMock(spec=Layout, id="empty_block_id", children=[], layout_type="LAYOUT_TABLE")
     strategy = LayoutTableChunkingStrategy(config=default_config)
 
     with pytest.raises(ChunkException) as exc_info:
@@ -99,7 +100,10 @@ def test_raises_exception_when_no_suitable_chunker_found(mock_chunkers, default_
 
     mock_child = MagicMock()
     mock_child.__class__.__name__ = "UnsupportedBlockType"
-    mock_layout_block = MagicMock(spec=Layout, id="unsupported_block_id", children=[mock_child])
+    # mock_child.__class__.__layout_type__ = "UnsupportedBlockType"
+    mock_layout_block = MagicMock(
+        spec=Layout, id="unsupported_block_id", children=[mock_child], layout_type="LAYOUT_TABLE"
+    )
 
     strategy = LayoutTableChunkingStrategy(config=default_config)
 
@@ -107,11 +111,10 @@ def test_raises_exception_when_no_suitable_chunker_found(mock_chunkers, default_
         strategy.chunk(layout_block=mock_layout_block, **chunk_args)
 
     assert (
-        "Unsupported table structure in block unsupported_block_id. Children are of type 'UnsupportedBlockType', "
-        "which is not supported." in str(exc_info.value)
+        "Error determining chunker type for block unsupported_block_id: Unsupported LAYOUT_TABLE structure in block "
+        "unsupported_block_id. Children are of type 'UnsupportedBlockType', which is not supported."
+        in str(exc_info.value)
     )
-    assert "unsupported_block_id" in str(exc_info.value)
-    assert "'UnsupportedBlockType'" in str(exc_info.value)
 
 
 def test_dispatcher_selects_line_chunker_when_first_child_line(mock_chunkers, default_config, chunk_args):
@@ -126,6 +129,7 @@ def test_dispatcher_selects_line_chunker_when_first_child_line(mock_chunkers, de
     fake_layout_block = MagicMock(spec=Layout)
     fake_layout_block.id = "fake-layout-block-child-line"
     fake_layout_block.children = [MagicMock(spec=Line)]
+    fake_layout_block.layout_type = "LAYOUT_TABLE"
 
     strategy = LayoutTableChunkingStrategy(config=default_config)
 

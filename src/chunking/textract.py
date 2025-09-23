@@ -5,7 +5,7 @@ from textractor.entities.document import Document
 
 from src.chunking.exceptions import ChunkException
 
-from .config import ChunkingConfig
+from .chunking_config import ChunkingConfig
 from .schemas import DocumentMetadata, OpenSearchDocument
 from .strategies.base import ChunkingStrategyHandler
 
@@ -49,6 +49,8 @@ class TextractDocumentChunker:
                 raise ChunkException(f"Response docment {metadata} missing raw response from Textract.")
 
             for page in doc.pages:
+                logger.debug("===============================================================")
+                logger.debug(f"Processing page {page.page_num} of {len(doc.pages)}")
                 page_chunks = self._process_page(page, metadata, chunk_index_counter, raw_response)
                 all_chunks.extend(page_chunks)
                 chunk_index_counter += len(page_chunks)
@@ -57,6 +59,7 @@ class TextractDocumentChunker:
             return all_chunks
 
         except Exception as e:
+            logger.error(f"Error extracting chunks from document {metadata.ingested_doc_id}: {str(e)}")
             raise ChunkException(f"Error extracting chunks from document {metadata.ingested_doc_id}: {str(e)}")
 
     def _validate_inputs(self, doc: Document, metadata: DocumentMetadata) -> None:
