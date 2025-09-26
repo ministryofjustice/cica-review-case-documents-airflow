@@ -20,6 +20,25 @@ class DocumentBoundingBox(BaseModel):
     def from_textractor_bbox(cls, bbox: BoundingBox) -> "DocumentBoundingBox":
         return cls(Width=bbox.width, Height=bbox.height, Left=bbox.x, Top=bbox.y)
 
+    def to_textractor_bbox(self) -> BoundingBox:
+        """Converts this DocumentBoundingBox back to a Textractor BoundingBox."""
+        return BoundingBox(
+            width=self.width,
+            height=self.height,
+            x=self.left,
+            y=self.top,
+        )
+
+    @computed_field
+    @property
+    def right(self) -> float:
+        return self.left + self.width
+
+    @computed_field
+    @property
+    def bottom(self) -> float:
+        return self.top + self.height
+
 
 class DocumentMetadata(BaseModel):
     """Immutable document metadata with Pydantic validation."""

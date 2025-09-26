@@ -4,6 +4,7 @@ from typing import Dict, List, Optional
 from textractor.entities.document import Document
 
 from src.chunking.exceptions import ChunkException
+from src.chunking.strategies.merge.chunk_merger import ChunkMerger
 
 from .chunking_config import ChunkingConfig
 from .schemas import DocumentMetadata, OpenSearchDocument
@@ -92,7 +93,10 @@ class TextractDocumentChunker:
                 page_chunks.extend(block_chunks)
                 current_chunk_index += len(block_chunks)
 
-        return page_chunks
+        chunk_merger = ChunkMerger()
+        grouped_chunks = chunk_merger.chunk(page_chunks)
+
+        return grouped_chunks
 
     def _should_process_block(self, layout_block, layout_types: Dict[str, ChunkingStrategyHandler]) -> bool:
         """Determine if a layout block should be processed."""
@@ -100,7 +104,7 @@ class TextractDocumentChunker:
         if not (layout_block.layout_type in layout_types and layout_block.text and layout_block.text.strip()):
             block_text = layout_block.text if layout_block.text else "<No Text>"
             # Heavy logging for initial analysis of skipped blocks, will be removed later
-            logger.debug(
+            logger.info(
                 f"******************** Skipping layout block of type {layout_block.layout_type} *******************\n"
                 f"{block_text}\n"
                 f"******************* Finished skipping layout block of type {layout_block.layout_type} *********"

@@ -51,7 +51,6 @@ class LayoutTableChunkingStrategy(ChunkingStrategyHandler):
             logger.error(
                 f"Error determining chunker type for block {layout_block.id} {layout_block.layout_type}: {str(e)}"
             )
-            # TODO implement exception handling
             raise ChunkException(f"Error determining chunker type for block {layout_block.id}: {str(e)}")
 
         chunker = self._get_chunker(chunker_type)

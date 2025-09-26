@@ -1,12 +1,10 @@
-# src/chunking/strategies/key_value/key_value_chunker.py
-
 import logging
 from typing import List, Optional
 
 from textractor.entities.bbox import BoundingBox
 from textractor.entities.key_value import KeyValue
 from textractor.entities.layout import Layout
-from textractor.entities.line import Line  # Import the Line entity
+from textractor.entities.line import Line
 
 from src.chunking.schemas import DocumentMetadata, OpenSearchDocument
 from src.chunking.strategies.base import ChunkingStrategyHandler
