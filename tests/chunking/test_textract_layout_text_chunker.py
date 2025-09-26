@@ -6,7 +6,7 @@ import pytest
 from textractor.entities.bbox import BoundingBox
 
 import src.chunking.strategies.layout_text as layout_text_module
-from src.chunking.config import ChunkingConfig
+from src.chunking.chunking_config import ChunkingConfig
 from src.chunking.schemas import DocumentMetadata, OpenSearchDocument
 from src.chunking.strategies.layout_text import LayoutTextChunkingStrategy
 from src.chunking.utils.bbox_utils import combine_bounding_boxes

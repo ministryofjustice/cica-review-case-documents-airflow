@@ -8,7 +8,7 @@ import pytest
 # Application modules that we will be patching
 import src.chunking.strategies.table.base as base_module
 import src.chunking.strategies.table.line_chunker as line_chunker_module
-from src.chunking.config import ChunkingConfig
+from src.chunking.chunking_config import ChunkingConfig
 from src.chunking.strategies.table.line_chunker import LineTableChunker
 
 
@@ -76,6 +76,7 @@ class MockLayout:
     id: str
     bbox: MockBoundingBox
     children: List[MockLine]
+    layout_type: str = "LAYOUT_TABLE"
 
 
 @dataclass
@@ -128,7 +129,7 @@ def apply_patches(monkeypatch):
 @pytest.fixture
 def chunker():
     """Provides a LineTableChunker instance for tests."""
-    return LineTableChunker(config=ChunkingConfig(y_tolerance_ratio=0.5))
+    return LineTableChunker(config=ChunkingConfig(y_tolerance_ratio=0.5, line_chunk_char_limit=0))
 
 
 # --- Tests ---
@@ -309,9 +310,6 @@ def test_convert_lines_handles_malformed_raw_object(chunker, caplog):
     assert "'int' object has no attribute 'get'" in caplog.text
 
 
-# Make sure this import exists at the top of your test file
-
-
 def test_recover_missed_lines_gracefully_handles_internal_error(chunker, monkeypatch, caplog):
     """
     Tests the broad `except Exception` guard in `_recover_missed_lines`.
@@ -414,7 +412,7 @@ def test_create_text_blocks_handles_bad_missed_data(chunker, caplog):
 
     # An error should be logged for the geometry failure
     assert len(caplog.records) == 1
-    assert "Failed to create TextBlock from missed line id_badgeom" in caplog.text
+    assert "Failed to create TextBlock LAYOUT_TABLE from missed line id_badgeom: 'Width'" in caplog.text
 
 
 def test_group_into_visual_rows_with_no_blocks(chunker):
@@ -483,3 +481,46 @@ def test_chunk_method_resilience_with_mixed_quality_data(chunker, monkeypatch):
     assert len(chunks) == 2
     assert chunks[0].kwargs["chunk_text"] == "Name Value"
     assert chunks[1].kwargs["chunk_text"] == "Item A 100"
+
+
+def test_extract_text_blocks_recovers_and_sorts_missed_lines(chunker):
+    """
+    Tests the _extract_text_blocks method's logic to recover, extend, and sort.
+
+    Verifies that when a raw_response is provided:
+    1. Missed lines are recovered.
+    2. The list of text blocks is extended with the missed ones.
+    3. The final combined list is correctly sorted by top, then left coordinates.
+    """
+    # ARRANGE
+    # An existing line that is part of the layout object's children.
+    # We place it further down the page (y=0.3).
+    existing_line = MockLine("id_existing", "Existing Line", MockBoundingBox(x=0.1, y=0.3, width=0.8, height=0.1))
+
+    layout_block = MockLayout(id="layout1", bbox=MockBoundingBox(0, 0, 1, 1), children=[existing_line])
+
+    # A raw response that contains a "missed" line.
+    # Crucially, we place it *above* the existing line (y=0.1) to test the sort.
+    raw_response = {
+        "Blocks": [
+            {"Id": "layout1", "Relationships": [{"Type": "CHILD", "Ids": ["id_existing", "id_missed"]}]},
+            {"Id": "id_existing", "BlockType": "LINE", "Text": "Existing Line"},
+            {
+                "Id": "id_missed",
+                "BlockType": "LINE",
+                "Text": "Recovered Missed Line",
+                "Confidence": 95.0,
+                "Geometry": {"BoundingBox": {"Top": 0.1, "Left": 0.1, "Width": 0.8, "Height": 0.1}},
+            },
+        ]
+    }
+
+    final_blocks = chunker._extract_text_blocks(layout_block, raw_response)
+
+    assert len(final_blocks) == 2, "Should contain both existing and missed blocks."
+
+    assert final_blocks[0].text == "Recovered Missed Line"
+    assert final_blocks[0].top == pytest.approx(0.1)
+
+    assert final_blocks[1].text == "Existing Line"
+    assert final_blocks[1].top == pytest.approx(0.3)

@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, call
 import pytest
 
 import src.chunking.strategies.layout_text as layout_text_module
-from src.chunking.config import ChunkingConfig
+from src.chunking.chunking_config import ChunkingConfig
 from src.chunking.strategies.layout_text import LayoutTextChunkingStrategy
 
 

@@ -1,6 +1,6 @@
 import pytest
 
-from src.chunking.config import ChunkingConfig  # ← Changed import
+from src.chunking.chunking_config import ChunkingConfig  # ← Changed import
 from src.chunking.strategies.base import ChunkingStrategyHandler
 
 

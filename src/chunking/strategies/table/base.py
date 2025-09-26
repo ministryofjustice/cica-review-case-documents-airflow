@@ -5,7 +5,7 @@ from typing import List, Optional
 from textractor.entities.bbox import BoundingBox
 from textractor.entities.layout import Layout
 
-from src.chunking.config import ChunkingConfig
+from src.chunking.chunking_config import ChunkingConfig
 from src.chunking.schemas import DocumentMetadata, OpenSearchDocument
 
 logger = logging.getLogger(__name__)

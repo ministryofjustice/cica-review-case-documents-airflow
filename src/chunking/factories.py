@@ -1,4 +1,6 @@
-from src.chunking.config import ChunkingConfig
+"""This module is NOT used in the current implementation."""
+
+from src.chunking.chunking_config import ChunkingConfig
 from src.chunking.strategies.layout_text import LayoutTextChunkingStrategy
 from src.chunking.strategies.table import LayoutTableChunkingStrategy
 from src.chunking.textract import TextractDocumentChunker
