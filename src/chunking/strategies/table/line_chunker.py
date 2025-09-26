@@ -75,10 +75,7 @@ class LineTableChunker(BaseTableChunker):
                 chunk_index=chunk_index_start,
             )
             return [single_chunk]
-        # --- REVISED LOGIC: END ---
 
-        # --- ORIGINAL LOGIC: If the block is too large, chunk by visual row. ---
-        # We can reuse the `row_texts` we already processed.
         logger.debug(
             f"Block text length ({len(consistent_block_text)}) exceeds the limit "
             f"({chunk_size_character_limit}). Chunking by visual row."
@@ -113,6 +110,8 @@ class LineTableChunker(BaseTableChunker):
         text_blocks = self._convert_lines_to_text_blocks(layout_block.children)
 
         # Apply Textractor bug workaround if raw response available
+        # TODO review this might be happening as a result of a table containing a mix of lines and
+        # other tables, check case 0
         if raw_response:
             missed_blocks = self._recover_missed_lines(layout_block, raw_response)
             text_blocks.extend(missed_blocks)

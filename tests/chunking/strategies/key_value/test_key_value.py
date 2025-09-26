@@ -1,11 +1,8 @@
-# tests/chunking/strategies/key_value/test_key_value_chunker.py
-
 from unittest.mock import MagicMock, call
 
 import pytest
 from textractor.entities.bbox import BoundingBox
-
-# 'Key' has been removed from this import, as it does not exist
+from textractor.entities.document_entity import DocumentEntity
 from textractor.entities.key_value import KeyValue, Value
 from textractor.entities.layout import Layout
 from textractor.entities.line import Line
@@ -16,7 +13,6 @@ from src.chunking.schemas import DocumentMetadata, OpenSearchDocument
 from src.chunking.strategies.key_value.layout_key_value import KeyValueChunker
 
 
-# Fixtures for creating mock Textractor objects
 @pytest.fixture
 def mock_kv_pair_factory():
     """
@@ -25,16 +21,13 @@ def mock_kv_pair_factory():
     """
 
     def _create_mock_kv(key_text: str, value_text: str, kv_id: str) -> MagicMock:
-        # 1. The '.key' property is a list of Word objects. We mock that list directly.
         mock_key_words = [MagicMock(spec=Word, text=word) for word in key_text.split()]
 
-        # 2. Mock the Value object (this was correct)
         mock_value = MagicMock(spec=Value)
         mock_value.text = value_text
 
-        # 3. Mock the top-level KeyValue object
         mock_kv = MagicMock(spec=KeyValue)
-        mock_kv.key = mock_key_words  # Assign the list of mock Words here
+        mock_kv.key = mock_key_words
         mock_kv.value = mock_value
         mock_kv.id = kv_id
         mock_kv.bbox = MagicMock(spec=BoundingBox)
@@ -58,7 +51,6 @@ def mock_line_factory():
     return _create_mock_line
 
 
-# General test configuration fixtures
 @pytest.fixture
 def default_config():
     """Provides a default chunking configuration."""
@@ -76,7 +68,6 @@ def chunk_args():
     }
 
 
-# The main test cases
 def test_chunks_mixed_key_value_and_line_children(
     mocker, default_config, chunk_args, mock_kv_pair_factory, mock_line_factory
 ):
@@ -84,7 +75,7 @@ def test_chunks_mixed_key_value_and_line_children(
     Verifies that the chunker correctly processes a layout block
     containing both KeyValue pairs and standalone Line objects.
     """
-    # 1. Arrange
+
     mock_os_doc_from_layout = mocker.patch.object(OpenSearchDocument, "from_textractor_layout")
 
     kv_child = mock_kv_pair_factory("Name:", "John Doe", "kv-1")
@@ -95,13 +86,10 @@ def test_chunks_mixed_key_value_and_line_children(
 
     strategy = KeyValueChunker(config=default_config)
 
-    # 2. Act
     strategy.chunk(layout_block=layout_block, **chunk_args)
 
-    # 3. Assert
     assert mock_os_doc_from_layout.call_count == 2
 
-    # Verify the call for the KeyValue pair
     expected_kv_call = call(
         block=layout_block,
         page_number=1,
@@ -110,7 +98,7 @@ def test_chunks_mixed_key_value_and_line_children(
         chunk_text="Name: John Doe",
         combined_bbox=kv_child.bbox,
     )
-    # Verify the call for the Line
+
     expected_line_call = call(
         block=layout_block,
         page_number=1,
@@ -127,14 +115,12 @@ def test_returns_empty_list_for_empty_layout_block(default_config, chunk_args):
     """
     Verifies that an empty list is returned when the layout block has no children.
     """
-    # 1. Arrange
+
     layout_block = MagicMock(spec=Layout, children=[], id="empty-block")
     strategy = KeyValueChunker(config=default_config)
 
-    # 2. Act
     result = strategy.chunk(layout_block=layout_block, **chunk_args)
 
-    # 3. Assert
     assert result == []
 
 
@@ -142,10 +128,9 @@ def test_skips_key_value_pair_if_missing_key_or_value(mocker, default_config, ch
     """
     Verifies that KeyValue pairs with a missing key or value are skipped.
     """
-    # 1. Arrange
+
     mock_os_doc_from_layout = mocker.patch.object(OpenSearchDocument, "from_textractor_layout")
 
-    # Create mocks for invalid KV pairs
     kv_missing_value = mock_kv_pair_factory("Address:", "123 Main St", "kv-1")
     kv_missing_value.value = None
 
@@ -157,10 +142,8 @@ def test_skips_key_value_pair_if_missing_key_or_value(mocker, default_config, ch
 
     strategy = KeyValueChunker(config=default_config)
 
-    # 2. Act
     strategy.chunk(layout_block=layout_block, **chunk_args)
 
-    # 3. Assert
     mock_os_doc_from_layout.assert_not_called()
 
 
@@ -168,7 +151,7 @@ def test_skips_empty_or_whitespace_only_lines(mocker, default_config, chunk_args
     """
     Verifies that lines containing no text or only whitespace are skipped.
     """
-    # 1. Arrange
+
     mock_os_doc_from_layout = mocker.patch.object(OpenSearchDocument, "from_textractor_layout")
 
     empty_line = mock_line_factory("", "line-empty")
@@ -181,12 +164,10 @@ def test_skips_empty_or_whitespace_only_lines(mocker, default_config, chunk_args
 
     strategy = KeyValueChunker(config=default_config)
 
-    # 2. Act
     strategy.chunk(layout_block=layout_block, **chunk_args)
 
-    # 3. Assert
     mock_os_doc_from_layout.assert_called_once()
-    # Check that it was called only with the valid line's data
+
     mock_os_doc_from_layout.assert_called_with(
         block=layout_block,
         page_number=1,
@@ -202,4 +183,33 @@ def test_skips_unsupported_child_types_and_logs_warning(mocker, default_config, 
     Verifies that unexpected child types within a LAYOUT_KEY_VALUE block
     are skipped and a warning is logged.
     """
-    # 1. Arrange
+
+    mock_logger_warning = mocker.patch("src.chunking.strategies.key_value.layout_key_value.logger.warning")
+    mock_os_doc_from_layout = mocker.patch.object(OpenSearchDocument, "from_textractor_layout")
+
+    unsupported_child = MagicMock(spec=DocumentEntity)
+    unsupported_child.__class__.__name__ = "UnsupportedType"
+    valid_line = mock_line_factory("This should be processed", "line-1")
+
+    layout_block = MagicMock(spec=Layout, id="layout-mixed-support")
+    layout_block.children = [unsupported_child, valid_line]
+    layout_block.layout_type = "LAYOUT_KEY_VALUE"
+
+    strategy = KeyValueChunker(config=default_config)
+
+    strategy.chunk(layout_block=layout_block, **chunk_args)
+
+    mock_logger_warning.assert_called_once()
+    log_message = mock_logger_warning.call_args[0][0]
+    assert "Skipping unexpected child block of type " in log_message
+    assert layout_block.id in log_message
+
+    mock_os_doc_from_layout.assert_called_once()
+    mock_os_doc_from_layout.assert_called_with(
+        block=layout_block,
+        page_number=1,
+        metadata=chunk_args["metadata"],
+        chunk_index=0,
+        chunk_text="This should be processed",
+        combined_bbox=valid_line.bbox,
+    )
