@@ -1,4 +1,4 @@
-boto3==1.40.29
+boto3==1.40.41
 DateTime==5.5
 opensearch-py==3.0.0
 pandas==2.3.2
