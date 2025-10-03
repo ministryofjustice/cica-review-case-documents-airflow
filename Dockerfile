@@ -5,6 +5,7 @@ FROM ghcr.io/ministryofjustice/analytical-platform-airflow-python-base:1.18.0@sh
 USER root                 
                        
 # Copy requirements.txt
+# TODO change this to poetry?
 COPY requirements.txt requirements.txt 
 
 # Copy application code

@@ -63,6 +63,8 @@ class OpenSearchDocument(BaseModel):
     page_count: int
     page_number: int
     chunk_index: int
+    # TODO This was initially representing an AWS layout type.
+    # It may be redundant, review!
     chunk_type: str
     confidence: float
     bounding_box: DocumentBoundingBox
@@ -104,6 +106,7 @@ class OpenSearchDocument(BaseModel):
         bounding_box_model = DocumentBoundingBox.from_textractor_bbox(combined_bbox)
 
         # Pydantic validates the data upon instantiation here
+        # We will need to identify whether chunk is/contains HANDWRITTEN elements
         return cls(
             chunk_id=chunk_id,
             ingested_doc_id=metadata.ingested_doc_id,
@@ -119,3 +122,25 @@ class OpenSearchDocument(BaseModel):
             received_date=metadata.received_date,
             correspondence_type=metadata.correspondence_type,
         )
+
+
+class PageDocument(BaseModel):
+    """Represents a single page's metadata for indexing."""
+
+    document_id: str = Field(..., description="The unique ID of the source document.")
+    page_num: int = Field(..., description="The page number (1-based).")
+    page_image_s3_uri: str = Field(..., description="S3 URI for the page image.")
+    text: str = Field(..., description="Structured ocr content for the front end rendering")
+    page_width: float
+    page_height: float
+
+
+class ProcessedDocument(BaseModel):
+    """
+    Holds all structured data extracted from a single source document,
+    ready for indexing.
+    """
+
+    chunks: List[OpenSearchDocument]
+    pages: List[PageDocument]
+    metadata: DocumentMetadata
