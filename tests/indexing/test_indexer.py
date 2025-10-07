@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 from opensearchpy.helpers import BulkIndexError
 
-from src.chunking.schemas import DocumentBoundingBox, OpenSearchDocument
+from src.chunking.schemas import DocumentBoundingBox, DocumentChunk
 from src.indexing.indexer import OpenSearchIndexer
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -26,7 +26,7 @@ def mock_helpers_bulk(mocker):
 def sample_documents():
     """Provides a list of sample OpenSearchDocument objects for testing."""
     return [
-        OpenSearchDocument(
+        DocumentChunk(
             chunk_id="doc1-p1-c0",
             ingested_doc_id="doc1",
             source_file_name="file1.pdf",
@@ -38,7 +38,7 @@ def sample_documents():
             confidence=0.95,
             bounding_box=DocumentBoundingBox(Width=0.1, Height=0.1, Left=0.1, Top=0.1),
         ),
-        OpenSearchDocument(
+        DocumentChunk(
             chunk_id="doc1-p1-c1",
             ingested_doc_id="doc1",
             source_file_name="file1.pdf",

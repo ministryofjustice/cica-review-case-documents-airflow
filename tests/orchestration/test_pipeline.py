@@ -4,10 +4,10 @@ from unittest.mock import MagicMock
 import pytest
 from textractor.entities.document import Document
 
-from src.chunking.schemas import DocumentBoundingBox, DocumentMetadata, OpenSearchDocument, ProcessedDocument
+from src.chunking.schemas import DocumentBoundingBox, DocumentChunk, DocumentMetadata, ProcessedDocument
 from src.chunking.textract import TextractDocumentChunker  # Assuming this is the correct path
 from src.indexing.indexer import OpenSearchIndexer
-from src.orchestration.pipeline import IndexingOrchestrator
+from src.orchestration.pipeline import ProcessingPipeline
 
 
 @pytest.fixture
@@ -46,7 +46,7 @@ def mock_processed_data_with_chunks():
     """Provides a mock ProcessedDocument with chunks."""
 
     chunks = [
-        OpenSearchDocument(
+        DocumentChunk(
             chunk_id="c1",
             ingested_doc_id="doc-123-test",
             source_file_name="test_file.pdf",
@@ -58,7 +58,7 @@ def mock_processed_data_with_chunks():
             chunk_text="Chunk 1",
             bounding_box=DocumentBoundingBox(Width=0.1, Height=0.1, Left=0.1, Top=0.1),
         ),
-        OpenSearchDocument(
+        DocumentChunk(
             chunk_id="c2",
             ingested_doc_id="doc-123-test",
             source_file_name="test_file.pdf",
@@ -91,7 +91,7 @@ def mock_processed_data_no_chunks():
 
 def test_orchestrator_initialization(mock_chunker, mock_indexer):
     """Tests that the orchestrator initializes correctly with its dependencies."""
-    orchestrator = IndexingOrchestrator(chunker=mock_chunker, chunk_indexer=mock_indexer)
+    orchestrator = ProcessingPipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
     assert orchestrator.chunker == mock_chunker
     assert orchestrator.chunk_indexer == mock_indexer
 
@@ -105,7 +105,7 @@ def test_process_and_index_success(
     """
     mock_chunker.chunk.return_value = mock_processed_data_with_chunks
 
-    orchestrator = IndexingOrchestrator(chunker=mock_chunker, chunk_indexer=mock_indexer)
+    orchestrator = ProcessingPipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
 
     orchestrator.process_and_index(mock_textractor_doc, mock_document_metadata)
 
@@ -121,7 +121,7 @@ def test_process_and_index_no_chunks_skips_indexing(
     """
     mock_chunker.chunk.return_value = mock_processed_data_no_chunks
 
-    orchestrator = IndexingOrchestrator(chunker=mock_chunker, chunk_indexer=mock_indexer)
+    orchestrator = ProcessingPipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
 
     orchestrator.process_and_index(mock_textractor_doc, mock_document_metadata)
 
@@ -139,7 +139,7 @@ def test_process_and_index_chunker_raises_exception(
 
     mock_chunker.chunk.side_effect = Exception("Simulated chunking failure")
 
-    orchestrator = IndexingOrchestrator(chunker=mock_chunker, chunk_indexer=mock_indexer)
+    orchestrator = ProcessingPipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
 
     with pytest.raises(Exception, match="Simulated chunking failure"):
         orchestrator.process_and_index(mock_textractor_doc, mock_document_metadata)
@@ -157,7 +157,7 @@ def test_process_and_index_indexer_raises_exception(
     mock_chunker.chunk.return_value = mock_processed_data_with_chunks
     mock_indexer.index_documents.side_effect = Exception("Simulated indexing failure")
 
-    orchestrator = IndexingOrchestrator(chunker=mock_chunker, chunk_indexer=mock_indexer)
+    orchestrator = ProcessingPipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
 
     with pytest.raises(Exception, match="Simulated indexing failure"):
         orchestrator.process_and_index(mock_textractor_doc, mock_document_metadata)

@@ -9,7 +9,7 @@ from textractor.entities.line import Line
 from textractor.entities.word import Word
 
 from src.chunking.chunking_config import ChunkingConfig
-from src.chunking.schemas import DocumentMetadata, OpenSearchDocument
+from src.chunking.schemas import DocumentChunk, DocumentMetadata
 from src.chunking.strategies.key_value.layout_key_value import KeyValueChunker
 
 
@@ -76,7 +76,7 @@ def test_chunks_mixed_key_value_and_line_children(
     containing both KeyValue pairs and standalone Line objects.
     """
 
-    mock_os_doc_from_layout = mocker.patch.object(OpenSearchDocument, "from_textractor_layout")
+    mock_os_doc_from_layout = mocker.patch.object(DocumentChunk, "from_textractor_layout")
 
     kv_child = mock_kv_pair_factory("Name:", "John Doe", "kv-1")
     line_child = mock_line_factory("This is a standalone line.", "line-1")
@@ -129,7 +129,7 @@ def test_skips_key_value_pair_if_missing_key_or_value(mocker, default_config, ch
     Verifies that KeyValue pairs with a missing key or value are skipped.
     """
 
-    mock_os_doc_from_layout = mocker.patch.object(OpenSearchDocument, "from_textractor_layout")
+    mock_os_doc_from_layout = mocker.patch.object(DocumentChunk, "from_textractor_layout")
 
     kv_missing_value = mock_kv_pair_factory("Address:", "123 Main St", "kv-1")
     kv_missing_value.value = None
@@ -152,7 +152,7 @@ def test_skips_empty_or_whitespace_only_lines(mocker, default_config, chunk_args
     Verifies that lines containing no text or only whitespace are skipped.
     """
 
-    mock_os_doc_from_layout = mocker.patch.object(OpenSearchDocument, "from_textractor_layout")
+    mock_os_doc_from_layout = mocker.patch.object(DocumentChunk, "from_textractor_layout")
 
     empty_line = mock_line_factory("", "line-empty")
     whitespace_line = mock_line_factory("   \t\n ", "line-whitespace")
@@ -185,7 +185,7 @@ def test_skips_unsupported_child_types_and_logs_warning(mocker, default_config, 
     """
 
     mock_logger_warning = mocker.patch("src.chunking.strategies.key_value.layout_key_value.logger.warning")
-    mock_os_doc_from_layout = mocker.patch.object(OpenSearchDocument, "from_textractor_layout")
+    mock_os_doc_from_layout = mocker.patch.object(DocumentChunk, "from_textractor_layout")
 
     unsupported_child = MagicMock(spec=DocumentEntity)
     unsupported_child.__class__.__name__ = "UnsupportedType"

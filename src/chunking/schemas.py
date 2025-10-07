@@ -53,7 +53,7 @@ class DocumentMetadata(BaseModel):
     correspondence_type: str
 
 
-class OpenSearchDocument(BaseModel):
+class DocumentChunk(BaseModel):
     """Represents a document chunk for OpenSearch, built with Pydantic."""
 
     chunk_id: str
@@ -97,7 +97,7 @@ class OpenSearchDocument(BaseModel):
         chunk_index: int,
         chunk_text: str,
         combined_bbox: BoundingBox,
-    ) -> "OpenSearchDocument":
+    ) -> "DocumentChunk":
         """
         Creates an OpenSearchChunk from a Textractor Layout block using pre-computed
         text and a combined bounding box, useful for splitting large blocks.
@@ -124,7 +124,7 @@ class OpenSearchDocument(BaseModel):
         )
 
 
-class PageDocument(BaseModel):
+class DocumentPage(BaseModel):
     """Represents a single page's metadata for indexing."""
 
     document_id: str = Field(..., description="The unique ID of the source document.")
@@ -141,6 +141,6 @@ class ProcessedDocument(BaseModel):
     ready for indexing.
     """
 
-    chunks: List[OpenSearchDocument]
-    pages: List[PageDocument]
+    chunks: List[DocumentChunk]
+    pages: List[DocumentPage]
     metadata: DocumentMetadata

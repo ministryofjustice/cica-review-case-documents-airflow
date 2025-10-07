@@ -8,7 +8,7 @@ from textractor.entities.table import Table
 from textractor.entities.table_cell import TableCell
 
 from src.chunking.exceptions import ChunkException
-from src.chunking.schemas import DocumentMetadata, OpenSearchDocument
+from src.chunking.schemas import DocumentChunk, DocumentMetadata
 from src.chunking.strategies.table.base import BaseTableChunker
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ class CellTableChunker(BaseTableChunker):
         metadata: DocumentMetadata,
         chunk_index_start: int,
         raw_response: Optional[dict] = None,
-    ) -> List[OpenSearchDocument]:
+    ) -> List[DocumentChunk]:
         """Process cell-based table into row chunks"""
         logger.debug(f"++++++++++++++++++++ Processing cell-based table: {layout_block.id} ++++++++++++++")
 

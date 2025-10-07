@@ -4,7 +4,7 @@ import pytest
 
 # Adjust these imports based on your project structure
 from src.chunking.exceptions import ChunkException
-from src.chunking.schemas import DocumentMetadata, OpenSearchDocument
+from src.chunking.schemas import DocumentChunk, DocumentMetadata
 from src.chunking.textract import TextractDocumentChunker
 
 # --- Helper Factories for Mock Objects ---
@@ -51,7 +51,7 @@ def mock_strategy_handler():
     """Provides a generic mock strategy handler."""
     handler = MagicMock()
     # By default, return one mock chunk per call
-    handler.chunk.return_value = [MagicMock(spec=OpenSearchDocument)]
+    handler.chunk.return_value = [MagicMock(spec=DocumentChunk)]
     return handler
 
 
@@ -62,10 +62,10 @@ def test_selects_correct_strategy_and_increments_index(mock_metadata):
     """
     # Arrange
     mock_text_strategy = MagicMock()
-    mock_text_strategy.chunk.return_value = [MagicMock(spec=OpenSearchDocument), MagicMock(spec=OpenSearchDocument)]
+    mock_text_strategy.chunk.return_value = [MagicMock(spec=DocumentChunk), MagicMock(spec=DocumentChunk)]
 
     mock_table_strategy = MagicMock()
-    mock_table_strategy.chunk.return_value = [MagicMock(spec=OpenSearchDocument)]  # Returns 1 chunk
+    mock_table_strategy.chunk.return_value = [MagicMock(spec=DocumentChunk)]  # Returns 1 chunk
 
     strategy_handlers = {
         "LAYOUT_TEXT": mock_text_strategy,

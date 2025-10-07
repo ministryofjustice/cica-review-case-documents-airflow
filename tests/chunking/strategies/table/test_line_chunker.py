@@ -206,10 +206,10 @@ def test_process_text_block_row_sorting(chunker):
 
 def test_chunk_method_integration(chunker, monkeypatch):
     """
-    Tests the full chunking process from a Layout object to OpenSearchDocuments.
+    Tests the full chunking process from a Layout object to DocumentChunks.
     """
 
-    class MockOpenSearchDocument:
+    class MockDocumentChunk:
         def __init__(self, **kwargs):
             self.kwargs = kwargs
 
@@ -217,7 +217,7 @@ def test_chunk_method_integration(chunker, monkeypatch):
         def from_textractor_layout(cls, **kwargs):
             return cls(**kwargs)
 
-    monkeypatch.setattr(base_module, "OpenSearchDocument", MockOpenSearchDocument)
+    monkeypatch.setattr(base_module, "DocumentChunk", MockDocumentChunk)
 
     lines = [
         MockLine("l1", "Name", MockBoundingBox(x=0.1, y=0.1, width=0.2, height=0.05)),
@@ -451,8 +451,8 @@ def test_chunk_method_resilience_with_mixed_quality_data(chunker, monkeypatch):
     a layout block containing a mix of valid and invalid lines.
     """
 
-    # Mock OpenSearchDocument as in your original test
-    class MockOpenSearchDocument:
+    # Mock DocumentChunk as in your original test
+    class MockDocumentChunk:
         def __init__(self, **kwargs):
             self.kwargs = kwargs
 
@@ -460,7 +460,7 @@ def test_chunk_method_resilience_with_mixed_quality_data(chunker, monkeypatch):
         def from_textractor_layout(cls, **kwargs):
             return cls(**kwargs)
 
-    monkeypatch.setattr(base_module, "OpenSearchDocument", MockOpenSearchDocument)
+    monkeypatch.setattr(base_module, "DocumentChunk", MockDocumentChunk)
 
     lines = [
         MockLine("l1", "Name", MockBoundingBox(x=0.1, y=0.1, width=0.2, height=0.05)),

@@ -2,7 +2,7 @@ import logging
 from typing import List, Optional
 
 from src.chunking.chunking_config import ChunkingConfig
-from src.chunking.schemas import DocumentMetadata, OpenSearchDocument
+from src.chunking.schemas import DocumentChunk, DocumentMetadata
 from src.chunking.strategies.base import ChunkingStrategyHandler
 from src.chunking.utils.bbox_utils import combine_bounding_boxes
 
@@ -25,7 +25,7 @@ class LayoutListChunkingStrategy(ChunkingStrategyHandler):
         metadata: DocumentMetadata,
         chunk_index_start: int,
         raw_response: Optional[dict] = None,
-    ) -> List[OpenSearchDocument]:
+    ) -> List[DocumentChunk]:
         chunks = []
         chunk_index = chunk_index_start
 
@@ -46,7 +46,7 @@ class LayoutListChunkingStrategy(ChunkingStrategyHandler):
                 continue
 
             combined_bbox = combine_bounding_boxes([line_bbox])
-            chunk = OpenSearchDocument.from_textractor_layout(
+            chunk = DocumentChunk.from_textractor_layout(
                 block=layout_block,
                 page_number=page_number,
                 metadata=metadata,

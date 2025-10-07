@@ -19,7 +19,7 @@ def mock_dependencies(mocker):
     'mocker' is provided by the pytest-mock plugin.
     """
 
-    mock_opensearch_chunk = mocker.patch.object(layout_text_module, "OpenSearchDocument", autospec=True)
+    mock_opensearch_chunk = mocker.patch.object(layout_text_module, "DocumentChunk", autospec=True)
     mock_combine_bboxes = mocker.patch.object(layout_text_module, "combine_bounding_boxes", autospec=True)
 
     return mock_opensearch_chunk, mock_combine_bboxes

@@ -7,7 +7,7 @@ from textractor.entities.bbox import BoundingBox
 
 import src.chunking.strategies.layout_text as layout_text_module
 from src.chunking.chunking_config import ChunkingConfig
-from src.chunking.schemas import DocumentMetadata, OpenSearchDocument
+from src.chunking.schemas import DocumentChunk, DocumentMetadata
 from src.chunking.strategies.layout_text import LayoutTextChunkingStrategy
 from src.chunking.utils.bbox_utils import combine_bounding_boxes
 
@@ -93,9 +93,7 @@ def test_single_chunk_created_when_text_fits(strategy, document_metadata_factory
 
     with pytest.MonkeyPatch.context() as m:
         mock_creator = MagicMock()
-        m.setattr(
-            layout_text_module.OpenSearchDocument, OpenSearchDocument.from_textractor_layout.__name__, mock_creator
-        )
+        m.setattr(layout_text_module.DocumentChunk, DocumentChunk.from_textractor_layout.__name__, mock_creator)
 
         chunks = strategy.chunk(layout_block, page_number=1, metadata=metadata, chunk_index_start=0)
 
@@ -121,9 +119,7 @@ def test_multiple_chunks_created_on_size_limit(strategy, document_metadata_facto
 
     with pytest.MonkeyPatch.context() as m:
         mock_creator = MagicMock()
-        m.setattr(
-            layout_text_module.OpenSearchDocument, OpenSearchDocument.from_textractor_layout.__name__, mock_creator
-        )
+        m.setattr(layout_text_module.DocumentChunk, DocumentChunk.from_textractor_layout.__name__, mock_creator)
 
         chunks = strategy.chunk(layout_block, page_number=2, metadata=metadata, chunk_index_start=5)
 
@@ -151,9 +147,7 @@ def test_single_line_exceeding_limit_creates_one_chunk(strategy, document_metada
 
     with pytest.MonkeyPatch.context() as m:
         mock_creator = MagicMock()
-        m.setattr(
-            layout_text_module.OpenSearchDocument, OpenSearchDocument.from_textractor_layout.__name__, mock_creator
-        )
+        m.setattr(layout_text_module.DocumentChunk, DocumentChunk.from_textractor_layout.__name__, mock_creator)
 
         chunks = strategy.chunk(layout_block, page_number=1, metadata=metadata, chunk_index_start=0)
 
@@ -191,9 +185,7 @@ def test_bounding_boxes_are_combined_per_chunk(strategy, document_metadata_facto
     mock_combiner = MagicMock()
 
     monkeypatch.setattr(layout_text_module, combine_bounding_boxes.__name__, mock_combiner)
-    monkeypatch.setattr(
-        layout_text_module.OpenSearchDocument, OpenSearchDocument.from_textractor_layout.__name__, MagicMock()
-    )
+    monkeypatch.setattr(layout_text_module.DocumentChunk, DocumentChunk.from_textractor_layout.__name__, MagicMock())
 
     strategy.chunk(layout_block, page_number=1, metadata=metadata, chunk_index_start=0)
 

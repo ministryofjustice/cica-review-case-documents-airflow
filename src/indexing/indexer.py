@@ -3,7 +3,7 @@ from typing import List
 
 from opensearchpy import OpenSearch, helpers
 
-from src.chunking.schemas import OpenSearchDocument
+from src.chunking.schemas import DocumentChunk
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class OpenSearchIndexer:
         )
         logger.info(f"OpenSearchIndexer initialized for index '{self.index_name}' at {host}:{port}")
 
-    def index_documents(self, documents: List[OpenSearchDocument], id_field: str = "chunk_id"):
+    def index_documents(self, documents: List[DocumentChunk], id_field: str = "chunk_id"):
         """
         Indexes a list of Pydantic models into OpenSearch using the Bulk API.
 
@@ -64,7 +64,7 @@ class OpenSearchIndexer:
             logger.error(f"An exception occurred during the bulk indexing operation: {e}")
             raise
 
-    def _generate_bulk_actions(self, documents: List[OpenSearchDocument], id_field: str):
+    def _generate_bulk_actions(self, documents: List[DocumentChunk], id_field: str):
         """Converts a list of Pydantic models to OpenSearch bulk actions."""
         for doc in documents:
             if not hasattr(doc, id_field):

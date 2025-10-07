@@ -261,7 +261,7 @@ def test_create_chunk_with_multiple_bboxes(chunker, monkeypatch):
     enclosing bounding box correctly for a typical row.
     """
 
-    class MockOpenSearchDocument:
+    class MockDocumentChunk:
         def __init__(self, **kwargs):
             self.kwargs = kwargs
 
@@ -269,7 +269,7 @@ def test_create_chunk_with_multiple_bboxes(chunker, monkeypatch):
         def from_textractor_layout(cls, **kwargs):
             return cls(**kwargs)
 
-    monkeypatch.setattr(base_module, "OpenSearchDocument", MockOpenSearchDocument)
+    monkeypatch.setattr(base_module, "DocumentChunk", MockDocumentChunk)
 
     bboxes = [
         MockBoundingBox(x=0.1, y=0.2, width=0.3, height=0.1),  # right=0.4, bottom=0.3
@@ -292,7 +292,7 @@ def test_create_chunk_with_multiple_bboxes(chunker, monkeypatch):
     )
 
     # Assert
-    # We check the `combined_bbox` passed to the OpenSearchDocument constructor
+    # We check the `combined_bbox` passed to the DocumentChunk constructor
     result_bbox = chunk.kwargs["combined_bbox"]
     assert result_bbox.x == pytest.approx(expected_bbox.x)
     assert result_bbox.y == pytest.approx(expected_bbox.y)
@@ -307,7 +307,7 @@ def test_create_chunk_with_no_bboxes(chunker, monkeypatch):
     """
 
     # Arrange
-    class MockOpenSearchDocument:
+    class MockDocumentChunk:
         def __init__(self, **kwargs):
             self.kwargs = kwargs
 
@@ -315,7 +315,7 @@ def test_create_chunk_with_no_bboxes(chunker, monkeypatch):
         def from_textractor_layout(cls, **kwargs):
             return cls(**kwargs)
 
-    monkeypatch.setattr(base_module, "OpenSearchDocument", MockOpenSearchDocument)
+    monkeypatch.setattr(base_module, "DocumentChunk", MockDocumentChunk)
 
     # This is the bbox we expect to be used as the fallback
     layout_bbox = MockBoundingBox(x=0.05, y=0.05, width=0.9, height=0.9)

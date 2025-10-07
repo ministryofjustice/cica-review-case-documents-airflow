@@ -9,7 +9,7 @@ from src.indexing.indexer import OpenSearchIndexer
 logger = logging.getLogger(__name__)
 
 
-class IndexingOrchestrator:
+class ProcessingPipeline:
     """
     Orchestrates the document processing pipeline: chunking -> embedding -> indexing.
     """

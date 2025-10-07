@@ -13,7 +13,7 @@ from src.chunking.schemas import DocumentBoundingBox, DocumentMetadata
 from src.chunking.strategies.layout_text import LayoutTextChunkingStrategy
 from src.chunking.strategies.table import LayoutTableChunkingStrategy
 from src.chunking.textract import (
-    OpenSearchDocument,
+    DocumentChunk,
     TextractDocumentChunker,
 )
 
@@ -107,7 +107,7 @@ def test_extract_single_layout_chunk_from_actual_textract_response(
 
     assert len(actual_chunks) == 1
     chunk1 = actual_chunks[0]
-    assert isinstance(chunk1, OpenSearchDocument)
+    assert isinstance(chunk1, DocumentChunk)
 
     expected_text = (
         "We have discussed with our patient, who has requested we release all medical records from the "

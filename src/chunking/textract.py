@@ -7,7 +7,7 @@ from src.chunking.exceptions import ChunkException
 from src.chunking.strategies.merge.chunk_merger import ChunkMerger
 
 from .chunking_config import ChunkingConfig
-from .schemas import DocumentMetadata, OpenSearchDocument, PageDocument, ProcessedDocument
+from .schemas import DocumentChunk, DocumentMetadata, DocumentPage, ProcessedDocument
 from .strategies.base import ChunkingStrategyHandler
 
 logger = logging.getLogger(__name__)
@@ -57,7 +57,7 @@ class TextractDocumentChunker:
                 all_chunks.extend(page_chunks)
                 chunk_index_counter += len(page_chunks)
 
-                page_doc = PageDocument(
+                page_doc = DocumentPage(
                     document_id=metadata.ingested_doc_id,
                     page_num=page.page_num,
                     # Placeholders, these will be generated in another step and passed in,
@@ -89,7 +89,7 @@ class TextractDocumentChunker:
         metadata: DocumentMetadata,
         chunk_index_start: int,
         raw_response: Optional[dict],
-    ) -> List[OpenSearchDocument]:
+    ) -> List[DocumentChunk]:
         """Process a single page and return its chunks."""
         page_chunks = []
         current_chunk_index = chunk_index_start

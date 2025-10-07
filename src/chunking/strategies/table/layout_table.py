@@ -6,7 +6,7 @@ from textractor.entities.table import Table
 
 from src.chunking.chunking_config import ChunkingConfig
 from src.chunking.exceptions import ChunkException
-from src.chunking.schemas import DocumentMetadata, OpenSearchDocument
+from src.chunking.schemas import DocumentChunk, DocumentMetadata
 from src.chunking.strategies.base import ChunkingStrategyHandler
 from src.chunking.strategies.table.base import BaseTableChunker
 
@@ -36,7 +36,7 @@ class LayoutTableChunkingStrategy(ChunkingStrategyHandler):
         metadata: DocumentMetadata,
         chunk_index_start: int,
         raw_response: Optional[dict] = None,
-    ) -> List[OpenSearchDocument]:
+    ) -> List[DocumentChunk]:
         """Main chunking method that detects table structure and dispatches appropriately."""
         if not layout_block.children:
             # This is a fatal anomaly. A table block should have content.

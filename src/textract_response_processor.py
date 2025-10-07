@@ -19,13 +19,12 @@ from src.chunking.strategies.table.layout_table import LayoutTableChunkingStrate
 from src.chunking.textract import TextractDocumentChunker
 from src.config import settings
 from src.indexing.indexer import OpenSearchIndexer
-from src.orchestration.pipeline import IndexingOrchestrator
+from src.orchestration.pipeline import ProcessingPipeline
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logging.info("Processing Textract Responses using S3 bucket location ........")
 
 # OpenSearch Connection Details
-
 OS_HOST = settings.OPENSEARCH_HOST
 OS_PORT = settings.OPENSEARCH_PORT
 CHUNK_INDEX_NAME = settings.OPENSEARCH_CHUNK_INDEX_NAME
@@ -82,15 +81,15 @@ def get_textractor_document(s3_document_uri) -> LazyDocument:
 
 
 # TODO this should be async when the system is scaled up
-def process_json_files_in_s3_bucket(orchestrator):
+def process_s3_file(orchestrator, s3_document_uri):
     """
     Processes a document by starting a Textract job and polling for its completion using boto3.
     """
 
-    filename = S3_DOCUMENT_URI.split("/")[-1]
+    filename = s3_document_uri.split("/")[-1]
     logging.info(f"Processing file: {filename}")
 
-    lazy_doc = get_textractor_document(S3_DOCUMENT_URI)
+    lazy_doc = get_textractor_document(s3_document_uri)
     logging.info(f"Started Textract job with JobId: {lazy_doc.job_id}")
 
     textract_client = boto3.client("textract")
@@ -139,6 +138,8 @@ def process_json_files_in_s3_bucket(orchestrator):
         logging.error(f"Failed to process {filename}: {e}")
 
 
+# TODO this main function is for demo purposes only
+# This will be moved to a higher layer when we have a working system
 def main():
     """Main function to set up and run the indexing pipeline."""
 
@@ -167,10 +168,10 @@ def main():
     )
     chunk_indexer = OpenSearchIndexer(host=OS_HOST, port=OS_PORT, index_name=CHUNK_INDEX_NAME)
 
-    orchestrator = IndexingOrchestrator(chunker=chunker, chunk_indexer=chunk_indexer)
+    orchestrator = ProcessingPipeline(chunker=chunker, chunk_indexer=chunk_indexer)
 
     try:
-        process_json_files_in_s3_bucket(orchestrator)
+        process_s3_file(orchestrator, S3_DOCUMENT_URI)
     except Exception as e:
         logging.critical(f"Pipeline failed: {e}")
 
