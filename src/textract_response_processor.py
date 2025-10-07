@@ -17,6 +17,7 @@ from src.chunking.strategies.layout_text import LayoutTextChunkingStrategy
 from src.chunking.strategies.list.list_chunker import LayoutListChunkingStrategy
 from src.chunking.strategies.table.layout_table import LayoutTableChunkingStrategy
 from src.chunking.textract import TextractDocumentChunker
+from src.config import settings
 from src.indexing.indexer import OpenSearchIndexer
 from src.orchestration.pipeline import IndexingOrchestrator
 
@@ -24,9 +25,16 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logging.info("Processing Textract Responses using S3 bucket location ........")
 
 # OpenSearch Connection Details
-OS_HOST = "localhost"
-OS_PORT = 9200
-CHUNK_INDEX_NAME = "case-documents"
+
+OS_HOST = settings.OPENSEARCH_HOST
+OS_PORT = settings.OPENSEARCH_PORT
+CHUNK_INDEX_NAME = settings.OPENSEARCH_CHUNK_INDEX_NAME
+CHUNK_INDEX_UUID_NAMESPACE = settings.CHUNK_INDEX_UUID_NAMESPACE
+
+# --- Configuration for Polling ---
+POLL_INTERVAL_SECONDS = settings.TEXTRACT_API_POLL_INTERVAL_SECONDS
+JOB_TIMEOUT_SECONDS = settings.TEXTRACT_API_JOB_TIMEOUT_SECONDS
+
 # TODO this will be picked up from a queue in a real world scenario
 S3_DOCUMENT_URI = "s3://cica-textract-response-dev/Case1_TC19_50_pages_brain_injury.pdf"
 
@@ -47,7 +55,7 @@ def create_guid_hash(filename, correspondence_type, received_date, case_ref):
     # Create a unique namespace for your application
     # This is a fixed UUID that you define once for your system.
     # TODO This should be a UUID that is generated, is stored as a secret and is kept constant
-    NAMESPACE_DOC_INGESTION = uuid.UUID("f0e1c2d3-4567-89ab-cdef-fedcba987654")
+    NAMESPACE_DOC_INGESTION = uuid.UUID(CHUNK_INDEX_UUID_NAMESPACE)
 
     data_string = f"{filename}-{correspondence_type}-{received_date.isoformat()}-{case_ref}"
 
@@ -56,8 +64,7 @@ def create_guid_hash(filename, correspondence_type, received_date, case_ref):
     return str(uuid.uuid5(NAMESPACE_DOC_INGESTION, data_string))
 
 
-# The corrected get_layout_with_textractor function
-def get_layout_with_textractor(s3_document_uri) -> LazyDocument:
+def get_textractor_document(s3_document_uri) -> LazyDocument:
     """
     Uses the Textractor library to get a parsed document object with layout.
     """
@@ -74,22 +81,18 @@ def get_layout_with_textractor(s3_document_uri) -> LazyDocument:
     return document
 
 
+# TODO this should be async when the system is scaled up
 def process_json_files_in_s3_bucket(orchestrator):
     """
     Processes a document by starting a Textract job and polling for its completion using boto3.
     """
-    # --- Configuration for Polling ---
-    POLL_INTERVAL_SECONDS = 5
-    JOB_TIMEOUT_SECONDS = 600
 
     filename = S3_DOCUMENT_URI.split("/")[-1]
     logging.info(f"Processing file: {filename}")
 
-    # --- Start the job as before ---
-    lazy_doc = get_layout_with_textractor(S3_DOCUMENT_URI)
+    lazy_doc = get_textractor_document(S3_DOCUMENT_URI)
     logging.info(f"Started Textract job with JobId: {lazy_doc.job_id}")
 
-    # --- Polling Loop using boto3 ---
     textract_client = boto3.client("textract")
     start_time = time.time()
     job_status = "IN_PROGRESS"
@@ -106,13 +109,10 @@ def process_json_files_in_s3_bucket(orchestrator):
         if job_status == "IN_PROGRESS":
             time.sleep(POLL_INTERVAL_SECONDS)
 
-    # --- Process the result after the loop ---
     if job_status == "SUCCEEDED":
         logging.info(f"Job {lazy_doc.job_id} completed successfully. Fetching full results.")
 
-        # THIS IS THE FIX:
-        # Instead of lazy_doc.document, explicitly fetch the entire paginated result
-        # using the same helper the library uses internally.
+        # TODO investigate if we should use pagination here
         full_response = get_full_json(
             job_id=lazy_doc.job_id, boto3_textract_client=textract_client, textract_api=Textract_API.ANALYZE
         )
@@ -124,7 +124,7 @@ def process_json_files_in_s3_bucket(orchestrator):
 
     try:
         document_id = create_guid_hash(filename, "TC19", datetime.date(2025, 10, 6), "25-111111")
-        logging.info(f"Generated 16-digit hash: {document_id}")
+        logging.info(f"Generated 16-digit UUID: {document_id}")
 
         mock_metadata = DocumentMetadata(
             ingested_doc_id=document_id,

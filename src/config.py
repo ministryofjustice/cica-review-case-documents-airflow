@@ -32,6 +32,19 @@ class Settings(BaseSettings):  # type: ignore
     AWS_SESSION_TOKEN: str = "aws_session_token"
     AWS_REGION: str = "aws_region"
 
+    # review these values when we have a working system
+    MAXIMUM_CHUNK_SIZE: int = 80  # maximum chunk size
+    Y_TOLERANCE_RATIO: float = 0.5
+    MAX_VERTICAL_GAP: float = 0.5
+    LINE_CHUNK_CHAR_LIMIT: int = 300
+
+    # Create a unique namespace for your application
+    # This is a fixed UUID defined once for the system.
+    # TODO This should be a UUID that is generated, is stored as a secret? and is kept constant
+    CHUNK_INDEX_UUID_NAMESPACE: str = "f0e1c2d3-4567-89ab-cdef-fedcba987654"
+    TEXTRACT_API_POLL_INTERVAL_SECONDS: int = 5
+    TEXTRACT_API_JOB_TIMEOUT_SECONDS: int = 600
+
     # Leaving this here for reference
     # S3_BUCKET_NAME: str = "alpha-a2j-projects"
     # S3_PREFIX: str = "textract-test"
@@ -41,12 +54,6 @@ class Settings(BaseSettings):  # type: ignore
     # BEDROCK_TOKENIZER_NAME: str = "cl100k_base"
     # BEDROCK_CHUNK_SIZE: int = 300  # 100 tokens ~ 75 words (1 token ~ (3/4) words)
     # BEDROCK_EMBEDDING_MODEL_ID: str = "amazon.titan-embed-text-v2:0"
-
-    # review these values when we have a working system
-    MAXIMUM_CHUNK_SIZE: int = 80  # maximum chunk size
-    Y_TOLERANCE_RATIO: float = 0.5
-    MAX_VERTICAL_GAP: float = 0.5
-    LINE_CHUNK_CHAR_LIMIT: int = 300
 
 
 settings = Settings()
