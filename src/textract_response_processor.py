@@ -1,7 +1,6 @@
 import datetime
 import logging
 import time
-import uuid
 
 import boto3
 from textractcaller.t_call import Textract_API, get_full_json
@@ -10,6 +9,7 @@ from textractor.data.constants import TextractFeatures
 from textractor.entities.lazy_document import LazyDocument
 from textractor.parsers.response_parser import parse
 
+from src.chunk_uuid_generator import create_guid_hash
 from src.chunking.chunking_config import ChunkingConfig
 from src.chunking.schemas import DocumentMetadata
 from src.chunking.strategies.key_value.layout_key_value import KeyValueChunker
@@ -28,7 +28,6 @@ logging.info("Processing Textract Responses using S3 bucket location ........")
 OS_HOST = settings.OPENSEARCH_HOST
 OS_PORT = settings.OPENSEARCH_PORT
 CHUNK_INDEX_NAME = settings.OPENSEARCH_CHUNK_INDEX_NAME
-CHUNK_INDEX_UUID_NAMESPACE = settings.CHUNK_INDEX_UUID_NAMESPACE
 
 # --- Configuration for Polling ---
 POLL_INTERVAL_SECONDS = settings.TEXTRACT_API_POLL_INTERVAL_SECONDS
@@ -36,31 +35,6 @@ JOB_TIMEOUT_SECONDS = settings.TEXTRACT_API_JOB_TIMEOUT_SECONDS
 
 # TODO this will be picked up from a queue in a real world scenario
 S3_DOCUMENT_URI = "s3://cica-textract-response-dev/Case1_TC19_50_pages_brain_injury.pdf"
-
-
-def create_guid_hash(filename, correspondence_type, received_date, case_ref):
-    """
-    Creates a Version 5 UUID from the given parameters.
-
-    Args:
-        filename (str): The name of the source file.
-        correspondence_type (str): The correspondence type code.
-        received_date (datetime.date): The date the document was received.
-        case_ref (str): The case reference number.
-
-    Returns:
-        str: A standard UUID string in the format "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx".
-    """
-    # Create a unique namespace for your application
-    # This is a fixed UUID that you define once for your system.
-    # TODO This should be a UUID that is generated, is stored as a secret and is kept constant
-    NAMESPACE_DOC_INGESTION = uuid.UUID(CHUNK_INDEX_UUID_NAMESPACE)
-
-    data_string = f"{filename}-{correspondence_type}-{received_date.isoformat()}-{case_ref}"
-
-    # Generate a UUID based on the namespace and the data string
-    # uuid.uuid5() uses a SHA-1 hash internally.
-    return str(uuid.uuid5(NAMESPACE_DOC_INGESTION, data_string))
 
 
 def get_textractor_document(s3_document_uri) -> LazyDocument:
