@@ -3,7 +3,7 @@ from typing import List
 
 from opensearchpy import OpenSearch, helpers
 
-from src.chunking.schemas import DocumentChunk
+from ingestion_pipeline.chunking.schemas import DocumentChunk
 
 logger = logging.getLogger(__name__)
 

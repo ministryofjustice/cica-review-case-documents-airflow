@@ -4,10 +4,15 @@ from unittest.mock import MagicMock
 import pytest
 from textractor.entities.document import Document
 
-from src.chunking.schemas import DocumentBoundingBox, DocumentChunk, DocumentMetadata, ProcessedDocument
-from src.chunking.textract import TextractDocumentChunker  # Assuming this is the correct path
-from src.indexing.indexer import OpenSearchIndexer
-from src.orchestration.pipeline import ProcessingPipeline
+from ingestion_pipeline.chunking.schemas import (
+    DocumentBoundingBox,
+    DocumentChunk,
+    DocumentMetadata,
+    ProcessedDocument,
+)
+from ingestion_pipeline.chunking.textract import TextractDocumentChunker  # Assuming this is the correct path
+from ingestion_pipeline.indexing.indexer import OpenSearchIndexer
+from ingestion_pipeline.orchestration.pipeline import ProcessingPipeline
 
 
 @pytest.fixture

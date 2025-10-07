@@ -5,8 +5,8 @@ from typing import List, Optional
 from textractor.entities.bbox import BoundingBox
 from textractor.entities.layout import Layout
 
-from src.chunking.chunking_config import ChunkingConfig
-from src.chunking.schemas import DocumentChunk, DocumentMetadata
+from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 
 logger = logging.getLogger(__name__)
 

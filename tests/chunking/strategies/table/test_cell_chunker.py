@@ -9,12 +9,12 @@ from textractor.entities.line import Line
 from textractor.entities.table import Table
 from textractor.entities.table_cell import TableCell
 
-import src.chunking.strategies.table.base as base_module
-import src.chunking.strategies.table.cell_chunker as cell_chunker_module
-from src.chunking.chunking_config import ChunkingConfig
-from src.chunking.exceptions import ChunkException
-from src.chunking.schemas import DocumentMetadata
-from src.chunking.strategies.table.cell_chunker import CellTableChunker
+import ingestion_pipeline.chunking.strategies.table.base as base_module
+import ingestion_pipeline.chunking.strategies.table.cell_chunker as cell_chunker_module
+from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+from ingestion_pipeline.chunking.exceptions import ChunkException
+from ingestion_pipeline.chunking.schemas import DocumentMetadata
+from ingestion_pipeline.chunking.strategies.table.cell_chunker import CellTableChunker
 
 
 @pytest.fixture
@@ -215,7 +215,7 @@ class MockLayout:
 
 @dataclass
 class MockDocumentMetadata:
-    """A mock for src.chunking.schemas.DocumentMetadata."""
+    """A mock for ingestion_pipeline.chunking.schemas.DocumentMetadata."""
 
     document_id: str
 

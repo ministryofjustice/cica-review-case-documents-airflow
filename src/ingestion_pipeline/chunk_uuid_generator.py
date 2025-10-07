@@ -1,6 +1,6 @@
 import uuid
 
-from src.config import settings
+from ingestion_pipeline.config import settings
 
 CHUNK_INDEX_UUID_NAMESPACE = settings.CHUNK_INDEX_UUID_NAMESPACE
 

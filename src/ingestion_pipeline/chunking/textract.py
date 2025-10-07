@@ -3,8 +3,8 @@ from typing import List, Mapping, Optional
 
 from textractor.entities.document import Document
 
-from src.chunking.exceptions import ChunkException
-from src.chunking.strategies.merge.chunk_merger import ChunkMerger
+from ingestion_pipeline.chunking.exceptions import ChunkException
+from ingestion_pipeline.chunking.strategies.merge.chunk_merger import ChunkMerger
 
 from .chunking_config import ChunkingConfig
 from .schemas import DocumentChunk, DocumentMetadata, DocumentPage, ProcessedDocument

@@ -8,9 +8,9 @@ from textractor.entities.layout import Layout
 from textractor.entities.line import Line
 from textractor.entities.word import Word
 
-from src.chunking.chunking_config import ChunkingConfig
-from src.chunking.schemas import DocumentChunk, DocumentMetadata
-from src.chunking.strategies.key_value.layout_key_value import KeyValueChunker
+from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
+from ingestion_pipeline.chunking.strategies.key_value.layout_key_value import KeyValueChunker
 
 
 @pytest.fixture
@@ -184,7 +184,9 @@ def test_skips_unsupported_child_types_and_logs_warning(mocker, default_config, 
     are skipped and a warning is logged.
     """
 
-    mock_logger_warning = mocker.patch("src.chunking.strategies.key_value.layout_key_value.logger.warning")
+    mock_logger_warning = mocker.patch(
+        "ingestion_pipeline.chunking.strategies.key_value.layout_key_value.logger.warning"
+    )
     mock_os_doc_from_layout = mocker.patch.object(DocumentChunk, "from_textractor_layout")
 
     unsupported_child = MagicMock(spec=DocumentEntity)

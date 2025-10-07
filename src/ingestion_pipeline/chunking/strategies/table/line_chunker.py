@@ -6,9 +6,9 @@ from textractor.data.constants import LINE
 from textractor.entities.bbox import BoundingBox
 from textractor.entities.layout import Layout, Line
 
-from src.chunking.schemas import DocumentChunk, DocumentMetadata
-from src.chunking.strategies.table.base import BaseTableChunker
-from src.chunking.strategies.table.schemas import TextBlock
+from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
+from ingestion_pipeline.chunking.strategies.table.base import BaseTableChunker
+from ingestion_pipeline.chunking.strategies.table.schemas import TextBlock
 
 logger = logging.getLogger(__name__)
 

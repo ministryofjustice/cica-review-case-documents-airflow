@@ -2,9 +2,9 @@ import logging
 
 from textractor.entities.document import Document
 
-from src.chunking.schemas import DocumentMetadata
-from src.chunking.textract import TextractDocumentChunker
-from src.indexing.indexer import OpenSearchIndexer
+from ingestion_pipeline.chunking.schemas import DocumentMetadata
+from ingestion_pipeline.chunking.textract import TextractDocumentChunker
+from ingestion_pipeline.indexing.indexer import OpenSearchIndexer
 
 logger = logging.getLogger(__name__)
 

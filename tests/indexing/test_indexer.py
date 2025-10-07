@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 import pytest
 from opensearchpy.helpers import BulkIndexError
 
-from src.chunking.schemas import DocumentBoundingBox, DocumentChunk
-from src.indexing.indexer import OpenSearchIndexer
+from ingestion_pipeline.chunking.schemas import DocumentBoundingBox, DocumentChunk
+from ingestion_pipeline.indexing.indexer import OpenSearchIndexer
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -13,13 +13,13 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 @pytest.fixture
 def mock_opensearch_client(mocker):
     """Mocks the OpenSearch client and its connection using pytest-mock."""
-    return mocker.patch("src.indexing.indexer.OpenSearch", autospec=True)
+    return mocker.patch("ingestion_pipeline.indexing.indexer.OpenSearch", autospec=True)
 
 
 @pytest.fixture
 def mock_helpers_bulk(mocker):
     """Mocks the opensearchpy.helpers.bulk function using pytest-mock."""
-    return mocker.patch("src.indexing.indexer.helpers.bulk", autospec=True)
+    return mocker.patch("ingestion_pipeline.indexing.indexer.helpers.bulk", autospec=True)
 
 
 @pytest.fixture

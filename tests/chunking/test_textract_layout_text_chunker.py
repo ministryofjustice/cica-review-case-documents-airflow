@@ -5,11 +5,11 @@ from unittest.mock import MagicMock, call
 import pytest
 from textractor.entities.bbox import BoundingBox
 
-import src.chunking.strategies.layout_text as layout_text_module
-from src.chunking.chunking_config import ChunkingConfig
-from src.chunking.schemas import DocumentChunk, DocumentMetadata
-from src.chunking.strategies.layout_text import LayoutTextChunkingStrategy
-from src.chunking.utils.bbox_utils import combine_bounding_boxes
+import ingestion_pipeline.chunking.strategies.layout_text as layout_text_module
+from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
+from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkingStrategy
+from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes
 
 
 @pytest.fixture

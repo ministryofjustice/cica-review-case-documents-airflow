@@ -3,9 +3,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Adjust these imports based on your project structure
-from src.chunking.exceptions import ChunkException
-from src.chunking.schemas import DocumentChunk, DocumentMetadata
-from src.chunking.textract import TextractDocumentChunker
+from ingestion_pipeline.chunking.exceptions import ChunkException
+from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
+from ingestion_pipeline.chunking.textract import TextractDocumentChunker
 
 # --- Helper Factories for Mock Objects ---
 
@@ -77,7 +77,7 @@ def test_selects_correct_strategy_and_increments_index(mock_metadata):
 
     chunker = TextractDocumentChunker(strategy_handlers)
 
-    with patch("src.chunking.textract.ChunkMerger", autospec=True) as mock_merger:
+    with patch("ingestion_pipeline.chunking.textract.ChunkMerger", autospec=True) as mock_merger:
         mock_merger.return_value.chunk.side_effect = lambda chunks: chunks
         processed_doc = chunker.chunk(doc, mock_metadata)
 
@@ -111,7 +111,7 @@ def test_skips_blocks_without_strategy_or_text(mock_metadata, mock_strategy_hand
     # Act & Assert
     # --- FIX IS HERE ---
     # Patch replaces the ChunkMerger class in the 'textract' module with a mock
-    with patch("src.chunking.textract.ChunkMerger", autospec=True) as mock_merger:
+    with patch("ingestion_pipeline.chunking.textract.ChunkMerger", autospec=True) as mock_merger:
         # Configure the mock to simply return the chunks it receives,
         # bypassing the real merging logic.
         mock_merger.return_value.chunk.side_effect = lambda chunks: chunks
@@ -138,7 +138,7 @@ def test_calls_merger_once_per_page(mock_metadata, mock_strategy_handler):
     chunker = TextractDocumentChunker(strategy_handlers)
 
     # Act
-    with patch("src.chunking.textract.ChunkMerger", autospec=True) as mock_merger:
+    with patch("ingestion_pipeline.chunking.textract.ChunkMerger", autospec=True) as mock_merger:
         chunker.chunk(doc, mock_metadata)
 
         # Assert

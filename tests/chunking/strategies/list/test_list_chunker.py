@@ -12,9 +12,9 @@ import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
 
-from src.chunking.chunking_config import ChunkingConfig
-from src.chunking.schemas import DocumentMetadata
-from src.chunking.strategies.list.list_chunker import LayoutListChunkingStrategy
+from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+from ingestion_pipeline.chunking.schemas import DocumentMetadata
+from ingestion_pipeline.chunking.strategies.list.list_chunker import LayoutListChunkingStrategy
 
 
 # Helper function to create mock layout blocks for cleaner tests
@@ -71,7 +71,7 @@ def test_chunk_with_valid_list_items(list_chunking_strategy, document_metadata):
     layout_list_block.children = [list_item_1, list_item_2]
 
     # Patch the factory method to simplify assertion
-    with patch("src.chunking.schemas.DocumentChunk.from_textractor_layout") as mock_from_layout:
+    with patch("ingestion_pipeline.chunking.schemas.DocumentChunk.from_textractor_layout") as mock_from_layout:
         # Mock it to return a simple object we can inspect
         mock_from_layout.side_effect = lambda **kwargs: MagicMock(text=kwargs["chunk_text"])
 

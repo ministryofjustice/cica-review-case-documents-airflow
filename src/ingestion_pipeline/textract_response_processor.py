@@ -9,17 +9,17 @@ from textractor.data.constants import TextractFeatures
 from textractor.entities.lazy_document import LazyDocument
 from textractor.parsers.response_parser import parse
 
-from src.chunk_uuid_generator import create_guid_hash
-from src.chunking.chunking_config import ChunkingConfig
-from src.chunking.schemas import DocumentMetadata
-from src.chunking.strategies.key_value.layout_key_value import KeyValueChunker
-from src.chunking.strategies.layout_text import LayoutTextChunkingStrategy
-from src.chunking.strategies.list.list_chunker import LayoutListChunkingStrategy
-from src.chunking.strategies.table.layout_table import LayoutTableChunkingStrategy
-from src.chunking.textract import TextractDocumentChunker
-from src.config import settings
-from src.indexing.indexer import OpenSearchIndexer
-from src.orchestration.pipeline import ProcessingPipeline
+from ingestion_pipeline.chunk_uuid_generator import create_guid_hash
+from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+from ingestion_pipeline.chunking.schemas import DocumentMetadata
+from ingestion_pipeline.chunking.strategies.key_value.layout_key_value import KeyValueChunker
+from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkingStrategy
+from ingestion_pipeline.chunking.strategies.list.list_chunker import LayoutListChunkingStrategy
+from ingestion_pipeline.chunking.strategies.table.layout_table import LayoutTableChunkingStrategy
+from ingestion_pipeline.chunking.textract import TextractDocumentChunker
+from ingestion_pipeline.config import settings
+from ingestion_pipeline.indexing.indexer import OpenSearchIndexer
+from ingestion_pipeline.orchestration.pipeline import ProcessingPipeline
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logging.info("Processing Textract Responses using S3 bucket location ........")

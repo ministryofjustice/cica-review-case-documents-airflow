@@ -4,11 +4,11 @@ from typing import List, Optional
 from textractor.entities.layout import Layout, Line
 from textractor.entities.table import Table
 
-from src.chunking.chunking_config import ChunkingConfig
-from src.chunking.exceptions import ChunkException
-from src.chunking.schemas import DocumentChunk, DocumentMetadata
-from src.chunking.strategies.base import ChunkingStrategyHandler
-from src.chunking.strategies.table.base import BaseTableChunker
+from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+from ingestion_pipeline.chunking.exceptions import ChunkException
+from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
+from ingestion_pipeline.chunking.strategies.base import ChunkingStrategyHandler
+from ingestion_pipeline.chunking.strategies.table.base import BaseTableChunker
 
 from .cell_chunker import CellTableChunker
 from .line_chunker import LineTableChunker

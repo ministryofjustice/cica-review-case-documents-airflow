@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from src.chunking.chunking_config import ChunkingConfig  # ← Changed import
-from src.chunking.schemas import DocumentChunk, DocumentMetadata
+from ingestion_pipeline.chunking.chunking_config import ChunkingConfig  # ← Changed import
+from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 
 
 class ChunkingStrategyHandler(ABC):

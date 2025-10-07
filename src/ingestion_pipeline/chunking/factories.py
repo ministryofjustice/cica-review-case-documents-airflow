@@ -1,9 +1,9 @@
 """This module is NOT used in the current implementation."""
 
-from src.chunking.chunking_config import ChunkingConfig
-from src.chunking.strategies.layout_text import LayoutTextChunkingStrategy
-from src.chunking.strategies.table import LayoutTableChunkingStrategy
-from src.chunking.textract import TextractDocumentChunker
+from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkingStrategy
+from ingestion_pipeline.chunking.strategies.table import LayoutTableChunkingStrategy
+from ingestion_pipeline.chunking.textract import TextractDocumentChunker
 
 
 def create_default_chunker() -> TextractDocumentChunker:

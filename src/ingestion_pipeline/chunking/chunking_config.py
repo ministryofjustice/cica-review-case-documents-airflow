@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 
-from src.config import settings
+from ingestion_pipeline.config import settings
 
 
 class ChunkingStrategy(Enum):

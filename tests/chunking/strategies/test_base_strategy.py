@@ -1,7 +1,7 @@
 import pytest
 
-from src.chunking.chunking_config import ChunkingConfig  # ← Changed import
-from src.chunking.strategies.base import ChunkingStrategyHandler
+from ingestion_pipeline.chunking.chunking_config import ChunkingConfig  # ← Changed import
+from ingestion_pipeline.chunking.strategies.base import ChunkingStrategyHandler
 
 
 def test_cannot_instantiate_abstract_class():

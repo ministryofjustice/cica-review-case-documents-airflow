@@ -24,7 +24,7 @@ dependencies = [
 ]
 
 [tool.poetry]
-packages = [{ include = "ingestion_code", from = "src" }]
+packages = [{ include = "ingestion_pipeline", from = "src" }]
 
 
 [tool.poetry.group.test.dependencies]
