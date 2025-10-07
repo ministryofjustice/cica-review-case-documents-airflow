@@ -2,12 +2,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Adjust these imports based on your project structure
 from ingestion_pipeline.chunking.exceptions import ChunkException
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 from ingestion_pipeline.chunking.textract import TextractDocumentChunker
-
-# --- Helper Factories for Mock Objects ---
 
 
 def create_mock_layout(block_type="LAYOUT_TEXT", text="some valid text", block_id="id-1"):
@@ -108,18 +105,10 @@ def test_skips_blocks_without_strategy_or_text(mock_metadata, mock_strategy_hand
 
     chunker = TextractDocumentChunker(strategy_handlers)
 
-    # Act & Assert
-    # --- FIX IS HERE ---
-    # Patch replaces the ChunkMerger class in the 'textract' module with a mock
     with patch("ingestion_pipeline.chunking.textract.ChunkMerger", autospec=True) as mock_merger:
-        # Configure the mock to simply return the chunks it receives,
-        # bypassing the real merging logic.
         mock_merger.return_value.chunk.side_effect = lambda chunks: chunks
-
-        # Now call the method under test
         processed_doc = chunker.chunk(doc, mock_metadata)
 
-    # Assert that the strategy was only called for the single valid block
     mock_strategy_handler.chunk.assert_called_once()
     assert len(processed_doc.chunks) == 1
 
@@ -128,7 +117,6 @@ def test_calls_merger_once_per_page(mock_metadata, mock_strategy_handler):
     """
     Verifies that the ChunkMerger is instantiated and called once for each page.
     """
-    # Arrange
     strategy_handlers = {"LAYOUT_TEXT": mock_strategy_handler}
     pages = [
         create_mock_page(layouts=[create_mock_layout()], page_num=1),
@@ -137,12 +125,9 @@ def test_calls_merger_once_per_page(mock_metadata, mock_strategy_handler):
     doc = create_mock_document(pages=pages)
     chunker = TextractDocumentChunker(strategy_handlers)
 
-    # Act
     with patch("ingestion_pipeline.chunking.textract.ChunkMerger", autospec=True) as mock_merger:
         chunker.chunk(doc, mock_metadata)
 
-        # Assert
-        # The merger's chunk method should be called exactly twice
         assert mock_merger.return_value.chunk.call_count == 2
 
 
@@ -150,16 +135,13 @@ def test_creates_pagedocument_with_correct_data(mock_metadata, mock_strategy_han
     """
     Verifies that PageDocument objects are created correctly from page data.
     """
-    # Arrange
     strategy_handlers = {"LAYOUT_TEXT": mock_strategy_handler}
     page = create_mock_page(layouts=[], page_num=5, width=800, height=600)
     doc = create_mock_document(pages=[page])
     chunker = TextractDocumentChunker(strategy_handlers)
 
-    # Act
     processed_doc = chunker.chunk(doc, mock_metadata)
 
-    # Assert
     assert len(processed_doc.pages) == 1
     page_doc = processed_doc.pages[0]
 
@@ -175,7 +157,7 @@ def test_wraps_strategy_exception_in_chunkexception(mock_metadata, mock_strategy
     Verifies that if a strategy raises an unexpected error, it is caught
     and re-raised as a ChunkException.
     """
-    # Arrange
+
     error_message = "Something went very wrong!"
     mock_strategy_handler.chunk.side_effect = Exception(error_message)
 
@@ -184,6 +166,5 @@ def test_wraps_strategy_exception_in_chunkexception(mock_metadata, mock_strategy
     doc = create_mock_document(pages=[page])
     chunker = TextractDocumentChunker(strategy_handlers)
 
-    # Act & Assert
     with pytest.raises(ChunkException, match=error_message):
         chunker.chunk(doc, mock_metadata)
