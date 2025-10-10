@@ -1,25 +1,41 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Order of priority
-# Pydantic performs the following steps to determine the final value for each attribute:
-# Arguments to the Initializer (Highest Priority): If you pass values directly when creating the object
-# (e.g., Settings(OPENSEARCH_PORT=1234)), these would take precedence over everything else.
+# Order of priority for pydantic-settings:
+#
+# 1. Arguments to the Initializer (Highest Priority - rarely used):
+#    If you pass values directly when creating the object (e.g., Settings(OPENSEARCH_PORT=1234)),
+#    these take precedence. However, this defeats the purpose of pydantic-settings and is uncommon.
+#
+# 2. System Environment Variables:
+#    Pydantic looks for environment variables set in your operating system.
+#    Example: export OPENSEARCH_PORT=5000 before running the script.
+#
+# 3. .env File Values:
+#    If env_file=".env" is specified in model_config, Pydantic reads from the .env file.
+#    Example: OPENSEARCH_PORT=9201 in .env will be used.
+#
+# 4. Default Values in the Class (Lowest Priority):
+#    If no value is found elsewhere, use the default from the class definition.
+#    Example: OPENSEARCH_PORT: int = 9200
 
-# System Environment Variables: Pydantic will then look for environment variables set in your operating system's shell.
-# For example, running export OPENSEARCH_PORT=5000 in a terminal before running the script,
-# would use that value.
-
-# .env File Values: Next, because you've specified env_file=".env" in your model_config,
-# Pydantic reads the .env file. If OPENSEARCH_PORT=0 is set in that file,
-# it will override the default value from the class definition.
-
-# Default Values in the Class (Lowest Priority): Finally, if a value isn't found in any of the sources above,
-# Pydantic uses the default value defined directly in the class. For OPENSEARCH_PORT, this would be 9200.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+ENV_FILE_PATH = PROJECT_ROOT / ".env"
 
 
 class Settings(BaseSettings):  # type: ignore
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        # Only load .env if it exists (local dev)
+        env_file=str(ENV_FILE_PATH) if ENV_FILE_PATH.exists() else None,
+        env_file_encoding="utf-8",
+        extra="ignore",
+        # This is the key: environment variables always take precedence
+        case_sensitive=False,
+    )
     # -- OpenSearch client --
+    # Default credentials for LOCAL DEVELOPMENT ONLY
+    # In production, these MUST be overridden
     OPENSEARCH_HOST: str = "localhost"
     OPENSEARCH_URL_PREFIX: str = "/opensearch/eu-west-2/case-document-search-domain"
     OPENSEARCH_PORT: int = 9200
@@ -50,9 +66,6 @@ class Settings(BaseSettings):  # type: ignore
     # S3_PREFIX: str = "textract-test"
 
     # And this
-    # POLL_INTERVAL_SECONDS: int = 5  # for checking Textract job status
-    # BEDROCK_TOKENIZER_NAME: str = "cl100k_base"
-    # BEDROCK_CHUNK_SIZE: int = 300  # 100 tokens ~ 75 words (1 token ~ (3/4) words)
     # BEDROCK_EMBEDDING_MODEL_ID: str = "amazon.titan-embed-text-v2:0"
 
 
