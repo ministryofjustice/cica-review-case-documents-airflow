@@ -3,18 +3,18 @@ import logging
 from textractor.entities.document import Document
 
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
-from ingestion_pipeline.chunking.textract import TextractDocumentChunker
+from ingestion_pipeline.chunking.textract import DocumentChunker
 from ingestion_pipeline.indexing.indexer import OpenSearchIndexer
 
 logger = logging.getLogger(__name__)
 
 
-class ProcessingPipeline:
+class ChunkAndIndexPipeline:
     """
     Orchestrates the document processing pipeline: chunking -> embedding -> indexing.
     """
 
-    def __init__(self, chunker: TextractDocumentChunker, chunk_indexer: OpenSearchIndexer):
+    def __init__(self, chunker: DocumentChunker, chunk_indexer: OpenSearchIndexer):
         """
         Initializes the orchestrator with the necessary components.
 

@@ -4,7 +4,7 @@ import pytest
 
 from ingestion_pipeline.chunking.exceptions import ChunkException
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
-from ingestion_pipeline.chunking.textract import TextractDocumentChunker
+from ingestion_pipeline.chunking.textract import DocumentChunker
 
 
 def create_mock_layout(block_type="LAYOUT_TEXT", text="some valid text", block_id="id-1"):
@@ -72,7 +72,7 @@ def test_selects_correct_strategy_and_increments_index(mock_metadata):
     page = create_mock_page(layouts=[create_mock_layout("LAYOUT_TEXT"), create_mock_layout("LAYOUT_TABLE")])
     doc = create_mock_document(pages=[page])
 
-    chunker = TextractDocumentChunker(strategy_handlers)
+    chunker = DocumentChunker(strategy_handlers)
 
     with patch("ingestion_pipeline.chunking.textract.ChunkMerger", autospec=True) as mock_merger:
         mock_merger.return_value.chunk.side_effect = lambda chunks: chunks
@@ -103,7 +103,7 @@ def test_skips_blocks_without_strategy_or_text(mock_metadata, mock_strategy_hand
     )
     doc = create_mock_document(pages=[page])
 
-    chunker = TextractDocumentChunker(strategy_handlers)
+    chunker = DocumentChunker(strategy_handlers)
 
     with patch("ingestion_pipeline.chunking.textract.ChunkMerger", autospec=True) as mock_merger:
         mock_merger.return_value.chunk.side_effect = lambda chunks: chunks
@@ -123,7 +123,7 @@ def test_calls_merger_once_per_page(mock_metadata, mock_strategy_handler):
         create_mock_page(layouts=[create_mock_layout()], page_num=2),
     ]
     doc = create_mock_document(pages=pages)
-    chunker = TextractDocumentChunker(strategy_handlers)
+    chunker = DocumentChunker(strategy_handlers)
 
     with patch("ingestion_pipeline.chunking.textract.ChunkMerger", autospec=True) as mock_merger:
         chunker.chunk(doc, mock_metadata)
@@ -138,7 +138,7 @@ def test_creates_pagedocument_with_correct_data(mock_metadata, mock_strategy_han
     strategy_handlers = {"LAYOUT_TEXT": mock_strategy_handler}
     page = create_mock_page(layouts=[], page_num=5, width=800, height=600)
     doc = create_mock_document(pages=[page])
-    chunker = TextractDocumentChunker(strategy_handlers)
+    chunker = DocumentChunker(strategy_handlers)
 
     processed_doc = chunker.chunk(doc, mock_metadata)
 
@@ -164,7 +164,7 @@ def test_wraps_strategy_exception_in_chunkexception(mock_metadata, mock_strategy
     strategy_handlers = {"LAYOUT_TEXT": mock_strategy_handler}
     page = create_mock_page(layouts=[create_mock_layout()])
     doc = create_mock_document(pages=[page])
-    chunker = TextractDocumentChunker(strategy_handlers)
+    chunker = DocumentChunker(strategy_handlers)
 
     with pytest.raises(ChunkException, match=error_message):
         chunker.chunk(doc, mock_metadata)

@@ -5,7 +5,7 @@ from ingestion_pipeline.config import settings
 CHUNK_INDEX_UUID_NAMESPACE = settings.CHUNK_INDEX_UUID_NAMESPACE
 
 
-def create_guid_hash(filename, correspondence_type, received_date, case_ref):
+def generate_uuid(filename, correspondence_type, received_date, case_ref):
     """
     Creates a Version 5 UUID from the given parameters.
 

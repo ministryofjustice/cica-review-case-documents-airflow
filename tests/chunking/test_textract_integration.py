@@ -5,7 +5,6 @@ from typing import Optional
 
 import pytest
 from pydantic import ValidationError
-from textractor.entities.bbox import BoundingBox
 from textractor.entities.document import Document
 
 from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
@@ -14,7 +13,7 @@ from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkin
 from ingestion_pipeline.chunking.strategies.table import LayoutTableChunkingStrategy
 from ingestion_pipeline.chunking.textract import (
     DocumentChunk,
-    TextractDocumentChunker,
+    DocumentChunker,
 )
 
 TEXTRACT_JSON_PATH = Path(__file__).parent / "data" / "single_text_layout_textract_response.json"
@@ -67,7 +66,7 @@ def document_chunker_factory():
     This allows tests to create a chunker with a custom config.
     """
 
-    def _factory(config: Optional[ChunkingConfig] = None) -> TextractDocumentChunker:
+    def _factory(config: Optional[ChunkingConfig] = None) -> DocumentChunker:
         # If no config is provided by the test, use the default one.
         if config is None:
             config = ChunkingConfig()
@@ -80,7 +79,7 @@ def document_chunker_factory():
             "LAYOUT_TABLE": layout_table_strategy,
         }
 
-        return TextractDocumentChunker(
+        return DocumentChunker(
             strategy_handlers=strategy_handlers,
             config=config,
         )
@@ -183,10 +182,3 @@ def test_empty_document_throws_error(document_chunker_factory, document_metadata
 
     with pytest.raises(Exception, match="Document cannot be None and must contain pages."):
         document_chunker_factory().chunk(doc=mock_doc, metadata=mock_metadata)
-
-
-def create_long_line_data(num_lines: int, line_length: int = 100) -> list[dict]:
-    """Helper to create a layout block with many long lines."""
-    line_text = "a" * (line_length - 1) + " "
-    lines = [{"text": line_text, "bbox": BoundingBox(0.1, 0.1, 0.8, 0.01)} for _ in range(num_lines)]
-    return [{"type": "LAYOUT_TEXT", "lines": lines}]

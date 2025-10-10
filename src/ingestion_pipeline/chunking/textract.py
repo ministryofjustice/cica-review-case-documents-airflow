@@ -13,7 +13,7 @@ from .strategies.base import ChunkingStrategyHandler
 logger = logging.getLogger(__name__)
 
 
-class TextractDocumentChunker:
+class DocumentChunker:
     """Handles extraction of chunks from Textractor documents."""
 
     def __init__(

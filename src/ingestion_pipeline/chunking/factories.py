@@ -3,10 +3,10 @@
 from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
 from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkingStrategy
 from ingestion_pipeline.chunking.strategies.table import LayoutTableChunkingStrategy
-from ingestion_pipeline.chunking.textract import TextractDocumentChunker
+from ingestion_pipeline.chunking.textract import DocumentChunker
 
 
-def create_default_chunker() -> TextractDocumentChunker:
+def create_default_chunker() -> DocumentChunker:
     """Builds the TextractDocumentChunker with its default dependencies."""
     config = ChunkingConfig()
 
@@ -16,4 +16,4 @@ def create_default_chunker() -> TextractDocumentChunker:
         # "LAYOUT_FIGURE": FigureChunkingStrategy(config),
     }
 
-    return TextractDocumentChunker(strategy_handlers=strategy_handlers, config=config)
+    return DocumentChunker(strategy_handlers=strategy_handlers, config=config)
