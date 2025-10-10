@@ -3,10 +3,10 @@ from typing import List, Optional
 
 from textractor.entities.bbox import BoundingBox
 
-from src.chunking.chunking_config import ChunkingConfig
-from src.chunking.schemas import DocumentMetadata, OpenSearchDocument
-from src.chunking.strategies.base import ChunkingStrategyHandler
-from src.chunking.utils.bbox_utils import combine_bounding_boxes
+from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
+from ingestion_pipeline.chunking.strategies.base import ChunkingStrategyHandler
+from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ class LayoutTextChunkingStrategy(ChunkingStrategyHandler):
         metadata: DocumentMetadata,
         chunk_index_start: int,
         raw_response: Optional[dict] = None,
-    ) -> List[OpenSearchDocument]:
+    ) -> List[DocumentChunk]:
         """Extract chunks using line-based splitting strategy."""
         chunks = []
         chunk_index = chunk_index_start
@@ -72,14 +72,14 @@ class LayoutTextChunkingStrategy(ChunkingStrategyHandler):
         page_number,
         metadata: DocumentMetadata,
         chunk_index: int,
-    ) -> OpenSearchDocument:
+    ) -> DocumentChunk:
         """Create a chunk from accumulated lines and bounding boxes."""
         combined_bbox = combine_bounding_boxes(bboxes)
         chunk_text = " ".join(lines)
 
         logger.debug(f"Layout {layout_block.layout_type} chunk : {chunk_text}")
         # Do we need to pass in the block type, is layout_block.layout_type enough?
-        return OpenSearchDocument.from_textractor_layout(
+        return DocumentChunk.from_textractor_layout(
             block=layout_block,
             page_number=page_number,
             metadata=metadata,

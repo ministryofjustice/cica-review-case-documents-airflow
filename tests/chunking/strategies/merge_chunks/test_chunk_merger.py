@@ -2,8 +2,8 @@ import datetime
 
 import pytest
 
-from src.chunking.schemas import DocumentBoundingBox, DocumentMetadata, OpenSearchDocument
-from src.chunking.strategies.merge.chunk_merger import ChunkMerger
+from ingestion_pipeline.chunking.schemas import DocumentBoundingBox, DocumentChunk, DocumentMetadata
+from ingestion_pipeline.chunking.strategies.merge.chunk_merger import ChunkMerger
 
 
 # Helper function to create mock atomic chunks for tests
@@ -16,7 +16,7 @@ def create_atomic_chunk(
     chunk_index: int,
     left: float = 0.1,
     width: float = 0.8,
-) -> OpenSearchDocument:
+) -> DocumentChunk:
     """Helper to create a mock OpenSearchDocument for testing."""
     bbox = DocumentBoundingBox(
         Width=width,
@@ -25,7 +25,7 @@ def create_atomic_chunk(
         Top=top,
     )
     # The class constructor validates the data
-    return OpenSearchDocument(
+    return DocumentChunk(
         chunk_id=f"{metadata.ingested_doc_id}_p{page_number}_c{chunk_index}",
         ingested_doc_id=metadata.ingested_doc_id,
         chunk_text=text,

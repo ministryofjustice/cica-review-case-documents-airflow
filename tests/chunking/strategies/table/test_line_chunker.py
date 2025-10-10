@@ -6,10 +6,10 @@ from unittest.mock import MagicMock
 import pytest
 
 # Application modules that we will be patching
-import src.chunking.strategies.table.base as base_module
-import src.chunking.strategies.table.line_chunker as line_chunker_module
-from src.chunking.chunking_config import ChunkingConfig
-from src.chunking.strategies.table.line_chunker import LineTableChunker
+import ingestion_pipeline.chunking.strategies.table.base as base_module
+import ingestion_pipeline.chunking.strategies.table.line_chunker as line_chunker_module
+from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+from ingestion_pipeline.chunking.strategies.table.line_chunker import LineTableChunker
 
 
 # --- Mock Objects ---
@@ -86,7 +86,7 @@ class MockDocumentMetadata:
 
 @dataclass
 class MockTextBlock:
-    """A mock for the REFACTORED src.chunking.strategies.table.schemas.TextBlock."""
+    """A mock for the REFACTORED ingestion_pipeline.chunking.strategies.table.schemas.TextBlock."""
 
     text: str
     bbox: "MockBoundingBox"
@@ -206,10 +206,10 @@ def test_process_text_block_row_sorting(chunker):
 
 def test_chunk_method_integration(chunker, monkeypatch):
     """
-    Tests the full chunking process from a Layout object to OpenSearchDocuments.
+    Tests the full chunking process from a Layout object to DocumentChunks.
     """
 
-    class MockOpenSearchDocument:
+    class MockDocumentChunk:
         def __init__(self, **kwargs):
             self.kwargs = kwargs
 
@@ -217,7 +217,7 @@ def test_chunk_method_integration(chunker, monkeypatch):
         def from_textractor_layout(cls, **kwargs):
             return cls(**kwargs)
 
-    monkeypatch.setattr(base_module, "OpenSearchDocument", MockOpenSearchDocument)
+    monkeypatch.setattr(base_module, "DocumentChunk", MockDocumentChunk)
 
     lines = [
         MockLine("l1", "Name", MockBoundingBox(x=0.1, y=0.1, width=0.2, height=0.05)),
@@ -451,8 +451,8 @@ def test_chunk_method_resilience_with_mixed_quality_data(chunker, monkeypatch):
     a layout block containing a mix of valid and invalid lines.
     """
 
-    # Mock OpenSearchDocument as in your original test
-    class MockOpenSearchDocument:
+    # Mock DocumentChunk as in your original test
+    class MockDocumentChunk:
         def __init__(self, **kwargs):
             self.kwargs = kwargs
 
@@ -460,7 +460,7 @@ def test_chunk_method_resilience_with_mixed_quality_data(chunker, monkeypatch):
         def from_textractor_layout(cls, **kwargs):
             return cls(**kwargs)
 
-    monkeypatch.setattr(base_module, "OpenSearchDocument", MockOpenSearchDocument)
+    monkeypatch.setattr(base_module, "DocumentChunk", MockDocumentChunk)
 
     lines = [
         MockLine("l1", "Name", MockBoundingBox(x=0.1, y=0.1, width=0.2, height=0.05)),

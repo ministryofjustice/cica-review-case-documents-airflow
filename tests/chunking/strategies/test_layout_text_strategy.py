@@ -2,9 +2,9 @@ from unittest.mock import MagicMock, call
 
 import pytest
 
-import src.chunking.strategies.layout_text as layout_text_module
-from src.chunking.chunking_config import ChunkingConfig
-from src.chunking.strategies.layout_text import LayoutTextChunkingStrategy
+import ingestion_pipeline.chunking.strategies.layout_text as layout_text_module
+from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkingStrategy
 
 
 @pytest.fixture
@@ -19,7 +19,7 @@ def mock_dependencies(mocker):
     'mocker' is provided by the pytest-mock plugin.
     """
 
-    mock_opensearch_chunk = mocker.patch.object(layout_text_module, "OpenSearchDocument", autospec=True)
+    mock_opensearch_chunk = mocker.patch.object(layout_text_module, "DocumentChunk", autospec=True)
     mock_combine_bboxes = mocker.patch.object(layout_text_module, "combine_bounding_boxes", autospec=True)
 
     return mock_opensearch_chunk, mock_combine_bboxes

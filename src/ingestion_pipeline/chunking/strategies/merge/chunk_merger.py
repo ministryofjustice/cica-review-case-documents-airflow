@@ -4,8 +4,8 @@ from typing import List
 
 from textractor.entities.layout import Layout
 
-from src.chunking.schemas import DocumentMetadata, OpenSearchDocument
-from src.chunking.utils.bbox_utils import combine_bounding_boxes
+from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
+from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ class ChunkMerger:
         self.word_limit = word_limit
         self.max_vertical_gap = max_vertical_gap
 
-    def chunk(self, atomic_chunks: List[OpenSearchDocument]) -> List[OpenSearchDocument]:
+    def chunk(self, atomic_chunks: List[DocumentChunk]) -> List[DocumentChunk]:
         """
         Groups atomic chunks into larger chunks per page based on word limit and
         spatial grouping.
@@ -102,7 +102,7 @@ class ChunkMerger:
 
         return grouped_chunks
 
-    def _merge_chunks(self, chunks: List[OpenSearchDocument], chunk_index: int) -> OpenSearchDocument:
+    def _merge_chunks(self, chunks: List[DocumentChunk], chunk_index: int) -> DocumentChunk:
         """
         Merges a list of atomic chunks into a single OpenSearchDocument.
 
@@ -137,7 +137,7 @@ class ChunkMerger:
             reading_order=0,
         )
 
-        return OpenSearchDocument.from_textractor_layout(
+        return DocumentChunk.from_textractor_layout(
             block=dummy_layout,
             page_number=page_number,
             metadata=metadata,

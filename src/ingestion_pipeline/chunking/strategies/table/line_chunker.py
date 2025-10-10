@@ -6,9 +6,9 @@ from textractor.data.constants import LINE
 from textractor.entities.bbox import BoundingBox
 from textractor.entities.layout import Layout, Line
 
-from src.chunking.schemas import DocumentMetadata, OpenSearchDocument
-from src.chunking.strategies.table.base import BaseTableChunker
-from src.chunking.strategies.table.schemas import TextBlock
+from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
+from ingestion_pipeline.chunking.strategies.table.base import BaseTableChunker
+from ingestion_pipeline.chunking.strategies.table.schemas import TextBlock
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class LineTableChunker(BaseTableChunker):
         metadata: DocumentMetadata,
         chunk_index_start: int,
         raw_response: Optional[dict] = None,
-    ) -> List[OpenSearchDocument]:
+    ) -> List[DocumentChunk]:
         """
         Processes a layout block into one or more document chunks based on size.
         This version ensures text assembly is consistent across both chunking paths.

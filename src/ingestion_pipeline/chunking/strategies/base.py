@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from src.chunking.chunking_config import ChunkingConfig  # ← Changed import
-from src.chunking.schemas import DocumentMetadata, OpenSearchDocument
+from ingestion_pipeline.chunking.chunking_config import ChunkingConfig  # ← Changed import
+from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 
 
 class ChunkingStrategyHandler(ABC):
@@ -20,7 +20,7 @@ class ChunkingStrategyHandler(ABC):
         metadata: DocumentMetadata,
         chunk_index_start: int,
         raw_response: Optional[dict],
-    ) -> List[OpenSearchDocument]:
+    ) -> List[DocumentChunk]:
         """
         Extracts chunks from a single layout block based on the specific strategy.
 

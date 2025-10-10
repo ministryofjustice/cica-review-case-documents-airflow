@@ -6,9 +6,9 @@ from textractor.entities.key_value import KeyValue
 from textractor.entities.layout import Layout
 from textractor.entities.line import Line
 
-from src.chunking.schemas import DocumentMetadata, OpenSearchDocument
-from src.chunking.strategies.base import ChunkingStrategyHandler
-from src.chunking.utils.bbox_utils import combine_bounding_boxes
+from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
+from ingestion_pipeline.chunking.strategies.base import ChunkingStrategyHandler
+from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class KeyValueChunker(ChunkingStrategyHandler):
         metadata: DocumentMetadata,
         chunk_index_start: int,
         raw_response: Optional[dict] = None,
-    ) -> List[OpenSearchDocument]:
+    ) -> List[DocumentChunk]:
         """
         Processes a layout block, creating distinct chunks for KeyValue pairs
         and standalone Line objects.
@@ -85,7 +85,7 @@ class KeyValueChunker(ChunkingStrategyHandler):
         page_number: int,
         metadata: DocumentMetadata,
         chunk_index: int,
-    ) -> OpenSearchDocument:
+    ) -> DocumentChunk:
         """
         A helper method to create an OpenSearchDocument from chunk data.
         This centralizes the creation logic.
@@ -95,7 +95,7 @@ class KeyValueChunker(ChunkingStrategyHandler):
 
         logger.debug(f"Layout {layout_block.layout_type} chunk : {chunk_text}")
 
-        return OpenSearchDocument.from_textractor_layout(
+        return DocumentChunk.from_textractor_layout(
             block=layout_block,
             page_number=page_number,
             metadata=metadata,

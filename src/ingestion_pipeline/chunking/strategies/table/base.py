@@ -5,8 +5,8 @@ from typing import List, Optional
 from textractor.entities.bbox import BoundingBox
 from textractor.entities.layout import Layout
 
-from src.chunking.chunking_config import ChunkingConfig
-from src.chunking.schemas import DocumentMetadata, OpenSearchDocument
+from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class BaseTableChunker(ABC):
         metadata: DocumentMetadata,
         chunk_index_start: int,
         raw_response: Optional[dict] = None,
-    ) -> List[OpenSearchDocument]:
+    ) -> List[DocumentChunk]:
         """Process the layout block into chunks"""
         pass
 
@@ -37,13 +37,13 @@ class BaseTableChunker(ABC):
         page_number: int,
         metadata: DocumentMetadata,
         chunk_index: int,
-    ) -> OpenSearchDocument:
+    ) -> DocumentChunk:
         """Create an OpenSearch document chunk."""
         combined_bbox = BoundingBox.enclosing_bbox(bboxes) if bboxes else layout_block.bbox
 
         logger.debug(f"Table chunk : {chunk_text}")
 
-        return OpenSearchDocument.from_textractor_layout(
+        return DocumentChunk.from_textractor_layout(
             block=layout_block,
             page_number=page_number,
             metadata=metadata,

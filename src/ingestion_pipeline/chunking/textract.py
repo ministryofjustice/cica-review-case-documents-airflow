@@ -1,30 +1,30 @@
 import logging
-from typing import Dict, List, Optional
+from typing import List, Mapping, Optional
 
 from textractor.entities.document import Document
 
-from src.chunking.exceptions import ChunkException
-from src.chunking.strategies.merge.chunk_merger import ChunkMerger
+from ingestion_pipeline.chunking.exceptions import ChunkException
+from ingestion_pipeline.chunking.strategies.merge.chunk_merger import ChunkMerger
 
 from .chunking_config import ChunkingConfig
-from .schemas import DocumentMetadata, OpenSearchDocument
+from .schemas import DocumentChunk, DocumentMetadata, DocumentPage, ProcessedDocument
 from .strategies.base import ChunkingStrategyHandler
 
 logger = logging.getLogger(__name__)
 
 
-class TextractDocumentChunker:
+class DocumentChunker:
     """Handles extraction of chunks from Textractor documents."""
 
     def __init__(
         self,
-        strategy_handlers: Dict[str, ChunkingStrategyHandler],
+        strategy_handlers: Mapping[str, ChunkingStrategyHandler],
         config: Optional[ChunkingConfig] = None,
     ):
         self.config = config or ChunkingConfig()
         self.strategy_handlers = strategy_handlers
 
-    def chunk(self, doc: Document, metadata: DocumentMetadata) -> List[OpenSearchDocument]:
+    def chunk(self, doc: Document, metadata: DocumentMetadata) -> ProcessedDocument:
         """
         Parses a Textractor Document and extracts specified layout blocks as structured chunks.
 
@@ -42,6 +42,7 @@ class TextractDocumentChunker:
             self._validate_inputs(doc, metadata)
 
             all_chunks = []
+            page_documents = []
             chunk_index_counter = 0
 
             raw_response = doc.response
@@ -56,8 +57,22 @@ class TextractDocumentChunker:
                 all_chunks.extend(page_chunks)
                 chunk_index_counter += len(page_chunks)
 
+                page_doc = DocumentPage(
+                    document_id=metadata.ingested_doc_id,
+                    page_num=page.page_num,
+                    # Placeholders, these will be generated in another step and passed in,
+                    # probably key:object page_num:{s3_page_uri, page_width, page_height, page_text, anything else....}
+                    page_image_s3_uri=f"s3://bucket/{metadata.case_ref}/{metadata.ingested_doc_id}/page_images/page_{page.page_num}.png",
+                    page_width=page.width,
+                    page_height=page.height,
+                    # The place holders wlll be added outside of this step
+                    # and should be held within the document metadata
+                    text="To be added to DcoumentMetadata..........",
+                )
+                page_documents.append(page_doc)
+
             logger.info(f"Extracted {len(all_chunks)} chunks from document {metadata.ingested_doc_id}")
-            return all_chunks
+            return ProcessedDocument(chunks=all_chunks, pages=page_documents, metadata=metadata)
 
         except Exception as e:
             logger.error(f"Error extracting chunks from document {metadata.ingested_doc_id}: {str(e)}")
@@ -74,7 +89,7 @@ class TextractDocumentChunker:
         metadata: DocumentMetadata,
         chunk_index_start: int,
         raw_response: Optional[dict],
-    ) -> List[OpenSearchDocument]:
+    ) -> List[DocumentChunk]:
         """Process a single page and return its chunks."""
         page_chunks = []
         current_chunk_index = chunk_index_start
@@ -98,7 +113,7 @@ class TextractDocumentChunker:
 
         return grouped_chunks
 
-    def _should_process_block(self, layout_block, layout_types: Dict[str, ChunkingStrategyHandler]) -> bool:
+    def _should_process_block(self, layout_block, layout_types: Mapping[str, ChunkingStrategyHandler]) -> bool:
         """Determine if a layout block should be processed."""
 
         if not (layout_block.layout_type in layout_types and layout_block.text and layout_block.text.strip()):

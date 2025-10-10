@@ -4,11 +4,11 @@ import pytest
 from textractor.entities.layout import Layout, Line
 from textractor.entities.table import Table
 
-from src.chunking.chunking_config import ChunkingConfig
-from src.chunking.exceptions import ChunkException
-from src.chunking.strategies.table import LayoutTableChunkingStrategy
-from src.chunking.strategies.table.cell_chunker import CellTableChunker
-from src.chunking.strategies.table.line_chunker import LineTableChunker
+from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+from ingestion_pipeline.chunking.exceptions import ChunkException
+from ingestion_pipeline.chunking.strategies.table import LayoutTableChunkingStrategy
+from ingestion_pipeline.chunking.strategies.table.cell_chunker import CellTableChunker
+from ingestion_pipeline.chunking.strategies.table.line_chunker import LineTableChunker
 
 
 @pytest.fixture

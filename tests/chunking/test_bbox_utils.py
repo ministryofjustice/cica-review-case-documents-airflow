@@ -4,7 +4,7 @@ from typing import List, cast
 import pytest
 from textractor.entities.bbox import BoundingBox
 
-from src.chunking.utils.bbox_utils import combine_bounding_boxes
+from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes
 
 
 @dataclass
