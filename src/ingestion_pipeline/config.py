@@ -30,7 +30,6 @@ class Settings(BaseSettings):  # type: ignore
         env_file=str(ENV_FILE_PATH) if ENV_FILE_PATH.exists() else None,
         env_file_encoding="utf-8",
         extra="ignore",
-        # This is the key: environment variables always take precedence
         case_sensitive=False,
     )
     # -- OpenSearch client --
@@ -41,7 +40,7 @@ class Settings(BaseSettings):  # type: ignore
     OPENSEARCH_PORT: int = 9200
     OPENSEARCH_USERNAME: str = "admin"
     OPENSEARCH_PASSWORD: str = "really-secure-passwordAa!1"
-    OPENSEARCH_CHUNK_INDEX_NAME: str = "case-documents"
+    OPENSEARCH_CHUNK_INDEX_NAME: str = "page_chunks"
     # -- AWS --
     AWS_ACCESS_KEY_ID: str = "aws_access_key_id"
     AWS_SECRET_ACCESS_KEY: str = "aws_secret_access_key"
@@ -57,7 +56,7 @@ class Settings(BaseSettings):  # type: ignore
     # Create a unique namespace for your application
     # This is a fixed UUID defined once for the system.
     # TODO This should be a UUID that is generated, is stored as a secret? and is kept constant
-    CHUNK_INDEX_UUID_NAMESPACE: str = "f0e1c2d3-4567-89ab-cdef-fedcba987654"
+    SYSTEM_UUID_NAMESPACE: str = "f0e1c2d3-4567-89ab-cdef-fedcba987654"
     TEXTRACT_API_POLL_INTERVAL_SECONDS: int = 5
     TEXTRACT_API_JOB_TIMEOUT_SECONDS: int = 600
 

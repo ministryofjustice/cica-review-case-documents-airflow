@@ -77,7 +77,7 @@ def test_poll_for_job_completion_succeeds(mock_time, mock_sleep, mock_textractor
 @patch.object(TextractProcessor, "_start_textract_job")
 @patch.object(TextractProcessor, "_poll_for_job_completion")
 @patch.object(TextractProcessor, "_get_job_results")
-@patch("ingestion_pipeline.uuid_generators.document_uuid.generate_uuid")
+@patch("ingestion_pipeline.uuid_generators.document_uuid.DocumentIdentifier")
 def test_process_document_happy_path(
     mock_create_hash,
     mock_get_results,

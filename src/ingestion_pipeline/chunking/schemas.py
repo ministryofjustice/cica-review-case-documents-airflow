@@ -129,7 +129,7 @@ class DocumentPage(BaseModel):
 
     document_id: str = Field(..., description="The unique ID of the source document.")
     page_num: int = Field(..., description="The page number (1-based).")
-    page_image_s3_uri: str = Field(..., description="S3 URI for the page image.")
+    page_id: str = Field(..., description="UUID for the index.")
     text: str = Field(..., description="Structured ocr content for the front end rendering")
     page_width: float
     page_height: float
