@@ -33,7 +33,7 @@ done
 echo -e "\nActual OpenSearch container is ready!"
 
 # --- Step 4: Create the index in the actual OpenSearch container ---
-INDEX_NAME="case-documents"
+INDEX_NAME="page_chunks"
 if curl --silent --fail -u "${OPENSEARCH_AUTH}" "http://${DIRECT_OPENSEARCH_ENDPOINT}/${INDEX_NAME}" > /dev/null; then
   echo "Index '${INDEX_NAME}' already exists. Skipping creation."
 else
@@ -70,7 +70,7 @@ else
             "source_file_name": {
                 "type": "keyword"
             },
-            "s3_page_image_uri": {
+            "page_id": {
                 "type": "keyword",
                 "index": false
             },
@@ -153,6 +153,74 @@ EOF
   fi
 fi
 
-# --- Step 6: Create a marker file for the LocalStack health check ---
+# --- Step 6: Create the page index in the OpenSearch container ---
+INDEX_NAME="page_metadata"
+if curl --silent --fail -u "${OPENSEARCH_AUTH}" "http://${DIRECT_OPENSEARCH_ENDPOINT}/${INDEX_NAME}" > /dev/null; then
+  echo "Index '${INDEX_NAME}' already exists. Skipping creation."
+else
+  echo "Creating index '${INDEX_NAME}'..."
+  CREATE_RESPONSE=$(curl -s -XPUT -u "${OPENSEARCH_AUTH}" "http://${DIRECT_OPENSEARCH_ENDPOINT}/${INDEX_NAME}" -H 'Content-Type: application/json' --data-binary @- <<EOF
+{
+    
+    "mappings": {
+        "properties": {
+            "page_id": {
+                "type": "keyword"
+            },
+            "document_id": {
+                "type": "keyword"
+            },
+            "page_text": {
+                "type": "keyword",
+                "index": false
+            },
+            "source_file_name": {
+                "type": "keyword",
+                "index": false
+            },
+            "s3_page_image_uri": {
+                "type": "keyword",
+                "index": false
+            },
+            "case_ref": {
+                "type": "keyword",
+                "index": false
+            },
+            "correspondence_type": {
+                "type": "keyword",
+                "index": false
+            },
+            "received_date": {
+                "type": "date",
+                "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis",
+                "index": false
+            },
+            "page_count": {
+                "type": "integer",
+                "index": false
+            },
+            "page_number": {
+                "type": "integer",
+                "index": false
+            },
+            "geometry": {
+                "type": "object",
+                "enabled": false
+            }
+        }
+    }
+}
+EOF
+)
+
+  if echo "${CREATE_RESPONSE}" | grep -q '"acknowledged":true'; then
+    echo "Index '${INDEX_NAME}' created successfully."
+  else
+    echo "Failed to create index '${INDEX_NAME}'. Response: ${CREATE_RESPONSE}"
+    exit 1
+  fi
+fi
+
+# --- Step 7: Create a marker file for the LocalStack health check ---
 touch /tmp/opensearch_index_ready
 echo "LocalStack OpenSearch Domain and Index resources completed successfully."

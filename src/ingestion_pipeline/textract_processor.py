@@ -145,7 +145,7 @@ def main():
 
     # 1. Instantiate dependencies
     textractor_instance = Textractor()
-    boto3_textract_client = boto3.client("textract")
+    boto3_textract_client = boto3.client("textract", settings.AWS_REGION)
     chunk_and_index_pipeline = ChunkAndIndexPipeline(chunker=chunker, chunk_indexer=chunk_indexer)
 
     # 2. Instantiate the processor with its dependencies

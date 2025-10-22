@@ -149,7 +149,7 @@ def test_creates_pagedocument_with_correct_data(mock_metadata, mock_strategy_han
     assert page_doc.page_num == 5
     assert page_doc.page_width == 800
     assert page_doc.page_height == 600
-    assert page_doc.page_image_s3_uri == "s3://bucket/case-abc/doc-123/page_images/page_5.png"
+    assert page_doc.page_id == "s3://bucket/case-abc/doc-123/page_images/page_5.png"
 
 
 def test_wraps_strategy_exception_in_chunkexception(mock_metadata, mock_strategy_handler):
