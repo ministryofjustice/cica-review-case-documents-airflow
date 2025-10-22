@@ -1,19 +1,26 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional
 
-from src.chunking.schemas import DocumentMetadata, OpenSearchDocument
+from ingestion_pipeline.chunking.chunking_config import ChunkingConfig  # ← Changed import
+from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 
 
 class ChunkingStrategyHandler(ABC):
     """Abstract base class for chunking strategies."""
 
-    def __init__(self, maximum_chunk_size: int):
-        self.maximum_chunk_size = maximum_chunk_size
+    def __init__(self, config: ChunkingConfig):
+        self.config = config
+        self.maximum_chunk_size = config.maximum_chunk_size
 
     @abstractmethod
     def chunk(
-        self, layout_block, page_number: int, metadata: DocumentMetadata, chunk_index_start: int
-    ) -> List[OpenSearchDocument]:
+        self,
+        layout_block,
+        page_number: int,
+        metadata: DocumentMetadata,
+        chunk_index_start: int,
+        raw_response: Optional[dict],
+    ) -> List[DocumentChunk]:
         """
         Extracts chunks from a single layout block based on the specific strategy.
 
