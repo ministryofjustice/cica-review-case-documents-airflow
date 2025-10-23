@@ -1,5 +1,5 @@
 from datetime import date
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from textractor.entities.document import Document
@@ -168,3 +168,64 @@ def test_process_and_index_indexer_raises_exception(
         orchestrator.process_and_index(mock_textractor_doc, mock_document_metadata)
 
     mock_chunker.chunk.assert_called_once()
+
+
+def test_process_and_index_calls_embedding_generator_for_each_chunk(
+    mock_chunker, mock_indexer, mock_textractor_doc, mock_document_metadata, mock_processed_data_with_chunks
+):
+    """
+    Tests that EmbeddingGenerator is called for each chunk and the embedding is assigned.
+    """
+    mock_chunker.chunk.return_value = mock_processed_data_with_chunks
+
+    with patch("ingestion_pipeline.orchestration.pipeline.EmbeddingGenerator") as mock_embedding_generator_cls:
+        mock_embedding_generator = MagicMock()
+        mock_embedding_generator.generate_embedding.side_effect = ["embed1", "embed2"]
+        mock_embedding_generator_cls.return_value = mock_embedding_generator
+
+        orchestrator = ChunkAndIndexPipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
+        orchestrator.process_and_index(mock_textractor_doc, mock_document_metadata)
+
+        assert mock_embedding_generator.generate_embedding.call_count == len(mock_processed_data_with_chunks.chunks)
+        for idx, chunk in enumerate(mock_processed_data_with_chunks.chunks):
+            assert chunk.embedding == f"embed{idx + 1}"
+
+
+def test_process_and_index_logs_and_indexes_chunks(
+    mock_chunker, mock_indexer, mock_textractor_doc, mock_document_metadata, mock_processed_data_with_chunks, caplog
+):
+    """
+    Tests that logging occurs and indexing is called when chunks are present.
+    """
+    mock_chunker.chunk.return_value = mock_processed_data_with_chunks
+
+    with patch("ingestion_pipeline.orchestration.pipeline.EmbeddingGenerator") as mock_embedding_generator_cls:
+        mock_embedding_generator = MagicMock()
+        mock_embedding_generator.generate_embedding.return_value = "embedding"
+        mock_embedding_generator_cls.return_value = mock_embedding_generator
+
+        orchestrator = ChunkAndIndexPipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
+        with caplog.at_level("INFO"):
+            orchestrator.process_and_index(mock_textractor_doc, mock_document_metadata)
+
+        assert "Starting processing for document" in caplog.text
+        assert "Document chunked. Found" in caplog.text
+        assert "Indexing" in caplog.text
+        assert "Successfully finished processing document" in caplog.text
+        mock_indexer.index_documents.assert_called_once_with(mock_processed_data_with_chunks.chunks)
+
+
+def test_process_and_index_logs_and_skips_indexing_when_no_chunks(
+    mock_chunker, mock_indexer, mock_textractor_doc, mock_document_metadata, mock_processed_data_no_chunks, caplog
+):
+    """
+    Tests that logging occurs and indexing is skipped when no chunks are present.
+    """
+    mock_chunker.chunk.return_value = mock_processed_data_no_chunks
+
+    orchestrator = ChunkAndIndexPipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
+    with caplog.at_level("WARNING"):
+        orchestrator.process_and_index(mock_textractor_doc, mock_document_metadata)
+
+    assert "No chunks were generated, skipping indexing." in caplog.text
+    mock_indexer.index_documents.assert_not_called()
