@@ -60,6 +60,10 @@ If you need to run a Python script from outside the `poetry` environment, you ca
 
 #### Setting up pre-commit
 
+#### Pre-requisite
+
+Install [deptry](https://deptry.com/) 
+
 [Pre-commit hooks](https://pre-commit.com/) have been included in the repo to automatically perform actions when performing git commits, such as stripping the output from Jupyter notebooks.
 
 Pre-commit is framework for managing and maintaining pre-commit hooks.
