@@ -4,6 +4,7 @@ from textractor.entities.document import Document
 
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
 from ingestion_pipeline.chunking.textract import DocumentChunker
+from ingestion_pipeline.embedding.embedding_generator import EmbeddingGenerator
 from ingestion_pipeline.indexing.indexer import OpenSearchIndexer
 
 logger = logging.getLogger(__name__)
@@ -41,11 +42,17 @@ class ChunkAndIndexPipeline:
         )
 
         if processed_data.chunks:
-            # TODO add embedding
-            # Note Opensearch can also generate embeddings during indexing if configured
-            logger.info("Embedding step would happen here...")
-            # for chunk in processed_data.chunks:
-            #     chunk.embedding = self.embedding_model.generate(chunk.text)
+            for chunk in processed_data.chunks:
+                logger.debug(f"Chunk ID: {chunk.chunk_id}, Text: {chunk.chunk_text[:50]}...")
+                embedding_generator = EmbeddingGenerator(model_id="amazon.titan-embed-text-v2:0")
+                embedding = embedding_generator.generate_embedding(chunk.chunk_text)
+                chunk.embedding = embedding
+
+            # # TODO add embedding
+            # # Note Opensearch can also generate embeddings during indexing if configured
+            # logger.info("Embedding step would happen here...")
+            # # for chunk in processed_data.chunks:
+            # #     chunk.embedding = self.embedding_model.generate(chunk.text)
 
         if processed_data.chunks:
             logger.info(f"Indexing {len(processed_data.chunks)} chunks...")
