@@ -1,30 +1,51 @@
+import datetime
 import uuid
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from ingestion_pipeline.config import settings
 
-CHUNK_INDEX_UUID_NAMESPACE = settings.CHUNK_INDEX_UUID_NAMESPACE
+NAMESPACE_DOC_INGESTION = uuid.UUID(settings.SYSTEM_UUID_NAMESPACE)
 
 
-def generate_uuid(filename, correspondence_type, received_date, case_ref):
+class DocumentIdentifier(BaseModel):
     """
-    Creates a Version 5 UUID from the given parameters.
-
-    Args:
-        filename (str): The name of the source file.
-        correspondence_type (str): The correspondence type code.
-        received_date (datetime.date): The date the document was received.
-        case_ref (str): The case reference number.
-
-    Returns:
-        str: A standard UUID string in the format "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx".
+    Immutable input data used for generating deterministic UUIDs.
+    Contains the "natural key" components of a document or page.
     """
-    # Create a unique namespace for your application
-    # This is a fixed UUID that you define once for your system.
-    # TODO This should be a UUID that is generated, is stored as a secret and is kept constant
-    NAMESPACE_DOC_INGESTION = uuid.UUID(CHUNK_INDEX_UUID_NAMESPACE)
 
-    data_string = f"{filename}-{correspondence_type}-{received_date.isoformat()}-{case_ref}"
+    model_config = ConfigDict(frozen=True)
 
-    # Generate a UUID based on the namespace and the data string
-    # uuid.uuid5() uses a SHA-1 hash internally.
-    return str(uuid.uuid5(NAMESPACE_DOC_INGESTION, data_string))
+    source_file_name: str
+    correspondence_type: str
+    received_date: datetime.date
+    case_ref: str
+    page_num: Optional[int] = None
+
+    @field_validator("source_file_name", "correspondence_type", "case_ref")
+    @classmethod
+    def normalize_strings(cls, v: str) -> str:
+        """
+        Ensures all key strings are non-null, stripped,
+        and lowercased for deterministic hashing.
+        """
+        return (v or "").strip().lower()
+
+    def generate_uuid(self) -> str:
+        """
+        Creates a deterministic Version 5 UUID from this object's data.
+
+        - If self.page_num is None, generates a DOCUMENT-level UUID.
+        - If self.page_num is provided, generates a PAGE-level UUID.
+        """
+
+        data_parts = [self.source_file_name, self.correspondence_type, self.received_date.isoformat(), self.case_ref]
+
+        # Conditionally add the page number
+        if self.page_num is not None:
+            data_parts.append(str(self.page_num))
+
+        data_string = "-".join(data_parts)
+
+        return str(uuid.uuid5(NAMESPACE_DOC_INGESTION, data_string))

@@ -4,42 +4,65 @@ from unittest.mock import patch
 
 import pytest
 
-from ingestion_pipeline.uuid_generators.document_uuid import generate_uuid
+# Import the class you are testing
+from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
+
+MOCK_NAMESPACE_UUID = "1b671a64-40d5-491e-99b0-da01ff1f3341"
+MOCK_NAMESPACE_OBJ = uuid.UUID(MOCK_NAMESPACE_UUID)
 
 
 @pytest.fixture
-def test_data():
-    """Provides common data for the UUID generation tests."""
+def base_data():
+    """
+    Provides common data for the UUID generation tests.
+    Keys MUST match the DocumentIdentifier model fields.
+    """
     return {
-        "filename": "source_document.pdf",
+        "source_file_name": "source_document.pdf",
         "correspondence_type": "TC19",
         "received_date": datetime.date(2025, 10, 6),
         "case_ref": "25-111111",
-        "mock_namespace": "1b671a64-40d5-491e-99b0-da01ff1f3341",
     }
 
 
 @patch(
-    "ingestion_pipeline.uuid_generators.document_uuid.CHUNK_INDEX_UUID_NAMESPACE",
-    "1b671a64-40d5-491e-99b0-da01ff1f3341",
+    "ingestion_pipeline.uuid_generators.document_uuid.NAMESPACE_DOC_INGESTION",
+    MOCK_NAMESPACE_OBJ,
 )
-def test_generates_correct_and_valid_uuid(test_data):
+@pytest.mark.parametrize(
+    "page_num, expected_page_str",
+    [
+        (None, None),  # Case 1: Test for document UUID
+        (5, "5"),  # Case 2: Test for page UUID
+    ],
+)
+def test_generates_correct_and_valid_uuid(base_data, page_num, expected_page_str):
     """
-    Tests if the function generates the correct, expected UUID for a given set of inputs.
+    Tests if the model generates the correct, expected UUID
+    for both document-level and page-level inputs.
     """
-    namespace_uuid = uuid.UUID(test_data["mock_namespace"])
-    data_string = (
-        f"{test_data['filename']}-{test_data['correspondence_type']}-"
-        f"{test_data['received_date'].isoformat()}-{test_data['case_ref']}"
-    )
+    namespace_uuid = MOCK_NAMESPACE_OBJ
+
+    norm_filename = str(base_data["source_file_name"] or "").strip().lower()
+    norm_corr_type = str(base_data["correspondence_type"] or "").strip().lower()
+    norm_case_ref = str(base_data["case_ref"] or "").strip().lower()
+    norm_date = base_data["received_date"].isoformat()
+
+    data_parts = [norm_filename, norm_corr_type, norm_date, norm_case_ref]
+    if expected_page_str:
+        data_parts.append(expected_page_str)
+
+    data_string = "-".join(data_parts)
     expected_uuid = str(uuid.uuid5(namespace_uuid, data_string))
 
-    actual_uuid = generate_uuid(
-        test_data["filename"],
-        test_data["correspondence_type"],
-        test_data["received_date"],
-        test_data["case_ref"],
-    )
+    # Add page_num to the data see the parameterization
+    call_data = base_data.copy()
+    if page_num is not None:
+        call_data["page_num"] = page_num
+
+    identifier = DocumentIdentifier(**call_data)
+
+    actual_uuid = identifier.generate_uuid()
 
     assert actual_uuid == expected_uuid
 
@@ -50,74 +73,57 @@ def test_generates_correct_and_valid_uuid(test_data):
 
 
 @patch(
-    "ingestion_pipeline.uuid_generators.document_uuid.CHUNK_INDEX_UUID_NAMESPACE",
-    "1b671a64-40d5-491e-99b0-da01ff1f3341",
+    "ingestion_pipeline.uuid_generators.document_uuid.NAMESPACE_DOC_INGESTION",
+    MOCK_NAMESPACE_OBJ,
 )
-def test_is_deterministic(test_data):
+def test_is_deterministic(base_data):
     """
     Tests if the function produces the same UUID when called multiple times
     with the exact same inputs.
     """
-    uuid1 = generate_uuid(
-        test_data["filename"],
-        test_data["correspondence_type"],
-        test_data["received_date"],
-        test_data["case_ref"],
-    )
-    uuid2 = generate_uuid(
-        test_data["filename"],
-        test_data["correspondence_type"],
-        test_data["received_date"],
-        test_data["case_ref"],
-    )
+    # Create two identical instances
+    identifier1 = DocumentIdentifier(**base_data)
+    identifier2 = DocumentIdentifier(**base_data)
+
+    # Call the method on each
+    uuid1 = identifier1.generate_uuid()
+    uuid2 = identifier2.generate_uuid()
 
     assert uuid1 == uuid2
 
 
 @patch(
-    "ingestion_pipeline.uuid_generators.document_uuid.CHUNK_INDEX_UUID_NAMESPACE",
-    "1b671a64-40d5-491e-99b0-da01ff1f3341",
+    "ingestion_pipeline.uuid_generators.document_uuid.NAMESPACE_DOC_INGESTION",
+    MOCK_NAMESPACE_OBJ,
 )
-def test_is_sensitive_to_input_changes(test_data):
+def test_is_sensitive_to_input_changes(base_data):
     """
     Tests if changing any input parameter results in a different UUID.
     """
-    base_uuid = generate_uuid(
-        test_data["filename"],
-        test_data["correspondence_type"],
-        test_data["received_date"],
-        test_data["case_ref"],
-    )
+    # Create the base identifier and get its UUID
+    base_identifier = DocumentIdentifier(**base_data)
+    base_uuid = base_identifier.generate_uuid()
 
-    # 1. Change filename
-    uuid_new_filename = generate_uuid(
-        "another_document.docx",
-        test_data["correspondence_type"],
-        test_data["received_date"],
-        test_data["case_ref"],
-    )
-    assert base_uuid != uuid_new_filename
+    # 1. Change source_file_name
+    data_new_filename = base_data.copy()
+    data_new_filename["source_file_name"] = "another_document.docx"
+    identifier_new_filename = DocumentIdentifier(**data_new_filename)
+    assert base_uuid != identifier_new_filename.generate_uuid()
 
     # 2. Change correspondence type
-    uuid_new_corr_type = generate_uuid(
-        test_data["filename"], "DIFFERENT", test_data["received_date"], test_data["case_ref"]
-    )
-    assert base_uuid != uuid_new_corr_type
+    data_new_corr_type = base_data.copy()
+    data_new_corr_type["correspondence_type"] = "DIFFERENT"
+    identifier_new_corr_type = DocumentIdentifier(**data_new_corr_type)
+    assert base_uuid != identifier_new_corr_type.generate_uuid()
 
     # 3. Change received date
-    uuid_new_date = generate_uuid(
-        test_data["filename"],
-        test_data["correspondence_type"],
-        datetime.date(2025, 10, 7),
-        test_data["case_ref"],
-    )
-    assert base_uuid != uuid_new_date
+    data_new_date = base_data.copy()
+    data_new_date["received_date"] = datetime.date(2025, 10, 7)
+    identifier_new_date = DocumentIdentifier(**data_new_date)
+    assert base_uuid != identifier_new_date.generate_uuid()
 
-    # 4. Change case reference
-    uuid_new_case_ref = generate_uuid(
-        test_data["filename"],
-        test_data["correspondence_type"],
-        test_data["received_date"],
-        "25-999999",
-    )
-    assert base_uuid != uuid_new_case_ref
+    # 4. Add a page number (testing document vs page)
+    data_with_page = base_data.copy()
+    data_with_page["page_num"] = 1
+    identifier_with_page = DocumentIdentifier(**data_with_page)
+    assert base_uuid != identifier_with_page.generate_uuid()

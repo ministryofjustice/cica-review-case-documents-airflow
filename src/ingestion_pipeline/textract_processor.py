@@ -19,7 +19,7 @@ from ingestion_pipeline.chunking.textract import DocumentChunker
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.indexing.indexer import OpenSearchIndexer
 from ingestion_pipeline.orchestration.pipeline import ChunkAndIndexPipeline
-from ingestion_pipeline.uuid_generators.document_uuid import generate_uuid
+from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -145,7 +145,7 @@ def main():
 
     # 1. Instantiate dependencies
     textractor_instance = Textractor()
-    boto3_textract_client = boto3.client("textract")
+    boto3_textract_client = boto3.client("textract", settings.AWS_REGION)
     chunk_and_index_pipeline = ChunkAndIndexPipeline(chunker=chunker, chunk_indexer=chunk_indexer)
 
     # 2. Instantiate the processor with its dependencies
@@ -164,7 +164,18 @@ def main():
             logging.info("Step 2: Chunking and indexing the document content...")
             document = result
             filename = S3_DOCUMENT_URI.split("/")[-1]
-            document_id = generate_uuid(filename, "TC19", datetime.date(2025, 10, 6), "25-111111")
+
+            identifier = DocumentIdentifier(
+                **{
+                    "source_file_name": "source_document.pdf",
+                    "correspondence_type": "TC19",
+                    "received_date": datetime.date(2025, 10, 6),
+                    "case_ref": "25-111111",
+                }
+            )
+
+            document_id = identifier.generate_uuid()
+            # document_id = generate_deterministic_uuid(filename, "TC19", datetime.date(2025, 10, 6), "25-111111")
             logging.debug(f"Generated 16-digit UUID: {document_id}")
 
             metadata = DocumentMetadata(
@@ -172,7 +183,7 @@ def main():
                 source_file_name=filename,
                 page_count=document.num_pages,
                 case_ref="25-111111",
-                received_date=datetime.date(2025, 10, 6),
+                received_date=datetime.date.today(),
                 correspondence_type="TC19",
             )
             chunk_and_index_pipeline.process_and_index(document, metadata)

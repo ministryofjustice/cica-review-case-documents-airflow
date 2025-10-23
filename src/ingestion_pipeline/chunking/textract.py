@@ -62,7 +62,7 @@ class DocumentChunker:
                     page_num=page.page_num,
                     # Placeholders, these will be generated in another step and passed in,
                     # probably key:object page_num:{s3_page_uri, page_width, page_height, page_text, anything else....}
-                    page_image_s3_uri=f"s3://bucket/{metadata.case_ref}/{metadata.ingested_doc_id}/page_images/page_{page.page_num}.png",
+                    page_id=f"s3://bucket/{metadata.case_ref}/{metadata.ingested_doc_id}/page_images/page_{page.page_num}.png",
                     page_width=page.width,
                     page_height=page.height,
                     # The place holders wlll be added outside of this step
