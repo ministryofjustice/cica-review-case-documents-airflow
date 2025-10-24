@@ -63,6 +63,7 @@ class DocumentChunk(BaseModel):
     page_count: int
     page_number: int
     chunk_index: int
+    # TODO add page_id
     # TODO This was initially representing an AWS layout type.
     # It may be redundant, review!
     chunk_type: str
