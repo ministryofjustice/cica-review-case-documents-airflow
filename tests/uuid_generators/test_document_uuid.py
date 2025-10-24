@@ -46,9 +46,8 @@ def test_generates_correct_and_valid_uuid(base_data, page_num, expected_page_str
     norm_filename = str(base_data["source_file_name"] or "").strip().lower()
     norm_corr_type = str(base_data["correspondence_type"] or "").strip().lower()
     norm_case_ref = str(base_data["case_ref"] or "").strip().lower()
-    norm_date = base_data["received_date"].isoformat()
 
-    data_parts = [norm_filename, norm_corr_type, norm_date, norm_case_ref]
+    data_parts = [norm_filename, norm_corr_type, norm_case_ref]
     if expected_page_str:
         data_parts.append(expected_page_str)
 
@@ -116,13 +115,7 @@ def test_is_sensitive_to_input_changes(base_data):
     identifier_new_corr_type = DocumentIdentifier(**data_new_corr_type)
     assert base_uuid != identifier_new_corr_type.generate_uuid()
 
-    # 3. Change received date
-    data_new_date = base_data.copy()
-    data_new_date["received_date"] = datetime.date(2025, 10, 7)
-    identifier_new_date = DocumentIdentifier(**data_new_date)
-    assert base_uuid != identifier_new_date.generate_uuid()
-
-    # 4. Add a page number (testing document vs page)
+    # 3. Add a page number (testing document vs page)
     data_with_page = base_data.copy()
     data_with_page["page_num"] = 1
     identifier_with_page = DocumentIdentifier(**data_with_page)

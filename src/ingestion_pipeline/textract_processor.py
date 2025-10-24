@@ -165,17 +165,12 @@ def main():
             document = result
             filename = S3_DOCUMENT_URI.split("/")[-1]
 
+            # Not received_date no longer used...
             identifier = DocumentIdentifier(
-                **{
-                    "source_file_name": "source_document.pdf",
-                    "correspondence_type": "TC19",
-                    "received_date": datetime.date(2025, 10, 6),
-                    "case_ref": "25-111111",
-                }
+                source_file_name="source_document.pdf", correspondence_type="TC19", case_ref="25-111111"
             )
 
             document_id = identifier.generate_uuid()
-            # document_id = generate_deterministic_uuid(filename, "TC19", datetime.date(2025, 10, 6), "25-111111")
             logging.debug(f"Generated 16-digit UUID: {document_id}")
 
             metadata = DocumentMetadata(

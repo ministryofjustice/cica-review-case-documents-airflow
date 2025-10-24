@@ -1,4 +1,3 @@
-import datetime
 import uuid
 from typing import Optional
 
@@ -19,7 +18,6 @@ class DocumentIdentifier(BaseModel):
 
     source_file_name: str
     correspondence_type: str
-    received_date: datetime.date
     case_ref: str
     page_num: Optional[int] = None
 
@@ -40,7 +38,7 @@ class DocumentIdentifier(BaseModel):
         - If self.page_num is provided, generates a PAGE-level UUID.
         """
 
-        data_parts = [self.source_file_name, self.correspondence_type, self.received_date.isoformat(), self.case_ref]
+        data_parts = [self.source_file_name, self.correspondence_type, self.case_ref]
 
         # Conditionally add the page number
         if self.page_num is not None:
