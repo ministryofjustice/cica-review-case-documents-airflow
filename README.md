@@ -35,28 +35,34 @@ If using VSCode install the Microsoft Python extensions, Python Debugger, Python
 
 We recommend using [pyenv](https://pypi.org/project/pyenv/) to easily switch between multiple versions of Python.
 
-This project uses the [Poetry package](https://python-poetry.org/docs/) for packaging and dependency management. Version >=2.1.3 is advised to prevent errors when installing from the lock file.
+This project uses the [UV](https://docs.astral.sh/uv/) for packaging and dependency management.
 
-#### Installing Poetry
+#### Installing UV
 
-To install `poetry`, follow the [installation docs](https://python-poetry.org/docs/#installation).
+To install `uv`, follow the [installation docs](https://docs.astral.sh/uv/getting-started/installation/).
 
-#### Install packages/dependencies
-
-To install the project's package requirements and their versions defined in `pyproject.toml` and `poetry.lock`, run:
-
-```
-poetry install
-```
-
-The `poetry.lock` file is required to ensure the specific package versions defined there are installed, rather than their latest versions.
 
 #### Activating the environment
 
-To activate the virtual environment and use the installed packages when running code [activate the environment](https://python-poetry.org/docs/managing-environments/#activating-the-environment)
+To [activate the virtual environment](https://docs.astral.sh/uv/pip/environments/)
+
+```
+uv venv 
+```
+
+#### Install packages/dependencies
+
+To install the project's package requirements and their versions defined in `pyproject.toml` and `uv.lock`, run:
+
+```
+uv sync 
+```
 
 
-If you need to run a Python script from outside the `poetry` environment, you can do so using the following format: `poetry run python script.py`
+The `uv.lock` file is required to ensure the specific package versions defined there are installed, rather than their latest versions.
+
+
+If you need to run a Python script from outside the `uv` environment, you can do so using the following format: `uv run src/ingestion_pipeline/main.py`
 
 #### Setting up pre-commit
 
@@ -70,6 +76,7 @@ Pre-commit is framework for managing and maintaining pre-commit hooks.
 To set up pre-commit, run the following code in the terminal:
 
 ```
+uv tool install pre-commit
 pre-commit install
 ```
 
@@ -97,7 +104,7 @@ The project is still a WIP to ingest an S3 document, call textract to perform OC
 - log in to the [modernisation aws console](https://user-guide.modernisation-platform.service.justice.gov.uk/user-guide/accessing-the-aws-console.html#logging-in)
 - retireve access keys from the cica-sandbox-development aws account (if you can't see this make sure you have been added to the [cica-review-case-documents](https://github.com/orgs/ministryofjustice/teams/cica-review-case-documents) github team
 - replace the aws env vars within the .env file
-- run ```poetry run python src/ingestion_pipeline/textract_processor.py```
+- run ```uv run src/ingestion_pipeline/textract_processor.py```
 - watch the terminal logs, note Textract can take from ~30 secs to ~2 mins to process
 - once the pipeline has completed use the Opensearch dashboard to view the extracted data
   
@@ -108,7 +115,7 @@ The project uses [pytest](https://docs.pytest.org/en/stable/) to run tests see [
 
 To run the tests with coverage, coverage reports can be found under ```htmlcov/index.html```
 
-```poetry run pytest```
+```uv run pytest```
 
 Alternatively and recommended use [VSCode Python Testing](https://code.visualstudio.com/docs/python/testing)
 
