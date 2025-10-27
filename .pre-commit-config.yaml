@@ -39,22 +39,23 @@ repos:
     hooks:
       - id: deptry
         name: deptry
-        description: deptry is a command line tool to check for issues with dependencies in a Python project, such as unused or missing dependencies.
-        entry: deptry src
-        language: system
+        description: deptry is a command line tool to check for issues with dependencies...
+        language: python
+        entry: .venv/bin/deptry
+        # if running on Windows, use: .venv/Scripts/deptry.exe
+        # Not recommended, use WSL instead.
+        args: [src]
         types: [python]
         always_run: true
         pass_filenames: false
+        additional_dependencies:
+          - deptry
 
   - repo: local
     hooks:
-      - id: pytest-check
-        name: pytest-coverage
-        entry: pytest
-        language: python
+      - id: pytest
+        name: pytest
+        entry: uv run pytest
+        language: system
         types: [python]
-        args: []
         pass_filenames: false
-        additional_dependencies:
-          - pytest
-          - pytest-cov
