@@ -259,7 +259,7 @@ dev = [
 test = [
     { name = "moto", specifier = ">=5.1.10,<6" },
     { name = "pytest", specifier = ">=8.4.1,<9" },
-    { name = "pytest-cov", specifier = ">=6.2.1,<7" },
+    { name = "pytest-cov", specifier = ">=6.2.1,<8" },
     { name = "pytest-mock", specifier = ">=3.15.1,<4" },
 ]
 
