@@ -65,7 +65,7 @@ class Settings(BaseSettings):  # type: ignore
     # S3_PREFIX: str = "textract-test"
 
     # And this
-    # BEDROCK_EMBEDDING_MODEL_ID: str = "amazon.titan-embed-text-v2:0"
+    BEDROCK_EMBEDDING_MODEL_ID: str = "amazon.titan-embed-text-v2:0"
 
 
 settings = Settings()

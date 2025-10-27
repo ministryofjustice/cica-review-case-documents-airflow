@@ -111,7 +111,7 @@ The project is still a WIP to ingest an S3 document, call textract to perform OC
 
 ### Testing the project
 
-The project uses [pytest](https://docs.pytest.org/en/stable/) to run tests see [pytest.ini](`.pytest.ini`) for test configuration.
+The project uses [pytest](https://docs.pytest.org/en/stable/) to run tests see [pytest.ini](`.pytest.ini`) for test configuration and [install pytest](https://docs.pytest.org/en/stable/getting-started.html#get-started)
 
 To run the tests with coverage, coverage reports can be found under ```htmlcov/index.html```
 
