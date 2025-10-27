@@ -8,8 +8,6 @@ import boto3
 from ingestion_pipeline.config import settings
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-# Create a Bedrock Runtime client in the AWS Region of your choice.
-client = boto3.client("bedrock-runtime", region_name=settings.AWS_REGION)
 
 # Set the model ID, e.g., Titan Text Embeddings V2.
 model_id = settings.BEDROCK_EMBEDDING_MODEL_ID
