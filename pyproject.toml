@@ -12,6 +12,8 @@ dependencies = [
     "amazon-textract-textractor (>=1.9.2,<2.0.0)",
     "boto3 (>=1.40.57,<2.0.0)",
     "amazon-textract-caller (>=0.2.4,<0.3.0)",
+    "dotenv>=0.9.9",
+    "xlsxwriter",
 ]
 
 [dependency-groups]
@@ -21,17 +23,10 @@ test = [
     "pytest-cov>=6.2.1,<8",
     "moto>=5.1.10,<6",
 ]
-dev = [
-    "deptry>=0.23.1,<0.24",
-    "numpy>=2.3.4",
-    "pre-commit>=4.2.0,<5",
-]
+dev = ["deptry>=0.23.1,<0.24", "numpy>=2.3.4", "pre-commit>=4.2.0,<5"]
 
 [tool.uv]
-default-groups = [
-    "test",
-    "dev",
-]
+default-groups = ["test", "dev"]
 
 [tool.hatch.build.targets.sdist]
 include = ["src/ingestion_pipeline"]

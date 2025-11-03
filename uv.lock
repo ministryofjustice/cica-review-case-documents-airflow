@@ -225,6 +225,7 @@ dependencies = [
     { name = "opensearch-py" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
+    { name = "xlsxwriter" },
 ]
 
 [package.dev-dependencies]
@@ -248,6 +249,7 @@ requires-dist = [
     { name = "opensearch-py", specifier = ">=3.0.0,<4.0.0" },
     { name = "pydantic", specifier = ">=2.12.3,<3.0.0" },
     { name = "pydantic-settings", specifier = ">=2.10.1,<3.0.0" },
+    { name = "xlsxwriter" },
 ]
 
 [package.metadata.requires-dev]
