@@ -19,7 +19,7 @@ CHUNK_INDEX_NAME = settings.OPENSEARCH_CHUNK_INDEX_NAME
 
 # --- 2. Choose your search term and variables for testing ---
 
-SEARCH_TERM = "gaba"
+SEARCH_TERM = "medicine"
 K_QUERIES = 200  # Number of nearest neighbors to retrieve
 SCORE_FILTER = 0.4  # Minimum score threshold for filtering results
 
