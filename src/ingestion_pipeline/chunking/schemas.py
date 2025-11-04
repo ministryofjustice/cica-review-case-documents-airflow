@@ -1,6 +1,6 @@
 """Pydantic schemas for document chunking and metadata."""
 
-from datetime import date
+from datetime import datetime
 from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
@@ -69,7 +69,7 @@ class DocumentMetadata(BaseModel):
     source_file_name: str = Field(min_length=1)
     page_count: int = Field(gt=0)
     case_ref: str
-    received_date: date
+    received_date: datetime
     correspondence_type: str
 
 
@@ -91,7 +91,7 @@ class DocumentChunk(BaseModel):
     bounding_box: DocumentBoundingBox
     embedding: Optional[List[float]] = None
     case_ref: Optional[str] = None
-    received_date: Optional[date] = None
+    received_date: Optional[datetime] = None
     correspondence_type: Optional[str] = None
 
     @computed_field

@@ -217,7 +217,8 @@ def main():
                 source_file_name=filename,
                 page_count=document.num_pages,
                 case_ref="25-111111",
-                received_date=datetime.date.today(),
+                # TODO this should be the actual received date from metadata
+                received_date=datetime.datetime.now(),
                 correspondence_type="TC19",
             )
             chunk_and_index_pipeline.process_and_index(document, metadata)
