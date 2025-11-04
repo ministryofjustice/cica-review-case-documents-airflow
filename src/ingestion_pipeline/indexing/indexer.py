@@ -31,7 +31,7 @@ class OpenSearchIndexer:
         self.index_name = index_name
         self.client = OpenSearch(
             hosts=[{"host": host, "port": port}],
-            http_auth=(user, password),
+            http_auth=(),
             use_ssl=False,
             verify_certs=False,
             ssl_assert_hostname=False,

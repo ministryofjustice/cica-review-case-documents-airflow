@@ -60,7 +60,7 @@ def test_indexer_initialization_success(mock_opensearch_client):
     # The mock object represents the class, so we assert the call on the mock itself.
     mock_opensearch_client.assert_called_once_with(
         hosts=[{"host": "test_host", "port": 9200}],
-        http_auth=("admin", "really-secure-passwordAa!1"),
+        http_auth=(),
         use_ssl=False,
         verify_certs=False,
         ssl_assert_hostname=False,
