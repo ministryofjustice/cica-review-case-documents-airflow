@@ -1,4 +1,3 @@
----
 version: 2
 
 updates:
@@ -9,6 +8,10 @@ updates:
     commit-message:
       prefix: ":dependabot: github-actions"
       include: "scope"
+    groups:
+      all-github-actions:
+        patterns:
+          - "*"
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
@@ -16,6 +19,10 @@ updates:
     commit-message:
       prefix: ":dependabot: docker"
       include: "scope"
+    groups:
+      all-docker:
+        patterns:
+          - "*"
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
@@ -23,3 +30,7 @@ updates:
     commit-message:
       prefix: ":dependabot: pip"
       include: "scope"
+    groups:
+      all-pip:
+        patterns:
+          - "*"
