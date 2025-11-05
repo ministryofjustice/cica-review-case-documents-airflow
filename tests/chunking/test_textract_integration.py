@@ -149,41 +149,22 @@ def test_handles_missing_pdf_id_metadata_throws_error(document_metadata_factory)
         document_metadata_factory(ingested_doc_id="")
 
 
-def test_handles_missing_source_file_name_metadata_throws_error(document_metadata_factory):
-    """_summary_.
-
-    Tests that the function runs without error and sets default values
-    when optional arguments like `uploaded_file_name` and `page_count` are omitted.
-
-    Args:
-        document_metadata_factory (_type_): _description_
-    """
+def test_handles_empty_source_file_name_metadata_throws_error(document_metadata_factory):
     with pytest.raises(ValidationError, match="String should have at least 1 character"):
         document_metadata_factory(source_file_name="")
 
 
 def test_handles_zero_page_count_metadata_throws_error(document_metadata_factory):
-    """Tests that the function throws an error when required metadata is missing.
-
-    Args:
-        document_metadata_factory (DocumentMetadata): DocumentMetadata factory fixture.
-    """
     with pytest.raises(ValidationError, match="Input should be greater than 0"):
         document_metadata_factory(page_count=0)
 
 
 def test_handles_negative_page_count_metadata_throws_error(document_metadata_factory):
-    """Tests that the function throws an error when required metadata is missing.
-
-    Args:
-        document_metadata_factory (DocumentMetadata): DocumentMetadata factory fixture.
-    """
     with pytest.raises(ValidationError, match="Input should be greater than 0"):
         document_metadata_factory(page_count=-7)
 
 
-def test_empty_document_throws_error(document_chunker_factory, document_metadata_factory):
-    """Tests that an empty Textract Document raises an Exception."""
+def test_empty_textract_document_throws_error(document_chunker_factory, document_metadata_factory):
     mock_doc = Document()
     mock_metadata = document_metadata_factory()
 

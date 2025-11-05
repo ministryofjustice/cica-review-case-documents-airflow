@@ -88,15 +88,7 @@ def create_mock_layout_block(lines_with_bboxes: Sequence[tuple[str, BoundingBox]
     return mock_block
 
 
-def test_single_chunk_created_when_text_fits(strategy, document_metadata_factory):
-    """Unit Test: Verifies that a single chunk is created.
-
-    When all lines fit within the maximum_chunk_size.
-
-    Args:
-        strategy (LayoutTextChunkingStrategy): The chunking strategy being tested.
-        document_metadata_factory (function): A factory function for creating document metadata.
-    """
+def test_single_chunk_created_for_two_lines_within_size_limit(strategy, document_metadata_factory):
     metadata = document_metadata_factory()
     lines = [
         ("First line.", create_mock_bbox(0.1, 0.1, 0.2, 0.05)),
@@ -118,14 +110,6 @@ def test_single_chunk_created_when_text_fits(strategy, document_metadata_factory
 
 
 def test_multiple_chunks_created_on_size_limit(strategy, document_metadata_factory):
-    """Unit Test: Verifies that multiple chunks are created.
-
-    When text exceeds the maximum_chunk_size.
-
-    Args:
-        strategy (LayoutTextChunkingStrategy): The chunking strategy being tested.
-        document_metadata_factory (function): A factory function for creating document metadata.
-    """
     metadata = document_metadata_factory()
     lines = [
         ("This is the first chunk, it is quite long.", create_mock_bbox(0.1, 0.1, 0.8, 0.05)),
@@ -150,13 +134,7 @@ def test_multiple_chunks_created_on_size_limit(strategy, document_metadata_facto
         assert calls[2].kwargs["chunk_index"] == 7
 
 
-def test_single_line_exceeding_limit_creates_one_chunk(strategy, document_metadata_factory):
-    """Unit Test: Verifies that a single line exceeding the maximum chunk size still creates one chunk.
-
-    Args:
-        strategy (LayoutTextChunkingStrategy): The chunking strategy being tested.
-        document_metadata_factory (function): A factory function for creating document metadata.
-    """
+def test_single_line_exceeding_limit_only_creates_one_chunk(strategy, document_metadata_factory):
     metadata = document_metadata_factory()
     long_line = "This single line is deliberately much longer than the configured maximum chunk size of fifty."
     assert len(long_line) > strategy.maximum_chunk_size
@@ -176,29 +154,12 @@ def test_single_line_exceeding_limit_creates_one_chunk(strategy, document_metada
 
 
 def test_empty_layout_block_returns_no_chunks(strategy, document_metadata_factory):
-    """Unit Test: Verifies that if a layout block has no children.
-
-    No chunks are produced.
-
-    Args:
-        strategy (_type_): _description_
-        document_metadata_factory (_type_): _description_
-    """
     layout_block = create_mock_layout_block([])
     chunks = strategy.chunk(layout_block, page_number=1, metadata=document_metadata_factory(), chunk_index_start=0)
     assert chunks == []
 
 
 def test_bounding_boxes_are_combined_per_chunk(strategy, document_metadata_factory, monkeypatch):
-    """Unit Test: Verifies that bounding boxes from lines within the same chunk.
-
-    Are correctly passed to the combination utility.
-
-    Args:
-        strategy (LayoutTextChunkingStrategy): The chunking strategy being tested.
-        document_metadata_factory (function): A factory function for creating document metadata.
-        monkeypatch (pytest.MonkeyPatch): Pytest's monkeypatch fixture for patching functions.
-    """
     metadata = document_metadata_factory()
     bbox1 = create_mock_bbox(0.1, 0.1, 0.3, 0.05)
     bbox2 = create_mock_bbox(0.1, 0.2, 0.4, 0.05)

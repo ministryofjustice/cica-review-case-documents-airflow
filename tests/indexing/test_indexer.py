@@ -54,10 +54,8 @@ def sample_documents():
 
 
 def test_indexer_initialization_success(mock_opensearch_client):
-    # The instantiation of OpenSearchIndexer will cause the mocked OpenSearch class to be called.
     indexer = OpenSearchIndexer(host="test_host", port=9200, index_name="test_index")
 
-    # The mock object represents the class, so we assert the call on the mock itself.
     mock_opensearch_client.assert_called_once_with(
         hosts=[{"host": "test_host", "port": 9200}],
         http_auth=(),
@@ -76,7 +74,7 @@ def test_indexer_initialization_with_empty_index_name_raises_error():
         OpenSearchIndexer(host="test_host", port=9200, index_name="")
 
 
-def test_index_documents_success(mock_helpers_bulk, mock_opensearch_client, sample_documents):
+def test_index_documents_with_bulk_indexer_success(mock_helpers_bulk, mock_opensearch_client, sample_documents):
     """Tests that documents are successfully indexed using the bulk helper."""
     # Configure the mock to simulate a successful bulk operation
     mock_helpers_bulk.return_value = (len(sample_documents), [])

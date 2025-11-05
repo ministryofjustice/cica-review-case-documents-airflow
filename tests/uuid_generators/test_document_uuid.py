@@ -4,7 +4,6 @@ from unittest.mock import patch
 
 import pytest
 
-# Import the class you are testing
 from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
 
 MOCK_NAMESPACE_UUID = "1b671a64-40d5-491e-99b0-da01ff1f3341"

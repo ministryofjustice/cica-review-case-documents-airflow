@@ -1,4 +1,4 @@
-from datetime import date
+import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -35,7 +35,7 @@ def mock_document_metadata():
         source_file_name="test_file.pdf",
         page_count=1,
         case_ref="A-101",
-        received_date=date.fromisoformat("2024-01-01"),
+        received_date=datetime.datetime.fromisoformat("2024-01-01"),
         correspondence_type="Email",
     )
 
@@ -173,7 +173,7 @@ def test_process_and_index_indexer_raises_exception(
 def test_process_and_index_calls_embedding_generator_for_each_chunk(
     mock_chunker, mock_indexer, mock_textractor_doc, mock_document_metadata, mock_processed_data_with_chunks
 ):
-    """Tests that EmbeddingGenerator is called for each chunk and the embedding is assigned."""
+    """Tests that EmbeddingGenerator is called for each chunk and the embedding is created."""
     mock_chunker.chunk.return_value = mock_processed_data_with_chunks
 
     with patch("ingestion_pipeline.orchestration.pipeline.EmbeddingGenerator") as mock_embedding_generator_cls:
@@ -204,10 +204,12 @@ def test_process_and_index_logs_and_indexes_chunks(
         with caplog.at_level("INFO"):
             orchestrator.process_and_index(mock_textractor_doc, mock_document_metadata)
 
-        assert "Starting processing for document" in caplog.text
+        assert "Starting chunk processing for document: doc-123-test" in caplog.text
         assert "Document chunked. Found" in caplog.text
         assert "Indexing" in caplog.text
-        assert "Successfully finished processing document" in caplog.text
+        assert "Chunking complete for document: doc-123-test" in caplog.text
+        assert "Begin embedding generation for document: doc-123-test" in caplog.text
+        assert "Successfully finished processing document: doc-123-test" in caplog.text
         mock_indexer.index_documents.assert_called_once_with(mock_processed_data_with_chunks.chunks)
 
 
@@ -221,7 +223,7 @@ def test_process_and_index_logs_and_skips_indexing_when_no_chunks(
     with caplog.at_level("WARNING"):
         orchestrator.process_and_index(mock_textractor_doc, mock_document_metadata)
 
-    assert "No chunks were generated, skipping indexing." in caplog.text
+    assert " No chunks were generated for document: doc-123-test, skipping indexing.\n" in caplog.text
     mock_indexer.index_documents.assert_not_called()
 
 

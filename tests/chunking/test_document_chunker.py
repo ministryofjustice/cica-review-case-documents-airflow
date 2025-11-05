@@ -55,10 +55,6 @@ def mock_strategy_handler():
 
 
 def test_selects_correct_strategy_and_increments_index(mock_metadata):
-    """Verifies the chunker calls the correct strategy for each block type.
-
-    and correctly increments the chunk index between calls.
-    """
     # Arrange
     mock_text_strategy = MagicMock()
     mock_text_strategy.chunk.return_value = [MagicMock(spec=DocumentChunk), MagicMock(spec=DocumentChunk)]
@@ -90,7 +86,6 @@ def test_selects_correct_strategy_and_increments_index(mock_metadata):
 
 def test_skips_blocks_without_strategy_or_text(mock_metadata, mock_strategy_handler):
     """Verifies that blocks are skipped if they have no associated strategy.
-
     no text, or only whitespace text.
     """
     # Arrange

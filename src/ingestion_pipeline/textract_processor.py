@@ -233,4 +233,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-logging.info(f"Processing S3 document {S3_DOCUMENT_URI}........")
