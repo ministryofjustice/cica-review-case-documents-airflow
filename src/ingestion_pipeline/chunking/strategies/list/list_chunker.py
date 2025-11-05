@@ -1,3 +1,5 @@
+"""Chunking strategy for LAYOUT_LIST blocks."""
+
 import logging
 from typing import List, Optional
 
@@ -10,12 +12,22 @@ logger = logging.getLogger(__name__)
 
 
 class LayoutListChunkingStrategy(ChunkingStrategyHandler):
-    """
-    Chunking strategy for LAYOUT_LIST blocks.
-    Each LAYOUT_TEXT child becomes its own chunk.
+    """Chunking strategy for LAYOUT_LIST blocks.
+
+    Args:
+        ChunkingStrategyHandler (ChunkingStrategyHandler): The base chunking strategy handler.
+
+    Returns:
+        LayoutListChunkingStrategy: An instance of the list chunking strategy.
+
     """
 
     def __init__(self, config: ChunkingConfig):
+        """Chunking strategy for LAYOUT_LIST blocks.
+
+        Args:
+            config (ChunkingConfig): Configuration for the chunking strategy.
+        """
         super().__init__(config)
 
     def chunk(
@@ -26,6 +38,18 @@ class LayoutListChunkingStrategy(ChunkingStrategyHandler):
         chunk_index_start: int,
         raw_response: Optional[dict] = None,
     ) -> List[DocumentChunk]:
+        """Chunking strategy for LAYOUT_LIST blocks.
+
+        Args:
+            layout_block (LayoutBlock): The LAYOUT_LIST block to be chunked.
+            page_number (int): The page number of the document.
+            metadata (DocumentMetadata): Metadata associated with the document.
+            chunk_index_start (int): The starting index for the chunk.
+            raw_response (Optional[dict], optional): The raw response from the layout analysis. Defaults to None.
+
+        Returns:
+            List[DocumentChunk]: A list of DocumentChunks representing the list items.
+        """
         chunks = []
         chunk_index = chunk_index_start
 

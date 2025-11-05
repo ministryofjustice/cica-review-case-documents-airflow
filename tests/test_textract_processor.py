@@ -1,3 +1,5 @@
+"""Unit tests for the TextractProcessor class."""
+
 import logging
 from unittest.mock import MagicMock, patch
 
@@ -86,9 +88,7 @@ def test_process_document_happy_path(
     mock_textractor,
     mock_textract_client,
 ):
-    """
-    Tests the end-to-end success scenario of the main `process_document` method.
-    """
+    """Tests the end-to-end success scenario of the main `process_document` method."""
     s3_uri = "s3://cica-textract-response-dev/Case1.pdf"
     mock_start_job.return_value = "job-abc"
     mock_poll.return_value = "SUCCEEDED"
@@ -116,9 +116,7 @@ def test_process_document_stops_if_job_fails(
     mock_textractor,
     mock_textract_client,
 ):
-    """
-    Verifies that processing is halted if the Textract job does not succeed.
-    """
+    """Verifies that processing is halted if the Textract job does not succeed."""
     s3_uri = "s3://my-bucket/failed.pdf"
     mock_start_job.return_value = "job-fail"
     mock_poll.return_value = "FAILED"
@@ -161,9 +159,7 @@ def test_poll_for_job_completion_times_out(mock_time, mock_sleep, mock_textracto
 def test_process_document_handles_general_exception(
     mock_start_job, mock_orchestrator, mock_textractor, mock_textract_client, caplog
 ):
-    """
-    Verifies the main exception handler logs an error if a step fails.
-    """
+    """Verifies the main exception handler logs an error if a step fails."""
     s3_uri = "s3://my-bucket/doc-that-will-fail.pdf"
     error_message = "Unexpected AWS error"
     mock_start_job.side_effect = Exception(error_message)
@@ -181,9 +177,7 @@ def test_process_document_handles_general_exception(
 def test_get_job_results_calls_dependencies_correctly(
     mock_get_full_json, mock_parse, mock_textractor, mock_textract_client
 ):
-    """
-    Verifies _get_job_results fetches raw JSON and parses it into a Document.
-    """
+    """Verifies _get_job_results fetches raw JSON and parses it into a Document."""
     job_id = "test-job-id-456"
 
     # Create mock return values

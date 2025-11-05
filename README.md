@@ -119,9 +119,18 @@ To run the tests with coverage, coverage reports can be found under ```htmlcov/i
 
 Alternatively and recommended use [VSCode Python Testing](https://code.visualstudio.com/docs/python/testing)
 
-## Formatting
+## Linting and Formatting
 
 Install the [Ruff](https://astral.sh/) VSCode Extension, [ruff.toml](ruff.toml) holds the ruff configuration. 
+
+To format and lint your code using Ruff (including auto-fixing pydocstyle issues), run:
+
+```bash
+uv run ruff format path/to/file.py
+uv run ruff check --fix path/to/file.py
+```
+
+On commit the pre-commit hooks will attempt to ```FIX``` any issues. 
 
 ## Signing commits
 

@@ -1,3 +1,5 @@
+"""Pydantic schemas for document chunking and metadata."""
+
 from datetime import date
 from typing import List, Optional
 
@@ -18,6 +20,14 @@ class DocumentBoundingBox(BaseModel):
 
     @classmethod
     def from_textractor_bbox(cls, bbox: BoundingBox) -> "DocumentBoundingBox":
+        """Creates a DocumentBoundingBox from a Textractor BoundingBox.
+
+        Args:
+            bbox (BoundingBox): The Textractor BoundingBox to convert.
+
+        Returns:
+            DocumentBoundingBox: The converted DocumentBoundingBox.
+        """
         return cls(Width=bbox.width, Height=bbox.height, Left=bbox.x, Top=bbox.y)
 
     def to_textractor_bbox(self) -> BoundingBox:
@@ -32,11 +42,21 @@ class DocumentBoundingBox(BaseModel):
     @computed_field
     @property
     def right(self) -> float:
+        """Calculates the right edge of the bounding box.
+
+        Returns:
+            float: The x-coordinate of the right edge.
+        """
         return self.left + self.width
 
     @computed_field
     @property
     def bottom(self) -> float:
+        """Calculates the bottom edge of the bounding box.
+
+        Returns:
+            float: The y-coordinate of the bottom edge.
+        """
         return self.top + self.height
 
 
@@ -77,11 +97,21 @@ class DocumentChunk(BaseModel):
     @computed_field
     @property
     def character_count(self) -> int:
+        """Calculates the number of characters in the chunk text.
+
+        Returns:
+            int: The number of characters in the chunk text.
+        """
         return len(self.chunk_text)
 
     @computed_field
     @property
     def word_count(self) -> int:
+        """Calculates the number of words in the chunk text.
+
+        Returns:
+            int: The number of words in the chunk text.
+        """
         return len(self.chunk_text.split())
 
     @staticmethod
@@ -99,9 +129,20 @@ class DocumentChunk(BaseModel):
         chunk_text: str,
         combined_bbox: BoundingBox,
     ) -> "DocumentChunk":
-        """
-        Creates an OpenSearchChunk from a Textractor Layout block using pre-computed
-        text and a combined bounding box, useful for splitting large blocks.
+        """Creates a DocumentChunk from a Textractor Layout block.
+
+        using pre-computed text and a combined bounding box, useful for splitting large blocks.
+
+        Args:
+            block (Layout): The Textractor Layout block.
+            page_number (int): The page number of the chunk (1-based).
+            metadata (DocumentMetadata): The document metadata.
+            chunk_index (int): The index of the chunk on the page (0-based).
+            chunk_text (str): The text content of the chunk.
+            combined_bbox (BoundingBox): The combined bounding box for the chunk.
+
+        Returns:
+            DocumentChunk: The created DocumentChunk instance.
         """
         chunk_id = cls._generate_chunk_id(metadata.ingested_doc_id, page_number, chunk_index)
         bounding_box_model = DocumentBoundingBox.from_textractor_bbox(combined_bbox)
@@ -137,10 +178,7 @@ class DocumentPage(BaseModel):
 
 
 class ProcessedDocument(BaseModel):
-    """
-    Holds all structured data extracted from a single source document,
-    ready for indexing.
-    """
+    """Holds all structured data extracted from a single source document."""
 
     chunks: List[DocumentChunk]
     pages: List[DocumentPage]

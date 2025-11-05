@@ -1,3 +1,5 @@
+"""Module for indexing documents into OpenSearch."""
+
 import logging
 from typing import List
 
@@ -14,8 +16,7 @@ class OpenSearchIndexer:
     def __init__(
         self, host: str, port: int, index_name: str, user: str = "admin", password: str = "really-secure-passwordAa!1"
     ):
-        """
-        Initializes the OpenSearch client and sets the target index.
+        """Initializes the OpenSearch client and sets the target index.
 
         Args:
             host: The OpenSearch host.
@@ -38,8 +39,7 @@ class OpenSearchIndexer:
         logger.info(f"OpenSearchIndexer initialized for index '{self.index_name}' at {host}:{port}")
 
     def index_documents(self, documents: List[DocumentChunk], id_field: str = "chunk_id"):
-        """
-        Indexes a list of Pydantic models into OpenSearch using the Bulk API.
+        """Indexes a list of Pydantic models into OpenSearch using the Bulk API.
 
         Args:
             documents: A list of Pydantic models (e.g., OpenSearchDocument).
@@ -65,7 +65,18 @@ class OpenSearchIndexer:
             raise
 
     def _generate_bulk_actions(self, documents: List[DocumentChunk], id_field: str):
-        """Converts a list of Pydantic models to OpenSearch bulk actions."""
+        """Generates OpenSearch bulk actions from a list of document chunks.
+
+        Args:
+            documents (List[DocumentChunk]): List of DocumentChunk instances to be indexed.
+            id_field (str): Attribute name to use as the document's unique identifier.
+
+        Raises:
+            AttributeError: Raised if a document does not have the specified id_field.
+
+        Yields:
+            dict: Bulk action dictionaries for OpenSearch indexing.
+        """
         for doc in documents:
             if not hasattr(doc, id_field):
                 raise AttributeError(f"Document model is missing the required id_field '{id_field}'.")

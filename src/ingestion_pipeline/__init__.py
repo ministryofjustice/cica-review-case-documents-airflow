@@ -1,3 +1,5 @@
+"""Package initialization for ingestion_pipeline."""
+
 from pathlib import Path
 
 from dotenv import load_dotenv

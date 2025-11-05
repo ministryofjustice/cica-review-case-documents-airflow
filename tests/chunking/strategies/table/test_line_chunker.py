@@ -115,8 +115,8 @@ class MockTextBlock:
 
 @pytest.fixture(autouse=True)
 def apply_patches(monkeypatch):
-    """
-    This autouse fixture automatically applies patches for every test in this file.
+    """This autouse fixture automatically applies patches for every test in this file.
+
     `monkeypatch` ensures that all changes are reverted after each test,
     preventing state leakage into other test files like the integration test.
     """
@@ -134,9 +134,7 @@ def chunker():
 
 # --- Tests ---
 def test_group_into_visual_rows(chunker):
-    """
-    Tests that text blocks are correctly grouped into rows based on vertical alignment.
-    """
+    """Tests that text blocks are correctly grouped into rows based on vertical alignment."""
     blocks = [
         # Row 1 (both have y=0.1)
         MockTextBlock(text="R1C1", bbox=MockBoundingBox(x=0.1, y=0.1, width=0.2, height=0.02), confidence=0.99),
@@ -156,8 +154,8 @@ def test_group_into_visual_rows(chunker):
 
 
 def test_recover_missed_lines(chunker):
-    """
-    Tests the workaround to find line IDs present in the raw response but missing
+    """Tests the workaround to find line IDs present in the raw response but missing.
+
     from the textractor Layout object's children.
     """
     mock_spatial_context = MockSpatialObject(width=1000, height=1000)
@@ -188,9 +186,7 @@ def test_recover_missed_lines(chunker):
 
 
 def test_process_text_block_row_sorting(chunker):
-    """
-    Tests that blocks in a row are correctly sorted by their left coordinate.
-    """
+    """Tests that blocks in a row are correctly sorted by their left coordinate."""
     blocks = [
         MockTextBlock(text="Second", confidence=99, bbox=MockBoundingBox(x=0.4, y=0.1, width=0.2, height=0.02)),
         MockTextBlock(text="First", confidence=99, bbox=MockBoundingBox(x=0.1, y=0.1, width=0.2, height=0.02)),
@@ -205,9 +201,7 @@ def test_process_text_block_row_sorting(chunker):
 
 
 def test_chunk_method_integration(chunker, monkeypatch):
-    """
-    Tests the full chunking process from a Layout object to DocumentChunks.
-    """
+    """Tests the full chunking process from a Layout object to DocumentChunks."""
 
     class MockDocumentChunk:
         def __init__(self, **kwargs):
@@ -247,8 +241,7 @@ def test_chunk_method_integration(chunker, monkeypatch):
 
 
 def test_convert_lines_handles_invalid_and_empty_data(chunker, caplog):
-    """
-    Tests the guard in `_convert_lines_to_text_blocks`.
+    """Tests the guard in `_convert_lines_to_text_blocks`.
 
     Verifies that it correctly skips:
     - Objects that are not `Line` instances.
@@ -278,8 +271,7 @@ def test_convert_lines_handles_invalid_and_empty_data(chunker, caplog):
 
 
 def test_convert_lines_handles_malformed_raw_object(chunker, caplog):
-    """
-    Tests the `try...except (AttributeError, KeyError)` guard in `_convert_lines_to_text_blocks`.
+    """Tests the `try...except (AttributeError, KeyError)` guard in `_convert_lines_to_text_blocks`.
 
     Verifies that the method continues processing even if a line's `raw_object` is
     corrupt, causing an exception.
@@ -311,8 +303,7 @@ def test_convert_lines_handles_malformed_raw_object(chunker, caplog):
 
 
 def test_recover_missed_lines_gracefully_handles_internal_error(chunker, monkeypatch, caplog):
-    """
-    Tests the broad `except Exception` guard in `_recover_missed_lines`.
+    """Tests the broad `except Exception` guard in `_recover_missed_lines`.
 
     Verifies that if any unexpected error occurs during recovery, it's caught,
     logged, and the function returns `[]` without crashing the whole process.
@@ -338,8 +329,7 @@ def test_recover_missed_lines_gracefully_handles_internal_error(chunker, monkeyp
 
 
 def test_recover_missed_lines_when_layout_has_no_spatial_object(chunker, caplog):
-    """
-    Tests the `if not spatial_object` guard in `_create_text_blocks_from_missed_ids`.
+    """Tests the `if not spatial_object` guard in `_create_text_blocks_from_missed_ids`.
 
     This is an indirect test. We check that `_recover_missed_lines` returns empty
     if the provided layout block lacks the necessary page geometry.
@@ -370,8 +360,7 @@ def test_recover_missed_lines_when_layout_has_no_spatial_object(chunker, caplog)
 
 
 def test_create_text_blocks_handles_bad_missed_data(chunker, caplog):
-    """
-    Tests various guards within `_create_text_blocks_from_missed_ids`.
+    """Tests various guards within `_create_text_blocks_from_missed_ids`.
 
     Verifies it correctly skips:
     - Missed IDs that aren't LINEs.
@@ -416,15 +405,12 @@ def test_create_text_blocks_handles_bad_missed_data(chunker, caplog):
 
 
 def test_group_into_visual_rows_with_no_blocks(chunker):
-    """
-    Tests the `if not blocks:` guard in `_group_into_visual_rows`.
-    """
+    """Tests the `if not blocks:` guard in `_group_into_visual_rows`."""
     assert chunker._group_into_visual_rows([]) == []
 
 
 def test_group_into_visual_rows_with_zero_height_blocks(chunker):
-    """
-    Tests the `if not heights:` guard in `_group_into_visual_rows`.
+    """Tests the `if not heights:` guard in `_group_into_visual_rows`.
 
     Verifies the fallback behavior that treats each zero-height block as its own row
     to avoid a `statistics.mean` error.
@@ -446,8 +432,7 @@ def test_group_into_visual_rows_with_zero_height_blocks(chunker):
 
 
 def test_chunk_method_resilience_with_mixed_quality_data(chunker, monkeypatch):
-    """
-    An integration test to ensure the main `chunk` method is resilient to
+    """An integration test to ensure the main `chunk` method is resilient to
     a layout block containing a mix of valid and invalid lines.
     """
 
@@ -484,8 +469,7 @@ def test_chunk_method_resilience_with_mixed_quality_data(chunker, monkeypatch):
 
 
 def test_extract_text_blocks_recovers_and_sorts_missed_lines(chunker):
-    """
-    Tests the _extract_text_blocks method's logic to recover, extend, and sort.
+    """Tests the _extract_text_blocks method's logic to recover, extend, and sort.
 
     Verifies that when a raw_response is provided:
     1. Missed lines are recovered.

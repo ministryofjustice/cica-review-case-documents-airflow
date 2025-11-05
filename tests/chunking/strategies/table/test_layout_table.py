@@ -1,3 +1,5 @@
+"""Tests for the LayoutTableChunkingStrategy, ensuring correct dispatching."""
+
 from unittest.mock import MagicMock
 
 import pytest
@@ -14,7 +16,6 @@ from ingestion_pipeline.chunking.strategies.table.line_chunker import LineTableC
 @pytest.fixture
 def mock_chunkers(mocker):
     """Mocks the sub-chunker classes to test dispatch logic."""
-
     target_module_path = LayoutTableChunkingStrategy.__module__
 
     cell_chunker_target = f"{target_module_path}.{CellTableChunker.__name__}"
@@ -49,8 +50,8 @@ def chunk_args():
 
 
 def test_dispatches_to_cell_chunker_when_first_child_table(mock_chunkers, default_config, chunk_args):
-    """
-    Verifies that if the CellTableChunker can handle the block, it is used
+    """Verifies that if the CellTableChunker can handle the block, it is used.
+
     and the LineTableChunker is not consulted.
     """
     mock_cell_chunker, mock_line_chunker = mock_chunkers
@@ -78,10 +79,7 @@ def test_dispatches_to_cell_chunker_when_first_child_table(mock_chunkers, defaul
 
 
 def test_raises_exception_for_block_with_no_children(default_config, chunk_args):
-    """
-    Verifies that a ChunkException is raised if the layout block is empty.
-    """
-
+    """Verifies that a ChunkException is raised if the layout block is empty."""
     mock_layout_block = MagicMock(spec=Layout, id="empty_block_id", children=[], layout_type="LAYOUT_TABLE")
     strategy = LayoutTableChunkingStrategy(config=default_config)
 
@@ -93,11 +91,10 @@ def test_raises_exception_for_block_with_no_children(default_config, chunk_args)
 
 
 def test_raises_exception_when_no_suitable_chunker_found(mock_chunkers, default_config, chunk_args):
-    """
-    Verifies that a ChunkException is raised if no registered chunker can
+    """Verifies that a ChunkException is raised if no registered chunker can.
+
     handle the block.
     """
-
     mock_child = MagicMock()
     mock_child.__class__.__name__ = "UnsupportedBlockType"
     # mock_child.__class__.__layout_type__ = "UnsupportedBlockType"
@@ -118,10 +115,7 @@ def test_raises_exception_when_no_suitable_chunker_found(mock_chunkers, default_
 
 
 def test_dispatcher_selects_line_chunker_when_first_child_line(mock_chunkers, default_config, chunk_args):
-    """
-    Tests that the dispatcher correctly selects the LineTableChunker.
-    """
-
+    """Tests that the dispatcher correctly selects the LineTableChunker."""
     mock_cell_chunker, mock_line_chunker = mock_chunkers
 
     mock_line_chunker.chunk.return_value = ["line_chunk_output"]

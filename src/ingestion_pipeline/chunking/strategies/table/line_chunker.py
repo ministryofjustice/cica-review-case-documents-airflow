@@ -1,3 +1,5 @@
+"""Chunker for tables structured with lines."""
+
 import logging
 import statistics
 from typing import List, Optional
@@ -14,8 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class LineTableChunker(BaseTableChunker):
-    """
-    Handles tables with Line structure.
+    """Handles tables with Line structure.
 
     This chunker implements a conditional strategy:
     1. If the total text content of a layout block is less than a specified
@@ -32,9 +33,17 @@ class LineTableChunker(BaseTableChunker):
         chunk_index_start: int,
         raw_response: Optional[dict] = None,
     ) -> List[DocumentChunk]:
-        """
-        Processes a layout block into one or more document chunks based on size.
-        This version ensures text assembly is consistent across both chunking paths.
+        """Processes a layout block into one or more document chunks based on size.
+
+        Args:
+            layout_block (Layout): The layout block to process.
+            page_number (int): The page number of the layout block.
+            metadata (DocumentMetadata): The metadata associated with the document.
+            chunk_index_start (int): The starting index for chunk numbering.
+            raw_response (Optional[dict], optional): The raw response from the layout analysis. Defaults to None.
+
+        Returns:
+            List[DocumentChunk]: The list of document chunks created from the layout block.
         """
         logger.debug(f"Processing line table chunker id: {layout_block.id} type: {layout_block.layout_type}")
 
@@ -106,7 +115,15 @@ class LineTableChunker(BaseTableChunker):
         return chunks
 
     def _extract_text_blocks(self, layout_block: Layout, raw_response: Optional[dict]) -> List[TextBlock]:
-        """Extract text blocks from lines, including missed ones from raw response."""
+        """Extract text blocks from lines, including missed ones from raw response.
+
+        Args:
+            layout_block (Layout): The layout block to process.
+            raw_response (Optional[dict]): The raw response from Textractor.
+
+        Returns:
+            List[TextBlock]: The extracted text blocks.
+        """
         text_blocks = self._convert_lines_to_text_blocks(layout_block.children)
 
         # Apply Textractor bug workaround if raw response available
@@ -120,7 +137,14 @@ class LineTableChunker(BaseTableChunker):
         return text_blocks
 
     def _convert_lines_to_text_blocks(self, children: List) -> List[TextBlock]:
-        """Convert Textractor Line objects to TextBlock objects."""
+        """Convert Textractor Line objects to TextBlock objects.
+
+        Args:
+            children (List): The list of line objects to convert.
+
+        Returns:
+            List[TextBlock]: The converted text blocks.
+        """
         blocks = []
 
         for line in children:
@@ -142,7 +166,15 @@ class LineTableChunker(BaseTableChunker):
         return sorted(blocks, key=lambda x: (x.top, x.left))
 
     def _recover_missed_lines(self, layout_block: Layout, raw_response: dict) -> List[TextBlock]:
-        """Workaround for Textractor bug: recover lines that should be children but are missed."""
+        """Recover missed lines that should be children of the layout block.
+
+        Args:
+            layout_block (Layout): The layout block to process.
+            raw_response (dict): The raw response from Textractor.
+
+        Returns:
+            List[TextBlock]: The recovered text blocks.
+        """
         try:
             missed_ids = self._find_missed_line_ids(layout_block, raw_response)
             if not missed_ids:
@@ -155,7 +187,15 @@ class LineTableChunker(BaseTableChunker):
             return []
 
     def _find_missed_line_ids(self, layout_block: Layout, raw_response: dict) -> set:
-        """Find line IDs that should be children but are missing."""
+        """Find line IDs that should be children but are missing.
+
+        Args:
+            layout_block (Layout): The layout block to process.
+            raw_response (dict): The raw response from Textractor.
+
+        Returns:
+            set: The set of missing line IDs.
+        """
         id_map = {block["Id"]: block for block in raw_response.get("Blocks", [])}
         layout_json = id_map.get(layout_block.id)
 
@@ -174,7 +214,16 @@ class LineTableChunker(BaseTableChunker):
     def _create_text_blocks_from_missed_ids(
         self, missed_ids: set, raw_response: dict, layout_block: Layout
     ) -> List[TextBlock]:
-        """Create TextBlock objects from missed line IDs."""
+        """Create TextBlock objects from missed line IDs.
+
+        Args:
+            missed_ids (set): The set of missed line IDs.
+            raw_response (dict): The raw response from Textractor.
+            layout_block (Layout): The layout block to process.
+
+        Returns:
+            List[TextBlock]: The created text blocks.
+        """
         id_map = {block["Id"]: block for block in raw_response.get("Blocks", [])}
         spatial_object = layout_block.bbox.spatial_object
 
@@ -212,7 +261,14 @@ class LineTableChunker(BaseTableChunker):
         return text_blocks
 
     def _group_into_visual_rows(self, blocks: List[TextBlock]) -> List[List[TextBlock]]:
-        """Group text blocks into visual rows based on vertical alignment."""
+        """Group text blocks into visual rows based on vertical alignment.
+
+        Args:
+            blocks (List[TextBlock]): The list of text blocks to group.
+
+        Returns:
+            List[List[TextBlock]]: The grouped text blocks.
+        """
         y_tolerance_ratio = self.config.y_tolerance_ratio
 
         if not blocks:
@@ -242,7 +298,14 @@ class LineTableChunker(BaseTableChunker):
         return rows
 
     def _process_text_block_row(self, blocks: List[TextBlock]) -> tuple[str, List[BoundingBox]]:
-        """Process a row of text blocks, sorting by horizontal position."""
+        """Process a row of text blocks, sorting by horizontal position.
+
+        Args:
+            blocks (List[TextBlock]): The list of text blocks to process.
+
+        Returns:
+            tuple[str, List[BoundingBox]]: The processed text and bounding boxes.
+        """
         sorted_blocks = sorted(blocks, key=lambda b: b.left)
         texts = [block.text for block in sorted_blocks]
         bboxes = [block.bbox for block in sorted_blocks]

@@ -49,7 +49,6 @@ def mock_textractor_doc(mocker):
 @pytest.fixture
 def mock_processed_data_with_chunks():
     """Provides a mock ProcessedDocument with chunks."""
-
     chunks = [
         DocumentChunk(
             chunk_id="c1",
@@ -104,8 +103,7 @@ def test_orchestrator_initialization(mock_chunker, mock_indexer):
 def test_process_and_index_success(
     mock_chunker, mock_indexer, mock_textractor_doc, mock_document_metadata, mock_processed_data_with_chunks
 ):
-    """
-    Tests the full pipeline when chunking is successful and indexing proceeds.
+    """Tests the full pipeline when chunking is successful and indexing proceeds.
     Verifies that both the chunker and indexer are called exactly once.
     """
     mock_chunker.chunk.return_value = mock_processed_data_with_chunks
@@ -126,9 +124,7 @@ def test_process_and_index_success(
 def test_process_and_index_no_chunks_skips_indexing(
     mock_chunker, mock_indexer, mock_textractor_doc, mock_document_metadata, mock_processed_data_no_chunks
 ):
-    """
-    Tests that if chunking returns no chunks, the indexing step is skipped.
-    """
+    """Tests that if chunking returns no chunks, the indexing step is skipped."""
     mock_chunker.chunk.return_value = mock_processed_data_no_chunks
 
     orchestrator = ChunkAndIndexPipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
@@ -143,10 +139,7 @@ def test_process_and_index_no_chunks_skips_indexing(
 def test_process_and_index_chunker_raises_exception(
     mock_chunker, mock_indexer, mock_textractor_doc, mock_document_metadata
 ):
-    """
-    Tests that if the chunker fails, the pipeline raises the exception and indexer is never called.
-    """
-
+    """Tests that if the chunker fails, the pipeline raises the exception and indexer is never called."""
     mock_chunker.chunk.side_effect = Exception("Simulated chunking failure")
 
     orchestrator = ChunkAndIndexPipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
@@ -160,10 +153,7 @@ def test_process_and_index_chunker_raises_exception(
 def test_process_and_index_indexer_raises_exception(
     mock_chunker, mock_indexer, mock_textractor_doc, mock_document_metadata, mock_processed_data_with_chunks
 ):
-    """
-    Tests that if the indexer fails, the pipeline raises the exception.
-    """
-
+    """Tests that if the indexer fails, the pipeline raises the exception."""
     mock_chunker.chunk.return_value = mock_processed_data_with_chunks
     mock_indexer.index_documents.side_effect = Exception("Simulated indexing failure")
 
@@ -183,9 +173,7 @@ def test_process_and_index_indexer_raises_exception(
 def test_process_and_index_calls_embedding_generator_for_each_chunk(
     mock_chunker, mock_indexer, mock_textractor_doc, mock_document_metadata, mock_processed_data_with_chunks
 ):
-    """
-    Tests that EmbeddingGenerator is called for each chunk and the embedding is assigned.
-    """
+    """Tests that EmbeddingGenerator is called for each chunk and the embedding is assigned."""
     mock_chunker.chunk.return_value = mock_processed_data_with_chunks
 
     with patch("ingestion_pipeline.orchestration.pipeline.EmbeddingGenerator") as mock_embedding_generator_cls:
@@ -204,9 +192,7 @@ def test_process_and_index_calls_embedding_generator_for_each_chunk(
 def test_process_and_index_logs_and_indexes_chunks(
     mock_chunker, mock_indexer, mock_textractor_doc, mock_document_metadata, mock_processed_data_with_chunks, caplog
 ):
-    """
-    Tests that logging occurs and indexing is called when chunks are present.
-    """
+    """Tests that logging occurs and indexing is called when chunks are present."""
     mock_chunker.chunk.return_value = mock_processed_data_with_chunks
 
     with patch("ingestion_pipeline.orchestration.pipeline.EmbeddingGenerator") as mock_embedding_generator_cls:
@@ -228,9 +214,7 @@ def test_process_and_index_logs_and_indexes_chunks(
 def test_process_and_index_logs_and_skips_indexing_when_no_chunks(
     mock_chunker, mock_indexer, mock_textractor_doc, mock_document_metadata, mock_processed_data_no_chunks, caplog
 ):
-    """
-    Tests that logging occurs and indexing is skipped when no chunks are present.
-    """
+    """Tests that logging occurs and indexing is skipped when no chunks are present."""
     mock_chunker.chunk.return_value = mock_processed_data_no_chunks
 
     orchestrator = ChunkAndIndexPipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
@@ -244,9 +228,7 @@ def test_process_and_index_logs_and_skips_indexing_when_no_chunks(
 def test_process_and_index_calls_chunker_and_indexer_and_assigns_embeddings(
     mock_chunker, mock_indexer, mock_textractor_doc, mock_document_metadata, mock_processed_data_with_chunks
 ):
-    """
-    Test that process_and_index calls chunker, assigns embeddings, and calls indexer when chunks exist.
-    """
+    """Test that process_and_index calls chunker, assigns embeddings, and calls indexer when chunks exist."""
     mock_chunker.chunk.return_value = mock_processed_data_with_chunks
 
     with patch("ingestion_pipeline.orchestration.pipeline.EmbeddingGenerator") as mock_embedding_generator_cls:
@@ -267,9 +249,7 @@ def test_process_and_index_calls_chunker_and_indexer_and_assigns_embeddings(
 def test_process_and_index_skips_indexing_when_no_chunks(
     mock_chunker, mock_indexer, mock_textractor_doc, mock_document_metadata, mock_processed_data_no_chunks
 ):
-    """
-    Test that process_and_index skips embedding and indexing if no chunks are returned.
-    """
+    """Test that process_and_index skips embedding and indexing if no chunks are returned."""
     mock_chunker.chunk.return_value = mock_processed_data_no_chunks
 
     orchestrator = ChunkAndIndexPipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
@@ -282,9 +262,7 @@ def test_process_and_index_skips_indexing_when_no_chunks(
 def test_process_and_index_raises_if_chunker_fails(
     mock_chunker, mock_indexer, mock_textractor_doc, mock_document_metadata
 ):
-    """
-    Test that process_and_index raises if chunker raises, and indexer is not called.
-    """
+    """Test that process_and_index raises if chunker raises, and indexer is not called."""
     mock_chunker.chunk.side_effect = Exception("fail")
 
     orchestrator = ChunkAndIndexPipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
@@ -296,9 +274,7 @@ def test_process_and_index_raises_if_chunker_fails(
 def test_process_and_index_raises_if_indexer_fails(
     mock_chunker, mock_indexer, mock_textractor_doc, mock_document_metadata, mock_processed_data_with_chunks
 ):
-    """
-    Test that process_and_index raises if indexer raises.
-    """
+    """Test that process_and_index raises if indexer raises."""
     mock_chunker.chunk.return_value = mock_processed_data_with_chunks
     mock_indexer.index_documents.side_effect = Exception("index fail")
 

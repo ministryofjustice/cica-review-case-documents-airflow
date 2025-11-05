@@ -1,3 +1,5 @@
+"""Chunking strategy for LAYOUT_KEY_VALUE blocks."""
+
 import logging
 from typing import List, Optional
 
@@ -14,9 +16,16 @@ logger = logging.getLogger(__name__)
 
 
 class KeyValueChunker(ChunkingStrategyHandler):
-    """
+    """Chunking strategy for LAYOUT_KEY_VALUE blocks.
+
     Handles LAYOUT_KEY_VALUE blocks, creating chunks for both KeyValue pairs
     and individual Line objects found within the block.
+
+    Args:
+        ChunkingStrategyHandler (ChunkingStrategyHandler): The base chunking strategy handler.
+
+    Returns:
+    List[DocumentChunk]: DocumentChunks created from the KeyValue block.
     """
 
     def chunk(
@@ -27,9 +36,17 @@ class KeyValueChunker(ChunkingStrategyHandler):
         chunk_index_start: int,
         raw_response: Optional[dict] = None,
     ) -> List[DocumentChunk]:
-        """
-        Processes a layout block, creating distinct chunks for KeyValue pairs
-        and standalone Line objects.
+        """Processes a layout block, creating distinct chunks for KeyValue pairs.
+
+        Args:
+            layout_block (Layout): The LAYOUT_KEY_VALUE block to be chunked.
+            page_number (int): The page number of the document.
+            metadata (DocumentMetadata): Metadata associated with the document.
+            chunk_index_start (int): The starting index for the chunk.
+            raw_response (Optional[dict], optional): The raw response from the layout analysis. Defaults to None.
+
+        Returns:
+            List[DocumentChunk]: A list of DocumentChunks created from the KeyValue block.
         """
         logger.debug(f"++++++++ Processing mixed Key-Value block: {layout_block.id} ++++++++")
 
@@ -86,9 +103,18 @@ class KeyValueChunker(ChunkingStrategyHandler):
         metadata: DocumentMetadata,
         chunk_index: int,
     ) -> DocumentChunk:
-        """
-        A helper method to create an OpenSearchDocument from chunk data.
-        This centralizes the creation logic.
+        """Creates a DocumentChunk from the provided parameters.
+
+        Args:
+           chunk_text (str): The text content of the chunk.
+           bboxes (List[BoundingBox]): The bounding boxes associated with the chunk.
+           layout_block (Layout): The layout block from which the chunk was created.
+           page_number (int): The page number of the document.
+           metadata (DocumentMetadata): Metadata associated with the document.
+           chunk_index (int): The index of the chunk within the document.
+
+        Returns:
+           DocumentChunk: The created DocumentChunk.
         """
         # Combine multiple bounding boxes into a single one that envelops them all.
         combined_bbox = combine_bounding_boxes(bboxes) if len(bboxes) > 1 else bboxes[0]

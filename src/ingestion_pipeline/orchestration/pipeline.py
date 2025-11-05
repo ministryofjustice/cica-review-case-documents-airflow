@@ -1,3 +1,5 @@
+"""Orchestration pipeline for chunking and indexing documents."""
+
 import logging
 
 from textractor.entities.document import Document
@@ -12,13 +14,10 @@ logger = logging.getLogger(__name__)
 
 
 class ChunkAndIndexPipeline:
-    """
-    Orchestrates the document processing pipeline: chunking -> embedding -> indexing.
-    """
+    """Orchestrates the document processing pipeline: chunking -> embedding -> indexing."""
 
     def __init__(self, chunker: DocumentChunker, chunk_indexer: OpenSearchIndexer):
-        """
-        Initializes the orchestrator with the necessary components.
+        """Initializes the orchestrator with the necessary components.
 
         Args:
             chunker: An instance of TextractDocumentChunker.
@@ -28,8 +27,7 @@ class ChunkAndIndexPipeline:
         self.chunk_indexer = chunk_indexer
 
     def process_and_index(self, doc: Document, metadata: DocumentMetadata):
-        """
-        Runs the full pipeline for a single document.
+        """Runs the full pipeline for a single textractor document.
 
         Args:
             doc: The Textractor Document object to process.

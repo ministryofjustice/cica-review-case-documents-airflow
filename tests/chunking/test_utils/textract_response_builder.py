@@ -271,8 +271,7 @@ class PageBuilder:
     def build_page(
         self, page_def: List[Dict], page_number: int, reading_order_counter: int
     ) -> tuple[Page, int, List[Dict]]:
-        """
-        Build a Page object and a list of its raw JSON blocks.
+        """Build a Page object and a list of its raw JSON blocks.
 
         Returns:
             tuple: (Page object, updated reading_order_counter, list of all raw blocks)
@@ -323,8 +322,7 @@ class PageBuilder:
 
 
 class TextractorDocumentFactory:
-    """
-    Factory class for creating mock Textractor Document objects.
+    """Factory class for creating mock Textractor Document objects.
 
     This class provides a clean interface for building complex document structures
     from simplified definitions while maintaining proper entity relationships.
@@ -342,8 +340,7 @@ class TextractorDocumentFactory:
         self.page_builder = PageBuilder(self.layout_builder, self.config, self.raw_builder)
 
     def create_document(self, page_definitions: List[List[Dict]]) -> Document:
-        """
-        Create a Document from simplified page definitions.
+        """Create a Document from simplified page definitions.
         ...
         """
         if not page_definitions:
@@ -381,8 +378,7 @@ class TextractorDocumentFactory:
 
 # Convenience function to maintain backward compatibility
 def textractor_document_factory(page_definitions: List[List[Dict]]) -> Document:
-    """
-    Legacy function for backward compatibility.
+    """Legacy function for backward compatibility.
 
     For new code, prefer using TextractorDocumentFactory directly for better
     configuration control and testing flexibility.

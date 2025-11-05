@@ -13,8 +13,7 @@ MOCK_NAMESPACE_OBJ = uuid.UUID(MOCK_NAMESPACE_UUID)
 
 @pytest.fixture
 def base_data():
-    """
-    Provides common data for the UUID generation tests.
+    """Provides common data for the UUID generation tests.
     Keys MUST match the DocumentIdentifier model fields.
     """
     return {
@@ -37,8 +36,7 @@ def base_data():
     ],
 )
 def test_generates_correct_and_valid_uuid(base_data, page_num, expected_page_str):
-    """
-    Tests if the model generates the correct, expected UUID
+    """Tests if the model generates the correct, expected UUID
     for both document-level and page-level inputs.
     """
     namespace_uuid = MOCK_NAMESPACE_OBJ
@@ -76,8 +74,7 @@ def test_generates_correct_and_valid_uuid(base_data, page_num, expected_page_str
     MOCK_NAMESPACE_OBJ,
 )
 def test_is_deterministic(base_data):
-    """
-    Tests if the function produces the same UUID when called multiple times
+    """Tests if the function produces the same UUID when called multiple times
     with the exact same inputs.
     """
     # Create two identical instances
@@ -96,9 +93,7 @@ def test_is_deterministic(base_data):
     MOCK_NAMESPACE_OBJ,
 )
 def test_is_sensitive_to_input_changes(base_data):
-    """
-    Tests if changing any input parameter results in a different UUID.
-    """
+    """Tests if changing any input parameter results in a different UUID."""
     # Create the base identifier and get its UUID
     base_identifier = DocumentIdentifier(**base_data)
     base_uuid = base_identifier.generate_uuid()

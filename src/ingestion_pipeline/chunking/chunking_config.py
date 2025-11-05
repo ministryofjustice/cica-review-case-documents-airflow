@@ -1,3 +1,5 @@
+"""Configuration for chunking behavior in the ingestion pipeline."""
+
 from dataclasses import dataclass
 from enum import Enum
 

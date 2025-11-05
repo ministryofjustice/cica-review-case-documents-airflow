@@ -1,3 +1,5 @@
+"""Unit tests for the LayoutListChunkingStrategy class."""
+
 import logging
 import os
 import sys
@@ -52,9 +54,7 @@ def list_chunking_strategy(chunking_config: ChunkingConfig) -> LayoutListChunkin
 
 
 def test_chunk_with_valid_list_items(list_chunking_strategy, document_metadata):
-    """
-    Tests the happy path: a LAYOUT_LIST with multiple valid LAYOUT_TEXT children.
-    """
+    """Tests the happy path: a LAYOUT_LIST with multiple valid LAYOUT_TEXT children."""
     list_item_1 = create_mock_layout_block("LAYOUT_TEXT", "First list item.")
     list_item_2 = create_mock_layout_block("LAYOUT_TEXT", "Second list item.")
     layout_list_block = create_mock_layout_block("LAYOUT_LIST", "Unused parent text")
@@ -85,10 +85,7 @@ def test_chunk_with_valid_list_items(list_chunking_strategy, document_metadata):
 
 
 def test_chunk_with_empty_children_list(list_chunking_strategy, document_metadata):
-    """
-    Tests that an empty list of chunks is returned if the LAYOUT_LIST has no children.
-    """
-
+    """Tests that an empty list of chunks is returned if the LAYOUT_LIST has no children."""
     layout_list_block = create_mock_layout_block("LAYOUT_LIST", "Parent text")
     layout_list_block.children = []
 
@@ -103,10 +100,7 @@ def test_chunk_with_empty_children_list(list_chunking_strategy, document_metadat
 
 
 def test_chunk_skips_children_with_empty_text(list_chunking_strategy, document_metadata):
-    """
-    Tests that children with empty or whitespace-only text are correctly skipped.
-    """
-
+    """Tests that children with empty or whitespace-only text are correctly skipped."""
     list_item_1 = create_mock_layout_block("LAYOUT_TEXT", "This is a valid item.")
     list_item_2 = create_mock_layout_block("LAYOUT_TEXT", "")  # Empty string
     list_item_3 = create_mock_layout_block("LAYOUT_TEXT", "   \n\t ")  # Whitespace only
@@ -131,11 +125,10 @@ def test_chunk_skips_children_with_empty_text(list_chunking_strategy, document_m
 
 
 def test_chunk_skips_non_layout_text_children_and_logs_warning(list_chunking_strategy, document_metadata, caplog):
-    """
-    Tests that non-LAYOUT_TEXT children are skipped and a warning is logged.
+    """Tests that non-LAYOUT_TEXT children are skipped and a warning is logged.
+
     `caplog` is a pytest fixture to capture logging output.
     """
-
     list_item_valid = create_mock_layout_block("LAYOUT_TEXT", "Valid text.")
     # Create a child of an unexpected type (e.g., a table inside a list)
     list_item_invalid = create_mock_layout_block("LAYOUT_TABLE", "Unexpected table text", block_id="id-999")

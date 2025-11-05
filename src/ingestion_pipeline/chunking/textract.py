@@ -1,3 +1,5 @@
+"""Module for chunking Textractor documents into structured chunks."""
+
 import logging
 from typing import List, Mapping, Optional
 
@@ -21,12 +23,18 @@ class DocumentChunker:
         strategy_handlers: Mapping[str, ChunkingStrategyHandler],
         config: Optional[ChunkingConfig] = None,
     ):
+        """Initializes the DocumentChunker.
+
+        Args:
+            strategy_handlers (Mapping[str, ChunkingStrategyHandler]):
+                Mapping of layout block types to their corresponding chunking strategy handlers.
+            config (Optional[ChunkingConfig], optional): Configuration settings for chunking. Defaults to None.
+        """
         self.config = config or ChunkingConfig()
         self.strategy_handlers = strategy_handlers
 
     def chunk(self, doc: Document, metadata: DocumentMetadata) -> ProcessedDocument:
-        """
-        Parses a Textractor Document and extracts specified layout blocks as structured chunks.
+        """Parses a Textractor Document and extracts specified layout blocks as structured chunks.
 
         Args:
             doc: Textractor Document to process
@@ -79,7 +87,15 @@ class DocumentChunker:
             raise ChunkException(f"Error extracting chunks from document {metadata.ingested_doc_id}: {str(e)}")
 
     def _validate_inputs(self, doc: Document, metadata: DocumentMetadata) -> None:
-        """Validate inputs before processing."""
+        """Validate inputs before processing.
+
+        Args:
+            doc (Document): The Textractor document to process.
+            metadata (DocumentMetadata): The metadata associated with the document.
+
+        Raises:
+            ValueError: If the document or its pages are invalid.
+        """
         if not doc or not doc.pages:
             raise ValueError("Document cannot be None and must contain pages.")
 
@@ -90,7 +106,20 @@ class DocumentChunker:
         chunk_index_start: int,
         raw_response: Optional[dict],
     ) -> List[DocumentChunk]:
-        """Process a single page and return its chunks."""
+        """Process a single page and return its chunks.
+
+        Args:
+            page (DocumentPage): The page to process.
+            metadata (DocumentMetadata): The metadata associated with the document.
+            chunk_index_start (int): The starting index for chunking.
+            raw_response (Optional[dict]): The raw response from Textract.
+
+        Raises:
+            ChunkException: If chunking fails.
+
+        Returns:
+            List[DocumentChunk]: The list of document chunks extracted from the page.
+        """
         page_chunks = []
         current_chunk_index = chunk_index_start
 
@@ -114,8 +143,15 @@ class DocumentChunker:
         return grouped_chunks
 
     def _should_process_block(self, layout_block, layout_types: Mapping[str, ChunkingStrategyHandler]) -> bool:
-        """Determine if a layout block should be processed."""
+        """Determine if a layout block should be processed.
 
+        Args:
+            layout_block (layout_block): The layout block to check.
+            layout_types (Mapping[str, ChunkingStrategyHandler]): The mapping of layout types to their handlers.
+
+        Returns:
+            bool: True if the block should be processed, False otherwise.
+        """
         if not (layout_block.layout_type in layout_types and layout_block.text and layout_block.text.strip()):
             block_text = layout_block.text if layout_block.text else "<No Text>"
             # Heavy logging for initial analysis of skipped blocks, will be removed later

@@ -1,3 +1,5 @@
+"""Merges atomic chunks into larger page-level chunks."""
+
 import datetime
 import logging
 from typing import List
@@ -11,14 +13,10 @@ logger = logging.getLogger(__name__)
 
 
 class ChunkMerger:
-    """
-    Groups atomic chunks into larger page-level chunks based on a fixed word limit
-    and spatial proximity (vertical distance).
-    """
+    """Merges atomic chunks into larger page-level chunks."""
 
     def __init__(self, word_limit: int = 80, max_vertical_gap: float = 0.5):
-        """
-        Initializes the chunker with a word limit and spatial tolerance.
+        """Initializes the chunker with a word limit and spatial tolerance.
 
         Args:
             word_limit: The maximum number of words allowed in a single chunk.
@@ -35,15 +33,15 @@ class ChunkMerger:
         self.max_vertical_gap = max_vertical_gap
 
     def chunk(self, atomic_chunks: List[DocumentChunk]) -> List[DocumentChunk]:
-        """
-        Groups atomic chunks into larger chunks per page based on word limit and
-        spatial grouping.
+        """Groups atomic chunks into larger chunks.
+
+        Uses word limit and spatial grouping.
 
         Args:
             atomic_chunks: A list of atomic chunks from layout block handlers.
 
         Returns:
-            A list of grouped OpenSearchDocument chunks.
+            List[DocumentChunk]: A list of grouped OpenSearchDocument chunks.
         """
         if not atomic_chunks:
             return []
@@ -103,15 +101,14 @@ class ChunkMerger:
         return grouped_chunks
 
     def _merge_chunks(self, chunks: List[DocumentChunk], chunk_index: int) -> DocumentChunk:
-        """
-        Merges a list of atomic chunks into a single OpenSearchDocument.
+        """Merges a list of atomic chunks into a single OpenSearchDocument.
 
         Args:
             chunks: List of atomic chunks to merge.
             chunk_index: Index for the new chunk.
 
         Returns:
-            A merged OpenSearchDocument.
+            DocumentChunk: A merged OpenSearchDocument.
         """
         merged_text = " ".join([c.chunk_text for c in chunks]).strip()
         merged_bbox = combine_bounding_boxes([c.bounding_box.to_textractor_bbox() for c in chunks])

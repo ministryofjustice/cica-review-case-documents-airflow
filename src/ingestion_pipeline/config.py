@@ -1,3 +1,5 @@
+"""Configuration settings for the airflow pipeline."""
+
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -25,6 +27,8 @@ ENV_FILE_PATH = PROJECT_ROOT / ".env"
 
 
 class Settings(BaseSettings):  # type: ignore
+    """Configuration settings for the ingestion pipeline."""
+
     model_config = SettingsConfigDict(
         # Only load .env if it exists (local dev)
         env_file=str(ENV_FILE_PATH) if ENV_FILE_PATH.exists() else None,

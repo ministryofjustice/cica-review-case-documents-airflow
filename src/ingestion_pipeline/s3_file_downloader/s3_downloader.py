@@ -1,3 +1,5 @@
+"""Module for downloading files from S3."""
+
 import logging
 
 import boto3
@@ -6,8 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 def download_pdf_from_s3(bucket_name: str, file_key: str, download_path: str):
-    """
-    Downloads a PDF file from an S3 bucket.
+    """Downloads a PDF file from an S3 bucket.
 
     Args:
         bucket_name (str): The name of the S3 bucket.

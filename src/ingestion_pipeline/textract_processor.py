@@ -1,3 +1,8 @@
+"""This module orchestrates the analysis of documents using AWS Textract.
+
+handles chunking strategies, and indexes the processed content into OpenSearch.
+"""
+
 import datetime
 import logging
 import time
@@ -38,10 +43,7 @@ S3_DOCUMENT_URI = "s3://cica-textract-response-dev/Case1_TC19_50_pages_brain_inj
 
 
 class TextractProcessor:
-    """
-    Orchestrates the analysis of a document with AWS Textract, from job submission
-    to final processing and indexing.
-    """
+    """Orchestrates the analysis of a document with AWS Textract."""
 
     def __init__(
         self,
@@ -50,13 +52,30 @@ class TextractProcessor:
         timeout_seconds: int = JOB_TIMEOUT_SECONDS,
         poll_interval: int = POLL_INTERVAL_SECONDS,
     ):
+        """Initializes the TextractProcessor with required dependencies and configuration.
+
+        Args:
+            textractor (Textractor): Instance of Textractor for document analysis.
+            textract_client: Boto3 Textract client for API calls.
+            timeout_seconds (int, optional): Maximum time to wait for Textract job completion.
+                Defaults to JOB_TIMEOUT_SECONDS.
+            poll_interval (int, optional): Interval (in seconds) between polling Textract job status.
+                Defaults to POLL_INTERVAL_SECONDS.
+        """
         self.textractor = textractor
         self.textract_client = textract_client
         self.timeout_seconds = timeout_seconds
         self.poll_interval = poll_interval
 
     def _start_textract_job(self, s3_document_uri: str) -> str:
-        """Starts a Textract analysis job and returns the JobId."""
+        """Starts a Textract analysis job and returns the JobId.
+
+        Args:
+            s3_document_uri (str): The S3 URI of the document to process.
+
+        Returns:
+            str: The JobId of the started Textract job.
+        """
         logging.info(f"Starting Textract job for {s3_document_uri}")
         document = self.textractor.start_document_analysis(
             file_source=s3_document_uri,
@@ -67,7 +86,17 @@ class TextractProcessor:
         return document.job_id
 
     def _poll_for_job_completion(self, job_id: str) -> str:
-        """Polls Textract until the job completes, fails, or times out."""
+        """Polls Textract until the job completes, fails, or times out.
+
+        Args:
+            job_id (str): The JobId of the Textract job to poll.
+
+        Raises:
+            TimeoutError: If the job does not complete within the timeout period.
+
+        Returns:
+            str: The final status of the Textract job.
+        """
         start_time = time.time()
         while time.time() - start_time < self.timeout_seconds:
             response = self.textract_client.get_document_analysis(JobId=job_id)
@@ -82,7 +111,14 @@ class TextractProcessor:
         raise TimeoutError(f"Textract job {job_id} timed out after {self.timeout_seconds} seconds.")
 
     def _get_job_results(self, job_id: str) -> Document:
-        """Fetches the full JSON result for a completed Textract job."""
+        """Fetches the results of a completed Textract job.
+
+        Args:
+            job_id (str): The JobId of the Textract job to fetch results for.
+
+        Returns:
+            Document: The parsed document containing the Textract job results.
+        """
         logging.info(f"Fetching full results for job {job_id}.")
         full_response = get_full_json(
             job_id=job_id, boto3_textract_client=self.textract_client, textract_api=Textract_API.ANALYZE
@@ -90,11 +126,14 @@ class TextractProcessor:
         return parse(full_response)
 
     def process_document(self, s3_document_uri: str) -> Document | None:
-        """
-        Public method to fetch and parse a document from S3 using Textract.
-        Returns a tuple of (Document, DocumentMetadata) on success, or None on failure.
-        """
+        """Process and parse a document from S3 using Textract.
 
+        Args:
+            s3_document_uri (str): The S3 URI of the document to process.
+
+        Returns:
+            Document: Document, or None on failure.
+        """
         logging.info(f"Processing s3 file: {s3_document_uri}")
 
         try:

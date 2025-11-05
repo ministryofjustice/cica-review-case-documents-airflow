@@ -1,3 +1,5 @@
+"""Chunker for tables structured with cells."""
+
 import logging
 from collections import defaultdict
 from typing import Dict, List, Optional
@@ -15,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class CellTableChunker(BaseTableChunker):
-    """Handles tables with Cell/Table structure - one chunk per row"""
+    """Handles tables with Cell/Table structure - one chunk per row."""
 
     def chunk(
         self,
@@ -25,7 +27,18 @@ class CellTableChunker(BaseTableChunker):
         chunk_index_start: int,
         raw_response: Optional[dict] = None,
     ) -> List[DocumentChunk]:
-        """Process cell-based table into row chunks"""
+        """Processes a cell-based table layout block into document chunks.
+
+        Args:
+            layout_block (Layout): The layout block to process.
+            page_number (int): The page number of the layout block.
+            metadata (DocumentMetadata): The metadata associated with the document.
+            chunk_index_start (int): The starting index for chunk numbering.
+            raw_response (Optional[dict], optional): Raw response from the source. Defaults to None.
+
+        Returns:
+            List[DocumentChunk]: A list of document chunks created from the layout block.
+        """
         logger.debug(f"++++++++++++++++++++ Processing cell-based table: {layout_block.id} ++++++++++++++")
 
         rows = self._group_cells_by_row(layout_block)
@@ -48,7 +61,18 @@ class CellTableChunker(BaseTableChunker):
         return chunks
 
     def _group_cells_by_row(self, layout_block: Layout) -> Dict[int, List[TableCell]]:
-        """Extract and group table cells by row index."""
+        """Extract and group table cells by row index.
+
+        Args:
+            layout_block (Layout): The layout block containing the table.
+
+        Raises:
+            ChunkException: The layout block is not a valid table.
+            ChunkException: The table contains invalid cell objects.
+
+        Returns:
+            Dict[int, List[TableCell]]: A dictionary mapping row indices to lists of table cells.
+        """
         rows = defaultdict(list)
 
         for table in layout_block.children:
@@ -75,7 +99,14 @@ class CellTableChunker(BaseTableChunker):
         return rows
 
     def _process_table_row(self, cells: List[TableCell]) -> tuple[str, List[BoundingBox]]:
-        """Process a row of cells, handling merged cells and duplicates."""
+        """Process a row of cells, handling merged cells and duplicates.
+
+        Args:
+        cells (List[TableCell]): the list of table cells in the row.
+
+        Returns:
+        tuple[str, List[BoundingBox]]: the concatenated text of the row and the list of bounding boxes.
+        """
         sorted_cells = sorted(cells, key=lambda c: (c.col_index, c.id))
 
         text_parts = []

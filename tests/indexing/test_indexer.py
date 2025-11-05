@@ -54,9 +54,6 @@ def sample_documents():
 
 
 def test_indexer_initialization_success(mock_opensearch_client):
-    """
-    Tests that the indexer initializes correctly with a valid host, port, and index name.
-    """
     # The instantiation of OpenSearchIndexer will cause the mocked OpenSearch class to be called.
     indexer = OpenSearchIndexer(host="test_host", port=9200, index_name="test_index")
 
@@ -74,17 +71,13 @@ def test_indexer_initialization_success(mock_opensearch_client):
 
 
 def test_indexer_initialization_with_empty_index_name_raises_error():
-    """
-    Tests that initializing the indexer with an empty index name raises a ValueError.
-    """
+    """Tests that initializing the indexer with an empty index name raises a ValueError."""
     with pytest.raises(ValueError, match="Index name cannot be empty."):
         OpenSearchIndexer(host="test_host", port=9200, index_name="")
 
 
 def test_index_documents_success(mock_helpers_bulk, mock_opensearch_client, sample_documents):
-    """
-    Tests that documents are successfully indexed using the bulk helper.
-    """
+    """Tests that documents are successfully indexed using the bulk helper."""
     # Configure the mock to simulate a successful bulk operation
     mock_helpers_bulk.return_value = (len(sample_documents), [])
 
@@ -101,9 +94,7 @@ def test_index_documents_success(mock_helpers_bulk, mock_opensearch_client, samp
 
 
 def test_index_documents_with_empty_list_returns_zero(mock_helpers_bulk, mock_opensearch_client):
-    """
-    Tests that passing an empty list of documents returns 0 successes and no errors.
-    """
+    """Tests that passing an empty list of documents returns 0 successes and no errors."""
     indexer = OpenSearchIndexer(host="localhost", port=9200, index_name="test_index")
     indexer.client = mock_opensearch_client
 
@@ -115,9 +106,7 @@ def test_index_documents_with_empty_list_returns_zero(mock_helpers_bulk, mock_op
 
 
 def test_index_documents_with_partial_failures(mock_helpers_bulk, mock_opensearch_client, sample_documents):
-    """
-    Tests that partial failures from the bulk helper are correctly handled and returned.
-    """
+    """Tests that partial failures from the bulk helper are correctly handled and returned."""
     mock_errors = [{"index": {"error": {"reason": "Test error"}}}, {"index": {"error": {"reason": "Another error"}}}]
     # Simulate partial success with 1 document failing
     mock_helpers_bulk.return_value = (1, mock_errors)
@@ -133,9 +122,7 @@ def test_index_documents_with_partial_failures(mock_helpers_bulk, mock_opensearc
 
 
 def test_index_documents_raises_on_bulk_exception(mock_helpers_bulk, mock_opensearch_client, sample_documents):
-    """
-    Tests that a bulk operation exception is caught, logged, and re-raised.
-    """
+    """Tests that a bulk operation exception is caught, logged, and re-raised."""
     # Simulate a critical error during the bulk operation
     mock_helpers_bulk.side_effect = BulkIndexError("Simulated bulk error", [])
 
@@ -147,9 +134,7 @@ def test_index_documents_raises_on_bulk_exception(mock_helpers_bulk, mock_opense
 
 
 def test_generate_bulk_actions_missing_id_field_raises_error(mock_opensearch_client):
-    """
-    Tests that a document missing the specified ID field raises an AttributeError.
-    """
+    """Tests that a document missing the specified ID field raises an AttributeError."""
     # Create a mock document that is missing the 'chunk_id' attribute
     MockDocument = MagicMock()
     del MockDocument.chunk_id

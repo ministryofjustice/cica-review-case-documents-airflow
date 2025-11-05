@@ -1,3 +1,5 @@
+"""Unit tests for document_chunker.py."""
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -53,8 +55,8 @@ def mock_strategy_handler():
 
 
 def test_selects_correct_strategy_and_increments_index(mock_metadata):
-    """
-    Verifies the chunker calls the correct strategy for each block type
+    """Verifies the chunker calls the correct strategy for each block type.
+
     and correctly increments the chunk index between calls.
     """
     # Arrange
@@ -87,8 +89,8 @@ def test_selects_correct_strategy_and_increments_index(mock_metadata):
 
 
 def test_skips_blocks_without_strategy_or_text(mock_metadata, mock_strategy_handler):
-    """
-    Verifies that blocks are skipped if they have no associated strategy,
+    """Verifies that blocks are skipped if they have no associated strategy.
+
     no text, or only whitespace text.
     """
     # Arrange
@@ -114,9 +116,7 @@ def test_skips_blocks_without_strategy_or_text(mock_metadata, mock_strategy_hand
 
 
 def test_calls_merger_once_per_page(mock_metadata, mock_strategy_handler):
-    """
-    Verifies that the ChunkMerger is instantiated and called once for each page.
-    """
+    """Verifies that the ChunkMerger is instantiated and called once for each page."""
     strategy_handlers = {"LAYOUT_TEXT": mock_strategy_handler}
     pages = [
         create_mock_page(layouts=[create_mock_layout()], page_num=1),
@@ -132,9 +132,7 @@ def test_calls_merger_once_per_page(mock_metadata, mock_strategy_handler):
 
 
 def test_creates_pagedocument_with_correct_data(mock_metadata, mock_strategy_handler):
-    """
-    Verifies that PageDocument objects are created correctly from page data.
-    """
+    """Verifies that PageDocument objects are created correctly from page data."""
     strategy_handlers = {"LAYOUT_TEXT": mock_strategy_handler}
     page = create_mock_page(layouts=[], page_num=5, width=800, height=600)
     doc = create_mock_document(pages=[page])
@@ -153,11 +151,10 @@ def test_creates_pagedocument_with_correct_data(mock_metadata, mock_strategy_han
 
 
 def test_wraps_strategy_exception_in_chunkexception(mock_metadata, mock_strategy_handler):
-    """
-    Verifies that if a strategy raises an unexpected error, it is caught
-    and re-raised as a ChunkException.
-    """
+    """Verifies that if a strategy raises an unexpected error.
 
+    it is caught and re-raised as a ChunkException.
+    """
     error_message = "Something went very wrong!"
     mock_strategy_handler.chunk.side_effect = Exception(error_message)
 
