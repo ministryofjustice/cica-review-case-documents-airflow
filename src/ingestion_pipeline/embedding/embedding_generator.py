@@ -34,7 +34,7 @@ class EmbeddingGenerator:
         Returns:
             A list of floats representing the embedding.
         """
-        logging.info(f"Generating embedding for text: {text}")
+        logging.debug(f"Generating embedding for text: {text}")
         native_request = {"inputText": text}
         request = json.dumps(native_request)
 
