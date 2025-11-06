@@ -107,7 +107,13 @@ The project is still a WIP to ingest an S3 document, call textract to perform OC
 - run ```uv run src/ingestion_pipeline/textract_processor.py```
 - watch the terminal logs, note Textract can take from ~30 secs to ~2 mins to process
 - once the pipeline has completed use the Opensearch dashboard to view the extracted data
-  
+
+
+### Logging
+
+The project has been set up to add the source document uuid (generated during ingestion) to a context var which results in all logs containing the source_doc_id for tracing purposes. 
+
+```2025-11-06 15:05:03 INFO source_doc_id: 91c8ac49-2d20-5b35-b3f9-4563c8553a33 Step 1: Fetching and parsing document with Textract...```
 
 ### Testing the project
 

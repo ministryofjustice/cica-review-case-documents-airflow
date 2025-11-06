@@ -79,7 +79,7 @@ class DocumentChunker:
                 )
                 page_documents.append(page_doc)
 
-            logger.info(f"Extracted {len(all_chunks)} chunks from document {metadata.source_doc_id}")
+            logger.info(f"Extracted {len(all_chunks)} chunks")
             return ProcessedDocument(chunks=all_chunks, pages=page_documents, metadata=metadata)
 
         except Exception as e:

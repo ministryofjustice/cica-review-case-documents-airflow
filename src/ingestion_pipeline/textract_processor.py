@@ -22,11 +22,14 @@ from ingestion_pipeline.chunking.strategies.list.list_chunker import LayoutListC
 from ingestion_pipeline.chunking.strategies.table.layout_table import LayoutTableChunkingStrategy
 from ingestion_pipeline.chunking.textract import DocumentChunker
 from ingestion_pipeline.config import settings
+from ingestion_pipeline.custom_logging.log_context import setup_logging, source_doc_id_context
 from ingestion_pipeline.indexing.indexer import OpenSearchIndexer
 from ingestion_pipeline.orchestration.pipeline import ChunkAndIndexPipeline
 from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+# TODO move this to main once we have an orchestrator
+setup_logging()
+log = logging.getLogger(__name__)
 
 # OpenSearch Connection Details
 OS_HOST = settings.OPENSEARCH_HOST
@@ -76,13 +79,13 @@ class TextractProcessor:
         Returns:
             str: The JobId of the started Textract job.
         """
-        logging.info(f"Starting Textract job for {s3_document_uri}")
+        log.info(f"Starting Textract job for {s3_document_uri}")
         document = self.textractor.start_document_analysis(
             file_source=s3_document_uri,
             features=[TextractFeatures.LAYOUT],
             save_image=False,
         )
-        logging.info(f"Started Textract job for document {s3_document_uri} with JobId: {document.job_id}")
+        log.info(f"Started Textract job for document {s3_document_uri} with JobId: {document.job_id}")
         return document.job_id
 
     def _poll_for_job_completion(self, job_id: str) -> str:
@@ -101,7 +104,7 @@ class TextractProcessor:
         while time.time() - start_time < self.timeout_seconds:
             response = self.textract_client.get_document_analysis(JobId=job_id)
             status = response["JobStatus"]
-            logging.info(f"Job {job_id} status is {status}.")
+            log.info(f"Textract Job {job_id} status is {status}.")
 
             if status in ["SUCCEEDED", "FAILED", "PARTIAL_SUCCESS"]:
                 return status
@@ -119,7 +122,7 @@ class TextractProcessor:
         Returns:
             Document: The parsed document containing the Textract job results.
         """
-        logging.info(f"Fetching full results for job {job_id}.")
+        log.info(f"Fetching full results for job {job_id}.")
         full_response = get_full_json(
             job_id=job_id, boto3_textract_client=self.textract_client, textract_api=Textract_API.ANALYZE
         )
@@ -134,14 +137,14 @@ class TextractProcessor:
         Returns:
             Document: Document, or None on failure.
         """
-        logging.info(f"Processing s3 file: {s3_document_uri}")
+        log.info(f"Processing s3 file: {s3_document_uri}")
 
         try:
             job_id = self._start_textract_job(s3_document_uri)
             final_status = self._poll_for_job_completion(job_id)
 
             if final_status != "SUCCEEDED":
-                logging.error(f"Textract job {job_id} did not succeed. Status: {final_status}")
+                log.error(f"Textract job {job_id} did not succeed. Status: {final_status}")
                 raise Exception(f"Textract job {job_id} failed with status: {final_status}")
 
             document_to_process = self._get_job_results(job_id)
@@ -149,7 +152,7 @@ class TextractProcessor:
             return document_to_process
 
         except Exception as e:
-            logging.error(f"Failed to process s3 file {s3_document_uri}: {e}")
+            log.error(f"Failed to process s3 file {s3_document_uri}: {e}")
             raise
 
 
@@ -195,22 +198,22 @@ def main():
 
     # 3. Run the jobs, handling exceptions as needed
     try:
-        logging.info("Step 1: Fetching and parsing document with Textract...")
+        identifier = DocumentIdentifier(
+            source_file_name="source_document.pdf", correspondence_type="TC19", case_ref="25-111111"
+        )
+
+        source_doc_id = identifier.generate_uuid()
+        log.debug(f"Generated 16-digit UUID: {source_doc_id}")
+        source_doc_id_context.set(source_doc_id)
+
+        log.info("Fetching and parsing document with Textract...")
         result = textract_processor.process_document(S3_DOCUMENT_URI)
 
         # Step 2: If successful, pass the document to the next pipeline stage
         if result:
-            logging.info("Step 2: Chunking and indexing the document content...")
+            log.info("Chunking and indexing the document content...")
             document = result
             filename = S3_DOCUMENT_URI.split("/")[-1]
-
-            # Not received_date no longer used...
-            identifier = DocumentIdentifier(
-                source_file_name="source_document.pdf", correspondence_type="TC19", case_ref="25-111111"
-            )
-
-            source_doc_id = identifier.generate_uuid()
-            logging.debug(f"Generated 16-digit UUID: {source_doc_id}")
 
             metadata = DocumentMetadata(
                 source_doc_id=source_doc_id,
@@ -222,13 +225,19 @@ def main():
                 correspondence_type="TC19",
             )
             chunk_and_index_pipeline.process_and_index(document, metadata)
-            logging.info("Pipeline completed successfully.")
         else:
-            logging.warning("Document processing failed, skipping chunking and indexing.")
+            log.warning("Document processing failed, skipping chunking and indexing.")
             raise Exception(f"Document processing returned None for {S3_DOCUMENT_URI}")
 
     except Exception as e:
-        logging.critical(f"Pipeline failed: {e}")
+        log.critical(f"Pipeline failed: {e}")
+
+    finally:
+        log.info("Pipeline execution finished.")
+        source_id_to_remove = source_doc_id_context.get()
+        log.debug(f"Cleaning up context for source_doc_id: {source_id_to_remove}")
+        source_doc_id_context.set(None)  # ✓ This ALWAYS runs, even after exception
+        log.debug(f"Cleanup complete for source_doc_id context, {source_id_to_remove} removed")
 
 
 if __name__ == "__main__":
