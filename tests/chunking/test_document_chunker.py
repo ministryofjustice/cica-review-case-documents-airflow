@@ -73,7 +73,7 @@ def test_selects_correct_strategy_and_increments_index(mock_metadata):
     chunker = DocumentChunker(strategy_handlers)
 
     with patch("ingestion_pipeline.chunking.textract.ChunkMerger", autospec=True) as mock_merger:
-        mock_merger.return_value.chunk.side_effect = lambda chunks: chunks
+        mock_merger.return_value.merge_chunks.side_effect = lambda merge_chunks: merge_chunks
         processed_doc = chunker.chunk(doc, mock_metadata)
 
     mock_text_strategy.chunk.assert_called_once()
@@ -103,7 +103,7 @@ def test_skips_blocks_without_strategy_or_text(mock_metadata, mock_strategy_hand
     chunker = DocumentChunker(strategy_handlers)
 
     with patch("ingestion_pipeline.chunking.textract.ChunkMerger", autospec=True) as mock_merger:
-        mock_merger.return_value.chunk.side_effect = lambda chunks: chunks
+        mock_merger.return_value.merge_chunks.side_effect = lambda merge_chunks: merge_chunks
         processed_doc = chunker.chunk(doc, mock_metadata)
 
     mock_strategy_handler.chunk.assert_called_once()
@@ -123,7 +123,7 @@ def test_calls_merger_once_per_page(mock_metadata, mock_strategy_handler):
     with patch("ingestion_pipeline.chunking.textract.ChunkMerger", autospec=True) as mock_merger:
         chunker.chunk(doc, mock_metadata)
 
-        assert mock_merger.return_value.chunk.call_count == 2
+        assert mock_merger.return_value.merge_chunks.call_count == 2
 
 
 def test_creates_pagedocument_with_correct_data(mock_metadata, mock_strategy_handler):

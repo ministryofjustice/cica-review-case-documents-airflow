@@ -1,3 +1,4 @@
+import datetime
 import logging
 from unittest.mock import MagicMock
 
@@ -36,6 +37,7 @@ def sample_documents():
             chunk_type="LAYOUT_TEXT",
             chunk_text="This is the first chunk.",
             confidence=0.95,
+            received_date=datetime.datetime.fromisoformat("2025-11-06"),
             bounding_box=DocumentBoundingBox(Width=0.1, Height=0.1, Left=0.1, Top=0.1),
         ),
         DocumentChunk(
@@ -48,6 +50,7 @@ def sample_documents():
             chunk_type="LAYOUT_TEXT",
             chunk_text="This is the second chunk.",
             confidence=0.96,
+            received_date=datetime.datetime.fromisoformat("2025-11-06"),
             bounding_box=DocumentBoundingBox(Width=0.2, Height=0.2, Left=0.2, Top=0.2),
         ),
     ]

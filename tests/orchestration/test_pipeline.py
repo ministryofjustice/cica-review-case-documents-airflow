@@ -60,6 +60,7 @@ def mock_processed_data_with_chunks():
             chunk_type="TEXT",
             confidence=1.0,
             chunk_text="Chunk 1",
+            received_date=datetime.datetime.fromisoformat("2025-11-06"),
             bounding_box=DocumentBoundingBox(Width=0.1, Height=0.1, Left=0.1, Top=0.1),
         ),
         DocumentChunk(
@@ -72,6 +73,7 @@ def mock_processed_data_with_chunks():
             chunk_type="TEXT",
             confidence=1.0,
             chunk_text="Chunk 2",
+            received_date=datetime.datetime.fromisoformat("2025-11-06"),
             bounding_box=DocumentBoundingBox(Width=0.2, Height=0.2, Left=0.2, Top=0.2),
         ),
     ]

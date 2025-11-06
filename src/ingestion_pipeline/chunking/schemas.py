@@ -1,11 +1,14 @@
 """Pydantic schemas for document chunking and metadata."""
 
+import logging
 from datetime import datetime
 from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 from textractor.entities.bbox import BoundingBox
 from textractor.entities.layout import Layout
+
+from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
 
 
 class DocumentBoundingBox(BaseModel):
@@ -91,7 +94,7 @@ class DocumentChunk(BaseModel):
     bounding_box: DocumentBoundingBox
     embedding: Optional[List[float]] = None
     case_ref: Optional[str] = None
-    received_date: Optional[datetime] = None
+    received_date: datetime
     correspondence_type: Optional[str] = None
 
     @computed_field
@@ -115,9 +118,18 @@ class DocumentChunk(BaseModel):
         return len(self.chunk_text.split())
 
     @staticmethod
-    def _generate_chunk_id(ingested_doc_id: str, page_num: int, chunk_index: int) -> str:
+    def _generate_chunk_id(document_metadata: DocumentMetadata, page_num: int, chunk_index: int) -> str:
         """Generate consistent chunk ID."""
-        return f"{ingested_doc_id}_p{page_num}_c{chunk_index}"
+        identifier = DocumentIdentifier(
+            source_file_name=document_metadata.source_file_name,
+            correspondence_type=document_metadata.correspondence_type,
+            case_ref=document_metadata.case_ref,
+            page_num=page_num,
+            chunk_index=chunk_index,
+        )
+        chunk_uuid = identifier.generate_uuid()
+        logging.debug(f"Generated 16-digit UUID: {chunk_uuid}")
+        return chunk_uuid
 
     @classmethod
     def from_textractor_layout(
@@ -144,7 +156,7 @@ class DocumentChunk(BaseModel):
         Returns:
             DocumentChunk: The created DocumentChunk instance.
         """
-        chunk_id = cls._generate_chunk_id(metadata.ingested_doc_id, page_number, chunk_index)
+        chunk_id = cls._generate_chunk_id(metadata, page_number, chunk_index)
         bounding_box_model = DocumentBoundingBox.from_textractor_bbox(combined_bbox)
 
         # Pydantic validates the data upon instantiation here

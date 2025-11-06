@@ -1,6 +1,5 @@
 """Merges atomic chunks into larger page-level chunks."""
 
-import datetime
 import logging
 from typing import List
 
@@ -32,7 +31,7 @@ class ChunkMerger:
         self.word_limit = word_limit
         self.max_vertical_gap = max_vertical_gap
 
-    def chunk(self, atomic_chunks: List[DocumentChunk]) -> List[DocumentChunk]:
+    def merge_chunks(self, atomic_chunks: List[DocumentChunk]) -> List[DocumentChunk]:
         """Groups atomic chunks into larger chunks.
 
         Uses word limit and spatial grouping.
@@ -95,8 +94,6 @@ class ChunkMerger:
 
         for c in grouped_chunks:
             logger.debug(f"Chunk {c.chunk_id} (Page {c.page_number}, Words: {c.word_count}): {c.chunk_text}")
-            # uncomment this line for ocr chunk text output checking
-            # logger.info(f"CHUNK TEXT: {c.chunk_text}")
 
         return grouped_chunks
 
@@ -121,7 +118,7 @@ class ChunkMerger:
             ingested_doc_id=first_chunk.ingested_doc_id,
             source_file_name=first_chunk.source_file_name,
             case_ref=first_chunk.case_ref if first_chunk.case_ref is not None else "",
-            received_date=first_chunk.received_date if first_chunk.received_date is not None else datetime.date.min,
+            received_date=first_chunk.received_date,
             correspondence_type=first_chunk.correspondence_type if first_chunk.correspondence_type is not None else "",
         )
 

@@ -114,3 +114,37 @@ def test_is_sensitive_to_input_changes(base_data):
     data_with_page["page_num"] = 1
     identifier_with_page = DocumentIdentifier(**data_with_page)
     assert base_uuid != identifier_with_page.generate_uuid()
+
+
+def test_page_uuid_is_different_from_document_uuid():
+    doc_id = DocumentIdentifier(
+        source_file_name="file.pdf", correspondence_type="typeA", case_ref="CASE-123"
+    ).generate_uuid()
+    page_id = DocumentIdentifier(
+        source_file_name="file.pdf", correspondence_type="typeA", case_ref="CASE-123", page_num=1
+    ).generate_uuid()
+    assert doc_id != page_id
+
+
+def test_chunk_uuid_is_different_from_page_and_document_uuid():
+    doc_id = DocumentIdentifier(
+        source_file_name="file.pdf", correspondence_type="typeA", case_ref="CASE-123"
+    ).generate_uuid()
+    page_id = DocumentIdentifier(
+        source_file_name="file.pdf", correspondence_type="typeA", case_ref="CASE-123", page_num=1
+    ).generate_uuid()
+    chunk_id = DocumentIdentifier(
+        source_file_name="file.pdf", correspondence_type="typeA", case_ref="CASE-123", page_num=1, chunk_index=0
+    ).generate_uuid()
+    assert chunk_id != page_id
+    assert chunk_id != doc_id
+
+
+def test_chunk_uuid_changes_with_chunk_index():
+    chunk_id_0 = DocumentIdentifier(
+        source_file_name="file.pdf", correspondence_type="typeA", case_ref="CASE-123", page_num=1, chunk_index=0
+    ).generate_uuid()
+    chunk_id_1 = DocumentIdentifier(
+        source_file_name="file.pdf", correspondence_type="typeA", case_ref="CASE-123", page_num=1, chunk_index=1
+    ).generate_uuid()
+    assert chunk_id_0 != chunk_id_1

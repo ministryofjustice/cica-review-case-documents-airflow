@@ -22,6 +22,7 @@ class DocumentIdentifier(BaseModel):
     correspondence_type: str
     case_ref: str
     page_num: Optional[int] = None
+    chunk_index: Optional[int] = None
 
     @field_validator("source_file_name", "correspondence_type", "case_ref")
     @classmethod
@@ -50,6 +51,10 @@ class DocumentIdentifier(BaseModel):
         # Conditionally add the page number
         if self.page_num is not None:
             data_parts.append(str(self.page_num))
+
+        # Conditionally add the chunk index
+        if self.chunk_index is not None:
+            data_parts.append(str(self.chunk_index))
 
         data_string = "-".join(data_parts)
 
