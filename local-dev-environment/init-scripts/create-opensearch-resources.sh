@@ -48,7 +48,7 @@ else
             "chunk_id": {
                 "type": "keyword"
             },
-            "document_id": {
+            "source_doc_id": {
                 "type": "keyword"
             },
             "chunk_text": {

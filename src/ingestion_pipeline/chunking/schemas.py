@@ -68,7 +68,7 @@ class DocumentMetadata(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    ingested_doc_id: str = Field(min_length=1)
+    source_doc_id: str = Field(min_length=1)
     source_file_name: str = Field(min_length=1)
     page_count: int = Field(gt=0)
     case_ref: str
@@ -80,7 +80,7 @@ class DocumentChunk(BaseModel):
     """Represents a document chunk for OpenSearch, built with Pydantic."""
 
     chunk_id: str
-    ingested_doc_id: str
+    source_doc_id: str
     chunk_text: str
     source_file_name: str
     page_count: int
@@ -163,7 +163,7 @@ class DocumentChunk(BaseModel):
         # We will need to identify whether chunk is/contains HANDWRITTEN elements
         return cls(
             chunk_id=chunk_id,
-            ingested_doc_id=metadata.ingested_doc_id,
+            source_doc_id=metadata.source_doc_id,
             chunk_text=chunk_text,
             source_file_name=metadata.source_file_name,
             page_count=metadata.page_count,
@@ -181,7 +181,7 @@ class DocumentChunk(BaseModel):
 class DocumentPage(BaseModel):
     """Represents a single page's metadata for indexing."""
 
-    document_id: str = Field(..., description="The unique ID of the source document.")
+    source_doc_id: str = Field(..., description="The unique ID of the source document.")
     page_num: int = Field(..., description="The page number (1-based).")
     page_id: str = Field(..., description="UUID for the index.")
     text: str = Field(..., description="Structured ocr content for the front end rendering")

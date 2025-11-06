@@ -82,7 +82,7 @@ class TextractProcessor:
             features=[TextractFeatures.LAYOUT],
             save_image=False,
         )
-        logging.info(f"Started Textract job with JobId: {document.job_id}")
+        logging.info(f"Started Textract job for document {s3_document_uri} with JobId: {document.job_id}")
         return document.job_id
 
     def _poll_for_job_completion(self, job_id: str) -> str:
@@ -209,11 +209,11 @@ def main():
                 source_file_name="source_document.pdf", correspondence_type="TC19", case_ref="25-111111"
             )
 
-            document_id = identifier.generate_uuid()
-            logging.debug(f"Generated 16-digit UUID: {document_id}")
+            source_doc_id = identifier.generate_uuid()
+            logging.debug(f"Generated 16-digit UUID: {source_doc_id}")
 
             metadata = DocumentMetadata(
-                ingested_doc_id=document_id,
+                source_doc_id=source_doc_id,
                 source_file_name=filename,
                 page_count=document.num_pages,
                 case_ref="25-111111",

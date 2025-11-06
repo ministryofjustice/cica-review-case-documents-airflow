@@ -43,7 +43,7 @@ def test_to_textractor_bbox_with_negative_values():
 
 def make_metadata():
     return DocumentMetadata(
-        ingested_doc_id="doc123",
+        source_doc_id="doc123",
         source_file_name="file.pdf",
         page_count=5,
         case_ref="CASE-001",
@@ -89,7 +89,7 @@ def test_generate_chunk_id_returns_unique_for_different_inputs(mock_identifier_c
 @mock.patch("ingestion_pipeline.chunking.schemas.DocumentIdentifier")
 def test_generate_chunk_id_with_minimal_metadata(mock_identifier_cls):
     metadata = DocumentMetadata(
-        ingested_doc_id="id",
+        source_doc_id="id",
         source_file_name="f.pdf",
         page_count=1,
         case_ref="REF",

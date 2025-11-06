@@ -40,7 +40,7 @@ def create_mock_document(pages, response={"some": "data"}):
 def mock_metadata():
     """Provides a mock DocumentMetadata object for tests."""
     metadata = MagicMock(spec=DocumentMetadata)
-    metadata.ingested_doc_id = "doc-123"
+    metadata.source_doc_id = "doc-123"
     metadata.case_ref = "case-abc"
     return metadata
 
@@ -138,7 +138,7 @@ def test_creates_pagedocument_with_correct_data(mock_metadata, mock_strategy_han
     assert len(processed_doc.pages) == 1
     page_doc = processed_doc.pages[0]
 
-    assert page_doc.document_id == "doc-123"
+    assert page_doc.source_doc_id == "doc-123"
     assert page_doc.page_num == 5
     assert page_doc.page_width == 800
     assert page_doc.page_height == 600

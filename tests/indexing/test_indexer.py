@@ -29,7 +29,7 @@ def sample_documents():
     return [
         DocumentChunk(
             chunk_id="doc1-p1-c0",
-            ingested_doc_id="doc1",
+            source_doc_id="doc1",
             source_file_name="file1.pdf",
             page_count=2,
             page_number=1,
@@ -42,7 +42,7 @@ def sample_documents():
         ),
         DocumentChunk(
             chunk_id="doc1-p1-c1",
-            ingested_doc_id="doc1",
+            source_doc_id="doc1",
             source_file_name="file1.pdf",
             page_count=2,
             page_number=1,
@@ -146,3 +146,50 @@ def test_generate_bulk_actions_missing_id_field_raises_error(mock_opensearch_cli
     with pytest.raises(AttributeError, match="Document model is missing the required id_field 'chunk_id'."):
         # The generator will raise the error on the first iteration
         list(indexer._generate_bulk_actions([MockDocument], id_field="chunk_id"))
+
+
+def test_delete_documents_by_source_doc_id_success(mock_opensearch_client, mocker):
+    mock_delete_by_query = mock_opensearch_client.delete_by_query
+    mock_delete_by_query.return_value = {"deleted": 5}
+
+    indexer = OpenSearchIndexer(host="localhost", port=9200, index_name="test_index")
+    indexer.client = mock_opensearch_client
+
+    source_doc_id = "doc1"
+
+    mock_logger_info = mocker.patch("ingestion_pipeline.indexing.indexer.logger.info")
+    indexer._delete_documents_by_source_doc_id(source_doc_id)
+
+    mock_delete_by_query.assert_called_once_with(
+        index="test_index",
+        body={"query": {"match": {"source_doc_id": source_doc_id}}},
+    )
+
+    mock_logger_info.assert_called_with(f"Deleted 5 documents with source_doc_id={source_doc_id} from 'test_index'.")
+
+
+def test_delete_documents_by_source_doc_id_no_deleted_key(mock_opensearch_client, mocker):
+    """Tests that if 'deleted' key is missing, logger logs zero deleted documents."""
+    mock_delete_by_query = mock_opensearch_client.delete_by_query
+    mock_delete_by_query.return_value = {}
+
+    indexer = OpenSearchIndexer(host="localhost", port=9200, index_name="test_index")
+    indexer.client = mock_opensearch_client
+
+    source_doc_id = "doc2"
+    mock_logger_info = mocker.patch("ingestion_pipeline.indexing.indexer.logger.info")
+    indexer._delete_documents_by_source_doc_id(source_doc_id)
+
+    mock_delete_by_query.assert_called_once()
+    mock_logger_info.assert_called_with(f"Deleted 0 documents with source_doc_id={source_doc_id} from 'test_index'.")
+
+
+def test_delete_documents_by_source_doc_id_exception(mock_opensearch_client):
+    """Tests that exceptions from delete_by_query are propagated."""
+    mock_opensearch_client.delete_by_query.side_effect = Exception("Delete error")
+
+    indexer = OpenSearchIndexer(host="localhost", port=9200, index_name="test_index")
+    indexer.client = mock_opensearch_client
+
+    with pytest.raises(Exception, match="Delete error"):
+        indexer._delete_documents_by_source_doc_id("doc3")

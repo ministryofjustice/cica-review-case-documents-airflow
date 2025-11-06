@@ -33,15 +33,16 @@ class ChunkAndIndexPipeline:
             doc: The Textractor Document object to process.
             metadata: The associated metadata for the document.
         """
-        logger.info(f"Starting chunk processing for document: {metadata.ingested_doc_id}")
+        logger.info(f"Starting chunk processing for document: {metadata.source_doc_id}")
 
         processed_data = self.chunker.chunk(doc, metadata)
         logger.info(
-            f"Document chunked. Found {len(processed_data.chunks)} chunks and {len(processed_data.pages)} pages."
+            f"Document {metadata.source_doc_id} chunked. Found {len(processed_data.chunks)} chunks,"
+            f" {len(processed_data.pages)} pages."
         )
 
-        logger.info(f"Chunking complete for document: {metadata.ingested_doc_id}")
-        logger.info(f"Begin embedding generation for document: {metadata.ingested_doc_id}")
+        logger.info(f"Chunking complete for document: {metadata.source_doc_id}")
+        logger.info(f"Begin embedding generation for document: {metadata.source_doc_id}")
         if processed_data.chunks:
             for chunk in processed_data.chunks:
                 logger.debug(f"Chunk ID: {chunk.chunk_id}, Text: {chunk.chunk_text[:50]}...")
@@ -50,9 +51,9 @@ class ChunkAndIndexPipeline:
                 chunk.embedding = embedding
 
         if processed_data.chunks:
-            logger.info(f"Indexing {len(processed_data.chunks)} chunks for document: {metadata.ingested_doc_id}")
+            logger.info(f"Indexing {len(processed_data.chunks)} chunks for document: {metadata.source_doc_id}")
             self.chunk_indexer.index_documents(processed_data.chunks)
         else:
-            logger.warning(f"No chunks were generated for document: {metadata.ingested_doc_id}, skipping indexing.")
+            logger.warning(f"No chunks were generated for document: {metadata.source_doc_id}, skipping indexing.")
 
-        logger.info(f"Successfully finished processing document: {metadata.ingested_doc_id}")
+        logger.info(f"Successfully finished processing document: {metadata.source_doc_id}")

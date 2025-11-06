@@ -31,7 +31,7 @@ def mock_indexer(mocker):
 def mock_document_metadata():
     """Provides a sample DocumentMetadata object."""
     return DocumentMetadata(
-        ingested_doc_id="doc-123-test",
+        source_doc_id="doc-123-test",
         source_file_name="test_file.pdf",
         page_count=1,
         case_ref="A-101",
@@ -52,7 +52,7 @@ def mock_processed_data_with_chunks():
     chunks = [
         DocumentChunk(
             chunk_id="c1",
-            ingested_doc_id="doc-123-test",
+            source_doc_id="doc-123-test",
             source_file_name="test_file.pdf",
             page_count=1,
             page_number=1,
@@ -65,7 +65,7 @@ def mock_processed_data_with_chunks():
         ),
         DocumentChunk(
             chunk_id="c2",
-            ingested_doc_id="doc-123-test",
+            source_doc_id="doc-123-test",
             source_file_name="test_file.pdf",
             page_count=1,
             page_number=1,
@@ -80,7 +80,7 @@ def mock_processed_data_with_chunks():
 
     mock_data = MagicMock(spec=ProcessedDocument)
     mock_data.chunks = chunks
-    mock_data.pages = []
+    mock_data.pages = ["Page 1 content"]
     mock_data.metadata = MagicMock(spec=DocumentMetadata)
     return mock_data
 
@@ -207,7 +207,7 @@ def test_process_and_index_logs_and_indexes_chunks(
             orchestrator.process_and_index(mock_textractor_doc, mock_document_metadata)
 
         assert "Starting chunk processing for document: doc-123-test" in caplog.text
-        assert "Document chunked. Found" in caplog.text
+        assert "Document doc-123-test chunked. Found 2 chunks, 1 pages." in caplog.text
         assert "Indexing" in caplog.text
         assert "Chunking complete for document: doc-123-test" in caplog.text
         assert "Begin embedding generation for document: doc-123-test" in caplog.text

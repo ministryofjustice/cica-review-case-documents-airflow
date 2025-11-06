@@ -29,7 +29,7 @@ def document_metadata_factory():
             DocumentMetadata: The created DocumentMetadata object.
         """
         defaults = {
-            "ingested_doc_id": "unique_ingested_doc_UUID",
+            "source_doc_id": "unique_ingested_doc_UUID",
             "source_file_name": "test_ingested_document.pdf",
             "page_count": 1,
             "case_ref": "25-787878",

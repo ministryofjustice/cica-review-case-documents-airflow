@@ -115,7 +115,7 @@ class ChunkMerger:
 
         metadata = DocumentMetadata(
             page_count=first_chunk.page_count,
-            ingested_doc_id=first_chunk.ingested_doc_id,
+            source_doc_id=first_chunk.source_doc_id,
             source_file_name=first_chunk.source_file_name,
             case_ref=first_chunk.case_ref if first_chunk.case_ref is not None else "",
             received_date=first_chunk.received_date,

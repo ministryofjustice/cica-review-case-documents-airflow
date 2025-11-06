@@ -38,7 +38,7 @@ def document_metadata() -> DocumentMetadata:
     import datetime
 
     return DocumentMetadata(
-        ingested_doc_id="doc-abc-123",
+        source_doc_id="doc-abc-123",
         source_file_name="key.pdf",
         page_count=1,
         case_ref="case-xyz-789",

@@ -66,11 +66,11 @@ class DocumentChunker:
                 chunk_index_counter += len(page_chunks)
 
                 page_doc = DocumentPage(
-                    document_id=metadata.ingested_doc_id,
+                    source_doc_id=metadata.source_doc_id,
                     page_num=page.page_num,
                     # Placeholders, these will be generated in another step and passed in,
                     # probably key:object page_num:{s3_page_uri, page_width, page_height, page_text, anything else....}
-                    page_id=f"s3://bucket/{metadata.case_ref}/{metadata.ingested_doc_id}/page_images/page_{page.page_num}.png",
+                    page_id=f"s3://bucket/{metadata.case_ref}/{metadata.source_doc_id}/page_images/page_{page.page_num}.png",
                     page_width=page.width,
                     page_height=page.height,
                     # The place holders wlll be added outside of this step
@@ -79,12 +79,12 @@ class DocumentChunker:
                 )
                 page_documents.append(page_doc)
 
-            logger.info(f"Extracted {len(all_chunks)} chunks from document {metadata.ingested_doc_id}")
+            logger.info(f"Extracted {len(all_chunks)} chunks from document {metadata.source_doc_id}")
             return ProcessedDocument(chunks=all_chunks, pages=page_documents, metadata=metadata)
 
         except Exception as e:
-            logger.error(f"Error extracting chunks from document {metadata.ingested_doc_id}: {str(e)}")
-            raise ChunkException(f"Error extracting chunks from document {metadata.ingested_doc_id}: {str(e)}")
+            logger.error(f"Error extracting chunks from document {metadata.source_doc_id}: {str(e)}")
+            raise ChunkException(f"Error extracting chunks from document {metadata.source_doc_id}: {str(e)}")
 
     def _validate_inputs(self, doc: Document, metadata: DocumentMetadata) -> None:
         """Validate inputs before processing.

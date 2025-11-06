@@ -28,8 +28,8 @@ def create_atomic_chunk(
     )
     # The class constructor validates the data
     return DocumentChunk(
-        chunk_id=f"{metadata.ingested_doc_id}_p{page_number}_c{chunk_index}",
-        ingested_doc_id=metadata.ingested_doc_id,
+        chunk_id=f"{metadata.source_doc_id}_p{page_number}_c{chunk_index}",
+        source_doc_id=metadata.source_doc_id,
         chunk_text=text,
         source_file_name=metadata.source_file_name,
         page_count=metadata.page_count,
@@ -48,7 +48,7 @@ def create_atomic_chunk(
 def doc_metadata() -> DocumentMetadata:
     """Provides a standard DocumentMetadata object for tests."""
     return DocumentMetadata(
-        ingested_doc_id="doc123",
+        source_doc_id="doc123",
         source_file_name="test.pdf",
         page_count=5,
         case_ref="CASE-001",

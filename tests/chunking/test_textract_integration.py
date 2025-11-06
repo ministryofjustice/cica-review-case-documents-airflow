@@ -47,7 +47,7 @@ def document_metadata_factory():
         correspondence_type = "TC19"
 
         defaults = {
-            "ingested_doc_id": "unique_ingested_doc_UUID",
+            "source_doc_id": "unique_ingested_doc_UUID",
             "source_file_name": "test_ingested_document.pdf",
             "page_count": 1,
             "case_ref": case_ref,
@@ -123,7 +123,7 @@ def test_extract_single_layout_chunk_from_actual_textract_response(
     )
 
     chunk1.chunk_id = "unique_ingested_doc_UUID_p1_c0"
-    chunk1.ingested_doc_id = "unique_ingested_doc_UUID"
+    chunk1.source_doc_id = "unique_ingested_doc_UUID"
     chunk1.source_file_name = "document_single_layout_response.pdf"
     chunk1.chunk_text = expected_text
     chunk1.embedding = None  # Metadata to be added later
@@ -146,7 +146,7 @@ def test_extract_single_layout_chunk_from_actual_textract_response(
 def test_handles_missing_pdf_id_metadata_throws_error(document_metadata_factory):
     """Tests that the function throws an error when required metadata is missing."""
     with pytest.raises(ValidationError, match="String should have at least 1 character"):
-        document_metadata_factory(ingested_doc_id="")
+        document_metadata_factory(source_doc_id="")
 
 
 def test_handles_empty_source_file_name_metadata_throws_error(document_metadata_factory):

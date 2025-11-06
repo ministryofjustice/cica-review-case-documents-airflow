@@ -52,6 +52,7 @@ class OpenSearchIndexer:
             logger.warning("No documents provided to index.")
             return 0, []
 
+        self._delete_documents_by_source_doc_id(documents[0].source_doc_id)
         actions = self._generate_bulk_actions(documents, id_field)
 
         try:
@@ -87,3 +88,12 @@ class OpenSearchIndexer:
                 "_id": getattr(doc, id_field),
                 "_source": doc.model_dump(),
             }
+
+    def _delete_documents_by_source_doc_id(self, source_doc_id: str):
+        """Deletes all documents in the index with the given source_doc_id."""
+        query = {"query": {"match": {"source_doc_id": source_doc_id}}}
+        response = self.client.delete_by_query(index=self.index_name, body=query)
+        logger.info(
+            f"Deleted {response.get('deleted', 0)} documents with source_doc_id={source_doc_id} "
+            f"from '{self.index_name}'."
+        )
