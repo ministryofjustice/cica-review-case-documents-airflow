@@ -4,6 +4,8 @@ import logging
 from contextvars import ContextVar
 from typing import Optional
 
+from ingestion_pipeline.config import settings
+
 # Store the current source document id in a context variable.
 # ContextVar is context-safe.
 source_doc_id_context: ContextVar[Optional[str]] = ContextVar("source_doc_id", default=None)
@@ -39,7 +41,7 @@ def setup_logging():
     handler = logging.StreamHandler()
 
     # Set format
-    formatter = logging.Formatter("%(asctime)s %(levelname)-5s%(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
     handler.setFormatter(formatter)
 
     # Add filter to handler
@@ -47,4 +49,4 @@ def setup_logging():
 
     # Configure root logger
     root_logger.addHandler(handler)
-    root_logger.setLevel(logging.INFO)
+    root_logger.setLevel(settings.LOG_LEVEL)

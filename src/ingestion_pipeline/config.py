@@ -71,5 +71,7 @@ class Settings(BaseSettings):  # type: ignore
     # And this
     BEDROCK_EMBEDDING_MODEL_ID: str = "amazon.titan-embed-text-v2:0"
 
+    LOG_LEVEL: str = "INFO"
+
 
 settings = Settings()
