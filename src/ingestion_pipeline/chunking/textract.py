@@ -79,7 +79,7 @@ class DocumentChunker:
                 )
                 page_documents.append(page_doc)
 
-            logger.info(f"Extracted {len(all_chunks)} chunks")
+            logger.info(f"Extracted {len(all_chunks)} chunks from {len(doc.pages)} pages")
             return ProcessedDocument(chunks=all_chunks, pages=page_documents, metadata=metadata)
 
         except Exception as e:
@@ -155,11 +155,7 @@ class DocumentChunker:
         if not (layout_block.layout_type in layout_types and layout_block.text and layout_block.text.strip()):
             block_text = layout_block.text if layout_block.text else "<No Text>"
             # Heavy logging for initial analysis of skipped blocks, will be removed later
-            logger.info(
-                f"******************** Skipping layout block of type {layout_block.layout_type} *******************\n"
-                f"{block_text}\n"
-                f"******************* Finished skipping layout block of type {layout_block.layout_type} *********"
-            )
+            logger.info(f"Skipping layout block of type {layout_block.layout_type} {block_text.strip()}")
             return False
 
         return layout_block.layout_type in layout_types and layout_block.text and layout_block.text.strip()

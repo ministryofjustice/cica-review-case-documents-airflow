@@ -1,7 +1,11 @@
-"""Module for indexing documents into OpenSearch."""
+"""Module for indexing documents into OpenSearch.
+
+Supports a single proxy/base URL which may include the path (url prefix).
+"""
 
 import logging
 from typing import List
+from urllib.parse import urlparse
 
 from opensearchpy import OpenSearch, helpers
 
@@ -11,32 +15,54 @@ logger = logging.getLogger(__name__)
 
 
 class OpenSearchIndexer:
-    """Handles bulk indexing of documents into an OpenSearch index."""
+    """Handles bulk indexing of documents into an OpenSearch index.
+
+    Args:
+        index_name: Target index name.
+        proxy_url: Full proxy/base URL, e.g.,
+                   'http://proxy:8080'
+    """
 
     def __init__(
-        self, host: str, port: int, index_name: str, user: str = "admin", password: str = "really-secure-passwordAa!1"
+        self,
+        *,  # Enforce keyword arguments
+        index_name: str,
+        proxy_url: str,
     ):
-        """Initializes the OpenSearch client and sets the target index.
-
-        Args:
-            host: The OpenSearch host.
-            port: The OpenSearch port.
-            index_name: The name of the index to write documents to.
-            user: The username for authentication.
-            password: The password for authentication.
-        """
+        """Initialize the indexer connection using a single proxy URL."""
         if not index_name:
             raise ValueError("Index name cannot be empty.")
-
         self.index_name = index_name
+
+        if not proxy_url:
+            raise ValueError("The OpenSearch proxy URL cannot be empty.")
+
+        parsed = urlparse(proxy_url)
+        if not parsed.scheme or not parsed.hostname:
+            raise ValueError(f"Invalid OpenSearch proxy URL: {proxy_url}")
+
+        host_entry = {
+            "host": parsed.hostname,
+            "port": parsed.port or (443 if parsed.scheme == "https" else 80),
+            "scheme": parsed.scheme,
+        }
+
+        hosts = [host_entry]
+        logger.info(
+            "OpenSearchIndexer using proxy URL host=%s port=%s",
+            host_entry["host"],
+            host_entry["port"],
+        )
+
         self.client = OpenSearch(
-            hosts=[{"host": host, "port": port}],
+            hosts=hosts,
             http_auth=(),
-            use_ssl=False,
+            use_ssl=host_entry["scheme"] == "https",
             verify_certs=False,
             ssl_assert_hostname=False,
         )
-        logger.info(f"OpenSearchIndexer initialized for index '{self.index_name}' at {host}:{port}")
+
+        logger.info("Client initialised for index '%s'", self.index_name)
 
     def index_documents(self, documents: List[DocumentChunk], id_field: str = "chunk_id"):
         """Indexes a list of Pydantic models into OpenSearch using the Bulk API.
@@ -57,7 +83,7 @@ class OpenSearchIndexer:
 
         try:
             success, errors = helpers.bulk(self.client, actions, raise_on_error=False)
-            logger.info(f"Successfully indexed {success} documents into '{self.index_name}'.")
+            logger.info(f"Successfully indexed {success} chunks into index {self.index_name}")
             if errors:
                 logger.error(f"Encountered {len(errors)} errors during bulk indexing: {errors}")
             return success, errors
@@ -93,7 +119,4 @@ class OpenSearchIndexer:
         """Deletes all documents in the index with the given source_doc_id."""
         query = {"query": {"match": {"source_doc_id": source_doc_id}}}
         response = self.client.delete_by_query(index=self.index_name, body=query)
-        logger.info(
-            f"Deleted {response.get('deleted', 0)} documents with source_doc_id={source_doc_id} "
-            f"from '{self.index_name}'."
-        )
+        logger.info(f"Deleted {response.get('deleted', 0)} chunks from index {self.index_name}")

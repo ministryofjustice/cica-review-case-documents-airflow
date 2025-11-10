@@ -17,7 +17,7 @@ def test_context_filter_injects_source_doc_id():
     f = ContextFilter()
     result = f.filter(record)
     assert result is True
-    assert record.msg.startswith("source_doc_id: doc-123 ")
+    assert record.msg.startswith("doc-123 ")
     assert "Test message" in record.msg
 
 

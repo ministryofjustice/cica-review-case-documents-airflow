@@ -39,7 +39,7 @@ class CellTableChunker(BaseTableChunker):
         Returns:
             List[DocumentChunk]: A list of document chunks created from the layout block.
         """
-        logger.debug(f"++++++++++++++++++++ Processing cell-based table: {layout_block.id} ++++++++++++++")
+        logger.debug(f"Processing cell-based table: {layout_block.id} on page {page_number}")
 
         rows = self._group_cells_by_row(layout_block)
 
@@ -57,7 +57,7 @@ class CellTableChunker(BaseTableChunker):
                 )
                 chunks.append(chunk)
 
-        logger.debug(f"Created {len(chunks)} chunks from cell-based table")
+        logger.debug(f"Created {len(chunks)} chunks from cell-based table {layout_block.id} on page {page_number}")
         return chunks
 
     def _group_cells_by_row(self, layout_block: Layout) -> Dict[int, List[TableCell]]:
@@ -85,15 +85,15 @@ class CellTableChunker(BaseTableChunker):
                         cell_type = type(cell).__name__
                         raise ChunkException(
                             f"Fatal error in table {table.id}: "
-                            f"Expected only TableCell objects in table.table_cells, but found '{cell_type}'."
+                            f"Expected only TableCell objects in table.table_cells, but found {cell_type}"
                         )
             else:
                 # This is a data integrity error. The Table object is corrupt.
                 block_type = type(table).__name__
                 raise ChunkException(
                     f"Fatal error in table {table.id}: "
-                    f"Expected instance of Table objects in layout_block.children, but found '{block_type}'."
-                    f"Text: '{table.text}'."
+                    f"Expected instance of Table objects in layout_block.children, but found {block_type}"
+                    f"Text: {table.text}"
                 )
 
         return rows

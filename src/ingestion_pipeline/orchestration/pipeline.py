@@ -33,27 +33,21 @@ class ChunkAndIndexPipeline:
             doc: The Textractor Document object to process.
             metadata: The associated metadata for the document.
         """
-        logger.info(f"Starting chunk processing for document: {metadata.source_doc_id}")
+        logger.info("Begin chunking document")
 
         processed_data = self.chunker.chunk(doc, metadata)
-        logger.info(
-            f"Document {metadata.source_doc_id} chunked. Found {len(processed_data.chunks)} chunks,"
-            f" {len(processed_data.pages)} pages."
-        )
 
-        logger.info(f"Chunking complete for document: {metadata.source_doc_id}")
-        logger.info(f"Begin embedding generation for document: {metadata.source_doc_id}")
+        logger.info("Begin embedding generation")
         if processed_data.chunks:
             for chunk in processed_data.chunks:
-                logger.debug(f"Chunk ID: {chunk.chunk_id}, Text: {chunk.chunk_text[:50]}...")
+                logger.debug(f"Chunk ID: {chunk.chunk_id} Text: {chunk.chunk_text[:50]}...")
                 embedding_generator = EmbeddingGenerator(settings.BEDROCK_EMBEDDING_MODEL_ID)
                 embedding = embedding_generator.generate_embedding(chunk.chunk_text)
                 chunk.embedding = embedding
-
+        logger.info("Embedding generation completed")
         if processed_data.chunks:
-            logger.info(f"Indexing {len(processed_data.chunks)} chunks for document: {metadata.source_doc_id}")
             self.chunk_indexer.index_documents(processed_data.chunks)
         else:
-            logger.warning(f"No chunks were generated for document: {metadata.source_doc_id}, skipping indexing.")
+            logger.warning("No chunks were generated skipping indexing")
 
-        logger.info(f"Successfully finished processing document: {metadata.source_doc_id}")
+        logger.info("Successfully finished processing document")

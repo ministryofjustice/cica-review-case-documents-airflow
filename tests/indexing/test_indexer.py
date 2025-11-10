@@ -57,10 +57,10 @@ def sample_documents():
 
 
 def test_indexer_initialization_success(mock_opensearch_client):
-    indexer = OpenSearchIndexer(host="test_host", port=9200, index_name="test_index")
+    indexer = OpenSearchIndexer(index_name="test_index", proxy_url="http://test_host:9200")
 
     mock_opensearch_client.assert_called_once_with(
-        hosts=[{"host": "test_host", "port": 9200}],
+        hosts=[{"host": "test_host", "port": 9200, "scheme": "http"}],
         http_auth=(),
         use_ssl=False,
         verify_certs=False,
@@ -74,7 +74,7 @@ def test_indexer_initialization_success(mock_opensearch_client):
 def test_indexer_initialization_with_empty_index_name_raises_error():
     """Tests that initializing the indexer with an empty index name raises a ValueError."""
     with pytest.raises(ValueError, match="Index name cannot be empty."):
-        OpenSearchIndexer(host="test_host", port=9200, index_name="")
+        OpenSearchIndexer(index_name="", proxy_url="http://test_host:9200")
 
 
 def test_index_documents_with_bulk_indexer_success(mock_helpers_bulk, mock_opensearch_client, sample_documents):
@@ -82,7 +82,7 @@ def test_index_documents_with_bulk_indexer_success(mock_helpers_bulk, mock_opens
     # Configure the mock to simulate a successful bulk operation
     mock_helpers_bulk.return_value = (len(sample_documents), [])
 
-    indexer = OpenSearchIndexer(host="localhost", port=9200, index_name="test_index")
+    indexer = OpenSearchIndexer(index_name="test_index", proxy_url="http://test_host:9200")
     # Set the mock client on the indexer instance
     indexer.client = mock_opensearch_client
 
@@ -96,7 +96,7 @@ def test_index_documents_with_bulk_indexer_success(mock_helpers_bulk, mock_opens
 
 def test_index_documents_with_empty_list_returns_zero(mock_helpers_bulk, mock_opensearch_client):
     """Tests that passing an empty list of documents returns 0 successes and no errors."""
-    indexer = OpenSearchIndexer(host="localhost", port=9200, index_name="test_index")
+    indexer = OpenSearchIndexer(index_name="test_index", proxy_url="http://test_host:9200")
     indexer.client = mock_opensearch_client
 
     success_count, errors = indexer.index_documents([])
@@ -112,7 +112,7 @@ def test_index_documents_with_partial_failures(mock_helpers_bulk, mock_opensearc
     # Simulate partial success with 1 document failing
     mock_helpers_bulk.return_value = (1, mock_errors)
 
-    indexer = OpenSearchIndexer(host="localhost", port=9200, index_name="test_index")
+    indexer = OpenSearchIndexer(index_name="test_index", proxy_url="http://test_host:9200")
     indexer.client = mock_opensearch_client
 
     success_count, errors = indexer.index_documents(sample_documents)
@@ -127,7 +127,7 @@ def test_index_documents_raises_on_bulk_exception(mock_helpers_bulk, mock_opense
     # Simulate a critical error during the bulk operation
     mock_helpers_bulk.side_effect = BulkIndexError("Simulated bulk error", [])
 
-    indexer = OpenSearchIndexer(host="localhost", port=9200, index_name="test_index")
+    indexer = OpenSearchIndexer(index_name="test_index", proxy_url="http://test_host:9200")
     indexer.client = mock_opensearch_client
 
     with pytest.raises(BulkIndexError, match="Simulated bulk error"):
@@ -140,7 +140,7 @@ def test_generate_bulk_actions_missing_id_field_raises_error(mock_opensearch_cli
     MockDocument = MagicMock()
     del MockDocument.chunk_id
 
-    indexer = OpenSearchIndexer(host="localhost", port=9200, index_name="test_index")
+    indexer = OpenSearchIndexer(index_name="test_index", proxy_url="http://test_host:9200")
     indexer.client = mock_opensearch_client
 
     with pytest.raises(AttributeError, match="Document model is missing the required id_field 'chunk_id'."):
@@ -152,7 +152,7 @@ def test_delete_documents_by_source_doc_id_success(mock_opensearch_client, mocke
     mock_delete_by_query = mock_opensearch_client.delete_by_query
     mock_delete_by_query.return_value = {"deleted": 5}
 
-    indexer = OpenSearchIndexer(host="localhost", port=9200, index_name="test_index")
+    indexer = OpenSearchIndexer(index_name="test_index", proxy_url="http://test_host:9200")
     indexer.client = mock_opensearch_client
 
     source_doc_id = "doc1"
@@ -165,7 +165,7 @@ def test_delete_documents_by_source_doc_id_success(mock_opensearch_client, mocke
         body={"query": {"match": {"source_doc_id": source_doc_id}}},
     )
 
-    mock_logger_info.assert_called_with(f"Deleted 5 documents with source_doc_id={source_doc_id} from 'test_index'.")
+    mock_logger_info.assert_called_with("Deleted 5 chunks from index test_index")
 
 
 def test_delete_documents_by_source_doc_id_no_deleted_key(mock_opensearch_client, mocker):
@@ -173,7 +173,7 @@ def test_delete_documents_by_source_doc_id_no_deleted_key(mock_opensearch_client
     mock_delete_by_query = mock_opensearch_client.delete_by_query
     mock_delete_by_query.return_value = {}
 
-    indexer = OpenSearchIndexer(host="localhost", port=9200, index_name="test_index")
+    indexer = OpenSearchIndexer(index_name="test_index", proxy_url="http://test_host:9200")
     indexer.client = mock_opensearch_client
 
     source_doc_id = "doc2"
@@ -181,15 +181,79 @@ def test_delete_documents_by_source_doc_id_no_deleted_key(mock_opensearch_client
     indexer._delete_documents_by_source_doc_id(source_doc_id)
 
     mock_delete_by_query.assert_called_once()
-    mock_logger_info.assert_called_with(f"Deleted 0 documents with source_doc_id={source_doc_id} from 'test_index'.")
+    mock_logger_info.assert_called_with("Deleted 0 chunks from index test_index")
 
 
 def test_delete_documents_by_source_doc_id_exception(mock_opensearch_client):
     """Tests that exceptions from delete_by_query are propagated."""
     mock_opensearch_client.delete_by_query.side_effect = Exception("Delete error")
 
-    indexer = OpenSearchIndexer(host="localhost", port=9200, index_name="test_index")
+    indexer = OpenSearchIndexer(index_name="test_index", proxy_url="http://test_host:9200")
     indexer.client = mock_opensearch_client
 
     with pytest.raises(Exception, match="Delete error"):
         indexer._delete_documents_by_source_doc_id("doc3")
+
+
+def test_indexer_initialization_with_invalid_proxy_url():
+    """Tests that initializing with an invalid proxy URL raises a ValueError."""
+    with pytest.raises(ValueError, match="Invalid OpenSearch proxy URL: not_a_url"):
+        OpenSearchIndexer(index_name="test_index", proxy_url="not_a_url")
+
+
+def test_indexer_initialization_with_https_scheme(mock_opensearch_client):
+    """Tests that HTTPS proxy URL sets use_ssl=True and port=443 by default."""
+    indexer = OpenSearchIndexer(index_name="secure_index", proxy_url="https://secure_host")
+    mock_opensearch_client.assert_called_once_with(
+        hosts=[{"host": "secure_host", "port": 443, "scheme": "https"}],
+        http_auth=(),
+        use_ssl=True,
+        verify_certs=False,
+        ssl_assert_hostname=False,
+    )
+    assert indexer.index_name == "secure_index"
+
+
+def test_generate_bulk_actions_yields_correct_dict(sample_documents, mock_opensearch_client):
+    """Tests that _generate_bulk_actions yields correct bulk action dicts."""
+    indexer = OpenSearchIndexer(index_name="test_index", proxy_url="http://host:9200")
+    indexer.client = mock_opensearch_client
+    actions = list(indexer._generate_bulk_actions(sample_documents, id_field="chunk_id"))
+    assert len(actions) == len(sample_documents)
+    for doc, action in zip(sample_documents, actions):
+        assert action["_op_type"] == "index"
+        assert action["_index"] == "test_index"
+        assert action["_id"] == doc.chunk_id
+        assert action["_source"] == doc.model_dump()
+
+
+def test_indexer_initialization_with_empty_proxy_url_raises_error():
+    """Tests that initializing the indexer with an empty proxy URL raises a ValueError."""
+    with pytest.raises(ValueError, match="The OpenSearch proxy URL cannot be empty."):
+        OpenSearchIndexer(index_name="test_index", proxy_url="")
+
+
+def test_indexer_initialization_with_http_scheme_no_port(mock_opensearch_client):
+    """Tests that HTTP proxy URL without a port defaults to port 80."""
+    indexer = OpenSearchIndexer(index_name="http_index", proxy_url="http://http_host")
+    mock_opensearch_client.assert_called_once_with(
+        hosts=[{"host": "http_host", "port": 80, "scheme": "http"}],
+        http_auth=(),
+        use_ssl=False,
+        verify_certs=False,
+        ssl_assert_hostname=False,
+    )
+    assert indexer.index_name == "http_index"
+
+
+def test_indexer_initialization_with_https_scheme_and_port(mock_opensearch_client):
+    """Tests that HTTPS proxy URL with a specified port uses that port."""
+    indexer = OpenSearchIndexer(index_name="secure_index", proxy_url="https://secure_host:9201")
+    mock_opensearch_client.assert_called_once_with(
+        hosts=[{"host": "secure_host", "port": 9201, "scheme": "https"}],
+        http_auth=(),
+        use_ssl=True,
+        verify_certs=False,
+        ssl_assert_hostname=False,
+    )
+    assert indexer.index_name == "secure_index"

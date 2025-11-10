@@ -32,8 +32,6 @@ setup_logging()
 log = logging.getLogger(__name__)
 
 # OpenSearch Connection Details
-OS_HOST = settings.OPENSEARCH_HOST
-OS_PORT = settings.OPENSEARCH_PORT
 CHUNK_INDEX_NAME = settings.OPENSEARCH_CHUNK_INDEX_NAME
 
 # --- Configuration for Polling ---
@@ -79,13 +77,13 @@ class TextractProcessor:
         Returns:
             str: The JobId of the started Textract job.
         """
-        log.info(f"Starting Textract job for {s3_document_uri}")
+        log.info(f"Begin Textract job for {s3_document_uri}")
         document = self.textractor.start_document_analysis(
             file_source=s3_document_uri,
             features=[TextractFeatures.LAYOUT],
             save_image=False,
         )
-        log.info(f"Started Textract job for document {s3_document_uri} with JobId: {document.job_id}")
+        log.info(f"Textract Job: {document.job_id}")
         return document.job_id
 
     def _poll_for_job_completion(self, job_id: str) -> str:
@@ -104,7 +102,7 @@ class TextractProcessor:
         while time.time() - start_time < self.timeout_seconds:
             response = self.textract_client.get_document_analysis(JobId=job_id)
             status = response["JobStatus"]
-            log.info(f"Textract Job {job_id} status is {status}.")
+            log.info(f"Textract Job {job_id} {status}")
 
             if status in ["SUCCEEDED", "FAILED", "PARTIAL_SUCCESS"]:
                 return status
@@ -122,7 +120,7 @@ class TextractProcessor:
         Returns:
             Document: The parsed document containing the Textract job results.
         """
-        log.info(f"Fetching full results for job {job_id}.")
+        log.info(f"Fetching results for Textract job {job_id}")
         full_response = get_full_json(
             job_id=job_id, boto3_textract_client=self.textract_client, textract_api=Textract_API.ANALYZE
         )
@@ -183,7 +181,8 @@ def main():
         strategy_handlers=strategy_handlers,
         config=config,
     )
-    chunk_indexer = OpenSearchIndexer(host=OS_HOST, port=OS_PORT, index_name=CHUNK_INDEX_NAME)
+
+    chunk_indexer = OpenSearchIndexer(index_name=CHUNK_INDEX_NAME, proxy_url=settings.OPENSEARCH_PROXY_URL)
 
     # 1. Instantiate dependencies
     textractor_instance = Textractor()
@@ -206,12 +205,10 @@ def main():
         log.debug(f"Generated 16-digit UUID: {source_doc_id}")
         source_doc_id_context.set(source_doc_id)
 
-        log.info("Fetching and parsing document with Textract...")
         result = textract_processor.process_document(S3_DOCUMENT_URI)
 
         # Step 2: If successful, pass the document to the next pipeline stage
         if result:
-            log.info("Chunking and indexing the document content...")
             document = result
             filename = S3_DOCUMENT_URI.split("/")[-1]
 
@@ -235,9 +232,9 @@ def main():
     finally:
         log.info("Pipeline execution finished.")
         source_id_to_remove = source_doc_id_context.get()
-        log.debug(f"Cleaning up context for source_doc_id: {source_id_to_remove}")
+        log.info("Cleaning up context.")
         source_doc_id_context.set(None)  # ✓ This ALWAYS runs, even after exception
-        log.debug(f"Cleanup complete for source_doc_id context, {source_id_to_remove} removed")
+        log.info(f"{source_id_to_remove} Context cleanup complete.")
 
 
 if __name__ == "__main__":

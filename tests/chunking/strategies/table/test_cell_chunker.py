@@ -167,7 +167,7 @@ def test_chunk_raises_exception_for_non_table_object_in_layout(default_config):
     exception_message = str(exc_info.value)
     assert f"Fatal error in table {invalid_object.id}" in exception_message
     assert "Expected instance of Table objects" in exception_message
-    assert "found 'MagicMock'" in exception_message
+    assert "found MagicMock" in exception_message
 
 
 # BoundingBox and other dependencies mocks
@@ -373,4 +373,4 @@ def test_chunk_raises_exception_on_invalid_cell_type_in_table(default_config):
     exception_message = str(exc_info.value)
     assert "Fatal error in table corrupt-table-abc" in exception_message
     assert "Expected only TableCell objects" in exception_message
-    assert "found 'str'" in exception_message
+    assert "found str" in exception_message

@@ -25,7 +25,7 @@ class ContextFilter(logging.Filter):
         """
         source_doc_id = source_doc_id_context.get()
         if source_doc_id:
-            record.msg = f"source_doc_id: {source_doc_id} {record.msg}"
+            record.msg = f"{source_doc_id} {record.msg}"
         return True
 
 

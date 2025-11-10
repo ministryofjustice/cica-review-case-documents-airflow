@@ -206,12 +206,9 @@ def test_process_and_index_logs_and_indexes_chunks(
         with caplog.at_level("INFO"):
             orchestrator.process_and_index(mock_textractor_doc, mock_document_metadata)
 
-        assert "Starting chunk processing for document: doc-123-test" in caplog.text
-        assert "Document doc-123-test chunked. Found 2 chunks, 1 pages." in caplog.text
-        assert "Indexing" in caplog.text
-        assert "Chunking complete for document: doc-123-test" in caplog.text
-        assert "Begin embedding generation for document: doc-123-test" in caplog.text
-        assert "Successfully finished processing document: doc-123-test" in caplog.text
+        assert "Begin chunking document" in caplog.text
+        assert "Begin embedding generation" in caplog.text
+        assert "Embedding generation completed" in caplog.text
         mock_indexer.index_documents.assert_called_once_with(mock_processed_data_with_chunks.chunks)
 
 
@@ -225,7 +222,7 @@ def test_process_and_index_logs_and_skips_indexing_when_no_chunks(
     with caplog.at_level("WARNING"):
         orchestrator.process_and_index(mock_textractor_doc, mock_document_metadata)
 
-    assert " No chunks were generated for document: doc-123-test, skipping indexing.\n" in caplog.text
+    assert "No chunks were generated skipping indexing" in caplog.text
     mock_indexer.index_documents.assert_not_called()
 
 
