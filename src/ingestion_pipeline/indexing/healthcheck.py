@@ -51,5 +51,6 @@ def check_opensearch_health(proxy_url: str, timeout: int = 10, interval: float =
         except Exception as e:
             logger.error(f"Unexpected error during OpenSearch health check: {e}")
         time.sleep(interval)
-    logger.error("OpenSearch health check failed: timeout reached.")
+    elapsed = time.time() - start
+    logger.error(f"OpenSearch health check failed: timeout reached after {elapsed:.2f} seconds.")
     return False

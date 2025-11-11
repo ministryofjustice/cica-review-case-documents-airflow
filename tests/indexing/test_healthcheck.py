@@ -44,7 +44,7 @@ def test_healthcheck_red_status_then_timeout(mock_opensearch, mock_time):
     client.cluster.health.return_value = {"status": "red"}
     mock_opensearch.return_value = client
     # Simulate two attempts, both "red", then timeout
-    mock_time.time.side_effect = [0, 0.5, 1, 2]
+    mock_time.time.side_effect = [0, 0.5, 1, 2, 3]
     mock_time.sleep.return_value = None
 
     assert healthcheck.check_opensearch_health("http://localhost:9200", timeout=2) is False
@@ -67,7 +67,7 @@ def test_healthcheck_unexpected_exception_then_timeout(mock_opensearch, mock_tim
     client = mock.Mock()
     client.cluster.health.side_effect = [Exception("unexpected"), Exception("unexpected")]
     mock_opensearch.return_value = client
-    mock_time.time.side_effect = [0, 0.5, 1]
+    mock_time.time.side_effect = [0, 0.5, 1, 2]
     mock_time.sleep.return_value = None
 
     assert healthcheck.check_opensearch_health("http://localhost:9200", timeout=1) is False
