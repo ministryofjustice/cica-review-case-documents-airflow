@@ -23,6 +23,7 @@ from ingestion_pipeline.chunking.strategies.table.layout_table import LayoutTabl
 from ingestion_pipeline.chunking.textract import DocumentChunker
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.custom_logging.log_context import setup_logging, source_doc_id_context
+from ingestion_pipeline.indexing.healthcheck import check_opensearch_health
 from ingestion_pipeline.indexing.indexer import OpenSearchIndexer
 from ingestion_pipeline.orchestration.pipeline import ChunkAndIndexPipeline
 from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
@@ -158,6 +159,10 @@ class TextractProcessor:
 # it will be replaced by an orchestrator
 def main():
     """Main function to set up and run the indexing pipeline."""
+    # Health check for OpenSearch
+    if not check_opensearch_health(settings.OPENSEARCH_PROXY_URL):
+        raise RuntimeError("OpenSearch cluster is not healthy. Exiting.")
+
     config = ChunkingConfig()
 
     layout_text_strategy = LayoutTextChunkingStrategy(config)
