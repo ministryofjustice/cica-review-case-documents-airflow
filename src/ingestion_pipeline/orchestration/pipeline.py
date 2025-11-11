@@ -13,7 +13,7 @@ from ingestion_pipeline.indexing.indexer import OpenSearchIndexer
 logger = logging.getLogger(__name__)
 
 
-class ChunkAndIndexPipeline:
+class Pipeline:
     """Orchestrates the document processing pipeline: chunking -> embedding -> indexing."""
 
     def __init__(self, chunker: DocumentChunker, chunk_indexer: OpenSearchIndexer):

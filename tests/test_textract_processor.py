@@ -7,7 +7,7 @@ import pytest
 from textractcaller.t_call import Textract_API
 from textractor.entities.document import Document
 
-from ingestion_pipeline.orchestration.pipeline import ChunkAndIndexPipeline
+from ingestion_pipeline.orchestration.pipeline import Pipeline
 from ingestion_pipeline.textract_processor import TextractProcessor
 
 
@@ -28,7 +28,7 @@ def mock_textract_client():
 @pytest.fixture
 def mock_orchestrator():
     """Provides a mock ProcessingPipeline object."""
-    return MagicMock(spec=ChunkAndIndexPipeline)
+    return MagicMock(spec=Pipeline)
 
 
 def test_init(mock_textractor, mock_textract_client):

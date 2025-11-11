@@ -1,4 +1,5 @@
 """Package initialization for ingestion_pipeline."""
+# TODO move to main once we have an orchestrator
 
 from pathlib import Path
 

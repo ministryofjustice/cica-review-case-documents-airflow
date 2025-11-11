@@ -12,7 +12,7 @@ from ingestion_pipeline.chunking.schemas import (
 )
 from ingestion_pipeline.chunking.textract import DocumentChunker
 from ingestion_pipeline.indexing.indexer import OpenSearchIndexer
-from ingestion_pipeline.orchestration.pipeline import ChunkAndIndexPipeline
+from ingestion_pipeline.orchestration.pipeline import Pipeline
 
 
 @pytest.fixture
@@ -97,7 +97,7 @@ def mock_processed_data_no_chunks():
 
 def test_orchestrator_initialization(mock_chunker, mock_indexer):
     """Tests that the orchestrator initializes correctly with its dependencies."""
-    orchestrator = ChunkAndIndexPipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
+    orchestrator = Pipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
     assert orchestrator.chunker == mock_chunker
     assert orchestrator.chunk_indexer == mock_indexer
 
@@ -115,7 +115,7 @@ def test_process_and_index_success(
         mock_embedding_generator.generate_embedding.side_effect = ["embed1", "embed2"]
         mock_embedding_generator_cls.return_value = mock_embedding_generator
 
-        orchestrator = ChunkAndIndexPipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
+        orchestrator = Pipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
 
         orchestrator.process_and_index(mock_textractor_doc, mock_document_metadata)
 
@@ -129,7 +129,7 @@ def test_process_and_index_no_chunks_skips_indexing(
     """Tests that if chunking returns no chunks, the indexing step is skipped."""
     mock_chunker.chunk.return_value = mock_processed_data_no_chunks
 
-    orchestrator = ChunkAndIndexPipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
+    orchestrator = Pipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
 
     orchestrator.process_and_index(mock_textractor_doc, mock_document_metadata)
 
@@ -144,7 +144,7 @@ def test_process_and_index_chunker_raises_exception(
     """Tests that if the chunker fails, the pipeline raises the exception and indexer is never called."""
     mock_chunker.chunk.side_effect = Exception("Simulated chunking failure")
 
-    orchestrator = ChunkAndIndexPipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
+    orchestrator = Pipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
 
     with pytest.raises(Exception, match="Simulated chunking failure"):
         orchestrator.process_and_index(mock_textractor_doc, mock_document_metadata)
@@ -164,7 +164,7 @@ def test_process_and_index_indexer_raises_exception(
         mock_embedding_generator.generate_embedding.side_effect = ["embed1", "embed2"]
         mock_embedding_generator_cls.return_value = mock_embedding_generator
 
-        orchestrator = ChunkAndIndexPipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
+        orchestrator = Pipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
 
         with pytest.raises(Exception, match="Simulated indexing failure"):
             orchestrator.process_and_index(mock_textractor_doc, mock_document_metadata)
@@ -183,7 +183,7 @@ def test_process_and_index_calls_embedding_generator_for_each_chunk(
         mock_embedding_generator.generate_embedding.side_effect = ["embed1", "embed2"]
         mock_embedding_generator_cls.return_value = mock_embedding_generator
 
-        orchestrator = ChunkAndIndexPipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
+        orchestrator = Pipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
         orchestrator.process_and_index(mock_textractor_doc, mock_document_metadata)
 
         assert mock_embedding_generator.generate_embedding.call_count == len(mock_processed_data_with_chunks.chunks)
@@ -202,7 +202,7 @@ def test_process_and_index_logs_and_indexes_chunks(
         mock_embedding_generator.generate_embedding.return_value = "embedding"
         mock_embedding_generator_cls.return_value = mock_embedding_generator
 
-        orchestrator = ChunkAndIndexPipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
+        orchestrator = Pipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
         with caplog.at_level("INFO"):
             orchestrator.process_and_index(mock_textractor_doc, mock_document_metadata)
 
@@ -218,7 +218,7 @@ def test_process_and_index_logs_and_skips_indexing_when_no_chunks(
     """Tests that logging occurs and indexing is skipped when no chunks are present."""
     mock_chunker.chunk.return_value = mock_processed_data_no_chunks
 
-    orchestrator = ChunkAndIndexPipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
+    orchestrator = Pipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
     with caplog.at_level("WARNING"):
         orchestrator.process_and_index(mock_textractor_doc, mock_document_metadata)
 
@@ -237,7 +237,7 @@ def test_process_and_index_calls_chunker_and_indexer_and_assigns_embeddings(
         mock_embedding_generator.generate_embedding.side_effect = ["emb1", "emb2"]
         mock_embedding_generator_cls.return_value = mock_embedding_generator
 
-        orchestrator = ChunkAndIndexPipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
+        orchestrator = Pipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
         orchestrator.process_and_index(mock_textractor_doc, mock_document_metadata)
 
         mock_chunker.chunk.assert_called_once_with(mock_textractor_doc, mock_document_metadata)
@@ -253,7 +253,7 @@ def test_process_and_index_skips_indexing_when_no_chunks(
     """Test that process_and_index skips embedding and indexing if no chunks are returned."""
     mock_chunker.chunk.return_value = mock_processed_data_no_chunks
 
-    orchestrator = ChunkAndIndexPipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
+    orchestrator = Pipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
     orchestrator.process_and_index(mock_textractor_doc, mock_document_metadata)
 
     mock_chunker.chunk.assert_called_once_with(mock_textractor_doc, mock_document_metadata)
@@ -266,7 +266,7 @@ def test_process_and_index_raises_if_chunker_fails(
     """Test that process_and_index raises if chunker raises, and indexer is not called."""
     mock_chunker.chunk.side_effect = Exception("fail")
 
-    orchestrator = ChunkAndIndexPipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
+    orchestrator = Pipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
     with pytest.raises(Exception, match="fail"):
         orchestrator.process_and_index(mock_textractor_doc, mock_document_metadata)
     mock_indexer.index_documents.assert_not_called()
@@ -284,6 +284,6 @@ def test_process_and_index_raises_if_indexer_fails(
         mock_embedding_generator.generate_embedding.side_effect = ["emb1", "emb2"]
         mock_embedding_generator_cls.return_value = mock_embedding_generator
 
-        orchestrator = ChunkAndIndexPipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
+        orchestrator = Pipeline(chunker=mock_chunker, chunk_indexer=mock_indexer)
         with pytest.raises(Exception, match="index fail"):
             orchestrator.process_and_index(mock_textractor_doc, mock_document_metadata)

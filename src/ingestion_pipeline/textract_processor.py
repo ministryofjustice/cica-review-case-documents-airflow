@@ -25,7 +25,7 @@ from ingestion_pipeline.config import settings
 from ingestion_pipeline.custom_logging.log_context import setup_logging, source_doc_id_context
 from ingestion_pipeline.indexing.healthcheck import check_opensearch_health
 from ingestion_pipeline.indexing.indexer import OpenSearchIndexer
-from ingestion_pipeline.orchestration.pipeline import ChunkAndIndexPipeline
+from ingestion_pipeline.orchestration.pipeline import Pipeline
 from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
 
 # TODO move this to main once we have an orchestrator
@@ -192,7 +192,7 @@ def main():
     # 1. Instantiate dependencies
     textractor_instance = Textractor()
     boto3_textract_client = boto3.client("textract", settings.AWS_REGION)
-    chunk_and_index_pipeline = ChunkAndIndexPipeline(chunker=chunker, chunk_indexer=chunk_indexer)
+    chunk_and_index_pipeline = Pipeline(chunker=chunker, chunk_indexer=chunk_indexer)
 
     # 2. Instantiate the processor with its dependencies
     textract_processor = TextractProcessor(
