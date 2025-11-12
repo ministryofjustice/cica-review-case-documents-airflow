@@ -12,7 +12,7 @@ from ingestion_pipeline.chunking.strategies.key_value.layout_key_value import Ke
 from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkingStrategy
 from ingestion_pipeline.chunking.strategies.list.list_chunker import LayoutListChunkingStrategy
 from ingestion_pipeline.chunking.strategies.table.layout_table import LayoutTableChunkingStrategy
-from ingestion_pipeline.chunking.textract import DocumentChunker
+from ingestion_pipeline.chunking.textract_document_chunker import DocumentChunker
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.custom_logging.log_context import setup_logging
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingGenerator

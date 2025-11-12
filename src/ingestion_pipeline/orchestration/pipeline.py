@@ -3,7 +3,7 @@
 import logging
 
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
-from ingestion_pipeline.chunking.textract import ChunkError, DocumentChunker
+from ingestion_pipeline.chunking.textract_document_chunker import ChunkError, DocumentChunker
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.custom_logging.log_context import source_doc_id_context
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingError, EmbeddingGenerator

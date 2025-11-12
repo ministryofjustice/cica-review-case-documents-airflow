@@ -51,8 +51,9 @@ class DocumentChunker:
             ChunkException: If chunk extraction fails
         """
         try:
-            # TODO review it's not validating the metadata
-            self._validate_inputs(doc, metadata)
+            # Metadata is a Pydantic model, so its fields are validated on instantiation.
+            # However, it's still useful to check that the document and its pages exist.
+            self._validate_textract_document(doc)
 
             all_chunks = []
             page_documents = []
@@ -91,12 +92,11 @@ class DocumentChunker:
             logger.error(f"Error extracting chunks from document: {str(e)}")
             raise ChunkError(f"Error extracting chunks from document: {str(e)}") from e
 
-    def _validate_inputs(self, doc: Document, metadata: DocumentMetadata) -> None:
+    def _validate_textract_document(self, doc: Document) -> None:
         """Validate inputs before processing.
 
         Args:
             doc (Document): The Textractor document to process.
-            metadata (DocumentMetadata): The metadata associated with the document.
 
         Raises:
             ValueError: If the document or its pages are invalid.
@@ -132,8 +132,10 @@ class DocumentChunker:
             if self._should_process_block(layout_block, self.strategy_handlers):
                 block_type = layout_block.layout_type
                 chunking_strategy = self.strategy_handlers.get(block_type)
+
                 if chunking_strategy is None:
-                    raise ChunkException(f"Layout block {layout_block.id} has no associated strategy handler.")
+                    logger.warning(f"No chunking strategy found for block type: {block_type}")
+                    continue
 
                 block_chunks = chunking_strategy.chunk(
                     layout_block, page.page_num, metadata, current_chunk_index, raw_response
@@ -157,10 +159,18 @@ class DocumentChunker:
         Returns:
             bool: True if the block should be processed, False otherwise.
         """
-        if not (layout_block.layout_type in layout_types and layout_block.text and layout_block.text.strip()):
+        if not (
+            layout_block.layout_type in layout_types
+            and layout_block.text is not None
+            and bool(layout_block.text.strip())
+        ):
             block_text = layout_block.text if layout_block.text else "<No Text>"
             # Heavy logging for initial analysis of skipped blocks, will be removed later
             logger.info(f"Skipping layout block of type {layout_block.layout_type} {block_text.strip()}")
             return False
 
-        return layout_block.layout_type in layout_types and layout_block.text and layout_block.text.strip()
+        return (
+            layout_block.layout_type in layout_types
+            and layout_block.text is not None
+            and bool(layout_block.text.strip())
+        )

@@ -4,7 +4,7 @@ from unittest import mock
 import pytest
 
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
-from ingestion_pipeline.chunking.textract import ChunkError
+from ingestion_pipeline.chunking.textract_document_chunker import ChunkError
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingError
 from ingestion_pipeline.indexing.indexer import IndexingError
 from ingestion_pipeline.orchestration.pipeline import Pipeline, PipelineError
