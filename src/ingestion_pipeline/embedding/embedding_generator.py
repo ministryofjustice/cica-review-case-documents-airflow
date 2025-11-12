@@ -7,10 +7,13 @@ import boto3
 
 from ingestion_pipeline.config import settings
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-
+logger = logging.getLogger(__name__)
 # Set the model ID, e.g., Titan Text Embeddings V2.
 model_id = settings.BEDROCK_EMBEDDING_MODEL_ID
+
+
+class EmbeddingError(Exception):
+    """Custom exception for embedding generation failures."""
 
 
 class EmbeddingGenerator:
@@ -34,11 +37,15 @@ class EmbeddingGenerator:
         Returns:
             A list of floats representing the embedding.
         """
-        logging.debug(f"Generating embedding for text: {text}")
-        native_request = {"inputText": text}
-        request = json.dumps(native_request)
+        try:
+            logging.debug(f"Generating embedding for text: {text}")
+            native_request = {"inputText": text}
+            request = json.dumps(native_request)
 
-        response = self.client.invoke_model(modelId=self.model_id, body=request)
-        model_response = json.loads(response["body"].read())
+            response = self.client.invoke_model(modelId=self.model_id, body=request)
+            model_response = json.loads(response["body"].read())
 
-        return model_response["embedding"]
+            return model_response["embedding"]
+        except Exception as e:
+            logger.error(f"Embedding generation failed: {e}")
+            raise EmbeddingError(f"Failed to generate embeddings for chunks: {str(e)}") from e

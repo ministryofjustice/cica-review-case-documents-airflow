@@ -15,6 +15,10 @@ from .strategies.base import ChunkingStrategyHandler
 logger = logging.getLogger(__name__)
 
 
+class ChunkError(Exception):
+    """Custom exception for chunking failures."""
+
+
 class DocumentChunker:
     """Handles extraction of chunks from Textractor documents."""
 
@@ -47,6 +51,7 @@ class DocumentChunker:
             ChunkException: If chunk extraction fails
         """
         try:
+            # TODO review it's not validating the metadata
             self._validate_inputs(doc, metadata)
 
             all_chunks = []
@@ -59,12 +64,12 @@ class DocumentChunker:
                 raise ChunkException(f"Response docment {metadata} missing raw response from Textract.")
 
             for page in doc.pages:
-                logger.debug("===============================================================")
                 logger.debug(f"Processing page {page.page_num} of {len(doc.pages)}")
                 page_chunks = self._process_page(page, metadata, chunk_index_counter, raw_response)
                 all_chunks.extend(page_chunks)
                 chunk_index_counter += len(page_chunks)
 
+                # TODO use metadata to build page document
                 page_doc = DocumentPage(
                     source_doc_id=metadata.source_doc_id,
                     page_num=page.page_num,
@@ -83,8 +88,8 @@ class DocumentChunker:
             return ProcessedDocument(chunks=all_chunks, pages=page_documents, metadata=metadata)
 
         except Exception as e:
-            logger.error(f"Error extracting chunks from document {metadata.source_doc_id}: {str(e)}")
-            raise ChunkException(f"Error extracting chunks from document {metadata.source_doc_id}: {str(e)}")
+            logger.error(f"Error extracting chunks from document: {str(e)}")
+            raise ChunkError(f"Error extracting chunks from document: {str(e)}") from e
 
     def _validate_inputs(self, doc: Document, metadata: DocumentMetadata) -> None:
         """Validate inputs before processing.

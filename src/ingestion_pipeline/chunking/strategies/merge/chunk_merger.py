@@ -117,6 +117,7 @@ class ChunkMerger:
             page_count=first_chunk.page_count,
             source_doc_id=first_chunk.source_doc_id,
             source_file_name=first_chunk.source_file_name,
+            source_file_s3_uri=first_chunk.source_file_s3_uri,
             case_ref=first_chunk.case_ref if first_chunk.case_ref is not None else "",
             received_date=first_chunk.received_date,
             correspondence_type=first_chunk.correspondence_type if first_chunk.correspondence_type is not None else "",

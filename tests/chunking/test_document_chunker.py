@@ -4,9 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ingestion_pipeline.chunking.exceptions import ChunkException
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
-from ingestion_pipeline.chunking.textract import DocumentChunker
+from ingestion_pipeline.chunking.textract import ChunkError, DocumentChunker
 
 
 def create_mock_layout(block_type="LAYOUT_TEXT", text="some valid text", block_id="id-1"):
@@ -146,11 +145,10 @@ def test_creates_pagedocument_with_correct_data(mock_metadata, mock_strategy_han
 
 
 def test_wraps_strategy_exception_in_chunkexception(mock_metadata, mock_strategy_handler):
-    """Verifies that if a strategy raises an unexpected error.
-
-    it is caught and re-raised as a ChunkException.
+    """Verifies that if a strategy raises an unexpected error,
+    it is caught and re-raised as a ChunkException with the original stack trace.
     """
-    error_message = "Something went very wrong!"
+    error_message = "something went very wrong!"
     mock_strategy_handler.chunk.side_effect = Exception(error_message)
 
     strategy_handlers = {"LAYOUT_TEXT": mock_strategy_handler}
@@ -158,5 +156,5 @@ def test_wraps_strategy_exception_in_chunkexception(mock_metadata, mock_strategy
     doc = create_mock_document(pages=[page])
     chunker = DocumentChunker(strategy_handlers)
 
-    with pytest.raises(ChunkException, match=error_message):
+    with pytest.raises(ChunkError, match="Error extracting chunks from document: something went very wrong!"):
         chunker.chunk(doc, mock_metadata)

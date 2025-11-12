@@ -14,6 +14,10 @@ from ingestion_pipeline.chunking.schemas import DocumentChunk
 logger = logging.getLogger(__name__)
 
 
+class IndexingError(Exception):
+    """Custom exception for indexing failures."""
+
+
 class OpenSearchIndexer:
     """Handles bulk indexing of documents into an OpenSearch index.
 
@@ -78,18 +82,31 @@ class OpenSearchIndexer:
             logger.warning("No documents provided to index.")
             return 0, []
 
-        self._delete_documents_by_source_doc_id(documents[0].source_doc_id)
+        source_doc_id = documents[0].source_doc_id
+        self._delete_documents_by_source_doc_id(source_doc_id)
         actions = self._generate_bulk_actions(documents, id_field)
 
         try:
             success, errors = helpers.bulk(self.client, actions, raise_on_error=False)
-            logger.info(f"Successfully indexed {success} chunks into index {self.index_name}")
+
             if errors:
-                logger.error(f"Encountered {len(errors)} errors during bulk indexing: {errors}")
+                logger.error(
+                    f"Encountered {len(errors)} errors during bulk indexing cleaning up partially indexed chunks"
+                )
+                # Clean up any partially indexed documents from this batch
+                self._delete_documents_by_source_doc_id(source_doc_id)
+                raise IndexingError(f"Failed to index all chunks: {errors}")
+
+            logger.info(f"Successfully indexed chunks into index {self.index_name}")
             return success, errors
+        except helpers.BulkIndexError as e:
+            logger.error(f"A BulkIndexError occurred. Removing all associated chunks: {e.errors}")
+            self._delete_documents_by_source_doc_id(source_doc_id)
+            raise IndexingError(f"Failed to index documents due to bulk errors: {str(e)}") from e
         except Exception as e:
-            logger.error(f"An exception occurred during the bulk indexing operation: {e}")
-            raise
+            logger.error(f"An unexpected exception occurred. Removing all associated chunks: {e}")
+            self._delete_documents_by_source_doc_id(source_doc_id)
+            raise IndexingError(f"Failed to index: {str(e)}") from e
 
     def _generate_bulk_actions(self, documents: List[DocumentChunk], id_field: str):
         """Generates OpenSearch bulk actions from a list of document chunks.

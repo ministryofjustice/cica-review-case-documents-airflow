@@ -1,5 +1,6 @@
 """Integration tests for Textract document chunking."""
 
+import datetime
 import json
 from datetime import date
 from pathlib import Path
@@ -49,6 +50,7 @@ def document_metadata_factory():
         defaults = {
             "source_doc_id": "unique_ingested_doc_UUID",
             "source_file_name": "test_ingested_document.pdf",
+            "source_file_s3_uri": "s3://bucket/file.pdf",
             "page_count": 1,
             "case_ref": case_ref,
             "received_date": received_date,
@@ -127,9 +129,9 @@ def test_extract_single_layout_chunk_from_actual_textract_response(
     chunk1.source_file_name = "document_single_layout_response.pdf"
     chunk1.chunk_text = expected_text
     chunk1.embedding = None  # Metadata to be added later
-    chunk1.case_ref = None
-    chunk1.received_date = None
-    chunk1.correspondence_type = None
+    chunk1.case_ref = "25-787878"
+    chunk1.received_date = datetime.datetime.fromisoformat("2025-08-21")
+    chunk1.correspondence_type = "TC19"
     chunk1.page_count = 1
     chunk1.page_number = 1
     chunk1.chunk_index = 0

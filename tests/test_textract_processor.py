@@ -129,7 +129,7 @@ def test_process_document_stops_if_job_fails(
     mock_start_job.assert_called_once_with(s3_uri)
     mock_poll.assert_called_once_with("job-fail")
     mock_get_results.assert_not_called()
-    mock_orchestrator.process_and_index.assert_not_called()
+    mock_orchestrator.process_document.assert_not_called()
 
 
 @patch("ingestion_pipeline.textract_processor.time.sleep", return_value=None)

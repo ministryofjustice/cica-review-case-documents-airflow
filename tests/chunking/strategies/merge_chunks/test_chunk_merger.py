@@ -32,6 +32,7 @@ def create_atomic_chunk(
         source_doc_id=metadata.source_doc_id,
         chunk_text=text,
         source_file_name=metadata.source_file_name,
+        source_file_s3_uri=metadata.source_file_s3_uri,
         page_count=metadata.page_count,
         page_number=page_number,
         chunk_index=chunk_index,
@@ -50,6 +51,7 @@ def doc_metadata() -> DocumentMetadata:
     return DocumentMetadata(
         source_doc_id="doc123",
         source_file_name="test.pdf",
+        source_file_s3_uri="s3://bucket/test.pdf",
         page_count=5,
         case_ref="CASE-001",
         received_date=datetime.datetime(2025, 9, 26),
