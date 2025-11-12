@@ -8,7 +8,7 @@ from ingestion_pipeline.chunking.textract_document_chunker import ChunkError
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingError
 from ingestion_pipeline.indexing.indexer import IndexingError
 from ingestion_pipeline.orchestration.pipeline import Pipeline, PipelineError
-from ingestion_pipeline.textract_processor import TextractProcessingError
+from ingestion_pipeline.textract.textract_processor import TextractProcessingError
 
 
 @pytest.fixture
