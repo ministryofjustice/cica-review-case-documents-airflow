@@ -97,7 +97,7 @@ class OpenSearchIndexer:
                 self._delete_documents_by_source_doc_id(source_doc_id)
                 raise IndexingError(f"Failed to index all chunks: {errors}")
 
-            logger.info(f"Successfully indexed chunks into index {self.index_name}")
+            logger.info(f"Successfully indexed {len(documents)} chunks into index {self.index_name}")
             return success, errors
         except helpers.BulkIndexError as e:
             logger.error(f"A BulkIndexError occurred. Removing all associated chunks: {e.errors}")
