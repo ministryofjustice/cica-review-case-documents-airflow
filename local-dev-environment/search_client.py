@@ -19,13 +19,17 @@ CHUNK_INDEX_NAME = settings.OPENSEARCH_CHUNK_INDEX_NAME
 
 # --- 2. Choose your search term, variables for testing and output name and location---
 
-SEARCH_TERM = "surgery"
+SEARCH_TERM = "assault"
 K_QUERIES = 100  # Number of nearest neighbors to retrieve
 SCORE_FILTER = 0.56  # Minimum score threshold for filtering results
+FUZZY = True  # Enable fuzzy matching
 
-#  Set either boost as zero to return only the other type of search
+#  Set boosts to refine search behaviour and adjust fuzzy matching parameters
 KEYWORD_BOOST = 1  # Boost factor for keyword matching in hybrid search
 SEMANTIC_BOOST = 1  # Boost factor for semantic vector search in hybrid search
+FUZZY_BOOST = 1  # Boost factor for fuzzy matching in hybrid search
+FUZZINESS = 2  # Fuzziness level for fuzzy matching
+MAX_EXPANSIONS = 50  # Maximum expansions for fuzzy matching
 
 # Edit the output directory and path if needed
 
@@ -41,19 +45,41 @@ def create_hybrid_query(query_text: str, query_vector: list[float], k: int = 5) 
     """
     Creates a hybrid search query combining keyword and semantic vector search.
     """
-
-    return {
-        "size": k,
-        "_source": ["document_id", "page_number", "chunk_text", "case_ref"],
-        "query": {
-            "bool": {
-                "should": [
-                    {"match": {"chunk_text": {"query": query_text, "boost": KEYWORD_BOOST}}},
-                    {"knn": {"embedding": {"vector": query_vector, "k": k, "boost": SEMANTIC_BOOST}}},
-                ]
-            }
-        },
-    }
+    if not FUZZY:
+        return {
+            "size": k,
+            "_source": ["document_id", "page_number", "chunk_text", "case_ref"],
+            "query": {
+                "bool": {
+                    "should": [
+                        {"match": {"chunk_text": {"query": query_text, "boost": KEYWORD_BOOST}}},
+                        {"knn": {"embedding": {"vector": query_vector, "k": k, "boost": SEMANTIC_BOOST}}},
+                    ]
+                }
+            },
+        }
+    else:
+        return {
+            "size": k,
+            "_source": ["document_id", "page_number", "chunk_text", "case_ref"],
+            "query": {
+                "bool": {
+                    "should": [
+                        {
+                            "fuzzy": {
+                                "chunk_text": {
+                                    "value": query_text,
+                                    "fuzziness": FUZZINESS,
+                                    "max_expansions": MAX_EXPANSIONS,
+                                    "boost": FUZZY_BOOST,
+                                }
+                            }
+                        },
+                        {"knn": {"embedding": {"vector": query_vector, "k": k, "boost": SEMANTIC_BOOST}}},
+                    ]
+                }
+            },
+        }
 
 
 # --- 4. Execute results and write to Excel ---
