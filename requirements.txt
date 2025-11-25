@@ -19,9 +19,9 @@ annotated-types==0.7.0 \
     --hash=sha256:1f02e8b43a8fbbc3f3e0d4f0f4bfc8131bcb4eebe8849b8e5c773f3a1c582a53 \
     --hash=sha256:aff07c09a53a08bc8cfccb9c85b05f1aa9a2a6f23728d790723543408344ce89
     # via pydantic
-boto3==1.40.57 \
-    --hash=sha256:4ceeac741b04cd5d9193c85d1707597a30f7482682733437454408ea755ee151 \
-    --hash=sha256:717605170cb167e07462b7f033b26bc9c0fee34b78b5eac52edcd6149915e23f
+boto3==1.41.3 \
+    --hash=sha256:10a3f5a72e071c362f5aa8443bd949edc31b7494c48a315ccdab14b1c387a1fd \
+    --hash=sha256:8a89f3900a356879022c1600f72cbb3d8b85708f094d2d08a461bd193d0b07ca
     # via
     #   amazon-textract-caller
     #   amazon-textract-response-parser
