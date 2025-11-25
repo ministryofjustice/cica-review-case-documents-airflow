@@ -64,6 +64,7 @@ class OpenSearchIndexer:
             use_ssl=host_entry["scheme"] == "https",
             verify_certs=False,
             ssl_assert_hostname=False,
+            timeout=30,
         )
 
         logger.info("Client initialised for index '%s'", self.index_name)

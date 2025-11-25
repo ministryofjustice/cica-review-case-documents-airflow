@@ -71,6 +71,7 @@ def test_indexer_initialization_success(mock_opensearch_client):
         use_ssl=False,
         verify_certs=False,
         ssl_assert_hostname=False,
+        timeout=30,
     )
 
     assert indexer.index_name == "test_index"
@@ -224,6 +225,7 @@ def test_indexer_initialization_with_https_scheme(mock_opensearch_client):
         use_ssl=True,
         verify_certs=False,
         ssl_assert_hostname=False,
+        timeout=30,
     )
     assert indexer.index_name == "secure_index"
 
@@ -256,6 +258,7 @@ def test_indexer_initialization_with_http_scheme_no_port(mock_opensearch_client)
         use_ssl=False,
         verify_certs=False,
         ssl_assert_hostname=False,
+        timeout=30,
     )
     assert indexer.index_name == "http_index"
 
@@ -269,5 +272,6 @@ def test_indexer_initialization_with_https_scheme_and_port(mock_opensearch_clien
         use_ssl=True,
         verify_certs=False,
         ssl_assert_hostname=False,
+        timeout=30,
     )
     assert indexer.index_name == "secure_index"

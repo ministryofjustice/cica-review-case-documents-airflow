@@ -4,7 +4,9 @@ import datetime
 import logging
 
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
+from ingestion_pipeline.config import settings
 from ingestion_pipeline.custom_logging.log_context import setup_logging
+from ingestion_pipeline.indexing.healthcheck import check_opensearch_health
 from ingestion_pipeline.pipeline_builder import build_pipeline
 from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
 
@@ -19,6 +21,7 @@ S3_DOCUMENT_URI = "s3://cica-textract-response-dev/Case1_TC19_50_pages_brain_inj
 def main():
     """Main entry point for the application runner."""
     logger.info("Pipeline runner started.")
+    check_opensearch_health(settings.OPENSEARCH_PROXY_URL)
 
     # In a real-world scenario, this metadata would come from an SQS message.
     identifier = DocumentIdentifier(
