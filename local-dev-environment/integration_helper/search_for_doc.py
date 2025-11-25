@@ -1,3 +1,8 @@
+"""Search for similar documents in a LocalStack OpenSearch index using k-NN.
+
+It is not intended for production use.
+"""
+
 import logging
 import sys
 
@@ -32,6 +37,7 @@ def create_knn_query(query_vector, k=5):
 
 # --- 3. EXECUTE THE SEARCH AND PRINT RESULTS ---
 def main():
+    """Search for similar documents in the OpenSearch index."""
     logger.info("Connecting to LocalStack OpenSearch...")
     # Create the client instance for LocalStack
     client = OpenSearch(

@@ -1,10 +1,22 @@
+"""Utility functions for bounding box operations."""
+
 from typing import Sequence
 
 from textractor.entities.bbox import BoundingBox
 
 
 def combine_bounding_boxes(bboxes: Sequence[BoundingBox]) -> BoundingBox:
-    """Combines a list of BoundingBox objects into a single encompassing BoundingBox."""
+    """Combines a list of BoundingBox objects into a single encompassing BoundingBox.
+
+    Args:
+        bboxes (Sequence[BoundingBox]): A sequence of BoundingBox objects to combine.
+
+    Raises:
+        ValueError: If the input list is empty.
+
+    Returns:
+        BoundingBox: The combined BoundingBox.
+    """
     if not bboxes:
         raise ValueError("Cannot combine an empty list of bounding boxes.")
 

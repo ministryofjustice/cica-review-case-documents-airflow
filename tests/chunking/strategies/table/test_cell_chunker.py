@@ -1,3 +1,5 @@
+"""Tests for the CellTableChunker class in ingestion_pipeline.chunking.strategies.table.cell_chunker."""
+
 from dataclasses import dataclass
 from typing import List
 from unittest.mock import MagicMock, call
@@ -19,6 +21,11 @@ from ingestion_pipeline.chunking.strategies.table.cell_chunker import CellTableC
 
 @pytest.fixture
 def default_config():
+    """Provides the default chunking configuration.
+
+    Returns:
+        ChunkingConfig: The default chunking configuration.
+    """
     return ChunkingConfig(y_tolerance_ratio=0.5)
 
 
@@ -36,8 +43,8 @@ def create_fake_cell(text: str, row: int, col: int, y: float):
 
 
 def test_chunk_handles_cell_structure_correctly(default_config, mocker):
-    """
-    Tests that a LAYOUT_TABLE with a Cell structure is chunked correctly per row
+    """Tests that a LAYOUT_TABLE with a Cell structure is chunked correctly per row.
+
     and that merged cells are handled properly.
     """
     handler = CellTableChunker(default_config)
@@ -101,8 +108,8 @@ def test_chunk_handles_cell_structure_correctly(default_config, mocker):
 
 
 def test_chunk_skips_rows_with_no_text_content(default_config, mocker):
-    """
-    Tests that the chunker skips creating chunks for rows that only contain
+    """Tests that the chunker skips creating chunks for rows that only contain.
+
     empty or whitespace cells (L39).
     """
     handler = CellTableChunker(default_config)
@@ -130,11 +137,10 @@ def test_chunk_skips_rows_with_no_text_content(default_config, mocker):
 
 
 def test_chunk_raises_exception_for_non_table_object_in_layout(default_config):
-    """
-    Tests that a ChunkException is raised if the layout_block's children list
+    """Tests that a ChunkException is raised if the layout_block's children list.
+
     contains an object that is not an instance of Table.
     """
-
     handler = CellTableChunker(default_config)
 
     valid_table = MagicMock(spec=Table)
@@ -161,7 +167,7 @@ def test_chunk_raises_exception_for_non_table_object_in_layout(default_config):
     exception_message = str(exc_info.value)
     assert f"Fatal error in table {invalid_object.id}" in exception_message
     assert "Expected instance of Table objects" in exception_message
-    assert "found 'MagicMock'" in exception_message
+    assert "found MagicMock" in exception_message
 
 
 # BoundingBox and other dependencies mocks
@@ -227,13 +233,12 @@ base_module.BoundingBox = MockBoundingBox
 @pytest.fixture
 def chunker(default_config):
     """Provides a CellTableChunker instance for tests."""
-
     return CellTableChunker(config=default_config)
 
 
 def test_process_table_row_generates_correct_bboxes(chunker):
-    """
-    Tests the _process_table_row method to ensure it correctly extracts
+    """Tests the _process_table_row method to ensure it correctly extracts.
+
     all bounding boxes from a list of cells.
     """
     # Arrange: Create mock cells for a single row
@@ -256,9 +261,9 @@ def test_process_table_row_generates_correct_bboxes(chunker):
 
 
 def test_create_chunk_with_multiple_bboxes(chunker, monkeypatch):
-    """
-    Tests the _create_chunk method to verify it calculates the
-    enclosing bounding box correctly for a typical row.
+    """Tests the _create_chunk method to verify it calculates.
+
+    the enclosing bounding box correctly for a typical row.
     """
 
     class MockDocumentChunk:
@@ -301,8 +306,8 @@ def test_create_chunk_with_multiple_bboxes(chunker, monkeypatch):
 
 
 def test_create_chunk_with_no_bboxes(chunker, monkeypatch):
-    """
-    Tests the edge case where the bboxes list is empty.
+    """Tests the edge case where the bboxes list is empty.
+
     The chunk should fall back to using the layout_block's bbox.
     """
 
@@ -338,11 +343,10 @@ def test_create_chunk_with_no_bboxes(chunker, monkeypatch):
 
 
 def test_chunk_raises_exception_on_invalid_cell_type_in_table(default_config):
-    """
-    Tests that a ChunkException is raised if a Table's `table_cells` list
+    """Tests that a ChunkException is raised if a Table's `table_cells` list.
+
     contains an object that is not a TableCell, indicating corrupt data.
     """
-
     handler = CellTableChunker(default_config)
 
     # Create a valid cell to ensure the processing loop starts
@@ -369,4 +373,4 @@ def test_chunk_raises_exception_on_invalid_cell_type_in_table(default_config):
     exception_message = str(exc_info.value)
     assert "Fatal error in table corrupt-table-abc" in exception_message
     assert "Expected only TableCell objects" in exception_message
-    assert "found 'str'" in exception_message
+    assert "found str" in exception_message

@@ -1,3 +1,5 @@
+"""Embedding generator using Amazon Bedrock models."""
+
 import json
 import logging
 
@@ -15,6 +17,11 @@ class EmbeddingGenerator:
     """Generates embeddings using Amazon Bedrock models."""
 
     def __init__(self, model_id: str):
+        """Initializes the EmbeddingGenerator with the specified model ID.
+
+        Args:
+            model_id (str): The ID of the Bedrock model to use for generating embeddings.
+        """
         self.model_id = model_id
         self.client = boto3.client("bedrock-runtime", region_name=settings.AWS_REGION)
 
@@ -27,7 +34,7 @@ class EmbeddingGenerator:
         Returns:
             A list of floats representing the embedding.
         """
-        logging.info(f"Generating embedding for text: {text}")
+        logging.debug(f"Generating embedding for text: {text}")
         native_request = {"inputText": text}
         request = json.dumps(native_request)
 

@@ -65,11 +65,11 @@ def main():
     try:
         logger.info(f"Indexing document with ID '{DOCUMENT_ID}' into index '{INDEX_NAME}'...")
         response = client.index(index=INDEX_NAME, body=document_body, id=DOCUMENT_ID)
-        logger.info("\nSUCCESS! Document indexed successfully.")
+        logger.info("\nSUCCESS! Document indexed successfully")
         logger.info(response)
 
     except Exception as e:
-        logger.error("\nERROR: An exception occurred while trying to index the document.", e)
+        logger.error("\nERROR: An exception occurred while trying to index the document", e)
 
 
 if __name__ == "__main__":

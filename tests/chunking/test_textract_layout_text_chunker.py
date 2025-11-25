@@ -1,3 +1,5 @@
+"""Unit tests for the LayoutTextChunkingStrategy in the ingestion pipeline."""
+
 from datetime import date
 from typing import Sequence
 from unittest.mock import MagicMock, call
@@ -14,18 +16,20 @@ from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes
 
 @pytest.fixture
 def document_metadata_factory():
-    """
-    Returns a factory function to create DocumentMetadata objects.
-    This allows tests to override default values as needed.
+    """Returns a factory function to create DocumentMetadata objects.
+
+    Returns:
+        DocumentMetadata: The created DocumentMetadata object.
     """
 
     def _factory(**overrides):
-        """
-        Inner factory function with default metadata values.
-        Accepts keyword arguments to override any default.
+        """Creates a DocumentMetadata object with default or overridden values.
+
+        Returns:
+            DocumentMetadata: The created DocumentMetadata object.
         """
         defaults = {
-            "ingested_doc_id": "unique_ingested_doc_UUID",
+            "source_doc_id": "unique_ingested_doc_UUID",
             "source_file_name": "test_ingested_document.pdf",
             "page_count": 1,
             "case_ref": "25-787878",
@@ -63,9 +67,14 @@ def create_mock_bbox(x: float, y: float, width: float, height: float) -> Boundin
 
 
 def create_mock_layout_block(lines_with_bboxes: Sequence[tuple[str, BoundingBox]]):
-    """
-    Helper function to create a mock layout block with child 'line' blocks.
-    Each child has `text` and `bbox` attributes.
+    """Creates a mock layout block with child 'line' blocks.
+
+    Args:
+        lines_with_bboxes (Sequence[tuple[str, BoundingBox]]): A sequence of tuples, each containing
+        the text and bounding box for a line.
+
+    Returns:
+        MagicMock: A mock layout block with the specified line children.
     """
     mock_block = MagicMock()
     mock_block.id = "block-123"
@@ -79,11 +88,7 @@ def create_mock_layout_block(lines_with_bboxes: Sequence[tuple[str, BoundingBox]
     return mock_block
 
 
-def test_single_chunk_created_when_text_fits(strategy, document_metadata_factory):
-    """
-    Unit Test: Verifies that a single chunk is created when all lines fit
-    within the maximum_chunk_size.
-    """
+def test_single_chunk_created_for_two_lines_within_size_limit(strategy, document_metadata_factory):
     metadata = document_metadata_factory()
     lines = [
         ("First line.", create_mock_bbox(0.1, 0.1, 0.2, 0.05)),
@@ -105,10 +110,6 @@ def test_single_chunk_created_when_text_fits(strategy, document_metadata_factory
 
 
 def test_multiple_chunks_created_on_size_limit(strategy, document_metadata_factory):
-    """
-    Unit Test: Verifies that text is split into multiple chunks when it
-    exceeds the maximum_chunk_size.
-    """
     metadata = document_metadata_factory()
     lines = [
         ("This is the first chunk, it is quite long.", create_mock_bbox(0.1, 0.1, 0.8, 0.05)),
@@ -133,11 +134,7 @@ def test_multiple_chunks_created_on_size_limit(strategy, document_metadata_facto
         assert calls[2].kwargs["chunk_index"] == 7
 
 
-def test_single_line_exceeding_limit_creates_one_chunk(strategy, document_metadata_factory):
-    """
-    Unit Test: Verifies that a single line longer than the chunk limit
-    is placed into its own chunk.
-    """
+def test_single_line_exceeding_limit_only_creates_one_chunk(strategy, document_metadata_factory):
     metadata = document_metadata_factory()
     long_line = "This single line is deliberately much longer than the configured maximum chunk size of fifty."
     assert len(long_line) > strategy.maximum_chunk_size
@@ -157,20 +154,12 @@ def test_single_line_exceeding_limit_creates_one_chunk(strategy, document_metada
 
 
 def test_empty_layout_block_returns_no_chunks(strategy, document_metadata_factory):
-    """
-    Unit Test: Verifies that if a layout block has no children, no chunks
-    are produced.
-    """
     layout_block = create_mock_layout_block([])
     chunks = strategy.chunk(layout_block, page_number=1, metadata=document_metadata_factory(), chunk_index_start=0)
     assert chunks == []
 
 
 def test_bounding_boxes_are_combined_per_chunk(strategy, document_metadata_factory, monkeypatch):
-    """
-    Unit Test: Verifies that bounding boxes from lines within the same chunk
-    are correctly passed to the combination utility.
-    """
     metadata = document_metadata_factory()
     bbox1 = create_mock_bbox(0.1, 0.1, 0.3, 0.05)
     bbox2 = create_mock_bbox(0.1, 0.2, 0.4, 0.05)

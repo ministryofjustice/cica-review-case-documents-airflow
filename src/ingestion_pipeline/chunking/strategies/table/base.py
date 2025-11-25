@@ -1,3 +1,5 @@
+"""Base class for table chunking strategies."""
+
 import logging
 from abc import ABC, abstractmethod
 from typing import List, Optional
@@ -12,9 +14,21 @@ logger = logging.getLogger(__name__)
 
 
 class BaseTableChunker(ABC):
-    """Base class for table chunking strategies"""
+    """Base class for table chunking strategies.
+
+    Args:
+        ABC (ABC): Abstract base class for table chunkers.
+
+    Returns:
+        ABC: An instance of a table chunker.
+    """
 
     def __init__(self, config: ChunkingConfig):
+        """Initializes the base table chunker.
+
+        Args:
+            config (ChunkingConfig): Configuration for the chunking strategy.
+        """
         self.config = config
 
     @abstractmethod
@@ -23,10 +37,22 @@ class BaseTableChunker(ABC):
         layout_block: Layout,
         page_number: int,
         metadata: DocumentMetadata,
+        # TODO review the chunk index start usage and chunk id generation
         chunk_index_start: int,
         raw_response: Optional[dict] = None,
     ) -> List[DocumentChunk]:
-        """Process the layout block into chunks"""
+        """Processes the layout block into chunks.
+
+        Args:
+            layout_block (Layout): The table layout block to be chunked.
+            page_number (int): The page number of the layout block.
+            metadata (DocumentMetadata): The metadata associated with the document.
+            chunk_index_start (int): The starting index for chunk numbering.
+            raw_response (Optional[dict], optional): Raw response from the source. Defaults to None.
+
+        Returns:
+            List[DocumentChunk]: A list of document chunks created from the layout block.
+        """
         pass
 
     def _create_chunk(
@@ -38,7 +64,19 @@ class BaseTableChunker(ABC):
         metadata: DocumentMetadata,
         chunk_index: int,
     ) -> DocumentChunk:
-        """Create an OpenSearch document chunk."""
+        """Creates a document chunk from the provided parameters.
+
+        Args:
+            chunk_text (str): The text content of the chunk.
+            bboxes (List[BoundingBox]): The bounding boxes associated with the chunk.
+            layout_block (Layout): The original layout block.
+            page_number (int): The page number of the layout block.
+            metadata (DocumentMetadata): The metadata associated with the document.
+            chunk_index (int): The index of the chunk within the layout block.
+
+        Returns:
+            DocumentChunk: A document chunk created from the provided parameters.
+        """
         combined_bbox = BoundingBox.enclosing_bbox(bboxes) if bboxes else layout_block.bbox
 
         logger.debug(f"Table chunk : {chunk_text}")

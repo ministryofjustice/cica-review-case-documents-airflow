@@ -115,8 +115,8 @@ class MockTextBlock:
 
 @pytest.fixture(autouse=True)
 def apply_patches(monkeypatch):
-    """
-    This autouse fixture automatically applies patches for every test in this file.
+    """This autouse fixture automatically applies patches for every test in this file.
+
     `monkeypatch` ensures that all changes are reverted after each test,
     preventing state leakage into other test files like the integration test.
     """
@@ -134,9 +134,7 @@ def chunker():
 
 # --- Tests ---
 def test_group_into_visual_rows(chunker):
-    """
-    Tests that text blocks are correctly grouped into rows based on vertical alignment.
-    """
+    """Tests that text blocks are correctly grouped into rows based on vertical alignment."""
     blocks = [
         # Row 1 (both have y=0.1)
         MockTextBlock(text="R1C1", bbox=MockBoundingBox(x=0.1, y=0.1, width=0.2, height=0.02), confidence=0.99),
@@ -156,8 +154,8 @@ def test_group_into_visual_rows(chunker):
 
 
 def test_recover_missed_lines(chunker):
-    """
-    Tests the workaround to find line IDs present in the raw response but missing
+    """Tests the workaround to find line IDs present in the raw response but missing.
+
     from the textractor Layout object's children.
     """
     mock_spatial_context = MockSpatialObject(width=1000, height=1000)
@@ -188,9 +186,7 @@ def test_recover_missed_lines(chunker):
 
 
 def test_process_text_block_row_sorting(chunker):
-    """
-    Tests that blocks in a row are correctly sorted by their left coordinate.
-    """
+    """Tests that blocks in a row are correctly sorted by their left coordinate."""
     blocks = [
         MockTextBlock(text="Second", confidence=99, bbox=MockBoundingBox(x=0.4, y=0.1, width=0.2, height=0.02)),
         MockTextBlock(text="First", confidence=99, bbox=MockBoundingBox(x=0.1, y=0.1, width=0.2, height=0.02)),
@@ -205,9 +201,7 @@ def test_process_text_block_row_sorting(chunker):
 
 
 def test_chunk_method_integration(chunker, monkeypatch):
-    """
-    Tests the full chunking process from a Layout object to DocumentChunks.
-    """
+    """Tests the full chunking process from a Layout object to DocumentChunks."""
 
     class MockDocumentChunk:
         def __init__(self, **kwargs):
@@ -247,8 +241,7 @@ def test_chunk_method_integration(chunker, monkeypatch):
 
 
 def test_convert_lines_handles_invalid_and_empty_data(chunker, caplog):
-    """
-    Tests the guard in `_convert_lines_to_text_blocks`.
+    """Tests the guard in `_convert_lines_to_text_blocks`.
 
     Verifies that it correctly skips:
     - Objects that are not `Line` instances.
@@ -278,8 +271,7 @@ def test_convert_lines_handles_invalid_and_empty_data(chunker, caplog):
 
 
 def test_convert_lines_handles_malformed_raw_object(chunker, caplog):
-    """
-    Tests the `try...except (AttributeError, KeyError)` guard in `_convert_lines_to_text_blocks`.
+    """Tests the `try...except (AttributeError, KeyError)` guard in `_convert_lines_to_text_blocks`.
 
     Verifies that the method continues processing even if a line's `raw_object` is
     corrupt, causing an exception.
@@ -311,8 +303,7 @@ def test_convert_lines_handles_malformed_raw_object(chunker, caplog):
 
 
 def test_recover_missed_lines_gracefully_handles_internal_error(chunker, monkeypatch, caplog):
-    """
-    Tests the broad `except Exception` guard in `_recover_missed_lines`.
+    """Tests the broad `except Exception` guard in `_recover_missed_lines`.
 
     Verifies that if any unexpected error occurs during recovery, it's caught,
     logged, and the function returns `[]` without crashing the whole process.
@@ -338,8 +329,7 @@ def test_recover_missed_lines_gracefully_handles_internal_error(chunker, monkeyp
 
 
 def test_recover_missed_lines_when_layout_has_no_spatial_object(chunker, caplog):
-    """
-    Tests the `if not spatial_object` guard in `_create_text_blocks_from_missed_ids`.
+    """Tests the `if not spatial_object` guard in `_create_text_blocks_from_missed_ids`.
 
     This is an indirect test. We check that `_recover_missed_lines` returns empty
     if the provided layout block lacks the necessary page geometry.
@@ -370,8 +360,7 @@ def test_recover_missed_lines_when_layout_has_no_spatial_object(chunker, caplog)
 
 
 def test_create_text_blocks_handles_bad_missed_data(chunker, caplog):
-    """
-    Tests various guards within `_create_text_blocks_from_missed_ids`.
+    """Tests various guards within `_create_text_blocks_from_missed_ids`.
 
     Verifies it correctly skips:
     - Missed IDs that aren't LINEs.
@@ -416,15 +405,12 @@ def test_create_text_blocks_handles_bad_missed_data(chunker, caplog):
 
 
 def test_group_into_visual_rows_with_no_blocks(chunker):
-    """
-    Tests the `if not blocks:` guard in `_group_into_visual_rows`.
-    """
+    """Tests the `if not blocks:` guard in `_group_into_visual_rows`."""
     assert chunker._group_into_visual_rows([]) == []
 
 
 def test_group_into_visual_rows_with_zero_height_blocks(chunker):
-    """
-    Tests the `if not heights:` guard in `_group_into_visual_rows`.
+    """Tests the `if not heights:` guard in `_group_into_visual_rows`.
 
     Verifies the fallback behavior that treats each zero-height block as its own row
     to avoid a `statistics.mean` error.
@@ -446,8 +432,7 @@ def test_group_into_visual_rows_with_zero_height_blocks(chunker):
 
 
 def test_chunk_method_resilience_with_mixed_quality_data(chunker, monkeypatch):
-    """
-    An integration test to ensure the main `chunk` method is resilient to
+    """An integration test to ensure the main `chunk` method is resilient to
     a layout block containing a mix of valid and invalid lines.
     """
 
@@ -484,8 +469,7 @@ def test_chunk_method_resilience_with_mixed_quality_data(chunker, monkeypatch):
 
 
 def test_extract_text_blocks_recovers_and_sorts_missed_lines(chunker):
-    """
-    Tests the _extract_text_blocks method's logic to recover, extend, and sort.
+    """Tests the _extract_text_blocks method's logic to recover, extend, and sort.
 
     Verifies that when a raw_response is provided:
     1. Missed lines are recovered.
@@ -524,3 +508,154 @@ def test_extract_text_blocks_recovers_and_sorts_missed_lines(chunker):
 
     assert final_blocks[1].text == "Existing Line"
     assert final_blocks[1].top == pytest.approx(0.3)
+
+
+def test_chunk_with_no_text_blocks(chunker, monkeypatch):
+    """Tests that chunking returns an empty list if no text blocks are extracted."""
+    # ARRANGE
+    # Mock _extract_text_blocks to return an empty list, simulating no text found.
+    monkeypatch.setattr(chunker, "_extract_text_blocks", MagicMock(return_value=[]))
+
+    layout_block = MockLayout("empty_layout", MockBoundingBox(0, 0, 1, 1), children=[])
+    metadata = MockDocumentMetadata("doc1")
+
+    # ACT
+    chunks = chunker.chunk(layout_block, page_number=1, metadata=metadata, chunk_index_start=0)
+
+    # ASSERT
+    assert chunks == []
+
+
+def test_chunk_method_single_chunk_under_limit(chunker, monkeypatch):
+    """Tests that a single chunk is created when the total text is under the character limit."""
+
+    class MockDocumentChunk:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+        @classmethod
+        def from_textractor_layout(cls, **kwargs):
+            # In the actual implementation, this would be called on the class
+            # For the mock, we just instantiate it to capture the args
+            return cls(**kwargs)
+
+    monkeypatch.setattr(base_module, "DocumentChunk", MockDocumentChunk)
+    # Mock the base class method that creates the chunk
+    monkeypatch.setattr(
+        base_module.BaseTableChunker,
+        "_create_chunk",
+        lambda self, **kwargs: MockDocumentChunk(**kwargs),
+    )
+
+    # Set a high character limit to force the single-chunk path
+    chunker.config.line_chunk_char_limit = 500
+
+    lines = [
+        MockLine("l1", "Row 1", MockBoundingBox(x=0.1, y=0.1, width=0.8, height=0.05)),
+        MockLine("l2", "Row 2", MockBoundingBox(x=0.1, y=0.2, width=0.8, height=0.05)),
+    ]
+    layout_block = MockLayout("layout1", MockBoundingBox(0, 0, 1, 1), children=lines)
+    metadata = MockDocumentMetadata("doc1")
+
+    # ACT
+    chunks = chunker.chunk(layout_block, page_number=1, metadata=metadata, chunk_index_start=5)
+
+    # ASSERT
+    assert len(chunks) == 1
+    single_chunk = chunks[0]
+    assert single_chunk.kwargs["chunk_index"] == 5
+    assert single_chunk.kwargs["chunk_text"] == "Row 1\nRow 2"
+
+    # Check that the bboxes for the single chunk are from all original text blocks
+    assert len(single_chunk.kwargs["bboxes"]) == 2
+
+
+def test_chunk_handles_empty_visual_rows(chunker, monkeypatch):
+    """Tests that the chunker correctly skips empty lists in the visual rows."""
+
+    class MockDocumentChunk:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+    monkeypatch.setattr(base_module, "DocumentChunk", MockDocumentChunk)
+    monkeypatch.setattr(
+        base_module.BaseTableChunker,
+        "_create_chunk",
+        lambda self, **kwargs: MockDocumentChunk(**kwargs),
+    )
+
+    # Mock _group_into_visual_rows to return a list containing an empty list
+    # This simulates a scenario where row grouping might produce an empty row
+    row1_block = MockTextBlock(text="Row 1", bbox=MockBoundingBox(0.1, 0.1, 0.8, 0.1))
+    row3_block = MockTextBlock(text="Row 3", bbox=MockBoundingBox(0.1, 0.3, 0.8, 0.1))
+
+    monkeypatch.setattr(chunker, "_group_into_visual_rows", MagicMock(return_value=[[row1_block], [], [row3_block]]))
+
+    # Also mock _extract_text_blocks to return the blocks that are used in the mocked rows
+    monkeypatch.setattr(chunker, "_extract_text_blocks", MagicMock(return_value=[row1_block, row3_block]))
+
+    layout_block = MockLayout("layout1", MockBoundingBox(0, 0, 1, 1), children=[])
+    metadata = MockDocumentMetadata("doc1")
+
+    # ACT
+    chunks = chunker.chunk(layout_block, page_number=1, metadata=metadata, chunk_index_start=0)
+
+    # ASSERT
+    # It should have skipped the empty row and created chunks for the valid ones
+    assert len(chunks) == 2
+    assert chunks[0].kwargs["chunk_text"] == "Row 1"
+    assert chunks[1].kwargs["chunk_text"] == "Row 3"
+
+
+def test_find_missed_line_ids_no_layout_json(chunker):
+    """Tests that an empty set is returned if the layout_block ID is not in the raw_response."""
+    layout_block = MockLayout(id="not_in_response", bbox=MockBoundingBox(0, 0, 1, 1), children=[])
+    raw_response = {"Blocks": [{"Id": "some_other_id"}]}
+    missed_ids = chunker._find_missed_line_ids(layout_block, raw_response)
+    assert missed_ids == set()
+
+
+def test_find_missed_line_ids_no_relationships(chunker):
+    """Tests that an empty set is returned if the layout block has no CHILD relationships."""
+    layout_block = MockLayout(id="layout1", bbox=MockBoundingBox(0, 0, 1, 1), children=[])
+    raw_response = {
+        "Blocks": [
+            {"Id": "layout1", "Relationships": [{"Type": "OTHER", "Ids": ["id1"]}]},
+        ]
+    }
+    missed_ids = chunker._find_missed_line_ids(layout_block, raw_response)
+    assert missed_ids == set()
+
+
+def test_extract_text_blocks_no_raw_response(chunker):
+    """Tests that _extract_text_blocks works correctly when raw_response is None."""
+    # ARRANGE
+    # Create lines that are out of order to test the sorting that should happen
+    # in _convert_lines_to_text_blocks.
+    line1 = MockLine("id1", "Second Line", MockBoundingBox(x=0.1, y=0.2, width=0.8, height=0.1))
+    line2 = MockLine("id2", "First Line", MockBoundingBox(x=0.1, y=0.1, width=0.8, height=0.1))
+    layout_block = MockLayout(id="layout1", bbox=MockBoundingBox(0, 0, 1, 1), children=[line1, line2])
+
+    # ACT
+    # Call the method with raw_response=None, so it only processes the children
+    final_blocks = chunker._extract_text_blocks(layout_block, raw_response=None)
+
+    # ASSERT
+    assert len(final_blocks) == 2
+    # Verify that the blocks were sorted correctly by the `_convert_lines_to_text_blocks` method
+    assert final_blocks[0].text == "First Line"
+    assert final_blocks[1].text == "Second Line"
+
+
+def test_recover_missed_lines_no_missed_ids(chunker, monkeypatch):
+    """Tests that _recover_missed_lines returns an empty list if no IDs are missed."""
+    # ARRANGE
+    # Mock _find_missed_line_ids to return an empty set
+    monkeypatch.setattr(chunker, "_find_missed_line_ids", MagicMock(return_value=set()))
+    layout_block = MockLayout(id="layout1", bbox=MockBoundingBox(0, 0, 1, 1), children=[])
+
+    # ACT
+    recovered_blocks = chunker._recover_missed_lines(layout_block, raw_response={})
+
+    # ASSERT
+    assert recovered_blocks == []

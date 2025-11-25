@@ -1,3 +1,5 @@
+"""Integration tests for Textract document chunking."""
+
 import json
 from datetime import date
 from pathlib import Path
@@ -28,22 +30,24 @@ def textract_response():
 
 @pytest.fixture
 def document_metadata_factory():
-    """
-    Returns a factory function to create DocumentMetadata objects.
-    This allows tests to override default values as needed.
+    """Returns a factory function to create DocumentMetadata objects.
+
+    Returns:
+        DocumentMetadata: The created DocumentMetadata object.
     """
 
     def _factory(**overrides):
-        """
-        Inner factory function with default metadata values.
-        Accepts keyword arguments to override any default.
+        """Inner factory function with default metadata values.
+
+        Returns:
+            DocumentMetadata: The created DocumentMetadata object.
         """
         case_ref = "25-787878"
         received_date = date.fromisoformat("2025-08-21")
         correspondence_type = "TC19"
 
         defaults = {
-            "ingested_doc_id": "unique_ingested_doc_UUID",
+            "source_doc_id": "unique_ingested_doc_UUID",
             "source_file_name": "test_ingested_document.pdf",
             "page_count": 1,
             "case_ref": case_ref,
@@ -59,11 +63,15 @@ def document_metadata_factory():
 
 @pytest.fixture
 def document_chunker_factory():
-    """
-    This fixture returns a FACTORY function that can create a
+    """Returns a factory function to create DocumentChunker objects.
+
+    this fixture returns a FACTORY function that can create a
     fully-wired TextractDocumentChunker instance.
 
     This allows tests to create a chunker with a custom config.
+
+    Returns:
+        DocumentChunker: The created DocumentChunker object.
     """
 
     def _factory(config: Optional[ChunkingConfig] = None) -> DocumentChunker:
@@ -90,12 +98,13 @@ def document_chunker_factory():
 def test_extract_single_layout_chunk_from_actual_textract_response(
     document_chunker_factory, textract_response, document_metadata_factory
 ):
-    """
-    Tests that a single LAYOUT_TEXT block is correctly processed
-    into an OpenSearch chunk document.
-    This is test using an actutal Textract response.
-    """
+    """Tests that a single LAYOUT_TEXT block is correctly processed.
 
+    Args:
+        document_chunker_factory (DocumentChunker): DocumentChunker factory fixture.
+        textract_response (MockTextractResponse): Textract response JSON data.
+        document_metadata_factory (DocumentMetadata): DocumentMetadata factory fixture.
+    """
     mock_doc = Document.open(textract_response)
 
     mock_metadata = document_metadata_factory()
@@ -114,7 +123,7 @@ def test_extract_single_layout_chunk_from_actual_textract_response(
     )
 
     chunk1.chunk_id = "unique_ingested_doc_UUID_p1_c0"
-    chunk1.ingested_doc_id = "unique_ingested_doc_UUID"
+    chunk1.source_doc_id = "unique_ingested_doc_UUID"
     chunk1.source_file_name = "document_single_layout_response.pdf"
     chunk1.chunk_text = expected_text
     chunk1.embedding = None  # Metadata to be added later
@@ -135,48 +144,27 @@ def test_extract_single_layout_chunk_from_actual_textract_response(
 
 
 def test_handles_missing_pdf_id_metadata_throws_error(document_metadata_factory):
-    """
-    Tests that the function throws an error when required metadata is missing.
-    """
-
+    """Tests that the function throws an error when required metadata is missing."""
     with pytest.raises(ValidationError, match="String should have at least 1 character"):
-        document_metadata_factory(ingested_doc_id="")
+        document_metadata_factory(source_doc_id="")
 
 
-def test_handles_missing_source_file_name_metadata_throws_error(document_metadata_factory):
-    """
-    Tests that the function runs without error and sets default values
-    when optional arguments like `uploaded_file_name` and `page_count` are omitted.
-    """
-
+def test_handles_empty_source_file_name_metadata_throws_error(document_metadata_factory):
     with pytest.raises(ValidationError, match="String should have at least 1 character"):
         document_metadata_factory(source_file_name="")
 
 
 def test_handles_zero_page_count_metadata_throws_error(document_metadata_factory):
-    """
-    Tests that the function runs without error and sets default values
-    when optional arguments like `uploaded_file_name` and `page_count` are omitted.
-    """
-
     with pytest.raises(ValidationError, match="Input should be greater than 0"):
         document_metadata_factory(page_count=0)
 
 
 def test_handles_negative_page_count_metadata_throws_error(document_metadata_factory):
-    """
-    Tests that the function runs without error and sets default values
-    when optional arguments like `uploaded_file_name` and `page_count` are omitted.
-    """
-
     with pytest.raises(ValidationError, match="Input should be greater than 0"):
         document_metadata_factory(page_count=-7)
 
 
-def test_empty_document_throws_error(document_chunker_factory, document_metadata_factory):
-    """
-    Tests that an empty Textract Document raises an Exception.
-    """
+def test_empty_textract_document_throws_error(document_chunker_factory, document_metadata_factory):
     mock_doc = Document()
     mock_metadata = document_metadata_factory()
 

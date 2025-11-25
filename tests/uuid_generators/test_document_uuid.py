@@ -4,7 +4,6 @@ from unittest.mock import patch
 
 import pytest
 
-# Import the class you are testing
 from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
 
 MOCK_NAMESPACE_UUID = "1b671a64-40d5-491e-99b0-da01ff1f3341"
@@ -13,8 +12,7 @@ MOCK_NAMESPACE_OBJ = uuid.UUID(MOCK_NAMESPACE_UUID)
 
 @pytest.fixture
 def base_data():
-    """
-    Provides common data for the UUID generation tests.
+    """Provides common data for the UUID generation tests.
     Keys MUST match the DocumentIdentifier model fields.
     """
     return {
@@ -37,8 +35,7 @@ def base_data():
     ],
 )
 def test_generates_correct_and_valid_uuid(base_data, page_num, expected_page_str):
-    """
-    Tests if the model generates the correct, expected UUID
+    """Tests if the model generates the correct, expected UUID
     for both document-level and page-level inputs.
     """
     namespace_uuid = MOCK_NAMESPACE_OBJ
@@ -76,8 +73,7 @@ def test_generates_correct_and_valid_uuid(base_data, page_num, expected_page_str
     MOCK_NAMESPACE_OBJ,
 )
 def test_is_deterministic(base_data):
-    """
-    Tests if the function produces the same UUID when called multiple times
+    """Tests if the function produces the same UUID when called multiple times
     with the exact same inputs.
     """
     # Create two identical instances
@@ -96,9 +92,7 @@ def test_is_deterministic(base_data):
     MOCK_NAMESPACE_OBJ,
 )
 def test_is_sensitive_to_input_changes(base_data):
-    """
-    Tests if changing any input parameter results in a different UUID.
-    """
+    """Tests if changing any input parameter results in a different UUID."""
     # Create the base identifier and get its UUID
     base_identifier = DocumentIdentifier(**base_data)
     base_uuid = base_identifier.generate_uuid()
@@ -120,3 +114,37 @@ def test_is_sensitive_to_input_changes(base_data):
     data_with_page["page_num"] = 1
     identifier_with_page = DocumentIdentifier(**data_with_page)
     assert base_uuid != identifier_with_page.generate_uuid()
+
+
+def test_page_uuid_is_different_from_document_uuid():
+    doc_id = DocumentIdentifier(
+        source_file_name="file.pdf", correspondence_type="typeA", case_ref="CASE-123"
+    ).generate_uuid()
+    page_id = DocumentIdentifier(
+        source_file_name="file.pdf", correspondence_type="typeA", case_ref="CASE-123", page_num=1
+    ).generate_uuid()
+    assert doc_id != page_id
+
+
+def test_chunk_uuid_is_different_from_page_and_document_uuid():
+    doc_id = DocumentIdentifier(
+        source_file_name="file.pdf", correspondence_type="typeA", case_ref="CASE-123"
+    ).generate_uuid()
+    page_id = DocumentIdentifier(
+        source_file_name="file.pdf", correspondence_type="typeA", case_ref="CASE-123", page_num=1
+    ).generate_uuid()
+    chunk_id = DocumentIdentifier(
+        source_file_name="file.pdf", correspondence_type="typeA", case_ref="CASE-123", page_num=1, chunk_index=0
+    ).generate_uuid()
+    assert chunk_id != page_id
+    assert chunk_id != doc_id
+
+
+def test_chunk_uuid_changes_with_chunk_index():
+    chunk_id_0 = DocumentIdentifier(
+        source_file_name="file.pdf", correspondence_type="typeA", case_ref="CASE-123", page_num=1, chunk_index=0
+    ).generate_uuid()
+    chunk_id_1 = DocumentIdentifier(
+        source_file_name="file.pdf", correspondence_type="typeA", case_ref="CASE-123", page_num=1, chunk_index=1
+    ).generate_uuid()
+    assert chunk_id_0 != chunk_id_1

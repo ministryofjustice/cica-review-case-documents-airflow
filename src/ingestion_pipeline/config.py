@@ -1,3 +1,5 @@
+"""Configuration settings for the airflow pipeline."""
+
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -25,6 +27,8 @@ ENV_FILE_PATH = PROJECT_ROOT / ".env"
 
 
 class Settings(BaseSettings):  # type: ignore
+    """Configuration settings for the ingestion pipeline."""
+
     model_config = SettingsConfigDict(
         # Only load .env if it exists (local dev)
         env_file=str(ENV_FILE_PATH) if ENV_FILE_PATH.exists() else None,
@@ -33,14 +37,13 @@ class Settings(BaseSettings):  # type: ignore
         case_sensitive=False,
     )
     # -- OpenSearch client --
-    # Default credentials for LOCAL DEVELOPMENT ONLY
-    # In production, these MUST be overridden
-    OPENSEARCH_HOST: str = "localhost"
-    OPENSEARCH_URL_PREFIX: str = "/opensearch/eu-west-2/case-document-search-domain"
-    OPENSEARCH_PORT: int = 9200
-    OPENSEARCH_USERNAME: str = "admin"
-    OPENSEARCH_PASSWORD: str = "really-secure-passwordAa!1"
+    # Example (k8s):
+    #   OPENSEARCH_PROXY_URL="http://opensearch-proxy-service.namespace.svc.cluster.local:8080"
+    # Example (localstack):
+    #   OPENSEARCH_PROXY_URL="http://localhost:9200"
+    OPENSEARCH_PROXY_URL: str = "http://localhost:9200"
     OPENSEARCH_CHUNK_INDEX_NAME: str = "page_chunks"
+
     # -- AWS --
     AWS_ACCESS_KEY_ID: str = "aws_access_key_id"
     AWS_SECRET_ACCESS_KEY: str = "aws_secret_access_key"
@@ -61,11 +64,14 @@ class Settings(BaseSettings):  # type: ignore
     TEXTRACT_API_JOB_TIMEOUT_SECONDS: int = 600
 
     # Leaving this here for reference
+    # In case we want to use these buckets
+    # TODO we should probably delete this textract-test bucket later
     # S3_BUCKET_NAME: str = "alpha-a2j-projects"
     # S3_PREFIX: str = "textract-test"
 
-    # And this
     BEDROCK_EMBEDDING_MODEL_ID: str = "amazon.titan-embed-text-v2:0"
+
+    LOG_LEVEL: str = "INFO"
 
 
 settings = Settings()

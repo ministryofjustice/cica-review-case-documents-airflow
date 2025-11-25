@@ -1,3 +1,5 @@
+"""Implements the line-based chunking strategy."""
+
 import logging
 from typing import List, Optional
 
@@ -15,6 +17,11 @@ class LayoutTextChunkingStrategy(ChunkingStrategyHandler):
     """Implements the line-based chunking strategy."""
 
     def __init__(self, config: ChunkingConfig):
+        """Initializes the line-based chunking strategy.
+
+        Args:
+            config (ChunkingConfig): Configuration for the chunking strategy.
+        """
         super().__init__(config)
 
     def chunk(
@@ -25,7 +32,18 @@ class LayoutTextChunkingStrategy(ChunkingStrategyHandler):
         chunk_index_start: int,
         raw_response: Optional[dict] = None,
     ) -> List[DocumentChunk]:
-        """Extract chunks using line-based splitting strategy."""
+        """Extract chunks using line-based splitting strategy.
+
+        Args:
+            layout_block (LayoutBlock): The Textractor LayoutBlock to process.
+            page_number (int): The page number of the layout_block.
+            metadata (DocumentMetadata): The document metadata.
+            chunk_index_start (int): The starting index for the chunks produced by this block.
+            raw_response (Optional[dict], optional): The raw response from Textract. Defaults to None.
+
+        Returns:
+            List[DocumentChunk]: The list of document chunks produced from the layout_block.
+        """
         chunks = []
         chunk_index = chunk_index_start
 
@@ -58,7 +76,15 @@ class LayoutTextChunkingStrategy(ChunkingStrategyHandler):
         return chunks
 
     def _would_exceed_size_limit(self, current_lines: List[str], new_line: str) -> bool:
-        """Check if adding a new line would exceed the size limit."""
+        """Check if adding a new line would exceed the size limit.
+
+        Args:
+            current_lines (List[str]): The current accumulated lines.
+            new_line (str): The new line to add.
+
+        Returns:
+            bool: True if adding the new line would exceed the size limit, False otherwise.
+        """
         if not current_lines:
             return len(new_line) > self.maximum_chunk_size
         combined_text = " ".join(current_lines + [new_line])
@@ -73,7 +99,19 @@ class LayoutTextChunkingStrategy(ChunkingStrategyHandler):
         metadata: DocumentMetadata,
         chunk_index: int,
     ) -> DocumentChunk:
-        """Create a chunk from accumulated lines and bounding boxes."""
+        """Creates a document chunk from the given lines and metadata.
+
+        Args:
+            lines (List[str]): The lines to include in the chunk.
+            bboxes (List[BoundingBox]): The bounding boxes of the lines.
+            layout_block (LayoutBlock): The Textractor LayoutBlock type.
+            page_number (int): The page number of the layout block.
+            metadata (DocumentMetadata): The document metadata.
+            chunk_index (int): The index of the chunk.
+
+        Returns:
+            DocumentChunk: The created document chunk.
+        """
         combined_bbox = combine_bounding_boxes(bboxes)
         chunk_text = " ".join(lines)
 

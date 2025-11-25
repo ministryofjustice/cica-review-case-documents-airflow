@@ -1,3 +1,5 @@
+"""Unit tests for bbox_utils."""
+
 from dataclasses import dataclass
 from typing import List, cast
 
@@ -9,6 +11,8 @@ from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes
 
 @dataclass
 class MockBoundingBox:
+    """Mock implementation of a BoundingBox."""
+
     width: float
     height: float
     x: float
@@ -17,7 +21,6 @@ class MockBoundingBox:
 
 def test_combine_bounding_boxes_multiple_boxes():
     """Test combining multiple bounding boxes."""
-
     bbox1 = MockBoundingBox(width=10, height=20, x=100, y=50)
     bbox2 = MockBoundingBox(width=5, height=5, x=115, y=60)
     bbox3 = MockBoundingBox(width=30, height=40, x=80, y=80)
@@ -42,7 +45,6 @@ def test_combine_bounding_boxes_multiple_boxes():
 
 def test_combine_bounding_boxes_single_box():
     """Test combining a single bounding box."""
-
     single_bbox = MockBoundingBox(width=50, height=75, x=20, y=10)
     bboxes = [single_bbox]
     combined_bbox = combine_bounding_boxes(cast(List[BoundingBox], bboxes))
@@ -53,7 +55,6 @@ def test_combine_bounding_boxes_single_box():
 
 def test_combine_bounding_boxes_empty_list():
     """Test that an empty list raises a ValueError."""
-
     bboxes = []
 
     with pytest.raises(ValueError, match="Cannot combine an empty list of bounding boxes."):

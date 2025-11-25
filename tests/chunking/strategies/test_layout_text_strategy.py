@@ -1,3 +1,5 @@
+"""Unit Test: Tests for the LayoutTextChunkingStrategy class."""
+
 from unittest.mock import MagicMock, call
 
 import pytest
@@ -9,16 +11,20 @@ from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkin
 
 @pytest.fixture
 def default_config():
+    """Provides a default ChunkingConfig for tests."""
     return ChunkingConfig(maximum_chunk_size=600)
 
 
 @pytest.fixture
 def mock_dependencies(mocker):
-    """
-    This fixture mocks the external dependencies of the Handler class.
-    'mocker' is provided by the pytest-mock plugin.
-    """
+    """Mocks the external dependencies of the LayoutTextChunkingStrategy class.
 
+    Args:
+        mocker (pytest_mock.MockerFixture): Fixture for mocking objects and functions.
+
+    Returns:
+        Tuple[MagicMock, MagicMock]: Mocks for DocumentChunk and combine_bounding_boxes.
+    """
     mock_opensearch_chunk = mocker.patch.object(layout_text_module, "DocumentChunk", autospec=True)
     mock_combine_bboxes = mocker.patch.object(layout_text_module, "combine_bounding_boxes", autospec=True)
 
@@ -46,10 +52,7 @@ def create_fake_line(text: str):
 
 
 def test_chunk_creates_a_single_chunk_for_short_text(mock_dependencies, default_config):
-    """
-    Tests that text smaller than the maximum size results in a single chunk.
-    """
-
+    """Tests that text smaller than the maximum size results in a single chunk."""
     mock_opensearch_chunk, _ = mock_dependencies
 
     handler = LayoutTextChunkingStrategy(default_config)
@@ -74,9 +77,7 @@ def test_chunk_creates_a_single_chunk_for_short_text(mock_dependencies, default_
 
 
 def test_chunk_splits_text_into_multiple_chunks(mock_dependencies, default_config):
-    """
-    Tests that text larger than the maximum size is split into multiple chunks.
-    """
+    """Tests that text larger than the maximum size is split into multiple chunks."""
     mock_opensearch_chunk, mock_combine_bboxes = mock_dependencies
     chunking_config = ChunkingConfig(maximum_chunk_size=30)
     handler = LayoutTextChunkingStrategy(chunking_config)
@@ -126,10 +127,7 @@ def test_chunk_splits_text_into_multiple_chunks(mock_dependencies, default_confi
 
 
 def test_simple_strategy_handles_empty_block(default_config):
-    """
-    Verifies that the strategy returns an empty list for an empty block.
-    """
-
+    """Verifies that the strategy returns an empty list for an empty block."""
     strategy = LayoutTextChunkingStrategy(default_config)
 
     fake_lines = []
@@ -172,9 +170,7 @@ def test_would_exceed_size_limit(current_text, new_line, expected):
 
 
 def test_chunk_handles_single_line_exceeding_max_size(mock_dependencies, default_config):
-    """
-    Tests that a single line longer than the maximum chunk size becomes its own chunk.
-    """
+    """Tests that a single line longer than the maximum chunk size becomes its own chunk."""
     mock_opensearch_chunk, mock_combine_bboxes = mock_dependencies
     chunking_config = ChunkingConfig(maximum_chunk_size=20)
     handler = LayoutTextChunkingStrategy(chunking_config)

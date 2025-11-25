@@ -12,8 +12,7 @@ from ingestion_pipeline.s3_file_downloader.s3_downloader import download_pdf_fro
 @mock_aws
 class TestS3Downloader(unittest.TestCase):
     def setUp(self):
-        """
-        Set up the mock S3 environment before each test.
+        """Set up the mock S3 environment before each test.
         This method runs before each test function.
         """
         self.bucket_name = "my-test-bucket"
@@ -23,8 +22,7 @@ class TestS3Downloader(unittest.TestCase):
         os.makedirs(self.download_dir, exist_ok=True)
 
     def tearDown(self):
-        """
-        Clean up the mock S3 environment and local files after each test.
+        """Clean up the mock S3 environment and local files after each test.
         This method runs after each test function.
         """
         # Clean up downloaded files
@@ -33,8 +31,7 @@ class TestS3Downloader(unittest.TestCase):
         os.rmdir(self.download_dir)
 
     def test_download_pdf_successfully(self):
-        """
-        Test case for successfully downloading a PDF from S3.
+        """Test case for successfully downloading a PDF from S3.
         This test now also implicitly checks that no exception is raised.
         """
         file_key = "test.pdf"
@@ -52,9 +49,7 @@ class TestS3Downloader(unittest.TestCase):
             self.assertEqual(f.read(), pdf_content)
 
     def test_download_pdf_raises_error_if_not_found(self):
-        """
-        Test that a ClientError is raised if the file does not exist.
-        """
+        """Test that a ClientError is raised if the file does not exist."""
         non_existent_file_key = "non_existent.pdf"
         local_file_path = os.path.join(self.download_dir, non_existent_file_key)
 

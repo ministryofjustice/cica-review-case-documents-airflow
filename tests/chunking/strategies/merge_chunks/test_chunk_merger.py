@@ -1,3 +1,5 @@
+"""Unit tests for the ChunkMerger class in the chunking strategies module."""
+
 import datetime
 
 import pytest
@@ -26,8 +28,8 @@ def create_atomic_chunk(
     )
     # The class constructor validates the data
     return DocumentChunk(
-        chunk_id=f"{metadata.ingested_doc_id}_p{page_number}_c{chunk_index}",
-        ingested_doc_id=metadata.ingested_doc_id,
+        chunk_id=f"{metadata.source_doc_id}_p{page_number}_c{chunk_index}",
+        source_doc_id=metadata.source_doc_id,
         chunk_text=text,
         source_file_name=metadata.source_file_name,
         page_count=metadata.page_count,
@@ -46,11 +48,11 @@ def create_atomic_chunk(
 def doc_metadata() -> DocumentMetadata:
     """Provides a standard DocumentMetadata object for tests."""
     return DocumentMetadata(
-        ingested_doc_id="doc123",
+        source_doc_id="doc123",
         source_file_name="test.pdf",
         page_count=5,
         case_ref="CASE-001",
-        received_date=datetime.date(2025, 9, 26),
+        received_date=datetime.datetime(2025, 9, 26),
         correspondence_type="Letter",
     )
 
@@ -61,21 +63,19 @@ def doc_metadata() -> DocumentMetadata:
 
 
 def test_handles_empty_input_list(doc_metadata):
-    """
-    Given: An empty list of atomic chunks.
-    When: The chunk method is called.
+    """Given: An empty list of atomic chunks. When: The chunk method is called.
+
     Then: It should return an empty list.
     """
     merger = ChunkMerger()
     atomic_chunks = []
-    result = merger.chunk(atomic_chunks)
+    result = merger.merge_chunks(atomic_chunks)
     assert result == []
 
 
 def test_handles_single_atomic_chunk(doc_metadata):
-    """
-    Given: A single atomic chunk.
-    When: The chunk method is called.
+    """Given: A single atomic chunk. When: The chunk method is called.
+
     Then: It should return a list containing a single merged chunk.
     """
     merger = ChunkMerger()
@@ -89,7 +89,7 @@ def test_handles_single_atomic_chunk(doc_metadata):
     )
     atomic_chunks = [chunk1]
 
-    result = merger.chunk(atomic_chunks)
+    result = merger.merge_chunks(atomic_chunks)
 
     assert len(result) == 1
     merged_chunk = result[0]
@@ -106,8 +106,8 @@ def test_handles_single_atomic_chunk(doc_metadata):
 
 
 def test_basic_merging_within_limits(doc_metadata):
-    """
-    Given: Chunks that are close together and within the word limit.
+    """Given: Chunks that are close together and within the word limit.
+
     When: The chunk method is called.
     Then: The chunks should be merged into a single chunk.
     """
@@ -132,7 +132,7 @@ def test_basic_merging_within_limits(doc_metadata):
     )
     atomic_chunks = [chunk1, chunk2]
 
-    result = merger.chunk(atomic_chunks)
+    result = merger.merge_chunks(atomic_chunks)
 
     assert len(result) == 1
     merged_chunk = result[0]
@@ -144,8 +144,8 @@ def test_basic_merging_within_limits(doc_metadata):
 
 
 def test_flushes_on_word_limit_exceeded(doc_metadata):
-    """
-    Given: A chunk that would cause the buffer to exceed the word limit.
+    """Given: A chunk that would cause the buffer to exceed the word limit.
+
     When: The chunk method is called.
     Then: A new chunk should be created, splitting the content.
     """
@@ -170,7 +170,7 @@ def test_flushes_on_word_limit_exceeded(doc_metadata):
     )
     atomic_chunks = [chunk1, chunk2]
 
-    result = merger.chunk(atomic_chunks)
+    result = merger.merge_chunks(atomic_chunks)
 
     assert len(result) == 2
     assert result[0].chunk_text == "This is the first line."
@@ -180,8 +180,8 @@ def test_flushes_on_word_limit_exceeded(doc_metadata):
 
 
 def test_flushes_on_large_positive_vertical_gap(doc_metadata):
-    """
-    Given: A chunk with a large vertical gap below the previous one.
+    """Given: A chunk with a large vertical gap below the previous one.
+
     When: The chunk method is called.
     Then: A new chunk should be created.
     """
@@ -205,7 +205,7 @@ def test_flushes_on_large_positive_vertical_gap(doc_metadata):
     )
     atomic_chunks = [chunk1, chunk2]
 
-    result = merger.chunk(atomic_chunks)
+    result = merger.merge_chunks(atomic_chunks)
 
     assert len(result) == 2
     assert result[0].chunk_text == "This is a paragraph."
@@ -213,8 +213,8 @@ def test_flushes_on_large_positive_vertical_gap(doc_metadata):
 
 
 def test_flushes_on_large_negative_vertical_gap_for_columns(doc_metadata):
-    """
-    Given: Chunks representing a jump from the bottom of one column to the top of another.
+    """Given: Chunks representing a jump from the bottom of one column to the top of another.
+
     When: The chunk method is called.
     Then: A new chunk should be created due to the large negative vertical gap.
     """
@@ -239,7 +239,7 @@ def test_flushes_on_large_negative_vertical_gap_for_columns(doc_metadata):
     )
     atomic_chunks = [chunk1, chunk2]
 
-    result = merger.chunk(atomic_chunks)
+    result = merger.merge_chunks(atomic_chunks)
 
     assert len(result) == 2
     assert result[0].chunk_text == "End of column one."
@@ -247,8 +247,8 @@ def test_flushes_on_large_negative_vertical_gap_for_columns(doc_metadata):
 
 
 def test_flushes_on_page_change(doc_metadata):
-    """
-    Given: A sequence of chunks where one is on a different page.
+    """Given: A sequence of chunks where one is on a different page.
+
     When: The chunk method is called.
     Then: A new chunk should be created when the page number changes.
     """
@@ -279,7 +279,7 @@ def test_flushes_on_page_change(doc_metadata):
     )
     atomic_chunks = [chunk1_p1, chunk2_p1, chunk3_p2]
 
-    result = merger.chunk(atomic_chunks)
+    result = merger.merge_chunks(atomic_chunks)
 
     assert len(result) == 2
     # First merged chunk contains both chunks from page 1
@@ -293,8 +293,8 @@ def test_flushes_on_page_change(doc_metadata):
 
 
 def test_final_buffer_is_flushed_correctly(doc_metadata):
-    """
-    Given: A sequence of chunks where the last items in the list should be grouped.
+    """Given: A sequence of chunks where the last items in the list should be grouped.
+
     When: The chunk method is called.
     Then: The final buffer contents should be processed into a final merged chunk.
     """
@@ -316,7 +316,7 @@ def test_final_buffer_is_flushed_correctly(doc_metadata):
     )
     atomic_chunks = [chunk1, chunk2, chunk3, chunk4]
 
-    result = merger.chunk(atomic_chunks)
+    result = merger.merge_chunks(atomic_chunks)
 
     assert len(result) == 2
     assert result[0].chunk_text == "First part. Second part."
@@ -325,8 +325,8 @@ def test_final_buffer_is_flushed_correctly(doc_metadata):
 
 
 def test_multiple_flush_conditions_in_sequence(doc_metadata):
-    """
-    Given: A complex sequence of chunks triggering all flush conditions.
+    """Given: A complex sequence of chunks triggering all flush conditions.
+
     When: The chunk method is called.
     Then: The chunks should be grouped correctly according to the priority of flush rules.
     """
@@ -345,7 +345,7 @@ def test_multiple_flush_conditions_in_sequence(doc_metadata):
     # End of loop, FLUSHES final buffer. Creates chunk D.
     atomic_chunks = [chunk1, chunk2, chunk3, chunk4, chunk5]
 
-    result = merger.chunk(atomic_chunks)
+    result = merger.merge_chunks(atomic_chunks)
 
     assert len(result) == 4
     assert result[0].chunk_text == "Line one is short. Line two is also short."
@@ -362,8 +362,8 @@ def test_multiple_flush_conditions_in_sequence(doc_metadata):
 
 
 def test_handles_atomic_chunk_already_over_limit(doc_metadata):
-    """
-    Given: An atomic chunk that is by itself larger than the word limit.
+    """Given: An atomic chunk that is by itself larger than the word limit.
+
     When: The chunk method is called.
     Then: That chunk should be processed into its own single merged chunk.
     """
@@ -389,7 +389,7 @@ def test_handles_atomic_chunk_already_over_limit(doc_metadata):
     )
 
     atomic_chunks = [oversized_chunk, next_chunk]
-    result = merger.chunk(atomic_chunks)
+    result = merger.merge_chunks(atomic_chunks)
 
     # Expect two separate chunks
     assert len(result) == 2

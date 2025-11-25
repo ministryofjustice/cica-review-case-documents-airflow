@@ -1,3 +1,5 @@
+"""Unit Test: Tests for the KeyValueChunker class."""
+
 from unittest.mock import MagicMock, call
 
 import pytest
@@ -15,10 +17,7 @@ from ingestion_pipeline.chunking.strategies.key_value.layout_key_value import Ke
 
 @pytest.fixture
 def mock_kv_pair_factory():
-    """
-    Factory fixture to create mock KeyValue objects.
-    This has been corrected to reflect that '.key' is a list of Words.
-    """
+    """Factory fixture to create mock KeyValue objects."""
 
     def _create_mock_kv(key_text: str, value_text: str, kv_id: str) -> MagicMock:
         mock_key_words = [MagicMock(spec=Word, text=word) for word in key_text.split()]
@@ -71,11 +70,17 @@ def chunk_args():
 def test_chunks_mixed_key_value_and_line_children(
     mocker, default_config, chunk_args, mock_kv_pair_factory, mock_line_factory
 ):
-    """
-    Verifies that the chunker correctly processes a layout block
-    containing both KeyValue pairs and standalone Line objects.
-    """
+    """Verifies that the chunker correctly processes a layout block.
 
+    containing both KeyValue pairs and standalone Line objects.
+
+    Args:
+        mocker (pytest_mock.MockerFixture): Pytest-mock fixture for patching and mocking.
+        default_config (ChunkingConfig): Default chunking configuration for the strategy.
+        chunk_args (dict): Arguments to pass to the chunk method.
+        mock_kv_pair_factory (Callable): Factory to create mock KeyValue objects.
+        mock_line_factory (Callable): Factory to create mock Line objects.
+    """
     mock_os_doc_from_layout = mocker.patch.object(DocumentChunk, "from_textractor_layout")
 
     kv_child = mock_kv_pair_factory("Name:", "John Doe", "kv-1")
@@ -112,10 +117,7 @@ def test_chunks_mixed_key_value_and_line_children(
 
 
 def test_returns_empty_list_for_empty_layout_block(default_config, chunk_args):
-    """
-    Verifies that an empty list is returned when the layout block has no children.
-    """
-
+    """Verifies that an empty list is returned when the layout block has no children."""
     layout_block = MagicMock(spec=Layout, children=[], id="empty-block")
     strategy = KeyValueChunker(config=default_config)
 
@@ -125,10 +127,7 @@ def test_returns_empty_list_for_empty_layout_block(default_config, chunk_args):
 
 
 def test_skips_key_value_pair_if_missing_key_or_value(mocker, default_config, chunk_args, mock_kv_pair_factory):
-    """
-    Verifies that KeyValue pairs with a missing key or value are skipped.
-    """
-
+    """Verifies that KeyValue pairs with a missing key or value are skipped."""
     mock_os_doc_from_layout = mocker.patch.object(DocumentChunk, "from_textractor_layout")
 
     kv_missing_value = mock_kv_pair_factory("Address:", "123 Main St", "kv-1")
@@ -148,10 +147,7 @@ def test_skips_key_value_pair_if_missing_key_or_value(mocker, default_config, ch
 
 
 def test_skips_empty_or_whitespace_only_lines(mocker, default_config, chunk_args, mock_line_factory):
-    """
-    Verifies that lines containing no text or only whitespace are skipped.
-    """
-
+    """Verifies that lines containing no text or only whitespace are skipped."""
     mock_os_doc_from_layout = mocker.patch.object(DocumentChunk, "from_textractor_layout")
 
     empty_line = mock_line_factory("", "line-empty")
@@ -179,11 +175,10 @@ def test_skips_empty_or_whitespace_only_lines(mocker, default_config, chunk_args
 
 
 def test_skips_unsupported_child_types_and_logs_warning(mocker, default_config, chunk_args, mock_line_factory):
-    """
-    Verifies that unexpected child types within a LAYOUT_KEY_VALUE block
+    """Verifies that unexpected child types within a LAYOUT_KEY_VALUE block.
+
     are skipped and a warning is logged.
     """
-
     mock_logger_warning = mocker.patch(
         "ingestion_pipeline.chunking.strategies.key_value.layout_key_value.logger.warning"
     )
