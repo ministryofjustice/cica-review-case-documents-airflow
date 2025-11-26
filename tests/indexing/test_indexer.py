@@ -6,7 +6,7 @@ import pytest
 from opensearchpy.helpers import BulkIndexError
 
 from ingestion_pipeline.chunking.schemas import DocumentBoundingBox, DocumentChunk
-from ingestion_pipeline.indexing.indexer import OpenSearchIndexer
+from ingestion_pipeline.indexing.indexer import IndexingError, OpenSearchIndexer
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -31,6 +31,9 @@ def sample_documents():
             chunk_id="doc1-p1-c0",
             source_doc_id="doc1",
             source_file_name="file1.pdf",
+            source_file_s3_uri="s3://bucket/file1.pdf",
+            case_ref="25-781234",
+            correspondence_type="TYPE_A",
             page_count=2,
             page_number=1,
             chunk_index=0,
@@ -44,6 +47,9 @@ def sample_documents():
             chunk_id="doc1-p1-c1",
             source_doc_id="doc1",
             source_file_name="file1.pdf",
+            source_file_s3_uri="s3://bucket/file1.pdf",
+            case_ref="25-781234",
+            correspondence_type="TYPE_A",
             page_count=2,
             page_number=1,
             chunk_index=1,
@@ -65,6 +71,7 @@ def test_indexer_initialization_success(mock_opensearch_client):
         use_ssl=False,
         verify_certs=False,
         ssl_assert_hostname=False,
+        timeout=30,
     )
 
     assert indexer.index_name == "test_index"
@@ -107,30 +114,38 @@ def test_index_documents_with_empty_list_returns_zero(mock_helpers_bulk, mock_op
 
 
 def test_index_documents_with_partial_failures(mock_helpers_bulk, mock_opensearch_client, sample_documents):
-    """Tests that partial failures from the bulk helper are correctly handled and returned."""
+    """Tests that partial failures from the bulk helper are treated as critical errors and raise IndexingError."""
     mock_errors = [{"index": {"error": {"reason": "Test error"}}}, {"index": {"error": {"reason": "Another error"}}}]
-    # Simulate partial success with 1 document failing
+    # Simulate partial success with errors returned
     mock_helpers_bulk.return_value = (1, mock_errors)
 
     indexer = OpenSearchIndexer(index_name="test_index", proxy_url="http://test_host:9200")
     indexer.client = mock_opensearch_client
 
-    success_count, errors = indexer.index_documents(sample_documents)
+    import re
 
-    assert success_count == 1
-    assert len(errors) == len(mock_errors)
-    assert errors == mock_errors
+    expected_message = (
+        "Failed to index: Failed to index all chunks: "
+        "[{'index': {'error': {'reason': 'Test error'}}}, "
+        "{'index': {'error': {'reason': 'Another error'}}}]"
+    )
+
+    with pytest.raises(
+        IndexingError,
+        match=re.escape(expected_message),
+    ):
+        indexer.index_documents(sample_documents)
 
 
 def test_index_documents_raises_on_bulk_exception(mock_helpers_bulk, mock_opensearch_client, sample_documents):
     """Tests that a bulk operation exception is caught, logged, and re-raised."""
     # Simulate a critical error during the bulk operation
-    mock_helpers_bulk.side_effect = BulkIndexError("Simulated bulk error", [])
+    mock_helpers_bulk.side_effect = BulkIndexError("Simulated bulk error", ["error1"])
 
     indexer = OpenSearchIndexer(index_name="test_index", proxy_url="http://test_host:9200")
     indexer.client = mock_opensearch_client
 
-    with pytest.raises(BulkIndexError, match="Simulated bulk error"):
+    with pytest.raises(IndexingError, match="Failed to index documents due to bulk errors:"):
         indexer.index_documents(sample_documents)
 
 
@@ -210,6 +225,7 @@ def test_indexer_initialization_with_https_scheme(mock_opensearch_client):
         use_ssl=True,
         verify_certs=False,
         ssl_assert_hostname=False,
+        timeout=30,
     )
     assert indexer.index_name == "secure_index"
 
@@ -242,6 +258,7 @@ def test_indexer_initialization_with_http_scheme_no_port(mock_opensearch_client)
         use_ssl=False,
         verify_certs=False,
         ssl_assert_hostname=False,
+        timeout=30,
     )
     assert indexer.index_name == "http_index"
 
@@ -255,5 +272,6 @@ def test_indexer_initialization_with_https_scheme_and_port(mock_opensearch_clien
         use_ssl=True,
         verify_certs=False,
         ssl_assert_hostname=False,
+        timeout=30,
     )
     assert indexer.index_name == "secure_index"

@@ -45,6 +45,7 @@ def make_metadata():
     return DocumentMetadata(
         source_doc_id="doc123",
         source_file_name="file.pdf",
+        source_file_s3_uri="s3://bucket/file.pdf",
         page_count=5,
         case_ref="CASE-001",
         received_date=datetime.datetime.fromisoformat("2025-11-06"),
@@ -91,6 +92,7 @@ def test_generate_chunk_id_with_minimal_metadata(mock_identifier_cls):
     metadata = DocumentMetadata(
         source_doc_id="id",
         source_file_name="f.pdf",
+        source_file_s3_uri="s3://bucket/file.pdf",
         page_count=1,
         case_ref="REF",
         received_date=datetime.datetime.fromisoformat("2025-11-06"),

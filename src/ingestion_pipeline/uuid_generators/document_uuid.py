@@ -1,11 +1,14 @@
 """UUID generation for documents and pages."""
 
+import logging
 import uuid
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from ingestion_pipeline.config import settings
+
+logger = logging.getLogger(__name__)
 
 NAMESPACE_DOC_INGESTION = uuid.UUID(settings.SYSTEM_UUID_NAMESPACE)
 
@@ -45,6 +48,7 @@ class DocumentIdentifier(BaseModel):
 
         - If self.page_num is None, generates a DOCUMENT-level UUID.
         - If self.page_num is provided, generates a PAGE-level UUID.
+        - If self.chunk_index is provided, generates a CHUNK-level UUID.
         """
         data_parts = [self.source_file_name, self.correspondence_type, self.case_ref]
 
@@ -57,5 +61,6 @@ class DocumentIdentifier(BaseModel):
             data_parts.append(str(self.chunk_index))
 
         data_string = "-".join(data_parts)
+        logger.debug(f"Generating UUID with data string: {data_string}")
 
         return str(uuid.uuid5(NAMESPACE_DOC_INGESTION, data_string))

@@ -7,8 +7,8 @@ import pytest
 from textractcaller.t_call import Textract_API
 from textractor.entities.document import Document
 
-from ingestion_pipeline.orchestration.pipeline import ChunkAndIndexPipeline
-from ingestion_pipeline.textract_processor import TextractProcessor
+from ingestion_pipeline.orchestration.pipeline import Pipeline
+from ingestion_pipeline.textract.textract_processor import TextractProcessor
 
 
 @pytest.fixture
@@ -28,7 +28,7 @@ def mock_textract_client():
 @pytest.fixture
 def mock_orchestrator():
     """Provides a mock ProcessingPipeline object."""
-    return MagicMock(spec=ChunkAndIndexPipeline)
+    return MagicMock(spec=Pipeline)
 
 
 def test_init(mock_textractor, mock_textract_client):
@@ -55,8 +55,8 @@ def test_start_textract_job(mock_textractor, mock_textract_client):
     assert job_id == "test-job-12345"
 
 
-@patch("ingestion_pipeline.textract_processor.time.sleep", return_value=None)
-@patch("ingestion_pipeline.textract_processor.time.time")
+@patch("ingestion_pipeline.textract.textract_processor.time.sleep", return_value=None)
+@patch("ingestion_pipeline.textract.textract_processor.time.time")
 def test_poll_for_job_completion_succeeds(mock_time, mock_sleep, mock_textractor, mock_textract_client, caplog):
     """Verifies the polling logic for a successful job."""
     # Tell the logger to ignore INFO messages for this test
@@ -129,11 +129,11 @@ def test_process_document_stops_if_job_fails(
     mock_start_job.assert_called_once_with(s3_uri)
     mock_poll.assert_called_once_with("job-fail")
     mock_get_results.assert_not_called()
-    mock_orchestrator.process_and_index.assert_not_called()
+    mock_orchestrator.process_document.assert_not_called()
 
 
-@patch("ingestion_pipeline.textract_processor.time.sleep", return_value=None)
-@patch("ingestion_pipeline.textract_processor.time.time")
+@patch("ingestion_pipeline.textract.textract_processor.time.sleep", return_value=None)
+@patch("ingestion_pipeline.textract.textract_processor.time.time")
 def test_poll_for_job_completion_times_out(mock_time, mock_sleep, mock_textractor, mock_textract_client):
     """Verifies that a TimeoutError is raised if the job exceeds the timeout."""
     timeout = 30
@@ -172,8 +172,8 @@ def test_process_document_handles_general_exception(
     assert f"Failed to process s3 file {s3_uri}: Unexpected AWS error" in caplog.text
 
 
-@patch("ingestion_pipeline.textract_processor.parse")
-@patch("ingestion_pipeline.textract_processor.get_full_json")
+@patch("ingestion_pipeline.textract.textract_processor.parse")
+@patch("ingestion_pipeline.textract.textract_processor.get_full_json")
 def test_get_job_results_calls_dependencies_correctly(
     mock_get_full_json, mock_parse, mock_textractor, mock_textract_client
 ):

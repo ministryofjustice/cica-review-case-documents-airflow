@@ -70,7 +70,8 @@ class DocumentMetadata(BaseModel):
 
     source_doc_id: str = Field(min_length=1)
     source_file_name: str = Field(min_length=1)
-    page_count: int = Field(gt=0)
+    source_file_s3_uri: str = Field(min_length=1)
+    page_count: Optional[int] = Field(default=None, gt=0)
     case_ref: str
     received_date: datetime
     correspondence_type: str
@@ -83,19 +84,17 @@ class DocumentChunk(BaseModel):
     source_doc_id: str
     chunk_text: str
     source_file_name: str
-    page_count: int
+    page_count: Optional[int]
     page_number: int
     chunk_index: int
-    # TODO add page_id
-    # TODO This was initially representing an AWS layout type.
-    # It may be redundant, review!
+    source_file_s3_uri: str
     chunk_type: str
     confidence: float
     bounding_box: DocumentBoundingBox
     embedding: Optional[List[float]] = None
-    case_ref: Optional[str] = None
+    case_ref: str
     received_date: datetime
-    correspondence_type: Optional[str] = None
+    correspondence_type: str
 
     @computed_field
     @property
@@ -166,6 +165,7 @@ class DocumentChunk(BaseModel):
             source_doc_id=metadata.source_doc_id,
             chunk_text=chunk_text,
             source_file_name=metadata.source_file_name,
+            source_file_s3_uri=metadata.source_file_s3_uri,
             page_count=metadata.page_count,
             page_number=page_number,
             chunk_index=chunk_index,

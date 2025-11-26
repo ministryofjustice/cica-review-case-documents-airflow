@@ -2,52 +2,86 @@
 
 import logging
 
-from textractor.entities.document import Document
-
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
-from ingestion_pipeline.chunking.textract import DocumentChunker
+from ingestion_pipeline.chunking.textract_document_chunker import ChunkError, DocumentChunker
 from ingestion_pipeline.config import settings
-from ingestion_pipeline.embedding.embedding_generator import EmbeddingGenerator
-from ingestion_pipeline.indexing.indexer import OpenSearchIndexer
+from ingestion_pipeline.custom_logging.log_context import source_doc_id_context
+from ingestion_pipeline.embedding.embedding_generator import EmbeddingError, EmbeddingGenerator
+from ingestion_pipeline.indexing.indexer import IndexingError, OpenSearchIndexer
+from ingestion_pipeline.textract.textract_processor import TextractProcessingError, TextractProcessor
 
 logger = logging.getLogger(__name__)
 
+CHUNK_INDEX_NAME = settings.OPENSEARCH_CHUNK_INDEX_NAME
+AWS_REGION = settings.AWS_REGION
 
-class ChunkAndIndexPipeline:
+# --- Configuration for Polling ---
+POLL_INTERVAL_SECONDS = settings.TEXTRACT_API_POLL_INTERVAL_SECONDS
+JOB_TIMEOUT_SECONDS = settings.TEXTRACT_API_JOB_TIMEOUT_SECONDS
+
+
+class PipelineError(Exception):
+    """Base exception for pipeline failures."""
+
+
+class Pipeline:
     """Orchestrates the document processing pipeline: chunking -> embedding -> indexing."""
 
-    def __init__(self, chunker: DocumentChunker, chunk_indexer: OpenSearchIndexer):
-        """Initializes the orchestrator with the necessary components.
+    def __init__(
+        self,
+        textract_processor: TextractProcessor,
+        chunker: DocumentChunker,
+        embedding_generator: EmbeddingGenerator,
+        chunk_indexer: OpenSearchIndexer,
+    ):
+        """Initializes the orchestrator with injected dependencies.
 
         Args:
-            chunker: An instance of TextractDocumentChunker.
-            chunk_indexer: An instance of OpenSearchIndexer for chunk data.
+            textract_processor: Processor to extract data using Textract.
+            chunker: Document chunker with configured strategies.
+            embedding_generator: Generator for creating embeddings from text.
+            chunk_indexer: Indexer to store documents in OpenSearch.
         """
+        self.textract_processor = textract_processor
         self.chunker = chunker
+        self.embedding_generator = embedding_generator
         self.chunk_indexer = chunk_indexer
 
-    def process_and_index(self, doc: Document, metadata: DocumentMetadata):
-        """Runs the full pipeline for a single textractor document.
+    def process_document(self, document_metadata: DocumentMetadata):
+        """Runs the full pipeline for a single document.
 
         Args:
-            doc: The Textractor Document object to process.
-            metadata: The associated metadata for the document.
+            document_metadata: Metadata of the document to process.
         """
-        logger.info("Begin chunking document")
+        source_doc_id = document_metadata.source_doc_id
+        source_doc_id_context.set(source_doc_id)
+        logger.info("Starting document processing pipeline")
 
-        processed_data = self.chunker.chunk(doc, metadata)
+        try:
+            document = self.textract_processor.process_document(document_metadata.source_file_s3_uri)
+            if not document:
+                logger.warning("Textract did not return a document. Skipping rest of pipeline.")
+                return
 
-        logger.info("Begin embedding generation")
-        if processed_data.chunks:
+            updated_metadata = document_metadata.model_copy(update={"page_count": document.num_pages})
+            processed_data = self.chunker.chunk(document, updated_metadata)
+
+            if not processed_data.chunks:
+                logger.warning("No chunks were generated. Skipping embedding and indexing.")
+                return
+
             for chunk in processed_data.chunks:
-                logger.debug(f"Chunk ID: {chunk.chunk_id} Text: {chunk.chunk_text[:50]}...")
-                embedding_generator = EmbeddingGenerator(settings.BEDROCK_EMBEDDING_MODEL_ID)
-                embedding = embedding_generator.generate_embedding(chunk.chunk_text)
-                chunk.embedding = embedding
-        logger.info("Embedding generation completed")
-        if processed_data.chunks:
-            self.chunk_indexer.index_documents(processed_data.chunks)
-        else:
-            logger.warning("No chunks were generated skipping indexing")
+                chunk.embedding = self.embedding_generator.generate_embedding(chunk.chunk_text)
 
-        logger.info("Successfully finished processing document")
+            self.chunk_indexer.index_documents(processed_data.chunks)
+            logger.info("Successfully finished processing document")
+
+        except (TextractProcessingError, EmbeddingError, IndexingError, ChunkError) as e:
+            logger.critical(f"Pipeline failed for document: {e}", exc_info=True)
+            raise
+        except Exception as e:
+            logger.critical(f"An unexpected error occurred in the pipeline for document: {e}", exc_info=True)
+            raise PipelineError(f"Unexpected pipeline failure: {str(e)}") from e
+        finally:
+            logger.info("Cleaning up context for document")
+            source_doc_id_context.set(None)

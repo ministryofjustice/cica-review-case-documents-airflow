@@ -40,9 +40,10 @@ def document_metadata() -> DocumentMetadata:
     return DocumentMetadata(
         source_doc_id="doc-abc-123",
         source_file_name="key.pdf",
+        source_file_s3_uri="s3://bucket/key.pdf",
         page_count=1,
         case_ref="case-xyz-789",
-        received_date=datetime.date(2024, 1, 1),
+        received_date=datetime.datetime.fromisoformat("2024-01-01"),
         correspondence_type="email",
     )
 
