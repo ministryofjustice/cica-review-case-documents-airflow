@@ -1,7 +1,6 @@
 # Localstack local developer environment
 
-
-Docker and LocalStack resorces to be created:
+Docker and LocalStack resources to be created:
 
 - [Localstack](https://www.localstack.cloud/)
 - [OpenSearch](https://docs.localstack.cloud/aws/services/opensearch/) 
@@ -20,7 +19,7 @@ Docker and LocalStack resorces to be created:
 
 Navigate into the local-dev-environment folder 
 
-```cd cica-review-case-documents-airflow/local-dev-enviroment```
+```cd cica-review-case-documents-airflow/local-dev-environment```
 
 and run
 
@@ -29,10 +28,10 @@ and run
 You should see 
 
 ```
-:~/cica-review-case-documents-airflow/local-dev-enviroment$ docker compose up -d --force-recreate
+:~/cica-review-case-documents-airflow/local-dev-environment$ docker compose up -d --force-recreate
 [+] Running 5/5
- ✔ Network local-dev-enviroment_default  Created                                             
- ✔ Volume "local-dev-enviroment_data01"  Created                                         
+ ✔ Network local-dev-environment_default  Created                                             
+ ✔ Volume "local-dev-environment_data01"  Created                                         
  ✔ Container opensearch                  Started                                             
  ✔ Container localstack-main             Healthy                                     
  ✔ Container opensearch-dashboards       Started   
@@ -66,7 +65,7 @@ Ready.
 
 ```
 
-The environment is then ready to be used and the domain enpoint should be: 
+The environment is then ready to be used and the domain endpoint should be: 
 ```case-document-search-domain.eu-west-2.opensearch.localhost.localstack.cloud:4566```
 
 
@@ -98,3 +97,26 @@ put_doc.py can be used to insert a document into the local opensearch db, it use
 search_for_doc.py searches for the inserted document using the same embedding. 
 
 TODO: add to a local integration test suite.
+
+# Using the Hybrid Search Client (`search_client.py`)
+
+This script allows you to perform hybrid (keyword + semantic) search queries against your local OpenSearch instance and export the results to Excel. You can choose for the keyword section to be either direct keyword or to use fuzzy
+
+## Prerequisites
+
+- Ensure your OpenSearch instance is running and accessible.
+- Ensure your `.env` file in the project root contains valid AWS credentials and OpenSearch connection details (see main README for details).
+
+## Running the Search Client
+
+From the project root, run:
+
+```sh
+python local-dev-environment/search_client.py
+```
+
+## Configuration
+
+You can adjust search parameters (e.g., search term, number of results, score filter) and enable/disable fuzzy matching at the top of `search_client.py`.
+
+Results will be written to an Excel file in the `output/hybrid-test-results/<date>/` directory.

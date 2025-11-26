@@ -1,3 +1,9 @@
+"""Hybrid search client for querying a local OpenSearch instance and exporting results to Excel.
+
+This module provides functions to perform hybrid (keyword and semantic) searches using OpenSearch,
+filter results, and write them to an Excel file for analysis.
+"""
+
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -11,10 +17,8 @@ from ingestion_pipeline.embedding.embedding_generator import EmbeddingGenerator
 # --- 1. CONFIGURE YOUR RUNNING LOCALSTACK OPENSEARCH CONNECTION ---
 # These values should match your LocalStack setup
 
-HOST = settings.OPENSEARCH_HOST
-PORT = settings.OPENSEARCH_PORT
-USER = settings.OPENSEARCH_USERNAME
-PASSWORD = settings.OPENSEARCH_PASSWORD
+USER = "admin"
+PASSWORD = "really-secure-passwordAa!1"
 CHUNK_INDEX_NAME = settings.OPENSEARCH_CHUNK_INDEX_NAME
 
 # --- 2. Choose your search term, variables for testing and output name and location---
@@ -28,7 +32,7 @@ FUZZY = True  # Enable fuzzy matching
 KEYWORD_BOOST = 1  # Boost factor for keyword matching in hybrid search
 SEMANTIC_BOOST = 1  # Boost factor for semantic vector search in hybrid search
 FUZZY_BOOST = 1  # Boost factor for fuzzy matching in hybrid search
-FUZZINESS = 2  # Fuzziness level for fuzzy matching
+FUZZINESS = "Auto"  # Fuzziness level for fuzzy matching, Auto chooses based on term length but can be set to an integer
 MAX_EXPANSIONS = 50  # Maximum expansions for fuzzy matching
 
 # Edit the output directory and path if needed
@@ -42,9 +46,7 @@ OUTPUT_PATH = OUTPUT_DIRECTORY / f"{TIMESTAMP_STR}_{SAFE_SEARCH_TERM}_search_res
 
 
 def create_hybrid_query(query_text: str, query_vector: list[float], k: int = 5) -> dict:
-    """
-    Creates a hybrid search query combining keyword and semantic vector search.
-    """
+    """Create a hybrid search query combining keyword and semantic vector search."""
     if not FUZZY:
         return {
             "size": k,
@@ -83,10 +85,8 @@ def create_hybrid_query(query_text: str, query_vector: list[float], k: int = 5) 
 
 
 # --- 4. Execute results and write to Excel ---
-def local_search_client() -> list:
-    """
-    Executes a hybrid search on the local OpenSearch instance and returns the hits.
-    """
+def local_search_client() -> list[dict]:
+    """Execute a hybrid search on the local OpenSearch instance and return the hits."""
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger("embedding_search_client")
     try:
@@ -95,7 +95,7 @@ def local_search_client() -> list:
         logger.info(f"Generated embedding for search term: '{SEARCH_TERM}'")
 
         client = OpenSearch(
-            hosts=[{"host": HOST, "port": PORT}],
+            hosts=[settings.OPENSEARCH_PROXY_URL],
             http_auth=(USER, PASSWORD),
             use_ssl=False,
             verify_certs=False,
@@ -122,9 +122,7 @@ def local_search_client() -> list:
 
 
 def write_hits_to_xlsx(hits: list[dict], score_filter: float = SCORE_FILTER, search_term: str = SEARCH_TERM) -> None:
-    """
-    Writes the search hits to an Excel file, filtering by score.
-    """
+    """Write the search hits to an Excel file, filtering by score."""
     OUTPUT_DIRECTORY.mkdir(parents=True, exist_ok=True)
     workbook = xlsxwriter.Workbook(str(OUTPUT_PATH))
     worksheet = workbook.add_worksheet()
