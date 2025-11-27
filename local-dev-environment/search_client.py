@@ -5,6 +5,7 @@ filter results, and write them to an Excel file for analysis.
 """
 
 import logging
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -13,6 +14,11 @@ from opensearchpy import OpenSearch
 
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingGenerator
+
+os.environ["AWS_ACCESS_KEY_ID"] = settings.AWS_ACCESS_KEY_ID
+os.environ["AWS_SECRET_ACCESS_KEY"] = settings.AWS_SECRET_ACCESS_KEY
+os.environ["AWS_SESSION_TOKEN"] = settings.AWS_SESSION_TOKEN
+os.environ["AWS_REGION"] = settings.AWS_REGION
 
 # --- 1. CONFIGURE YOUR RUNNING LOCALSTACK OPENSEARCH CONNECTION ---
 # These values should match your LocalStack setup
@@ -23,7 +29,7 @@ CHUNK_INDEX_NAME = settings.OPENSEARCH_CHUNK_INDEX_NAME
 
 # --- 2. Choose your search term, variables for testing and output name and location---
 
-SEARCH_TERM = "assault"
+SEARCH_TERM = "previous ear surgeries"
 K_QUERIES = 100  # Number of nearest neighbors to retrieve
 SCORE_FILTER = 0.56  # Minimum score threshold for filtering results
 FUZZY = True  # Enable fuzzy matching
@@ -37,7 +43,7 @@ MAX_EXPANSIONS = 50  # Maximum expansions for fuzzy matching
 
 # Edit the output directory and path if needed
 
-OUTPUT_DIRECTORY = Path("output/hybrid-test-results") / datetime.now().strftime("%Y-%m-%d")
+OUTPUT_DIRECTORY = Path("local-dev-environment/output/hybrid-test-results") / datetime.now().strftime("%Y-%m-%d")
 SAFE_SEARCH_TERM = str(SEARCH_TERM).replace("/", "_").replace(" ", "_")
 TIMESTAMP_STR = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 OUTPUT_PATH = OUTPUT_DIRECTORY / f"{TIMESTAMP_STR}_{SAFE_SEARCH_TERM}_search_results.xlsx"
