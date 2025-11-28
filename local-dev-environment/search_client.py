@@ -6,11 +6,18 @@ filter results, and write them to an Excel file for analysis.
 
 import logging
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
 
 import xlsxwriter
 from opensearchpy import OpenSearch
+
+# Import the OpenSearch-specific ConnectionError
+from opensearchpy.exceptions import ConnectionError as OpenSearchConnectionError
+
+# Add the project 'src' directory to sys.path
+sys.path.append(str(Path(__file__).resolve().parent.parent / "src"))
 
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingGenerator
@@ -29,10 +36,10 @@ CHUNK_INDEX_NAME = settings.OPENSEARCH_CHUNK_INDEX_NAME
 
 # --- 2. Choose your search term, variables for testing and output name and location---
 
-SEARCH_TERM = "previous ear surgeries"
+SEARCH_TERM = "concussion"
 K_QUERIES = 100  # Number of nearest neighbors to retrieve
 SCORE_FILTER = 0.56  # Minimum score threshold for filtering results
-FUZZY = True  # Enable fuzzy matching
+FUZZY = False  # Enable fuzzy matching
 
 #  Set boosts to refine search behaviour and adjust fuzzy matching parameters
 KEYWORD_BOOST = 1  # Boost factor for keyword matching in hybrid search
@@ -117,9 +124,9 @@ def local_search_client() -> list[dict]:
         # print(f"hits: {hits}")
         return hits
 
-    except ConnectionError as ce:
+    except OpenSearchConnectionError as ce:
         logger.error("Could not connect to OpenSearch. Is the OpenSearch DB running locally?")
-        logger.error(f"ConnectionError details: {ce}")
+        logger.error(f"OpenSearch ConnectionError details: {ce}")
         raise  # Rethrow the exception
 
     except Exception as e:
