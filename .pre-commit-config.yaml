@@ -3,9 +3,8 @@ repos:
     rev: v0.12.9
     hooks:
       - id: ruff-format
-
       - id: ruff
-        args: [--fix]
+        args: [--fix, local-dev-environment, src, tests]
         stages: [pre-commit, pre-push]
 
   - repo: https://github.com/zricethezav/gitleaks
