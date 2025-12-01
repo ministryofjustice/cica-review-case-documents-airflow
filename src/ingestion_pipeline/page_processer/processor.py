@@ -18,6 +18,7 @@ from typing import List
 from textractor.entities.document import Document
 
 from ingestion_pipeline.chunking.schemas import DocumentMetadata, DocumentPage
+from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +35,15 @@ class PageProcessor:
         logger.info(f"Processing document pages with source_doc_id: {metadata.source_doc_id}")
         pages = []
         for page in doc.pages:
-            # TODO change this to generate the page id
-            page_id = f"s3://bucket/{metadata.case_ref}/{metadata.source_doc_id}/page_images/page_{page.page_num}.png"
+            identifier = DocumentIdentifier(
+                source_file_name=metadata.source_file_name,
+                correspondence_type=metadata.correspondence_type,
+                case_ref=metadata.case_ref,
+                page_num=page.page_num,
+            )
+            page_id = identifier.generate_uuid()
+
+            page_id = page_id
             page_doc = DocumentPage(
                 source_doc_id=metadata.source_doc_id,
                 page_num=page.page_num,

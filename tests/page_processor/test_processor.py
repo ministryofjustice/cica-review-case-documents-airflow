@@ -5,6 +5,7 @@ import pytest
 
 from ingestion_pipeline.chunking.schemas import DocumentMetadata, DocumentPage
 from ingestion_pipeline.page_processer.processor import PageProcessor
+from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
 
 
 @pytest.fixture
@@ -27,12 +28,12 @@ def mock_document(mock_page):
 @pytest.fixture
 def metadata():
     return DocumentMetadata(
-        case_ref="CASE123",
+        case_ref="25-111111",
         source_doc_id="DOC456",
         source_file_name="sample.pdf",
         source_file_s3_uri="s3://bucket/sample.pdf",
         received_date=datetime.datetime(2025, 1, 15, 12, 0, 0),
-        correspondence_type="letter",
+        correspondence_type="TC19",
     )
 
 
@@ -45,7 +46,17 @@ def test_process_single_page(mock_document, metadata):
     assert isinstance(page, DocumentPage)
     assert page.source_doc_id == "DOC456"
     assert page.page_num == 1
-    assert page.page_id == "s3://bucket/CASE123/DOC456/page_images/page_1.png"
+
+    # Compute expected page_id using DocumentIdentifier
+    identifier = DocumentIdentifier(
+        source_file_name=metadata.source_file_name,
+        correspondence_type=metadata.correspondence_type,
+        case_ref=metadata.case_ref,
+        page_num=page.page_num,
+    )
+    expected_page_id = identifier.generate_uuid()
+    assert page.page_id == expected_page_id
+
     assert page.page_width == 800
     assert page.page_height == 600
     assert page.text == "Sample page text"
