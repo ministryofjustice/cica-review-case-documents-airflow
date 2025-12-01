@@ -16,6 +16,7 @@ from ingestion_pipeline.custom_logging.log_context import setup_logging
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingGenerator
 from ingestion_pipeline.indexing.indexer import OpenSearchIndexer
 from ingestion_pipeline.orchestration.pipeline import Pipeline
+from ingestion_pipeline.page_processer.processor import PageProcessor
 from ingestion_pipeline.textract.textract_processor import TextractProcessor
 
 setup_logging()
@@ -66,8 +67,15 @@ def build_pipeline() -> Pipeline:
 
     embedding_generator = EmbeddingGenerator(model_id=settings.BEDROCK_EMBEDDING_MODEL_ID)
     chunk_indexer = OpenSearchIndexer(
-        index_name=settings.OPENSEARCH_CHUNK_INDEX_NAME, proxy_url=settings.OPENSEARCH_PROXY_URL
+        index_name=settings.OPENSEARCH_CHUNK_INDEX_NAME,
+        proxy_url=settings.OPENSEARCH_PROXY_URL,
     )
+    page_indexer = OpenSearchIndexer(
+        index_name=settings.OPENSEARCH_PAGE_METADATA_INDEX_NAME,
+        proxy_url=settings.OPENSEARCH_PROXY_URL,
+    )
+
+    page_processor = PageProcessor()
 
     # --- Construct and Return the Pipeline ---
     return Pipeline(
@@ -75,4 +83,6 @@ def build_pipeline() -> Pipeline:
         chunker=chunker,
         embedding_generator=embedding_generator,
         chunk_indexer=chunk_indexer,
+        page_indexer=page_indexer,
+        page_processor=page_processor,
     )

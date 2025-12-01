@@ -67,7 +67,7 @@ services:
       # These credentials apply to Dashboards connecting to LocalStack's OpenSearch
       # for port forwarding from host to container use
       # - OPENSEARCH_HOSTS=http://host.docker.internal:9200
-      - OPENSEARCH_HOSTS=http://opensearch:9200 # Use service name for host
+      - OPENSEARCH_HOSTS=http://opensearch:9200 # Use service name for Localstack host
       - OPENSEARCH_USERNAME=admin # Default for LocalStack's OpenSearch
       - OPENSEARCH_PASSWORD=really-secure-passwordAa!1
       - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true

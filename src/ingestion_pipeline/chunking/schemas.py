@@ -187,8 +187,10 @@ class DocumentPage(BaseModel):
     text: str = Field(..., description="Structured ocr content for the front end rendering")
     page_width: float
     page_height: float
+    received_date: datetime
 
 
+# TODO is this still necessary?
 class ProcessedDocument(BaseModel):
     """Holds all structured data extracted from a single source document."""
 
