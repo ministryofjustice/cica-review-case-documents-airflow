@@ -190,7 +190,6 @@ class DocumentPage(BaseModel):
     received_date: datetime
 
 
-# TODO is this still necessary?
 class ProcessedDocument(BaseModel):
     """Holds all structured data extracted from a single source document."""
 
