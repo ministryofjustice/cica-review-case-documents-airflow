@@ -4,7 +4,7 @@ from unittest import mock
 import pytest
 
 from ingestion_pipeline.chunking.schemas import DocumentMetadata, DocumentPage
-from ingestion_pipeline.page_processer.processor import PageProcessor
+from ingestion_pipeline.page_processor.processor import PageProcessor
 from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
 
 

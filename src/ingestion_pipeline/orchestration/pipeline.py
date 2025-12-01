@@ -8,7 +8,7 @@ from ingestion_pipeline.config import settings
 from ingestion_pipeline.custom_logging.log_context import source_doc_id_context
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingError, EmbeddingGenerator
 from ingestion_pipeline.indexing.indexer import IndexingError, OpenSearchIndexer
-from ingestion_pipeline.page_processer.processor import PageProcessor
+from ingestion_pipeline.page_processor.processor import PageProcessor
 from ingestion_pipeline.textract.textract_processor import TextractProcessingError, TextractProcessor
 
 logger = logging.getLogger(__name__)

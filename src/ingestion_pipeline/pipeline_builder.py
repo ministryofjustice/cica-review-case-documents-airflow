@@ -16,7 +16,7 @@ from ingestion_pipeline.custom_logging.log_context import setup_logging
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingGenerator
 from ingestion_pipeline.indexing.indexer import OpenSearchIndexer
 from ingestion_pipeline.orchestration.pipeline import Pipeline
-from ingestion_pipeline.page_processer.processor import PageProcessor
+from ingestion_pipeline.page_processor.processor import PageProcessor
 from ingestion_pipeline.textract.textract_processor import TextractProcessor
 
 setup_logging()
