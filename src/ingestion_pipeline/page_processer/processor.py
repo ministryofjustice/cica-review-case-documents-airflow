@@ -26,10 +26,6 @@ logger = logging.getLogger(__name__)
 class PageProcessor:
     """Processes pages from a Textract Document and builds DocumentPage objects."""
 
-    def __init__(self):
-        """Initializes the class instance. Currently, no initialization logic is implemented."""
-        pass
-
     def process(self, doc: Document, metadata: DocumentMetadata) -> List[DocumentPage]:
         """Iterate over document pages and build DocumentPage objects."""
         logger.info(f"Processing document pages with source_doc_id: {metadata.source_doc_id}")
