@@ -1,4 +1,5 @@
 import datetime
+import logging
 from unittest import mock
 
 import pytest
@@ -45,17 +46,48 @@ def mock_chunk_indexer():
 
 
 @pytest.fixture
-def pipeline(mock_textract_processor, mock_chunker, mock_embedding_generator, mock_chunk_indexer):
+def mock_page_indexer():
+    return mock.Mock()
+
+
+@pytest.fixture
+def mock_page_processor():
+    return mock.Mock()
+
+
+@pytest.fixture
+def pipeline(
+    mock_textract_processor,
+    mock_chunker,
+    mock_embedding_generator,
+    mock_chunk_indexer,
+    mock_page_indexer,
+    mock_page_processor,
+):
     return Pipeline(
         textract_processor=mock_textract_processor,
         chunker=mock_chunker,
         embedding_generator=mock_embedding_generator,
         chunk_indexer=mock_chunk_indexer,
+        page_indexer=mock_page_indexer,
+        page_processor=mock_page_processor,
     )
 
 
+@pytest.fixture(autouse=True)
+def suppress_pipeline_errors(caplog):
+    caplog.set_level(logging.ERROR)
+
+
 def test_process_document_success(
-    pipeline, document_metadata, mock_textract_processor, mock_chunker, mock_embedding_generator, mock_chunk_indexer
+    pipeline,
+    document_metadata,
+    mock_textract_processor,
+    mock_chunker,
+    mock_embedding_generator,
+    mock_chunk_indexer,
+    mock_page_indexer,
+    mock_page_processor,
 ):
     mock_document = mock.Mock()
     mock_document.num_pages = 5
@@ -68,21 +100,47 @@ def test_process_document_success(
     mock_embedding_generator.generate_embedding.return_value = [0.1, 0.2]
     mock_chunk_indexer.index_documents.return_value = None
 
+    page_documents = [mock.Mock()]
+    mock_page_processor.process.return_value = page_documents
+    mock_page_indexer.index_documents.return_value = None
+
     pipeline.process_document(document_metadata)
 
     mock_textract_processor.process_document.assert_called_once_with(document_metadata.source_file_s3_uri)
+    mock_page_processor.process.assert_called_once_with(mock_document, mock.ANY)
+    mock_page_indexer.index_documents.assert_called_once_with(page_documents, id_field="page_id")
     mock_chunker.chunk.assert_called_once()
     mock_embedding_generator.generate_embedding.assert_called_once_with(chunk.chunk_text)
     mock_chunk_indexer.index_documents.assert_called_once_with(processed_data.chunks)
 
 
-def test_process_document_no_document(pipeline, document_metadata, mock_textract_processor):
+def test_process_document_no_document(
+    pipeline,
+    document_metadata,
+    mock_textract_processor,
+    mock_page_processor,
+    mock_page_indexer,
+    mock_chunker,
+    mock_chunk_indexer,
+):
     mock_textract_processor.process_document.return_value = None
     pipeline.process_document(document_metadata)
     mock_textract_processor.process_document.assert_called_once_with(document_metadata.source_file_s3_uri)
+    mock_page_processor.process.assert_not_called()
+    mock_page_indexer.index_documents.assert_not_called()
+    mock_chunker.chunk.assert_not_called()
+    mock_chunk_indexer.index_documents.assert_not_called()
 
 
-def test_process_document_no_chunks(pipeline, document_metadata, mock_textract_processor, mock_chunker):
+def test_process_document_no_chunks(
+    pipeline,
+    document_metadata,
+    mock_textract_processor,
+    mock_chunker,
+    mock_page_processor,
+    mock_page_indexer,
+    mock_chunk_indexer,
+):
     mock_document = mock.Mock()
     mock_document.num_pages = 2
     mock_textract_processor.process_document.return_value = mock_document
@@ -91,8 +149,13 @@ def test_process_document_no_chunks(pipeline, document_metadata, mock_textract_p
     processed_data.chunks = []
     mock_chunker.chunk.return_value = processed_data
 
+    page_documents = [mock.Mock()]
+    mock_page_processor.process.return_value = page_documents
+    mock_page_indexer.index_documents.return_value = None
+
     pipeline.process_document(document_metadata)
     mock_chunker.chunk.assert_called_once()
+    mock_chunk_indexer.index_documents.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -104,13 +167,22 @@ def test_process_document_no_chunks(pipeline, document_metadata, mock_textract_p
         ChunkError("chunk error"),
     ],
 )
-def test_process_document_known_errors(pipeline, document_metadata, mock_textract_processor, exception):
+def test_process_document_known_errors(
+    pipeline,
+    document_metadata,
+    mock_textract_processor,
+    exception,
+):
     mock_textract_processor.process_document.side_effect = exception
     with pytest.raises(type(exception)):
         pipeline.process_document(document_metadata)
 
 
-def test_process_document_unexpected_error(pipeline, document_metadata, mock_textract_processor):
+def test_process_document_unexpected_error(
+    pipeline,
+    document_metadata,
+    mock_textract_processor,
+):
     mock_textract_processor.process_document.side_effect = RuntimeError("unexpected")
     with pytest.raises(PipelineError):
         pipeline.process_document(document_metadata)

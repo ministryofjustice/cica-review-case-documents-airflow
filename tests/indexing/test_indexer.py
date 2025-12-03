@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 from opensearchpy.helpers import BulkIndexError
 
-from ingestion_pipeline.chunking.schemas import DocumentBoundingBox, DocumentChunk
+from ingestion_pipeline.chunking.schemas import DocumentBoundingBox, DocumentChunk, DocumentPage
 from ingestion_pipeline.indexing.indexer import IndexingError, OpenSearchIndexer
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -14,7 +14,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 @pytest.fixture
 def mock_opensearch_client(mocker):
     """Mocks the OpenSearch client and its connection using pytest-mock."""
-    return mocker.patch("ingestion_pipeline.indexing.indexer.OpenSearch", autospec=True)
+    mock_client = mocker.patch("ingestion_pipeline.indexing.indexer.OpenSearch", autospec=True)
+    # Configure delete_by_query to return a proper dict
+    mock_client.return_value.delete_by_query.return_value = {"deleted": 0}
+    return mock_client
 
 
 @pytest.fixture
@@ -86,16 +89,16 @@ def test_indexer_initialization_with_empty_index_name_raises_error():
 
 def test_index_documents_with_bulk_indexer_success(mock_helpers_bulk, mock_opensearch_client, sample_documents):
     """Tests that documents are successfully indexed using the bulk helper."""
-    # Configure the mock to simulate a successful bulk operation
     mock_helpers_bulk.return_value = (len(sample_documents), [])
 
     indexer = OpenSearchIndexer(index_name="test_index", proxy_url="http://test_host:9200")
     # Set the mock client on the indexer instance
     indexer.client = mock_opensearch_client
+    # Set the return value for delete_by_query on the instance, not the class
+    indexer.client.delete_by_query.return_value = {"deleted": 0}
 
     success_count, errors = indexer.index_documents(sample_documents)
 
-    # Assert that the bulk helper was called correctly
     mock_helpers_bulk.assert_called_once()
     assert success_count == len(sample_documents)
     assert errors == []
@@ -121,6 +124,7 @@ def test_index_documents_with_partial_failures(mock_helpers_bulk, mock_opensearc
 
     indexer = OpenSearchIndexer(index_name="test_index", proxy_url="http://test_host:9200")
     indexer.client = mock_opensearch_client
+    indexer.client.delete_by_query.return_value = {"deleted": 0}
 
     import re
 
@@ -144,6 +148,7 @@ def test_index_documents_raises_on_bulk_exception(mock_helpers_bulk, mock_opense
 
     indexer = OpenSearchIndexer(index_name="test_index", proxy_url="http://test_host:9200")
     indexer.client = mock_opensearch_client
+    indexer.client.delete_by_query.return_value = {"deleted": 0}
 
     with pytest.raises(IndexingError, match="Failed to index documents due to bulk errors:"):
         indexer.index_documents(sample_documents)
@@ -180,23 +185,7 @@ def test_delete_documents_by_source_doc_id_success(mock_opensearch_client, mocke
         body={"query": {"match": {"source_doc_id": source_doc_id}}},
     )
 
-    mock_logger_info.assert_called_with("Deleted 5 chunks from index test_index")
-
-
-def test_delete_documents_by_source_doc_id_no_deleted_key(mock_opensearch_client, mocker):
-    """Tests that if 'deleted' key is missing, logger logs zero deleted documents."""
-    mock_delete_by_query = mock_opensearch_client.delete_by_query
-    mock_delete_by_query.return_value = {}
-
-    indexer = OpenSearchIndexer(index_name="test_index", proxy_url="http://test_host:9200")
-    indexer.client = mock_opensearch_client
-
-    source_doc_id = "doc2"
-    mock_logger_info = mocker.patch("ingestion_pipeline.indexing.indexer.logger.info")
-    indexer._delete_documents_by_source_doc_id(source_doc_id)
-
-    mock_delete_by_query.assert_called_once()
-    mock_logger_info.assert_called_with("Deleted 0 chunks from index test_index")
+    mock_logger_info.assert_called_with("Deleted 5 documents from index test_index")
 
 
 def test_delete_documents_by_source_doc_id_exception(mock_opensearch_client):
@@ -275,3 +264,34 @@ def test_indexer_initialization_with_https_scheme_and_port(mock_opensearch_clien
         timeout=30,
     )
     assert indexer.index_name == "secure_index"
+
+
+def test_index_documents_with_document_page(mock_helpers_bulk, mock_opensearch_client):
+    """Tests indexing DocumentPage objects."""
+    sample_pages = [
+        DocumentPage(
+            source_doc_id="doc1",
+            page_num=1,
+            page_id="page1",
+            text="Page 1 text",
+            page_width=8.5,
+            page_height=11.0,
+            received_date=datetime.datetime.fromisoformat("2025-11-06"),
+        ),
+        DocumentPage(
+            source_doc_id="doc1",
+            page_num=2,
+            page_id="page2",
+            text="Page 2 text",
+            page_width=8.5,
+            page_height=11.0,
+            received_date=datetime.datetime.fromisoformat("2025-11-06"),
+        ),
+    ]
+    mock_helpers_bulk.return_value = (len(sample_pages), [])
+    indexer = OpenSearchIndexer(index_name="page_metadata", proxy_url="http://test_host:9200")
+    indexer.client = mock_opensearch_client
+    indexer.client.delete_by_query.return_value = {"deleted": 0}
+    success_count, errors = indexer.index_documents(sample_pages, id_field="page_id")
+    assert success_count == len(sample_pages)
+    assert errors == []

@@ -82,6 +82,7 @@ class DocumentChunker:
                     # The place holders wlll be added outside of this step
                     # and should be held within the document metadata
                     text="To be added to DcoumentMetadata..........",
+                    received_date=metadata.received_date,
                 )
                 page_documents.append(page_doc)
 

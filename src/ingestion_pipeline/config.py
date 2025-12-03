@@ -43,6 +43,7 @@ class Settings(BaseSettings):  # type: ignore
     #   OPENSEARCH_PROXY_URL="http://localhost:9200"
     OPENSEARCH_PROXY_URL: str = "http://localhost:9200"
     OPENSEARCH_CHUNK_INDEX_NAME: str = "page_chunks"
+    OPENSEARCH_PAGE_METADATA_INDEX_NAME: str = "page_metadata"
 
     # -- AWS --
     AWS_ACCESS_KEY_ID: str = "aws_access_key_id"

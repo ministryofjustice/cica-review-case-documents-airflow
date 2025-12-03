@@ -44,6 +44,7 @@ def mock_metadata():
     metadata = MagicMock(spec=DocumentMetadata)
     metadata.source_doc_id = "doc-123"
     metadata.case_ref = "case-abc"
+    metadata.received_date = datetime.datetime.fromisoformat("2025-11-06T00:00:00")
     return metadata
 
 
