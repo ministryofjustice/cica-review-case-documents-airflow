@@ -76,8 +76,23 @@ class DocumentChunker:
                 all_chunks.extend(page_chunks)
                 chunk_index_counter += len(page_chunks)
 
-                logger.debug(f"Extracted {len(all_chunks)} chunks from {len(doc.pages)} pages")
-            return ProcessedDocument(chunks=all_chunks)
+                # TODO use metadata to build page document
+                page_doc = DocumentPage(
+                    source_doc_id=metadata.source_doc_id,
+                    page_num=page.page_num,
+                    # Placeholders, these will be generated in another step and passed in,
+                    # probably key:object page_num:{s3_page_uri, page_width, page_height, page_text, anything else....}
+                    page_id=f"s3://bucket/{metadata.case_ref}/{metadata.source_doc_id}/page_images/page_{page.page_num}.png",
+                    page_width=page.width,
+                    page_height=page.height,
+                    # The place holders wlll be added outside of this step
+                    # and should be held within the document metadata
+                    text="To be added to DcoumentMetadata..........",
+                )
+                page_documents.append(page_doc)
+
+            logger.info(f"Extracted {len(all_chunks)} chunks from {len(doc.pages)} pages")
+            return ProcessedDocument(chunks=all_chunks, pages=page_documents, metadata=metadata)
 
         except Exception as e:
             logger.error(f"Error extracting chunks from document: {str(e)}")

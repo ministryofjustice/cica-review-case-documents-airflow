@@ -91,6 +91,8 @@ def build_pipeline() -> Pipeline:
         page_factory=page_factory,
     )
 
+    page_processor = PageProcessor()
+
     # --- Construct and Return the Pipeline ---
     return Pipeline(
         textract_processor=textract_processor,
