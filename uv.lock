@@ -252,13 +252,13 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "deptry", specifier = ">=0.23.1,<0.24" },
+    { name = "deptry", specifier = ">=0.23.1,<0.25" },
     { name = "numpy", specifier = ">=2.3.4" },
     { name = "pre-commit", specifier = ">=4.2.0,<5" },
 ]
 test = [
     { name = "moto", specifier = ">=5.1.10,<6" },
-    { name = "pytest", specifier = ">=8.4.1,<9" },
+    { name = "pytest", specifier = ">=8.4.1,<10" },
     { name = "pytest-cov", specifier = ">=6.2.1,<8" },
     { name = "pytest-mock", specifier = ">=3.15.1,<4" },
 ]
