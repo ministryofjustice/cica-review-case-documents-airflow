@@ -187,6 +187,7 @@ class DocumentPage(BaseModel):
     text: str = Field(..., description="Structured ocr content for the front end rendering")
     page_width: float
     page_height: float
+    received_date: datetime
 
 
 class ProcessedDocument(BaseModel):

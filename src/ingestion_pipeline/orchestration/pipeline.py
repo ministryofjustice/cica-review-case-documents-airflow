@@ -8,6 +8,7 @@ from ingestion_pipeline.config import settings
 from ingestion_pipeline.custom_logging.log_context import source_doc_id_context
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingError, EmbeddingGenerator
 from ingestion_pipeline.indexing.indexer import IndexingError, OpenSearchIndexer
+from ingestion_pipeline.page_processor.processor import PageProcessor
 from ingestion_pipeline.textract.textract_processor import TextractProcessingError, TextractProcessor
 
 logger = logging.getLogger(__name__)
@@ -33,6 +34,8 @@ class Pipeline:
         chunker: DocumentChunker,
         embedding_generator: EmbeddingGenerator,
         chunk_indexer: OpenSearchIndexer,
+        page_indexer: OpenSearchIndexer,
+        page_processor: PageProcessor,
     ):
         """Initializes the orchestrator with injected dependencies.
 
@@ -41,11 +44,15 @@ class Pipeline:
             chunker: Document chunker with configured strategies.
             embedding_generator: Generator for creating embeddings from text.
             chunk_indexer: Indexer to store documents in OpenSearch.
+            page_indexer: Indexer to store document pages in OpenSearch.
+            page_processor: Processor to handle page-level processing.
         """
         self.textract_processor = textract_processor
         self.chunker = chunker
         self.embedding_generator = embedding_generator
         self.chunk_indexer = chunk_indexer
+        self.page_indexer = page_indexer
+        self.page_processor = page_processor
 
     def process_document(self, document_metadata: DocumentMetadata):
         """Runs the full pipeline for a single document.
@@ -64,8 +71,12 @@ class Pipeline:
                 return
 
             updated_metadata = document_metadata.model_copy(update={"page_count": document.num_pages})
-            processed_data = self.chunker.chunk(document, updated_metadata)
 
+            # Index page metadata here
+            page_documents = self.page_processor.process(document, updated_metadata)
+            self.page_indexer.index_documents(page_documents, id_field="page_id")
+
+            processed_data = self.chunker.chunk(document, updated_metadata)
             if not processed_data.chunks:
                 logger.warning("No chunks were generated. Skipping embedding and indexing.")
                 return

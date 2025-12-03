@@ -4,12 +4,11 @@ Supports a single proxy/base URL which may include the path (url prefix).
 """
 
 import logging
-from typing import List
+from typing import Any, List
 from urllib.parse import urlparse
 
 from opensearchpy import OpenSearch, helpers
-
-from ingestion_pipeline.chunking.schemas import DocumentChunk
+from opensearchpy.exceptions import ConflictError
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +68,7 @@ class OpenSearchIndexer:
 
         logger.info("Client initialised for index '%s'", self.index_name)
 
-    def index_documents(self, documents: List[DocumentChunk], id_field: str = "chunk_id"):
+    def index_documents(self, documents: List[Any], id_field: str = "chunk_id"):
         """Indexes a list of Pydantic models into OpenSearch using the Bulk API.
 
         Args:
@@ -109,11 +108,11 @@ class OpenSearchIndexer:
             self._delete_documents_by_source_doc_id(source_doc_id)
             raise IndexingError(f"Failed to index: {str(e)}") from e
 
-    def _generate_bulk_actions(self, documents: List[DocumentChunk], id_field: str):
-        """Generates OpenSearch bulk actions from a list of document chunks.
+    def _generate_bulk_actions(self, documents: List[Any], id_field: str):
+        """Generates OpenSearch bulk actions from a list of Pydantic models.
 
         Args:
-            documents (List[DocumentChunk]): List of DocumentChunk instances to be indexed.
+            documents (List[Any]): List of Pydantic models to be indexed.
             id_field (str): Attribute name to use as the document's unique identifier.
 
         Raises:
@@ -136,5 +135,10 @@ class OpenSearchIndexer:
     def _delete_documents_by_source_doc_id(self, source_doc_id: str):
         """Deletes all documents in the index with the given source_doc_id."""
         query = {"query": {"match": {"source_doc_id": source_doc_id}}}
-        response = self.client.delete_by_query(index=self.index_name, body=query)
-        logger.info(f"Deleted {response.get('deleted', 0)} chunks from index {self.index_name}")
+        try:
+            response = self.client.delete_by_query(index=self.index_name, body=query)
+            deleted_count = response.get("deleted", 0)
+            if deleted_count > 0:
+                logger.info(f"Deleted {deleted_count} documents from index {self.index_name}")
+        except ConflictError as e:
+            logger.debug(f"Version conflict during delete (harmless): {e}")

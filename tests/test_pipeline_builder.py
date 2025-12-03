@@ -30,6 +30,7 @@ def mock_settings():
         mock.AWS_REGION = "us-east-1"
         mock.BEDROCK_EMBEDDING_MODEL_ID = "test-model-id"
         mock.OPENSEARCH_CHUNK_INDEX_NAME = "test-index"
+        mock.OPENSEARCH_PAGE_METADATA_INDEX_NAME = "page_metadata"
         mock.OPENSEARCH_PROXY_URL = "http://test-proxy.com"
         yield mock
 
@@ -48,6 +49,7 @@ def mock_components():
         patch("ingestion_pipeline.pipeline_builder.EmbeddingGenerator") as mock_embedding,
         patch("ingestion_pipeline.pipeline_builder.OpenSearchIndexer") as mock_indexer,
         patch("ingestion_pipeline.pipeline_builder.Pipeline") as mock_pipeline,
+        patch("ingestion_pipeline.pipeline_builder.PageProcessor") as mock_page_processor,
     ):
         yield {
             "processor": mock_processor,
@@ -60,6 +62,7 @@ def mock_components():
             "embedding": mock_embedding,
             "indexer": mock_indexer,
             "pipeline": mock_pipeline,
+            "page_processor": mock_page_processor,
         }
 
 
@@ -130,10 +133,21 @@ def test_build_pipeline_creates_embedding_generator(mock_textractor, mock_boto3_
 
 
 def test_build_pipeline_creates_opensearch_indexer(mock_textractor, mock_boto3_client, mock_settings, mock_components):
-    """Test that OpenSearchIndexer is created with correct settings."""
+    """Test that OpenSearchIndexer for chunk index is created with correct settings."""
     build_pipeline()
+    mock_components["indexer"].assert_any_call(index_name="test-index", proxy_url="http://test-proxy.com")
 
-    mock_components["indexer"].assert_called_once_with(index_name="test-index", proxy_url="http://test-proxy.com")
+
+def test_build_pipeline_creates_page_indexer(mock_textractor, mock_boto3_client, mock_settings, mock_components):
+    """Test that OpenSearchIndexer for page metadata is created with correct settings."""
+    build_pipeline()
+    mock_components["indexer"].assert_any_call(index_name="page_metadata", proxy_url="http://test-proxy.com")
+
+
+def test_build_pipeline_creates_page_processor(mock_textractor, mock_boto3_client, mock_settings, mock_components):
+    """Test that PageProcessor is instantiated."""
+    build_pipeline()
+    mock_components["page_processor"].assert_called_once_with()
 
 
 def test_build_pipeline_returns_pipeline_instance(mock_textractor, mock_boto3_client, mock_settings, mock_components):
@@ -148,10 +162,26 @@ def test_build_pipeline_creates_pipeline_with_all_components(
 ):
     """Test that Pipeline is instantiated with all required components."""
     build_pipeline()
-
     mock_components["pipeline"].assert_called_once_with(
         textract_processor=mock_components["processor"].return_value,
         chunker=mock_components["chunker"].return_value,
         embedding_generator=mock_components["embedding"].return_value,
         chunk_indexer=mock_components["indexer"].return_value,
+        page_indexer=mock_components["indexer"].return_value,
+        page_processor=mock_components["page_processor"].return_value,
+    )
+
+
+def test_build_pipeline_creates_pipeline_with_all_components_including_page(
+    mock_textractor, mock_boto3_client, mock_settings, mock_components
+):
+    """Test that Pipeline is instantiated with all required components including page indexer and processor."""
+    build_pipeline()
+    mock_components["pipeline"].assert_called_once_with(
+        textract_processor=mock_components["processor"].return_value,
+        chunker=mock_components["chunker"].return_value,
+        embedding_generator=mock_components["embedding"].return_value,
+        chunk_indexer=mock_components["indexer"].return_value,
+        page_indexer=mock_components["indexer"].return_value,
+        page_processor=mock_components["page_processor"].return_value,
     )
