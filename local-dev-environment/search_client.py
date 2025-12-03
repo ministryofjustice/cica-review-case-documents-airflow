@@ -43,7 +43,7 @@ FUZZY = False  # Enable fuzzy matching
 
 #  Set boosts to refine search behaviour and adjust fuzzy matching parameters
 KEYWORD_BOOST = 1  # Boost factor for keyword matching in hybrid search
-SEMANTIC_BOOST = 1  # Boost factor for semantic vector search in hybrid search
+SEMANTIC_BOOST = 0  # Boost factor for semantic vector search in hybrid search
 FUZZY_BOOST = 1  # Boost factor for fuzzy matching in hybrid search
 FUZZINESS = "Auto"  # Fuzziness level for fuzzy matching, Auto chooses based on term length but can be set to an integer
 MAX_EXPANSIONS = 50  # Maximum expansions for fuzzy matching
@@ -98,14 +98,18 @@ def create_hybrid_query(query_text: str, query_vector: list[float], k: int = 5) 
 
 
 # --- 4. Execute results and write to Excel ---
-def local_search_client() -> list[dict]:
-    """Execute a hybrid search on the local OpenSearch instance and return the hits."""
+def local_search_client(search_term: str = SEARCH_TERM) -> list[dict]:
+    """Execute a hybrid search on the local OpenSearch instance and return the hits.
+
+    :param search_term: The search term to query. Defaults to SEARCH_TERM constant.
+    :return: List of search hits.
+    """
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger("embedding_search_client")
     try:
         embedding_generator = EmbeddingGenerator(settings.BEDROCK_EMBEDDING_MODEL_ID)
-        embedding = embedding_generator.generate_embedding(SEARCH_TERM)
-        logger.info(f"Generated embedding for search term: '{SEARCH_TERM}'")
+        embedding = embedding_generator.generate_embedding(search_term)
+        logger.info(f"Generated embedding for search term: '{search_term}'")
 
         client = OpenSearch(
             hosts=[settings.OPENSEARCH_PROXY_URL],
@@ -115,7 +119,7 @@ def local_search_client() -> list[dict]:
             ssl_assert_hostname=False,
         )
 
-        search_query = create_hybrid_query(SEARCH_TERM, embedding, k=K_QUERIES)
+        search_query = create_hybrid_query(search_term, embedding, k=K_QUERIES)
         logger.info(f"Performing hybrid search for {K_QUERIES} neighbors in '{CHUNK_INDEX_NAME}'...")
         response = client.search(index=CHUNK_INDEX_NAME, body=search_query)
 

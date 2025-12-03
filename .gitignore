@@ -23,3 +23,5 @@ tests/chunking/test_integration_layout_table_chunking.py
 logs/
 output
 local-dev-environment/output
+local-dev-environment/testing/output
+local-dev-environment/testing/testing_docs
