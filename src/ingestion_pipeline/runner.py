@@ -21,7 +21,9 @@ S3_DOCUMENT_URI = "s3://cica-textract-response-dev/Case1_TC19_50_pages_brain_inj
 def main():
     """Main entry point for the application runner."""
     logger.info("Pipeline runner started.")
-    check_opensearch_health(settings.OPENSEARCH_PROXY_URL)
+    if not check_opensearch_health(settings.OPENSEARCH_PROXY_URL):
+        logger.critical("OpenSearch health check failed. Exiting pipeline runner.")
+        return
 
     # In a real-world scenario, this metadata would come from an SQS message.
     identifier = DocumentIdentifier(

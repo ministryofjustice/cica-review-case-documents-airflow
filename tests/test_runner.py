@@ -9,10 +9,12 @@ from ingestion_pipeline.runner import main
 
 @mock.patch("ingestion_pipeline.runner.build_pipeline")
 @mock.patch("ingestion_pipeline.runner.logger")
-def test_main_successful_execution(mock_logger, mock_build_pipeline):
+@mock.patch("ingestion_pipeline.runner.check_opensearch_health")
+def test_main_successful_execution(mock_check_opensearch_health, mock_logger, mock_build_pipeline):
     """Test that main executes successfully with valid input."""
     mock_pipeline = mock.Mock()
     mock_build_pipeline.return_value = mock_pipeline
+    mock_check_opensearch_health.return_value = True
 
     main()
 
@@ -25,11 +27,13 @@ def test_main_successful_execution(mock_logger, mock_build_pipeline):
 
 @mock.patch("ingestion_pipeline.runner.build_pipeline")
 @mock.patch("ingestion_pipeline.runner.logger")
-def test_main_handles_pipeline_exception(mock_logger, mock_build_pipeline):
+@mock.patch("ingestion_pipeline.runner.check_opensearch_health")
+def test_main_handles_pipeline_exception(mock_check_opensearch_health, mock_logger, mock_build_pipeline):
     """Test that main logs critical error when pipeline raises exception."""
     mock_pipeline = mock.Mock()
     mock_pipeline.process_document.side_effect = Exception("Pipeline error")
     mock_build_pipeline.return_value = mock_pipeline
+    mock_check_opensearch_health.return_value = True
 
     main()
 
@@ -39,7 +43,10 @@ def test_main_handles_pipeline_exception(mock_logger, mock_build_pipeline):
 
 @mock.patch("ingestion_pipeline.runner.build_pipeline")
 @mock.patch("ingestion_pipeline.runner.DocumentIdentifier")
-def test_main_creates_correct_document_metadata(mock_identifier_class, mock_build_pipeline):
+@mock.patch("ingestion_pipeline.runner.check_opensearch_health")
+def test_main_creates_correct_document_metadata(
+    mock_check_opensearch_health, mock_identifier_class, mock_build_pipeline
+):
     """Test that main creates DocumentMetadata with correct values."""
     mock_pipeline = mock.Mock()
     mock_build_pipeline.return_value = mock_pipeline
@@ -47,6 +54,7 @@ def test_main_creates_correct_document_metadata(mock_identifier_class, mock_buil
     mock_identifier = mock.Mock()
     mock_identifier.generate_uuid.return_value = "test-uuid-123"
     mock_identifier_class.return_value = mock_identifier
+    mock_check_opensearch_health.return_value = True
 
     with mock.patch("ingestion_pipeline.runner.datetime") as mock_datetime:
         mock_now = datetime.datetime(2024, 1, 15, 12, 0, 0)
@@ -69,3 +77,20 @@ def test_main_creates_correct_document_metadata(mock_identifier_class, mock_buil
         assert metadata.case_ref == "25-111111"
         assert metadata.correspondence_type == "TC19"
         assert metadata.page_count is None
+
+
+@mock.patch("ingestion_pipeline.runner.build_pipeline")
+@mock.patch("ingestion_pipeline.runner.logger")
+@mock.patch("ingestion_pipeline.runner.check_opensearch_health")
+def test_opensearch_health_check_failure_returns(mock_check_opensearch_health, mock_logger, mock_build_pipeline):
+    """Test that main executes successfully with valid input."""
+    mock_pipeline = mock.Mock()
+    mock_build_pipeline.return_value = mock_pipeline
+    mock_check_opensearch_health.return_value = False
+
+    main()
+
+    mock_build_pipeline.assert_not_called()
+    mock_pipeline.process_document.assert_not_called()
+    assert mock_logger.critical.call_count >= 1
+    mock_logger.critical.assert_called_with("OpenSearch health check failed. Exiting pipeline runner.")
