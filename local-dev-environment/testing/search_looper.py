@@ -1,86 +1,63 @@
 """Search looper for batch testing search terms against OpenSearch.
 
 This script reads search terms from a CSV file, runs each through the local search client,
-and outputs results to a CSV file to be used to compare expected page number and expected
-chunk ID to the output values for each search term.
+and returns results as a pandas DataFrame to be used for relevance scoring.
+
+Run from local-dev-environment directory: python -m testing.run_evaluation
 """
 
-import csv
 import logging
-import sys
-from datetime import datetime
 from pathlib import Path
 
-# Add the parent directory to sys.path to import search_client
-SCRIPT_DIR = Path(__file__).resolve().parent
-sys.path.insert(0, str(SCRIPT_DIR.parent))
-
-# Import after modifying sys.path
-from search_client import SCORE_FILTER, local_search_client  # noqa: E402
+import pandas as pd
+from search_client import count_term_occurrences, local_search_client
+from testing.evaluation_settings import SCORE_FILTER
 
 # --- Configuration ---
+SCRIPT_DIR = Path(__file__).resolve().parent
 INPUT_FILE_NAME = "search_terms.csv"  # Change this to use a different input file
 INPUT_FILE = SCRIPT_DIR / "testing_docs" / INPUT_FILE_NAME
-OUTPUT_DIR = SCRIPT_DIR / "output"
-TIMESTAMP_STR = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-OUTPUT_FILE = OUTPUT_DIR / f"{TIMESTAMP_STR}_search_results.csv"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("search_looper")
 
 
-def load_search_terms(input_file: Path) -> list[dict]:
+def load_search_terms(input_file: Path) -> pd.DataFrame:
     """Load search terms from a CSV file."""
-    search_terms = []
-    with open(input_file, newline="", encoding="utf-8") as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            search_terms.append(
-                {
-                    "search_term": row.get("search_term", "").strip(),
-                    "expected_page_number": row.get("expected_page_number", "").strip(),
-                    "expected_chunk_id": row.get("expected_chunk_id", "").strip(),
-                }
-            )
-    return search_terms
+    df = pd.read_csv(input_file, dtype=str).fillna("")
+    # Rename columns to standardize
+    df = df.rename(
+        columns={
+            "manual identifications": "manual_identifications",
+        }
+    )
+    # Strip whitespace from all string columns
+    for col in df.columns:
+        df[col] = df[col].str.strip()
+    return df
 
 
-def write_results_to_csv(results: list[dict], output_file: Path) -> None:
-    """Write search results to a CSV file."""
-    output_file.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_file, "w", newline="", encoding="utf-8") as csvfile:
-        fieldnames = [
-            "search_term",
-            "expected_page_number",
-            "expected_chunk_id",
-            "all_chunk_ids",
-            "all_page_numbers",
-            "total_results",
-        ]
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(results)
-    logger.info(f"Results written to {output_file.resolve()}")
+def run_search_loop(input_file: Path | None = None) -> pd.DataFrame:
+    """Run search loop and return results as a DataFrame.
 
+    Args:
+        input_file: Path to CSV file with search terms. Uses default INPUT_FILE if None.
 
-def main():
-    """Main entry point for the search looper."""
-    logger.info("Search looper started.")
+    Returns:
+        DataFrame with search results including all chunk IDs, page numbers, and term frequencies.
+    """
+    file_path = input_file or INPUT_FILE
 
-    # Load search terms from input file
-    if not INPUT_FILE.exists():
-        logger.error(f"Input file not found: {INPUT_FILE}")
-        return
+    if not file_path.exists():
+        logger.error(f"Input file not found: {file_path}")
+        return pd.DataFrame()
 
-    search_terms = load_search_terms(INPUT_FILE)
-    logger.info(f"Loaded {len(search_terms)} search terms from {INPUT_FILE}")
+    search_terms_df = load_search_terms(file_path)
+    logger.info(f"Loaded {len(search_terms_df)} search terms from {file_path}")
 
-    # Process each search term
     results = []
-    for term_data in search_terms:
-        search_term = term_data["search_term"]
-        expected_page = term_data["expected_page_number"]
-        expected_chunk_id = term_data["expected_chunk_id"]
+    for idx, row in search_terms_df.iterrows():
+        search_term = row.get("search_term", "")
 
         if not search_term:
             continue
@@ -88,36 +65,56 @@ def main():
         logger.info(f"Searching for: '{search_term}'")
 
         try:
-            # Use the search_client's local_search_client function
             hits = local_search_client(search_term=search_term)
-            # Filter by score
             filtered_hits = [hit for hit in hits if hit["_score"] >= SCORE_FILTER]
         except Exception as e:
             logger.error(f"Search failed for term '{search_term}': {e}")
             filtered_hits = []
 
-        # Get result info
         if filtered_hits:
-            # Collect all chunk IDs and page numbers
             all_chunk_ids = ", ".join([hit.get("_id", "N/A") for hit in filtered_hits])
             all_page_numbers = ", ".join([str(hit["_source"].get("page_number", "N/A")) for hit in filtered_hits])
+            term_freq_list = [
+                count_term_occurrences(hit["_source"].get("chunk_text", ""), search_term) for hit in filtered_hits
+            ]
+            all_term_frequencies = ", ".join([str(tf) for tf in term_freq_list])
+            total_term_frequency = sum(term_freq_list)
         else:
             all_chunk_ids = ""
             all_page_numbers = ""
+            all_term_frequencies = ""
+            total_term_frequency = 0
 
         results.append(
             {
                 "search_term": search_term,
-                "expected_page_number": expected_page,
-                "expected_chunk_id": expected_chunk_id,
+                "desirable_terms": row.get("desirable associated terms", ""),
+                "acceptable_terms": row.get("acceptable associated terms", ""),
+                "expected_page_number": row.get("expected_page_number", ""),
+                "expected_chunk_id": row.get("expected_chunk_id", ""),
+                "manual_identifications": row.get("manual_identifications", ""),
                 "all_chunk_ids": all_chunk_ids,
                 "all_page_numbers": all_page_numbers,
+                "all_term_frequencies": all_term_frequencies,
+                "total_term_frequency": total_term_frequency,
                 "total_results": len(filtered_hits),
             }
         )
 
-    # Write results to CSV
-    write_results_to_csv(results, OUTPUT_FILE)
+    results_df = pd.DataFrame(results)
+    # Add index column starting from 1
+    results_df.insert(0, "index", range(1, len(results_df) + 1))
+
+    logger.info("Search loop completed.")
+    return results_df
+
+
+def main():
+    """Main entry point for the search looper (for standalone testing)."""
+    logger.info("Search looper started.")
+    results_df = run_search_loop()
+    if not results_df.empty:
+        logger.info(f"Results:\n{results_df.to_string()}")
     logger.info("Search looper finished.")
 
 
