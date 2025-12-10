@@ -25,3 +25,4 @@ output
 local-dev-environment/output
 local-dev-environment/testing/output
 local-dev-environment/testing/testing_docs
+local-dev-environment/testing/textract_accuracy/data
