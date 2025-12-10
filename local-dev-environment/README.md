@@ -107,6 +107,48 @@ search_for_doc.py searches for the inserted document using the same embedding.
 
 TODO: add to a local integration test suite.
 
+# Evaluation workflow (`testing/run_evaluation`)
+
+The evaluation suite lets you measure how well different hybrid-search configurations surface expected chunks for a set of predefined search terms. It reuses the same LocalStack/OpenSearch setup, but for multiple searches consecutively. It queries OpenSearch, scores the returned chunks, and records metrics/outputs for each run.
+
+## How it works
+
+1. `testing/search_looper.py` loads search terms from `testing/testing_docs/search_terms.csv`, runs each through `search_client.local_search_client`, and captures the OpenSearch hits.
+2. `testing/term_matching.py` checks whether the hits contain the desirable/acceptable terms listed in the CSV, using the methods enabled via the evaluation settings.
+3. Metrics (precision, recall, chunk match %) plus raw chunk info are written to timestamped CSVs, and a cumulative log tracks every run.
+
+## Running the evaluation
+
+From the `local-dev-environment` directory:
+
+```bash
+python -m testing.run_evaluation
+```
+
+Requirements:
+
+- LocalStack/OpenSearch running (see setup above).
+- `testing/testing_docs/search_terms.csv` populated with the cases you want to evaluate and you also have `TC19_test_all_chunks.csv`in the testing_docs folder.
+- Ensure your `.env` file in the project root contains valid AWS credentials and OpenSearch connection details (see main README for details).
+
+## Changing search configuration
+
+All configuration settings live in `testing/evaluation_settings.py`:
+
+- **Boosts & search types:** `KEYWORD_BOOST`, `SEMANTIC_BOOST`, `FUZZY_BOOST`, `WILDCARD_BOOST`, `ANALYSER_BOOST` (set to `0` to disable a mode).
+- **Result volume & filtering:** `K_QUERIES` controls how many results OpenSearch returns, `SCORE_FILTER` drops low-scoring hits before evaluating.
+- **Fuzzy parameters:** `FUZZINESS`, `MAX_EXPANSIONS`.
+- **Term-matching threshold:** `FUZZY_MATCH_THRESHOLD` governs how lenient fuzzy term checks are.
+- **Optional scope filters:** `CASE_REF_FILTER` and `DOCUMENT_ID_FILTER` limit searches to a specific case or document if set. (To be added)
+
+Edit those values, re-run the evaluation command, and the new configuration will be added to the output/log automatically.
+
+## Output locations
+
+- **Per-run CSV:** `local-dev-environment/testing/output/evaluation/<YYYY-MM-DD>/<timestamp>_relevance_results.csv` contains detailed row-by-row results for each search term.
+- **Cumulative log:** `local-dev-environment/testing/output/evaluation/evaluation_log.csv` appends an aggregate summary (precision/recall, chunk match %, etc.) for every run so you can compare configurations over time.
+- **Hybrid search Excel export (optional):** When running `search_client.py` directly, Excel files land under `local-dev-environment/output/hybrid-test-results/<YYYY-MM-DD>/`.
+
 # Using the Hybrid Search Client (`search_client.py`)
 
 This script allows you to perform hybrid (keyword + semantic) search queries against your local OpenSearch instance and export the results to Excel. You can choose for the keyword section to be either direct keyword or to use fuzzy
@@ -125,9 +167,9 @@ From the project root, run:
 python local-dev-environment/search_client.py
 ```
 
-## Configuration
+This generates an embedding for the hard-coded `SEARCH_TERM`, issues a hybrid OpenSearch query, and writes the filtered hits to Excel.
 
-You can adjust search parameters (e.g., search term, number of results, score filter) and enable/disable fuzzy matching at the top of `search_client.py`.
+## Configure it
 
 Results will be written to an Excel file in the `output/hybrid-test-results/<date>/` directory.
 
