@@ -13,10 +13,10 @@ Run evaluation from local-dev-environment directory:
 # Set boost to 0 to disable a search type, or >0 to enable and weight it.
 # Higher boost = more weight in the combined search score.
 
-KEYWORD_BOOST = 1.0  # Exact keyword matching
-ANALYSER_BOOST = 0.0  # English analyzer (stemming, stopwords)
-SEMANTIC_BOOST = 0.0  # Vector/embedding similarity search
-FUZZY_BOOST = 1.0  # Fuzzy matching (typo tolerance)
+KEYWORD_BOOST = 0.0  # Exact keyword matching
+ANALYSER_BOOST = 1.0  # English analyzer (stemming, stopwords)
+SEMANTIC_BOOST = 1.0  # Vector/embedding similarity search
+FUZZY_BOOST = 0.0  # Fuzzy matching (typo tolerance)
 WILDCARD_BOOST = 0.0  # Wildcard pattern matching
 
 # =============================================================================
@@ -33,13 +33,7 @@ MAX_EXPANSIONS = 50  # Maximum fuzzy term expansions
 # =============================================================================
 # TERM MATCHING SETTINGS
 # =============================================================================
-# These control how we verify if returned chunks contain search terms.
+# These control how we verify if returned chunks contain search terms when a
+# fuzzy match is conducted.
 
 FUZZY_MATCH_THRESHOLD = 80  # Similarity threshold for fuzzy term matching (0-100)
-
-# =============================================================================
-# OUTPUT SETTINGS
-# =============================================================================
-# Output paths are derived automatically from the testing directory.
-# Results are saved to: testing/output/evaluation/{date}/{timestamp}_results.csv
-# Cumulative log: testing/output/evaluation/evaluation_log.csv
