@@ -11,17 +11,18 @@ from datetime import datetime
 from pathlib import Path
 
 # Add the project 'src' directory to sys.path
-sys.path.append(str(Path(__file__).resolve().parent.parent / "src"))
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent / "src"))
 
 import xlsxwriter
 from opensearchpy import OpenSearch
 
 # Import the OpenSearch-specific ConnectionError
 from opensearchpy.exceptions import ConnectionError as OpenSearchConnectionError
-from testing import evaluation_settings as eval_settings
 
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingGenerator
+from testing import evaluation_settings as eval_settings
+from testing.evaluation_config import get_active_search_type
 
 os.environ["AWS_MOD_PLATFORM_ACCESS_KEY_ID"] = settings.AWS_MOD_PLATFORM_ACCESS_KEY_ID
 os.environ["AWS_MOD_PLATFORM_SECRET_ACCESS_KEY"] = settings.AWS_MOD_PLATFORM_SECRET_ACCESS_KEY
@@ -37,11 +38,12 @@ CHUNK_INDEX_NAME = settings.OPENSEARCH_CHUNK_INDEX_NAME
 
 # --- 2. Choose your search term and output name and location---
 
-SEARCH_TERM = "a"
+SEARCH_TERM = "bone"
 
 # Edit the output directory and path if needed
-
-OUTPUT_DIRECTORY = Path("local-dev-environment/output/hybrid-test-results") / datetime.now().strftime("%Y-%m-%d")
+# Use path relative to testing folder (parent of this file)
+SCRIPT_DIR = Path(__file__).resolve().parent
+OUTPUT_DIRECTORY = SCRIPT_DIR / "output" / "single-search-results" / datetime.now().strftime("%Y-%m-%d")
 SAFE_SEARCH_TERM = str(SEARCH_TERM).replace("/", "_").replace(" ", "_")
 TIMESTAMP_STR = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 OUTPUT_PATH = OUTPUT_DIRECTORY / f"{TIMESTAMP_STR}_{SAFE_SEARCH_TERM}_search_results.xlsx"
@@ -61,13 +63,13 @@ def create_hybrid_query(query_text: str, query_vector: list[float], k: int = 5) 
         should_clauses.append({"match": {"chunk_text": {"query": query_text, "boost": eval_settings.KEYWORD_BOOST}}})
 
     # Add English analyzer match if boost > 0
+    # Uses the chunk_text.english multi-field which is indexed with the English analyzer
     if eval_settings.ANALYSER_BOOST > 0:
         should_clauses.append(
             {
                 "match": {
-                    "chunk_text": {
+                    "chunk_text.english": {
                         "query": query_text,
-                        "analyzer": "english",
                         "boost": eval_settings.ANALYSER_BOOST,
                     }
                 }
@@ -173,17 +175,8 @@ def write_hits_to_xlsx(
     worksheet = workbook.add_worksheet()
     filtered_hits = [hit for hit in hits if hit["_score"] >= score_filter]
 
-    # Determine active search types based on boost values
-    active_types = []
-    if eval_settings.KEYWORD_BOOST > 0:
-        active_types.append("Keyword")
-    if eval_settings.ANALYSER_BOOST > 0:
-        active_types.append("Analyser")
-    if eval_settings.FUZZY_BOOST > 0:
-        active_types.append("Fuzzy")
-    if eval_settings.SEMANTIC_BOOST > 0:
-        active_types.append("Semantic")
-    search_type_str = "+".join(active_types) if active_types else "None"
+    # Get active search type from config
+    search_type_str = get_active_search_type()
 
     # Write search parameters in the first row
     worksheet.write(0, 0, "Search term:")

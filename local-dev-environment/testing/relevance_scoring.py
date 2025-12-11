@@ -8,12 +8,13 @@ import logging
 from pathlib import Path
 
 import pandas as pd
+
 from testing.chunk_metrics import calculate_chunk_match, safe_int
-from testing.config import (
+from testing.evaluation_config import (
     CHUNKS_FILE,
     EVALUATION_LOG_FILE,
-    get_active_term_check_method,
-    get_active_term_check_methods,
+    get_active_search_type,
+    get_active_search_types,
 )
 from testing.term_matching import check_terms_by_expected_chunks, check_terms_in_chunks
 
@@ -68,9 +69,9 @@ def evaluate_relevance(results_df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     df = pd.concat([df, chunk_metrics], axis=1)
 
     # Determine the term matching methods based on active search types
-    match_methods = get_active_term_check_methods()
-    match_method_label = get_active_term_check_method()
-    logger.info(f"Using term check method: {match_method_label} (methods: {match_methods})")
+    match_methods = get_active_search_types()
+    match_method_label = get_active_search_type()
+    logger.info(f"Using search type: {match_method_label} (methods: {match_methods})")
 
     # Build term-to-expected-chunks lookup for semantic/hybrid checking
     term_to_expected_chunks: dict[str, set[str]] = {}
@@ -88,7 +89,6 @@ def evaluate_relevance(results_df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
             return pd.Series(
                 {
                     "chunks_with_search_term": 0,
-                    "chunks_with_desirable": 0,
                     "chunks_with_acceptable": 0,
                     "chunks_with_any_term": 0,
                 }
@@ -99,7 +99,6 @@ def evaluate_relevance(results_df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
             result = check_terms_by_expected_chunks(
                 returned_chunk_ids=chunk_ids,
                 search_term=str(row.get("search_term", "")),
-                desirable_terms=str(row.get("desirable_terms", "")),
                 acceptable_terms=str(row.get("acceptable_terms", "")),
                 term_to_expected_chunks=term_to_expected_chunks,
             )
@@ -108,7 +107,6 @@ def evaluate_relevance(results_df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
                 return pd.Series(
                     {
                         "chunks_with_search_term": 0,
-                        "chunks_with_desirable": 0,
                         "chunks_with_acceptable": 0,
                         "chunks_with_any_term": 0,
                     }
@@ -117,14 +115,12 @@ def evaluate_relevance(results_df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
                 chunk_ids=chunk_ids,
                 chunk_lookup=chunk_lookup,
                 search_term=str(row.get("search_term", "")),
-                desirable_terms=str(row.get("desirable_terms", "")),
                 acceptable_terms=str(row.get("acceptable_terms", "")),
                 match_methods=match_methods,
             )
         return pd.Series(
             {
                 "chunks_with_search_term": result["chunks_with_search_term"],
-                "chunks_with_desirable": result["chunks_with_desirable"],
                 "chunks_with_acceptable": result["chunks_with_acceptable"],
                 "chunks_with_any_term": result["chunks_with_any_term"],
             }
@@ -134,13 +130,13 @@ def evaluate_relevance(results_df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     df = pd.concat([df, term_checks], axis=1)
 
     # Calculate percentage of returned chunks containing terms
-    df["pct_with_search_term"] = df.apply(
+    df["term_based_precision"] = df.apply(
         lambda row: round(row["chunks_with_search_term"] / row["total_results"] * 100, 2)
         if row["total_results"] > 0
         else None,
         axis=1,
     )
-    df["pct_with_any_term"] = df.apply(
+    df["acceptable_term_based_precision"] = df.apply(
         lambda row: round(row["chunks_with_any_term"] / row["total_results"] * 100, 2)
         if row["total_results"] > 0
         else None,
@@ -158,8 +154,8 @@ def evaluate_relevance(results_df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
         "precision",
         "recall",
         "missing_chunk_ids",
-        "pct_with_search_term",
-        "pct_with_any_term",
+        "term_based_precision",
+        "acceptable_term_based_precision",
         "manual_identifications",
         "total_term_frequency",
         "term_freq_difference",
@@ -191,10 +187,12 @@ def _calculate_summary_stats(df: pd.DataFrame) -> dict:
     queries_with_expected_chunk = df["expected_chunk_id"].apply(lambda x: bool(str(x).strip())).sum()
 
     # Calculate average percentages for term presence
-    pct_search_term_values = df["pct_with_search_term"].dropna()
-    pct_any_term_values = df["pct_with_any_term"].dropna()
-    avg_pct_with_search_term = pct_search_term_values.mean() if len(pct_search_term_values) > 0 else 0
-    avg_pct_with_any_term = pct_any_term_values.mean() if len(pct_any_term_values) > 0 else 0
+    term_precision_values = df["term_based_precision"].dropna()
+    acceptable_precision_values = df["acceptable_term_based_precision"].dropna()
+    avg_term_based_precision = term_precision_values.mean() if len(term_precision_values) > 0 else 0
+    avg_acceptable_term_based_precision = (
+        acceptable_precision_values.mean() if len(acceptable_precision_values) > 0 else 0
+    )
 
     return {
         "total_queries": total_queries,
@@ -203,8 +201,8 @@ def _calculate_summary_stats(df: pd.DataFrame) -> dict:
         "queries_with_expected_chunk": int(queries_with_expected_chunk),
         "avg_precision": round(avg_precision, 2),
         "avg_recall": round(avg_recall, 2),
-        "avg_pct_with_search_term": round(avg_pct_with_search_term, 2),
-        "avg_pct_with_any_term": round(avg_pct_with_any_term, 2),
+        "avg_term_based_precision": round(avg_term_based_precision, 2),
+        "avg_acceptable_term_based_precision": round(avg_acceptable_term_based_precision, 2),
     }
 
 
@@ -221,20 +219,20 @@ def write_results_csv(df: pd.DataFrame, output_file: Path, config: dict, summary
 
     with open(output_file, "w", encoding="utf-8") as f:
         # Write config section as row (keys then values)
-        config_keys = ",".join(f"# {key}" for key in config.keys())
+        config_keys = ",".join(str(key) for key in config.keys())
         config_values = ",".join(str(value) for value in config.values())
-        f.write("# Search Configuration\n")
+        f.write("Search Configuration\n")
         f.write(f"{config_keys}\n")
-        f.write(f"# {config_values}\n")
-        f.write("#\n")
+        f.write(f"{config_values}\n")
+        f.write("\n")
 
         # Write summary section as row (keys then values)
-        summary_keys = ",".join(f"# {key}" for key in summary.keys())
+        summary_keys = ",".join(str(key) for key in summary.keys())
         summary_values = ",".join(str(value) for value in summary.values())
-        f.write("# Summary Statistics\n")
+        f.write("Summary Statistics\n")
         f.write(f"{summary_keys}\n")
-        f.write(f"# {summary_values}\n")
-        f.write("#\n")
+        f.write(f"{summary_values}\n")
+        f.write("\n")
 
         # Write the DataFrame
         df.to_csv(f, index=False)
@@ -260,12 +258,12 @@ def append_to_evaluation_log(config: dict, summary: dict) -> None:
     for key in ["fuzziness", "max_expansions", "queries_with_expected_chunk"]:
         log_entry.pop(key, None)
 
-    # Reorder to put timestamp first, then term_check_method
+    # Reorder to put timestamp first, then search_type
     reordered = {}
     if "timestamp" in log_entry:
         reordered["timestamp"] = log_entry.pop("timestamp")
-    if "term_check_method" in log_entry:
-        reordered["term_check_method"] = log_entry.pop("term_check_method")
+    if "search_type" in log_entry:
+        reordered["search_type"] = log_entry.pop("search_type")
     log_entry = {**reordered, **log_entry}
 
     # Check if file exists to determine if we need headers

@@ -10,8 +10,9 @@ import logging
 from pathlib import Path
 
 import pandas as pd
-from search_client import count_term_occurrences, local_search_client
+
 from testing.evaluation_settings import SCORE_FILTER
+from testing.search_client import count_term_occurrences, local_search_client
 
 # --- Configuration ---
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -29,12 +30,47 @@ def load_search_terms(input_file: Path) -> pd.DataFrame:
     df = df.rename(
         columns={
             "manual identifications": "manual_identifications",
+            "acceptable associated terms": "acceptable_terms",
         }
     )
     # Strip whitespace from all string columns
     for col in df.columns:
         df[col] = df[col].str.strip()
     return df
+
+
+def _process_hits(filtered_hits: list[dict], search_term: str) -> dict:
+    """Extract aggregated data from filtered search hits.
+
+    Args:
+        filtered_hits: List of OpenSearch hit dictionaries.
+        search_term: The search term used for term frequency counting.
+
+    Returns:
+        Dictionary with aggregated hit data.
+    """
+    if not filtered_hits:
+        return {
+            "all_chunk_ids": "",
+            "all_page_numbers": "",
+            "all_term_frequencies": "",
+            "total_term_frequency": 0,
+        }
+
+    all_chunk_ids = ", ".join(hit.get("_id", "N/A") for hit in filtered_hits)
+    all_page_numbers = ", ".join(str(hit["_source"].get("page_number", "N/A")) for hit in filtered_hits)
+    term_freq_list = [
+        count_term_occurrences(hit["_source"].get("chunk_text", ""), search_term) for hit in filtered_hits
+    ]
+    all_term_frequencies = ", ".join(str(tf) for tf in term_freq_list)
+    total_term_frequency = sum(term_freq_list)
+
+    return {
+        "all_chunk_ids": all_chunk_ids,
+        "all_page_numbers": all_page_numbers,
+        "all_term_frequencies": all_term_frequencies,
+        "total_term_frequency": total_term_frequency,
+    }
 
 
 def run_search_loop(input_file: Path | None = None) -> pd.DataFrame:
@@ -56,7 +92,7 @@ def run_search_loop(input_file: Path | None = None) -> pd.DataFrame:
     logger.info(f"Loaded {len(search_terms_df)} search terms from {file_path}")
 
     results = []
-    for idx, row in search_terms_df.iterrows():
+    for _, row in search_terms_df.iterrows():
         search_term = row.get("search_term", "")
 
         if not search_term:
@@ -71,32 +107,16 @@ def run_search_loop(input_file: Path | None = None) -> pd.DataFrame:
             logger.error(f"Search failed for term '{search_term}': {e}")
             filtered_hits = []
 
-        if filtered_hits:
-            all_chunk_ids = ", ".join([hit.get("_id", "N/A") for hit in filtered_hits])
-            all_page_numbers = ", ".join([str(hit["_source"].get("page_number", "N/A")) for hit in filtered_hits])
-            term_freq_list = [
-                count_term_occurrences(hit["_source"].get("chunk_text", ""), search_term) for hit in filtered_hits
-            ]
-            all_term_frequencies = ", ".join([str(tf) for tf in term_freq_list])
-            total_term_frequency = sum(term_freq_list)
-        else:
-            all_chunk_ids = ""
-            all_page_numbers = ""
-            all_term_frequencies = ""
-            total_term_frequency = 0
+        hit_data = _process_hits(filtered_hits, search_term)
 
         results.append(
             {
                 "search_term": search_term,
-                "desirable_terms": row.get("desirable associated terms", ""),
-                "acceptable_terms": row.get("acceptable associated terms", ""),
+                "acceptable_terms": row.get("acceptable_terms", ""),
                 "expected_page_number": row.get("expected_page_number", ""),
                 "expected_chunk_id": row.get("expected_chunk_id", ""),
                 "manual_identifications": row.get("manual_identifications", ""),
-                "all_chunk_ids": all_chunk_ids,
-                "all_page_numbers": all_page_numbers,
-                "all_term_frequencies": all_term_frequencies,
-                "total_term_frequency": total_term_frequency,
+                **hit_data,
                 "total_results": len(filtered_hits),
             }
         )

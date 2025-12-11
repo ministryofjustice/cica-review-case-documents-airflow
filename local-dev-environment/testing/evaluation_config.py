@@ -44,7 +44,7 @@ def get_date_folder() -> Path:
     return EVALUATION_DIR / date_str
 
 
-def get_active_term_check_methods() -> list[str]:
+def get_active_search_types() -> list[str]:
     """Determine all active term checking methods based on search types.
 
     Returns:
@@ -52,15 +52,18 @@ def get_active_term_check_methods() -> list[str]:
         a term is considered matched if ANY method finds it.
 
     Methods:
-    - 'exact': Substring matching (keyword/wildcard search)
+    - 'exact': Substring matching (keyword search)
+    - 'wildcard': Wildcard pattern matching (wildcard search)
     - 'stemmed': Snowball English stemmer (analyser search)
     - 'fuzzy': Approximate string matching (fuzzy search)
     - 'semantic_only': Uses expected chunk IDs (semantic search - text matching not applicable)
     """
     methods = []
 
-    if KEYWORD_BOOST > 0 or WILDCARD_BOOST > 0:
+    if KEYWORD_BOOST > 0:
         methods.append("exact")
+    if WILDCARD_BOOST > 0:
+        methods.append("wildcard")
     if ANALYSER_BOOST > 0:
         methods.append("stemmed")
     if FUZZY_BOOST > 0:
@@ -72,24 +75,21 @@ def get_active_term_check_methods() -> list[str]:
     return methods or ["exact"]
 
 
-def get_active_term_check_method() -> str:
-    """Get a single term check method label for logging/display.
+def get_active_search_type() -> str:
+    """Get a single search type label for logging/display.
 
     Returns:
         String describing the active method(s): 'exact', 'stemmed', 'fuzzy',
-        'semantic_only', or 'hybrid' if multiple text methods are active.
+        'wildcard', 'semantic_only', or 'hybrid' if multiple boosts are active.
     """
-    methods = get_active_term_check_methods()
+    methods = get_active_search_types()
 
-    # Filter out semantic_only for text-based method determination
-    text_methods = [m for m in methods if m != "semantic_only"]
+    # If more than one boost is non-zero, it's a hybrid search
+    if len(methods) > 1:
+        return "hybrid"
 
-    if not text_methods:
-        return "semantic_only"
-    if len(text_methods) == 1:
-        return text_methods[0]
-    # Multiple text methods active
-    return "hybrid"
+    # Single method active
+    return methods[0] if methods else "exact"
 
 
 def get_search_config(timestamp: str | None = None) -> dict:
@@ -105,7 +105,7 @@ def get_search_config(timestamp: str | None = None) -> dict:
         timestamp = get_timestamp()
 
     return {
-        "term_check_method": get_active_term_check_method(),
+        "search_type": get_active_search_type(),
         "score_filter": SCORE_FILTER,
         "k_queries": K_QUERIES,
         "keyword_boost": KEYWORD_BOOST,

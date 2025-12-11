@@ -7,17 +7,18 @@ from testing.term_matching import (
     stemmed_match,
     term_matches,
     term_matches_single,
+    wildcard_match,
 )
 
 
 class TestExactMatch:
-    """Tests for exact_match function."""
+    """Tests for exact_match function (word boundary matching)."""
 
-    def test_exact_substring_found(self) -> None:
-        """Test that exact substring is found in text."""
+    def test_exact_word_found(self) -> None:
+        """Test that exact word is found in text."""
         assert exact_match("hello", "hello world") is True
 
-    def test_exact_substring_not_found(self) -> None:
+    def test_exact_word_not_found(self) -> None:
         """Test that non-matching term returns False."""
         assert exact_match("goodbye", "hello world") is False
 
@@ -26,17 +27,72 @@ class TestExactMatch:
         assert exact_match("HELLO", "hello world") is True
         assert exact_match("hello", "HELLO WORLD") is True
 
-    def test_partial_word_match(self) -> None:
-        """Test that partial word match is found (substring match)."""
-        assert exact_match("hell", "hello world") is True
+    def test_partial_word_no_match(self) -> None:
+        """Test that partial word does NOT match (word boundary)."""
+        assert exact_match("hell", "hello world") is False
+        assert exact_match("brain", "brainwave") is False
+        assert exact_match("run", "running") is False
+
+    def test_word_at_start(self) -> None:
+        """Test matching word at start of text."""
+        assert exact_match("hello", "hello there") is True
+
+    def test_word_at_end(self) -> None:
+        """Test matching word at end of text."""
+        assert exact_match("world", "hello world") is True
+
+    def test_word_in_middle(self) -> None:
+        """Test matching word in middle of text."""
+        assert exact_match("is", "this is a test") is True
+
+    def test_word_with_punctuation(self) -> None:
+        """Test matching word adjacent to punctuation."""
+        assert exact_match("hello", "hello, world!") is True
+        assert exact_match("world", "hello, world!") is True
 
     def test_empty_term(self) -> None:
-        """Test that empty term matches (empty string is in all strings)."""
-        assert exact_match("", "hello world") is True
+        """Test that empty term returns False (no word to match)."""
+        assert exact_match("", "hello world") is False
 
     def test_empty_text(self) -> None:
         """Test that non-empty term doesn't match empty text."""
         assert exact_match("hello", "") is False
+
+
+class TestWildcardMatch:
+    """Tests for wildcard_match function (substring matching)."""
+
+    def test_exact_substring_found(self) -> None:
+        """Test that exact substring is found in text."""
+        assert wildcard_match("hello", "hello world") is True
+
+    def test_substring_not_found(self) -> None:
+        """Test that non-matching term returns False."""
+        assert wildcard_match("goodbye", "hello world") is False
+
+    def test_case_insensitive(self) -> None:
+        """Test that matching is case insensitive."""
+        assert wildcard_match("HELLO", "hello world") is True
+        assert wildcard_match("hello", "HELLO WORLD") is True
+
+    def test_partial_word_match(self) -> None:
+        """Test that partial word match is found (substring match)."""
+        assert wildcard_match("hell", "hello world") is True
+        assert wildcard_match("brain", "brainwave") is True
+        assert wildcard_match("run", "running") is True
+
+    def test_substring_in_middle(self) -> None:
+        """Test substring in middle of word."""
+        assert wildcard_match("ell", "hello world") is True
+        assert wildcard_match("orl", "hello world") is True
+
+    def test_empty_term(self) -> None:
+        """Test that empty term matches (empty string is in all strings)."""
+        assert wildcard_match("", "hello world") is True
+
+    def test_empty_text(self) -> None:
+        """Test that non-empty term doesn't match empty text."""
+        assert wildcard_match("hello", "") is False
 
 
 class TestStemmedMatch:
@@ -78,6 +134,11 @@ class TestStemmedMatch:
         """Test that plurals are stemmed to singulars."""
         assert stemmed_match("dogs", "I have a dog") is True
         assert stemmed_match("dog", "I have dogs") is True
+
+    def test_possessives_stripped(self) -> None:
+        """Test that possessives are tokenized correctly (patient's -> patient)."""
+        assert stemmed_match("patient", "The patient's medication") is True
+        assert stemmed_match("patient", "patient's records show") is True
 
     def test_verb_conjugations(self) -> None:
         """Test that verb conjugations are matched."""
@@ -144,6 +205,12 @@ class TestTermMatchesSingle:
         """Test fuzzy method routing."""
         assert term_matches_single("helo", "hello world", "fuzzy") is True
 
+    def test_wildcard_method(self) -> None:
+        """Test wildcard method routing (substring match)."""
+        assert term_matches_single("hell", "hello world", "wildcard") is True
+        assert term_matches_single("brain", "brainwave", "wildcard") is True
+        assert term_matches_single("goodbye", "hello world", "wildcard") is False
+
     def test_semantic_only_always_false(self) -> None:
         """Test that semantic_only method always returns False."""
         assert term_matches_single("hello", "hello world", "semantic_only") is False
@@ -205,42 +272,25 @@ class TestCheckTermsInChunks:
             chunk_ids=["chunk1", "chunk2", "chunk3"],
             chunk_lookup=chunk_lookup,
             search_term="cancer",
-            desirable_terms="treatment",
-            acceptable_terms="patient",
+            acceptable_terms="patient, treatment",
         )
         assert result["chunks_with_search_term"] == 2  # chunk1, chunk3
-        assert result["chunks_with_desirable"] == 1  # chunk2
-        assert result["chunks_with_acceptable"] == 1  # chunk1
+        assert result["chunks_with_acceptable"] == 2  # chunk1 (patient), chunk2 (treatment)
         assert result["chunks_with_any_term"] == 3
         assert result["total_chunks_checked"] == 3
 
-    def test_deduplication_search_term_in_desirable(self) -> None:
-        """Test that search term is removed from desirable list."""
+    def test_deduplication_search_term_in_acceptable(self) -> None:
+        """Test that search term is removed from acceptable list."""
         chunk_lookup = {"chunk1": "cancer cells"}
         result = check_terms_in_chunks(
             chunk_ids=["chunk1"],
             chunk_lookup=chunk_lookup,
             search_term="cancer",
-            desirable_terms="cancer, treatment",  # cancer should be ignored
-            acceptable_terms="",
+            acceptable_terms="cancer, treatment",  # cancer should be ignored
         )
         assert result["chunks_with_search_term"] == 1
-        assert result["chunks_with_desirable"] == 0  # treatment not in text
+        assert result["chunks_with_acceptable"] == 0  # treatment not in text
         assert result["chunks_with_any_term"] == 1
-
-    def test_deduplication_search_and_desirable_in_acceptable(self) -> None:
-        """Test that search term and desirable terms are removed from acceptable."""
-        chunk_lookup = {"chunk1": "cancer treatment patient"}
-        result = check_terms_in_chunks(
-            chunk_ids=["chunk1"],
-            chunk_lookup=chunk_lookup,
-            search_term="cancer",
-            desirable_terms="treatment",
-            acceptable_terms="cancer, treatment, patient",  # first two ignored
-        )
-        assert result["chunks_with_search_term"] == 1
-        assert result["chunks_with_desirable"] == 1
-        assert result["chunks_with_acceptable"] == 1  # only patient counted
 
     def test_empty_chunk_lookup(self) -> None:
         """Test handling of missing chunks in lookup."""
@@ -248,7 +298,6 @@ class TestCheckTermsInChunks:
             chunk_ids=["chunk1", "chunk2"],
             chunk_lookup={},  # Empty lookup
             search_term="cancer",
-            desirable_terms="",
             acceptable_terms="",
         )
         assert result["chunks_with_search_term"] == 0
@@ -256,17 +305,15 @@ class TestCheckTermsInChunks:
         assert result["total_chunks_checked"] == 2
 
     def test_empty_term_lists(self) -> None:
-        """Test handling of empty desirable and acceptable terms."""
+        """Test handling of empty acceptable terms."""
         chunk_lookup = {"chunk1": "cancer treatment"}
         result = check_terms_in_chunks(
             chunk_ids=["chunk1"],
             chunk_lookup=chunk_lookup,
             search_term="cancer",
-            desirable_terms="",
             acceptable_terms="",
         )
         assert result["chunks_with_search_term"] == 1
-        assert result["chunks_with_desirable"] == 0
         assert result["chunks_with_acceptable"] == 0
 
     def test_stemmed_method(self) -> None:
@@ -276,7 +323,6 @@ class TestCheckTermsInChunks:
             chunk_ids=["chunk1"],
             chunk_lookup=chunk_lookup,
             search_term="run",
-            desirable_terms="",
             acceptable_terms="",
             match_methods="stemmed",
         )
@@ -289,7 +335,6 @@ class TestCheckTermsInChunks:
             chunk_ids=["chunk1"],
             chunk_lookup=chunk_lookup,
             search_term="cancr",  # typo
-            desirable_terms="",
             acceptable_terms="",
             match_methods="fuzzy",
         )
@@ -302,7 +347,6 @@ class TestCheckTermsInChunks:
             chunk_ids=["chunk1"],
             chunk_lookup=chunk_lookup,
             search_term="run",  # matches via stemmed
-            desirable_terms="",
             acceptable_terms="",
             match_methods=["exact", "stemmed", "fuzzy"],
         )
@@ -315,11 +359,10 @@ class TestCheckTermsInChunks:
             chunk_ids=["chunk1"],
             chunk_lookup=chunk_lookup,
             search_term="  cancer  ",
-            desirable_terms="  treatment  ,  therapy  ",
-            acceptable_terms="",
+            acceptable_terms="  treatment  ,  therapy  ",
         )
         assert result["chunks_with_search_term"] == 1
-        assert result["chunks_with_desirable"] == 1
+        assert result["chunks_with_acceptable"] == 1
 
     def test_case_insensitive_terms(self) -> None:
         """Test that term matching is case insensitive."""
@@ -328,11 +371,10 @@ class TestCheckTermsInChunks:
             chunk_ids=["chunk1"],
             chunk_lookup=chunk_lookup,
             search_term="Cancer",
-            desirable_terms="treatment",
-            acceptable_terms="",
+            acceptable_terms="treatment",
         )
         assert result["chunks_with_search_term"] == 1
-        assert result["chunks_with_desirable"] == 1
+        assert result["chunks_with_acceptable"] == 1
 
     def test_no_chunks(self) -> None:
         """Test handling of empty chunk list."""
@@ -340,7 +382,6 @@ class TestCheckTermsInChunks:
             chunk_ids=[],
             chunk_lookup={"chunk1": "cancer"},
             search_term="cancer",
-            desirable_terms="",
             acceptable_terms="",
         )
         assert result["chunks_with_search_term"] == 0

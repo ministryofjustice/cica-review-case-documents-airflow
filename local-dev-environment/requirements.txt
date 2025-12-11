@@ -8,5 +8,5 @@ pydantic-settings>=2.10.1,<3.0.0
 
 # Testing dependencies (isolated from main project)
 pandas>=2.0.0
-snowballstemmer>=2.2.0
-rapidfuzz>=3.0.0
+snowballstemmer>=2.2.0 # To mirror production environment's stemming behaviour for evaluation
+rapidfuzz>=3.0.0 # To mirror production environment's fuzzy matching behavior for evaluation

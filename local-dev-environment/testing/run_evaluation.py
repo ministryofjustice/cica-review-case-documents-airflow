@@ -10,7 +10,12 @@ Usage (run from local-dev-environment directory):
 
 import logging
 
-from testing.config import get_date_folder, get_search_config, get_timestamp
+from testing.evaluation_config import (
+    get_active_search_type,
+    get_date_folder,
+    get_search_config,
+    get_timestamp,
+)
 from testing.relevance_scoring import (
     append_to_evaluation_log,
     evaluate_relevance,
@@ -47,8 +52,9 @@ def main() -> tuple | None:
     logger.info(f"Evaluating {len(results_df)} search results...")
     evaluated_df, summary = evaluate_relevance(results_df)
 
-    # Write CSV to date-based evaluation folder
-    output_folder = get_date_folder()
+    # Write CSV to date-based evaluation folder, organised by search_type
+    search_type = get_active_search_type()
+    output_folder = get_date_folder() / search_type
     output_folder.mkdir(parents=True, exist_ok=True)
     csv_file = output_folder / f"{timestamp}_relevance_results.csv"
     write_results_csv(evaluated_df, csv_file, config, summary)
