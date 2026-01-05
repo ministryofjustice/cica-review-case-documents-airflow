@@ -19,17 +19,17 @@ annotated-types==0.7.0 \
     --hash=sha256:1f02e8b43a8fbbc3f3e0d4f0f4bfc8131bcb4eebe8849b8e5c773f3a1c582a53 \
     --hash=sha256:aff07c09a53a08bc8cfccb9c85b05f1aa9a2a6f23728d790723543408344ce89
     # via pydantic
-boto3==1.42.21 \
-    --hash=sha256:1885f252d715a5810bb4e0c5bbebfa8e9018b025febf5be3d58540626e7b43d2 \
-    --hash=sha256:9b92943d253bc837323079fe88460e741cb2eb80abaebcb558b2446bdb4049d6
+boto3==1.42.22 \
+    --hash=sha256:8550d91432dec1e587ab6d97f7e031bb334ca4fbb7824b8b63bca6e69c7e84b5 \
+    --hash=sha256:c8df2c356366f6193a85d2582ba27b170a93dd37784b8f195e901b169ae74d29
     # via
     #   amazon-textract-caller
     #   amazon-textract-response-parser
     #   cica-document-search-airflow
     #   moto
-botocore==1.42.21 \
-    --hash=sha256:6b59973a3ba8c3cfd5123f2656fef2339beee9f6483b8bc12bb00c5453ea2c6d \
-    --hash=sha256:db8f99d186156da42feb4fd2098017383d9b155097290cc53da7258f6e652c39
+botocore==1.42.22 \
+    --hash=sha256:635c9213a448885a1cf735f1a950b83adaced0860b8159fc26d1242abc042443 \
+    --hash=sha256:a1dfebcf9dec52a74ad7f28bc6c895e7c43216cac63748eb1216054fb0c3a7fe
     # via
     #   amazon-textract-caller
     #   boto3
