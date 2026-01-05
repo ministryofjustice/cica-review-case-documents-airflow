@@ -166,7 +166,7 @@ else
             "page_id": {
                 "type": "keyword"
             },
-            "document_id": {
+            "source_doc_id": {
                 "type": "keyword"
             },
             "page_text": {
