@@ -11,7 +11,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from testing.evaluation_settings import SCORE_FILTER
+# Import module to access settings dynamically (supports runtime overrides)
+from testing import evaluation_settings as settings
 from testing.search_client import count_term_occurrences, local_search_client
 
 # --- Configuration ---
@@ -102,7 +103,7 @@ def run_search_loop(input_file: Path | None = None) -> pd.DataFrame:
 
         try:
             hits = local_search_client(search_term=search_term)
-            filtered_hits = [hit for hit in hits if hit["_score"] >= SCORE_FILTER]
+            filtered_hits = [hit for hit in hits if hit["_score"] >= settings.SCORE_FILTER]
         except Exception as e:
             logger.error(f"Search failed for term '{search_term}': {e}")
             filtered_hits = []

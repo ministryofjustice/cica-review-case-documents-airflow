@@ -22,6 +22,7 @@ from opensearchpy.exceptions import ConnectionError as OpenSearchConnectionError
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingGenerator
 from testing import evaluation_settings as eval_settings
+from testing.date_formats import extract_dates_for_search, remove_dates_from_text
 from testing.evaluation_config import get_active_search_type
 
 os.environ["AWS_MOD_PLATFORM_ACCESS_KEY_ID"] = settings.AWS_MOD_PLATFORM_ACCESS_KEY_ID
@@ -38,7 +39,7 @@ CHUNK_INDEX_NAME = settings.OPENSEARCH_CHUNK_INDEX_NAME
 
 # --- 2. Choose your search term and output name and location---
 
-SEARCH_TERM = "bone"
+SEARCH_TERM = "neuro-psychologist"
 
 # Edit the output directory and path if needed
 # Use path relative to testing folder (parent of this file)
@@ -51,21 +52,20 @@ OUTPUT_PATH = OUTPUT_DIRECTORY / f"{TIMESTAMP_STR}_{SAFE_SEARCH_TERM}_search_res
 # --- 3. DEFINE K-NN SEARCH QUERY ---
 
 
-def create_hybrid_query(query_text: str, query_vector: list[float], k: int = 5) -> dict:
-    """Create a hybrid search query combining keyword, fuzzy, and semantic vector search.
+def _build_hybrid_clauses(query_text: str, query_vector: list[float], k: int) -> list[dict]:
+    """Build the standard hybrid search clauses based on evaluation settings.
 
-    Each search type is only included if its boost value is greater than 0.
+    Returns a list of should clauses for keyword, analyzer, fuzzy, wildcard, and semantic search.
     """
-    should_clauses = []
+    clauses = []
 
     # Add keyword match if boost > 0
     if eval_settings.KEYWORD_BOOST > 0:
-        should_clauses.append({"match": {"chunk_text": {"query": query_text, "boost": eval_settings.KEYWORD_BOOST}}})
+        clauses.append({"match": {"chunk_text": {"query": query_text, "boost": eval_settings.KEYWORD_BOOST}}})
 
     # Add English analyzer match if boost > 0
-    # Uses the chunk_text.english multi-field which is indexed with the English analyzer
     if eval_settings.ANALYSER_BOOST > 0:
-        should_clauses.append(
+        clauses.append(
             {
                 "match": {
                     "chunk_text.english": {
@@ -78,7 +78,7 @@ def create_hybrid_query(query_text: str, query_vector: list[float], k: int = 5) 
 
     # Add fuzzy match if boost > 0
     if eval_settings.FUZZY_BOOST > 0:
-        should_clauses.append(
+        clauses.append(
             {
                 "fuzzy": {
                     "chunk_text": {
@@ -93,7 +93,7 @@ def create_hybrid_query(query_text: str, query_vector: list[float], k: int = 5) 
 
     # Add wildcard match if boost > 0
     if eval_settings.WILDCARD_BOOST > 0:
-        should_clauses.append(
+        clauses.append(
             {
                 "wildcard": {
                     "chunk_text": {
@@ -106,9 +106,41 @@ def create_hybrid_query(query_text: str, query_vector: list[float], k: int = 5) 
 
     # Add semantic/knn search if boost > 0
     if eval_settings.SEMANTIC_BOOST > 0:
-        should_clauses.append(
-            {"knn": {"embedding": {"vector": query_vector, "k": k, "boost": eval_settings.SEMANTIC_BOOST}}}
-        )
+        clauses.append({"knn": {"embedding": {"vector": query_vector, "k": k, "boost": eval_settings.SEMANTIC_BOOST}}})
+
+    return clauses
+
+
+def create_hybrid_query(query_text: str, query_vector: list[float], k: int = 5) -> dict:
+    """Create a hybrid search query combining keyword, fuzzy, and semantic vector search.
+
+    Each search type is only included if its boost value is greater than 0.
+    For queries containing dates, uses match_phrase for date variants and standard
+    hybrid search for any remaining non-date text.
+    """
+    should_clauses = []
+
+    # Extract dates and generate format variants
+    date_variants = extract_dates_for_search(query_text)
+
+    # If dates are found, use match_phrase for dates + hybrid search for remaining text
+    if date_variants:
+        for date in date_variants:
+            should_clauses.append({"match_phrase": {"chunk_text": {"query": date, "boost": 2}}})
+
+        # Check for remaining non-date text and apply standard hybrid search
+        remaining_text = remove_dates_from_text(query_text)
+        if remaining_text:
+            should_clauses.extend(_build_hybrid_clauses(remaining_text, query_vector, k))
+
+        return {
+            "size": k,
+            "_source": ["document_id", "page_number", "chunk_text", "case_ref"],
+            "query": {"bool": {"should": should_clauses}},
+        }
+
+    # No dates found - use standard hybrid search
+    should_clauses = _build_hybrid_clauses(query_text, query_vector, k)
 
     return {
         "size": k,

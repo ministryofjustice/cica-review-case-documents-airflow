@@ -5,13 +5,14 @@ expected pages and chunk IDs against actual search results.
 """
 
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
 
 from testing.chunk_metrics import calculate_chunk_match, safe_int
+from testing.chunks_loader import load_all_chunks_from_opensearch
 from testing.evaluation_config import (
-    CHUNKS_FILE,
     EVALUATION_LOG_FILE,
     get_active_search_type,
     get_active_search_types,
@@ -22,28 +23,58 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("relevance_scoring")
 
 
+@dataclass(frozen=True)
+class EvaluationSummary:
+    """Summary statistics from relevance evaluation.
+
+    Immutable dataclass containing aggregated metrics across all search queries.
+    """
+
+    total_queries: int
+    queries_with_results: int
+    result_rate: float
+    avg_chunks_returned: float
+    queries_with_expected_chunk: int
+    avg_precision: float
+    avg_recall: float
+    avg_f1_score: float
+    avg_acceptable_term_based_precision: float
+    optimization_score: float
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for serialization."""
+        return {
+            "total_queries": self.total_queries,
+            "queries_with_results": self.queries_with_results,
+            "result_rate": self.result_rate,
+            "avg_chunks_returned": self.avg_chunks_returned,
+            "queries_with_expected_chunk": self.queries_with_expected_chunk,
+            "avg_precision": self.avg_precision,
+            "avg_recall": self.avg_recall,
+            "avg_f1_score": self.avg_f1_score,
+            "avg_acceptable_term_based_precision": self.avg_acceptable_term_based_precision,
+            "optimization_score": self.optimization_score,
+        }
+
+
 def load_chunk_lookup() -> dict[str, str]:
-    """Load chunk texts from TC19_test_all_chunks.csv into a lookup dictionary.
+    """Load chunk texts from OpenSearch into a lookup dictionary.
 
     Returns:
         Dictionary mapping chunk_id to chunk_text.
     """
-    if not CHUNKS_FILE.exists():
-        logger.warning(f"Chunks file not found: {CHUNKS_FILE}")
-        return {}
-
-    df = pd.read_csv(CHUNKS_FILE, dtype=str).fillna("")
-    return dict(zip(df["chunk_id"], df["chunk_text"]))
+    return load_all_chunks_from_opensearch()
 
 
-def evaluate_relevance(results_df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
+def evaluate_relevance(results_df: pd.DataFrame) -> tuple[pd.DataFrame, EvaluationSummary] | tuple[pd.DataFrame, dict]:
     """Evaluate relevance of search results against expected values.
 
     Args:
         results_df: DataFrame from run_search_loop with search results.
 
     Returns:
-        Tuple of (evaluated DataFrame, summary statistics dict).
+        Tuple of (evaluated DataFrame, EvaluationSummary).
+        Returns (empty DataFrame, empty dict) if input is empty.
     """
     if results_df.empty:
         return pd.DataFrame(), {}
@@ -165,14 +196,14 @@ def evaluate_relevance(results_df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     return output_df, summary
 
 
-def _calculate_summary_stats(df: pd.DataFrame) -> dict:
+def _calculate_summary_stats(df: pd.DataFrame) -> EvaluationSummary:
     """Calculate summary statistics from evaluated DataFrame.
 
     Args:
         df: DataFrame with evaluation columns.
 
     Returns:
-        Dictionary of summary statistics.
+        EvaluationSummary dataclass with aggregated metrics.
     """
     total_queries = len(df)
     queries_with_results = (df["total_results"] > 0).sum()
@@ -184,38 +215,66 @@ def _calculate_summary_stats(df: pd.DataFrame) -> dict:
     avg_precision = precision_values.mean() if len(precision_values) > 0 else 0
     avg_recall = recall_values.mean() if len(recall_values) > 0 else 0
 
+    # Calculate F1 score (harmonic mean of precision and recall)
+    if avg_precision + avg_recall > 0:
+        avg_f1_score = 2 * (avg_precision * avg_recall) / (avg_precision + avg_recall)
+    else:
+        avg_f1_score = 0
+
+    # Calculate average chunks returned per query
+    total_chunks_returned = df["total_results"].sum()
+    avg_chunks_returned = total_chunks_returned / total_queries if total_queries > 0 else 0
+
     queries_with_expected_chunk = df["expected_chunk_id"].apply(lambda x: bool(str(x).strip())).sum()
 
-    # Calculate average percentages for term presence
-    term_precision_values = df["term_based_precision"].dropna()
+    # Calculate average percentage for acceptable term presence
     acceptable_precision_values = df["acceptable_term_based_precision"].dropna()
-    avg_term_based_precision = term_precision_values.mean() if len(term_precision_values) > 0 else 0
     avg_acceptable_term_based_precision = (
         acceptable_precision_values.mean() if len(acceptable_precision_values) > 0 else 0
     )
 
-    return {
-        "total_queries": total_queries,
-        "queries_with_results": int(queries_with_results),
-        "result_rate": round(result_rate, 2),
-        "queries_with_expected_chunk": int(queries_with_expected_chunk),
-        "avg_precision": round(avg_precision, 2),
-        "avg_recall": round(avg_recall, 2),
-        "avg_term_based_precision": round(avg_term_based_precision, 2),
-        "avg_acceptable_term_based_precision": round(avg_acceptable_term_based_precision, 2),
-    }
+    # Calculate optimization score: (total_chunks / total_queries) * (avg_acceptable_term_precision ^ 2)
+    # The power of 2 heavily penalizes low precision
+    # Dividing by total_queries normalizes across different search term sets
+    # Convert percentage to decimal (0-1) for the calculation
+    precision_decimal = avg_acceptable_term_based_precision / 100
+    if total_queries > 0:
+        optimization_score = (total_chunks_returned / total_queries) * ((precision_decimal) ** 2)
+    else:
+        optimization_score = 0
+
+    return EvaluationSummary(
+        total_queries=total_queries,
+        queries_with_results=int(queries_with_results),
+        result_rate=round(result_rate, 2),
+        avg_chunks_returned=round(avg_chunks_returned, 2),
+        queries_with_expected_chunk=int(queries_with_expected_chunk),
+        avg_precision=round(avg_precision, 2),
+        avg_recall=round(avg_recall, 2),
+        avg_f1_score=round(avg_f1_score, 2),
+        avg_acceptable_term_based_precision=round(avg_acceptable_term_based_precision, 2),
+        optimization_score=round(optimization_score, 4),
+    )
 
 
-def write_results_csv(df: pd.DataFrame, output_file: Path, config: dict, summary: dict) -> None:
+def write_results_csv(
+    df: pd.DataFrame,
+    output_file: Path,
+    config: dict,
+    summary: EvaluationSummary | dict,
+) -> None:
     """Write evaluation results DataFrame to a CSV file with config header.
 
     Args:
         df: DataFrame with evaluation results.
         output_file: Path to write the CSV file.
         config: Search configuration dictionary to write at top of file.
-        summary: Summary statistics dictionary to write after config.
+        summary: EvaluationSummary or dict with summary statistics.
     """
     output_file.parent.mkdir(parents=True, exist_ok=True)
+
+    # Convert EvaluationSummary to dict if needed
+    summary_dict = summary.to_dict() if isinstance(summary, EvaluationSummary) else summary
 
     with open(output_file, "w", encoding="utf-8") as f:
         # Write config section as row (keys then values)
@@ -227,8 +286,8 @@ def write_results_csv(df: pd.DataFrame, output_file: Path, config: dict, summary
         f.write("\n")
 
         # Write summary section as row (keys then values)
-        summary_keys = ",".join(str(key) for key in summary.keys())
-        summary_values = ",".join(str(value) for value in summary.values())
+        summary_keys = ",".join(str(key) for key in summary_dict.keys())
+        summary_values = ",".join(str(value) for value in summary_dict.values())
         f.write("Summary Statistics\n")
         f.write(f"{summary_keys}\n")
         f.write(f"{summary_values}\n")
@@ -240,19 +299,22 @@ def write_results_csv(df: pd.DataFrame, output_file: Path, config: dict, summary
     logger.info(f"Results CSV written to {output_file.resolve()}")
 
 
-def append_to_evaluation_log(config: dict, summary: dict) -> None:
+def append_to_evaluation_log(config: dict, summary: EvaluationSummary | dict) -> None:
     """Append evaluation summary to the cumulative log file.
 
     Creates the log file with headers if it doesn't exist.
 
     Args:
         config: Search configuration dictionary.
-        summary: Summary statistics dictionary.
+        summary: EvaluationSummary or dict with summary statistics.
     """
     EVALUATION_LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 
+    # Convert EvaluationSummary to dict if needed
+    summary_dict = summary.to_dict() if isinstance(summary, EvaluationSummary) else summary
+
     # Combine config and summary into a single row
-    log_entry = {**config, **summary}
+    log_entry = {**config, **summary_dict}
 
     # Remove columns we don't want in the log
     for key in ["fuzziness", "max_expansions", "queries_with_expected_chunk"]:

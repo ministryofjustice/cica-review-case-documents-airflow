@@ -14,7 +14,8 @@ import re
 import snowballstemmer
 from rapidfuzz import fuzz
 
-from testing.evaluation_settings import FUZZY_MATCH_THRESHOLD
+# Import module to access settings dynamically (supports runtime overrides)
+from testing import evaluation_settings as settings
 
 # Initialize stemmer for English (matches OpenSearch's English analyzer)
 _stemmer = snowballstemmer.stemmer("english")
@@ -66,14 +67,36 @@ def stemmed_match(term: str, text: str) -> bool:
     return False
 
 
-def fuzzy_match(term: str, text: str, threshold: int = FUZZY_MATCH_THRESHOLD) -> bool:
+def fuzzy_match(term: str, text: str, threshold: int | None = None) -> bool:
     """Check if term fuzzy-matches any word in text.
 
-    Uses rapidfuzz partial ratio to find approximate matches.
-    For multi-word terms, matches if ANY word in the term fuzzy-matches.
+    Uses rapidfuzz to find approximate matches. Handles both single words
+    and hyphenated/multi-word terms by checking:
+    1. Word-to-word matching for individual term words
+    2. Partial ratio for the full term (handles hyphenated terms like "neuro-psychologist")
+
+    Args:
+        term: The term to search for.
+        text: The text to search in.
+        threshold: Similarity threshold (0-100). Uses FUZZY_MATCH_THRESHOLD if None.
+
+    Returns:
+        True if term fuzzy-matches, False otherwise.
     """
-    term_words = term.lower().split()
-    text_words = text.lower().split()
+    if threshold is None:
+        threshold = settings.FUZZY_MATCH_THRESHOLD
+
+    term_lower = term.lower()
+    text_lower = text.lower()
+
+    # First, check if the full term fuzzy-matches anywhere in the text
+    # This handles hyphenated terms like "neuro-psychologist" matching "neuro psychologist"
+    if fuzz.partial_ratio(term_lower, text_lower) >= threshold:
+        return True
+
+    # Fall back to word-by-word matching for multi-word terms
+    term_words = term_lower.split()
+    text_words = text_lower.split()
 
     # Match if ANY term word fuzzy-matches any text word (OR logic)
     for tw in term_words:
@@ -136,7 +159,7 @@ def check_terms_in_chunks(
     search_term: str,
     acceptable_terms: str,
     match_methods: str | list[str] = "exact",
-) -> dict:
+) -> dict[str, int]:
     """Check which terms are present in the returned chunk texts.
 
     Args:
@@ -193,7 +216,7 @@ def check_terms_by_expected_chunks(
     search_term: str,
     acceptable_terms: str,
     term_to_expected_chunks: dict[str, set[str]],
-) -> dict:
+) -> dict[str, int]:
     """Check term relevance using expected chunk IDs from other search terms.
 
     This is used for semantic-only or hybrid search where text matching isn't

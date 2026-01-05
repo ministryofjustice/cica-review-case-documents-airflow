@@ -188,6 +188,19 @@ class TestFuzzyMatch:
         """Test behavior with empty text."""
         assert fuzzy_match("hello", "") is False
 
+    def test_hyphenated_term_matches_spaced_text(self) -> None:
+        """Test that hyphenated term matches text with space instead of hyphen."""
+        # "neuro-psychologist" should match "neuro psychologist" via partial_ratio
+        assert fuzzy_match("neuro-psychologist", "The neuro psychologist reviewed the case") is True
+
+    def test_spaced_term_matches_hyphenated_text(self) -> None:
+        """Test that spaced term matches text with hyphen instead of space."""
+        assert fuzzy_match("neuro psychologist", "The neuro-psychologist reviewed the case") is True
+
+    def test_partial_match_in_longer_text(self) -> None:
+        """Test that partial ratio finds term within longer text."""
+        assert fuzzy_match("psychologist", "The neuro-psychologist was consulted") is True
+
 
 class TestTermMatchesSingle:
     """Tests for term_matches_single function."""
