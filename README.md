@@ -62,7 +62,7 @@ uv sync
 The `uv.lock` file is required to ensure the specific package versions defined there are installed, rather than their latest versions.
 
 
-If you need to run a Python script from outside the `uv` environment, you can do so using the following format: `uv run src/ingestion_pipeline/main.py`
+If you need to run a Python script from outside the `uv` environment, you can do so using the following format: `uv run src/ingestion_pipeline/runner.py`
 
 #### Setting up pre-commit
 
