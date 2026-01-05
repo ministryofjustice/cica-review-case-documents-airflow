@@ -6,27 +6,35 @@ term checking method based on active search types.
 Run from local-dev-environment directory: python -m testing.run_evaluation
 """
 
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from testing.evaluation_settings import (
-    ANALYSER_BOOST,
-    FUZZINESS,
-    FUZZY_BOOST,
-    K_QUERIES,
-    KEYWORD_BOOST,
-    MAX_EXPANSIONS,
-    SCORE_FILTER,
-    SEMANTIC_BOOST,
-    WILDCARD_BOOST,
-)
+# Import module to access settings dynamically (supports runtime overrides)
+from testing import evaluation_settings as settings
 
-# Output directories
+# Base directory for relative paths
 SCRIPT_DIR = Path(__file__).resolve().parent
-OUTPUT_DIR = SCRIPT_DIR / "output"
-EVALUATION_DIR = OUTPUT_DIR / "evaluation"
-EVALUATION_LOG_FILE = EVALUATION_DIR / "evaluation_log.csv"
-CHUNKS_FILE = SCRIPT_DIR / "testing_docs" / "TC19_test_all_chunks.csv"
+_OUTPUT_DIR = SCRIPT_DIR / "output"
+_EVALUATION_DIR = _OUTPUT_DIR / "evaluation"
+
+
+@dataclass(frozen=True)
+class OutputPaths:
+    """Immutable paths for evaluation output directories and files."""
+
+    output_dir: Path = _OUTPUT_DIR
+    evaluation_dir: Path = _EVALUATION_DIR
+    evaluation_log_file: Path = _EVALUATION_DIR / "evaluation_log.csv"
+
+
+# Singleton instance for use throughout the module
+OUTPUT_PATHS = OutputPaths()
+
+# Backwards compatibility aliases
+OUTPUT_DIR = OUTPUT_PATHS.output_dir
+EVALUATION_DIR = OUTPUT_PATHS.evaluation_dir
+EVALUATION_LOG_FILE = OUTPUT_PATHS.evaluation_log_file
 
 
 def get_timestamp() -> str:
@@ -60,15 +68,15 @@ def get_active_search_types() -> list[str]:
     """
     methods = []
 
-    if KEYWORD_BOOST > 0:
+    if settings.KEYWORD_BOOST > 0:
         methods.append("exact")
-    if WILDCARD_BOOST > 0:
+    if settings.WILDCARD_BOOST > 0:
         methods.append("wildcard")
-    if ANALYSER_BOOST > 0:
+    if settings.ANALYSER_BOOST > 0:
         methods.append("stemmed")
-    if FUZZY_BOOST > 0:
+    if settings.FUZZY_BOOST > 0:
         methods.append("fuzzy")
-    if SEMANTIC_BOOST > 0:
+    if settings.SEMANTIC_BOOST > 0:
         methods.append("semantic_only")
 
     # Default to exact if nothing is active
@@ -106,14 +114,14 @@ def get_search_config(timestamp: str | None = None) -> dict:
 
     return {
         "search_type": get_active_search_type(),
-        "score_filter": SCORE_FILTER,
-        "k_queries": K_QUERIES,
-        "keyword_boost": KEYWORD_BOOST,
-        "analyser_boost": ANALYSER_BOOST,
-        "semantic_boost": SEMANTIC_BOOST,
-        "fuzzy_boost": FUZZY_BOOST,
-        "wildcard_boost": WILDCARD_BOOST,
-        "fuzziness": FUZZINESS,
-        "max_expansions": MAX_EXPANSIONS,
+        "score_filter": settings.SCORE_FILTER,
+        "k_queries": settings.K_QUERIES,
+        "keyword_boost": settings.KEYWORD_BOOST,
+        "analyser_boost": settings.ANALYSER_BOOST,
+        "semantic_boost": settings.SEMANTIC_BOOST,
+        "fuzzy_boost": settings.FUZZY_BOOST,
+        "wildcard_boost": settings.WILDCARD_BOOST,
+        "fuzziness": settings.FUZZINESS,
+        "max_expansions": settings.MAX_EXPANSIONS,
         "timestamp": timestamp,
     }
