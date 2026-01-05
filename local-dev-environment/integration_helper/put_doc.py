@@ -27,12 +27,12 @@ PASSWORD = "really-secure-passwordAa!1"
 
 # --- 2. DEFINE YOUR DOCUMENT AND INDEX DETAILS ---
 INDEX_NAME = "case-documents"
-DOCUMENT_ID = "document-id"
+source_doc_id = "document-id"
 
 # This is the full document body, including a 1024-dimension vector
 document_body = {
     "chunk_id": "doc-gla-456_p1_c0",
-    "document_id": "doc-111111",
+    "source_doc_id": "doc-111111",
     "chunk_text": "Text for an imaginary medical report for document creation and retrieval purposes.",
     "embedding": embedding_example_1024,
     "case_ref": "25-781234",
@@ -63,8 +63,8 @@ def main():
     )
 
     try:
-        logger.info(f"Indexing document with ID '{DOCUMENT_ID}' into index '{INDEX_NAME}'...")
-        response = client.index(index=INDEX_NAME, body=document_body, id=DOCUMENT_ID)
+        logger.info(f"Indexing document with ID '{source_doc_id}' into index '{INDEX_NAME}'...")
+        response = client.index(index=INDEX_NAME, body=document_body, id=source_doc_id)
         logger.info("\nSUCCESS! Document indexed successfully")
         logger.info(response)
 

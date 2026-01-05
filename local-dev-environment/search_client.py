@@ -63,7 +63,7 @@ def create_hybrid_query(query_text: str, query_vector: list[float], k: int = 5) 
     if not FUZZY:
         return {
             "size": k,
-            "_source": ["document_id", "page_number", "chunk_text", "case_ref"],
+            "_source": ["source_doc_id", "page_number", "chunk_text", "case_ref"],
             "query": {
                 "bool": {
                     "should": [
@@ -76,7 +76,7 @@ def create_hybrid_query(query_text: str, query_vector: list[float], k: int = 5) 
     else:
         return {
             "size": k,
-            "_source": ["document_id", "page_number", "chunk_text", "case_ref"],
+            "_source": ["source_doc_id", "page_number", "chunk_text", "case_ref"],
             "query": {
                 "bool": {
                     "should": [

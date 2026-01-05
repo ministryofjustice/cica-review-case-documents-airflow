@@ -30,7 +30,7 @@ def create_knn_query(query_vector, k=5):
     """Creates the body for a k-NN search query."""
     return {
         "size": k,
-        "_source": ["document_id", "page_number", "chunk_text", "case_ref"],
+        "_source": ["source_doc_id", "page_number", "chunk_text", "case_ref"],
         "query": {"knn": {"embedding": {"vector": query_vector, "k": k}}},
     }
 
@@ -76,7 +76,7 @@ def main():
                 source = hit["_source"]
                 logger.info(f"\nResult {i + 1} (Score: {score:.4f}):")
                 logger.info(f"  Case Ref:     {source.get('case_ref', 'N/A')}")
-                logger.info(f"  Document ID:  {source.get('document_id', 'N/A')}")
+                logger.info(f"  Document ID:  {source.get('source_doc_id', 'N/A')}")
                 logger.info(f"  Page:         {source.get('page_number', 'N/A')}")
                 # Print a snippet of the chunk text
                 text_snippet = source.get("chunk_text", "")
