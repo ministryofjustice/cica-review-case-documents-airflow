@@ -178,7 +178,7 @@ def test_delete_documents_by_source_doc_id_success(mock_opensearch_client, mocke
     source_doc_id = "doc1"
 
     mock_logger_info = mocker.patch("ingestion_pipeline.indexing.indexer.logger.info")
-    indexer._delete_documents_by_source_doc_id(source_doc_id)
+    indexer.delete_documents_by_source_doc_id(source_doc_id)
 
     mock_delete_by_query.assert_called_once_with(
         index="test_index",
@@ -196,7 +196,7 @@ def test_delete_documents_by_source_doc_id_exception(mock_opensearch_client):
     indexer.client = mock_opensearch_client
 
     with pytest.raises(Exception, match="Delete error"):
-        indexer._delete_documents_by_source_doc_id("doc3")
+        indexer.delete_documents_by_source_doc_id("doc3")
 
 
 def test_indexer_initialization_with_invalid_proxy_url():

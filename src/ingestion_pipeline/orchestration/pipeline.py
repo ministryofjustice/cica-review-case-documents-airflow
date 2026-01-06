@@ -89,10 +89,23 @@ class Pipeline:
 
         except (TextractProcessingError, EmbeddingError, IndexingError, ChunkError) as e:
             logger.critical(f"Pipeline failed for document: {e}", exc_info=True)
+            self._cleanup_indexed_data(source_doc_id)
             raise
         except Exception as e:
             logger.critical(f"An unexpected error occurred in the pipeline for document: {e}", exc_info=True)
+            self._cleanup_indexed_data(source_doc_id)
             raise PipelineError(f"Unexpected pipeline failure: {str(e)}") from e
         finally:
             logger.info("Cleaning up context for document")
             source_doc_id_context.set(None)
+
+    def _cleanup_indexed_data(self, source_doc_id: str):
+        """Removes any indexed data for the failed document."""
+        try:
+            logger.info(f"Cleaning up indexed data for document {source_doc_id}")
+            self.chunk_indexer.delete_documents_by_source_doc_id(source_doc_id)
+            self.page_indexer.delete_documents_by_source_doc_id(source_doc_id)
+        except Exception as cleanup_error:
+            logger.error(
+                f"Failed to clean up indexed data for document {source_doc_id}: {cleanup_error}", exc_info=True
+            )
