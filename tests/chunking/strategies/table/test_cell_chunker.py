@@ -223,7 +223,7 @@ class MockLayout:
 class MockDocumentMetadata:
     """A mock for ingestion_pipeline.chunking.schemas.DocumentMetadata."""
 
-    document_id: str
+    source_doc_id: str
 
 
 cell_chunker_module.BoundingBox = MockBoundingBox
@@ -284,7 +284,7 @@ def test_create_chunk_with_multiple_bboxes(chunker, monkeypatch):
     expected_bbox = MockBoundingBox(x=0.1, y=0.2, width=0.8, height=0.1)
 
     mock_layout = MockLayout(id="layout1", bbox=MockBoundingBox(0, 0, 1, 1))
-    mock_metadata = MockDocumentMetadata(document_id="doc1")
+    mock_metadata = MockDocumentMetadata(source_doc_id="doc1")
 
     # Act
     chunk = chunker._create_chunk(
@@ -325,7 +325,7 @@ def test_create_chunk_with_no_bboxes(chunker, monkeypatch):
     # This is the bbox we expect to be used as the fallback
     layout_bbox = MockBoundingBox(x=0.05, y=0.05, width=0.9, height=0.9)
     mock_layout = MockLayout(id="layout1", bbox=layout_bbox)
-    mock_metadata = MockDocumentMetadata(document_id="doc1")
+    mock_metadata = MockDocumentMetadata(source_doc_id="doc1")
 
     # Act
     chunk = chunker._create_chunk(
