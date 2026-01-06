@@ -58,3 +58,9 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
+      - id: update-requirements
+        name: Update requirements.txt from pyproject.toml
+        entry: bash -c 'uv pip compile --generate-hashes --output-file requirements.txt pyproject.toml && git add requirements.txt'
+        language: system
+        pass_filenames: false
+        always_run: true
