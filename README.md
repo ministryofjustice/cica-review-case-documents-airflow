@@ -27,7 +27,7 @@ The repository comes with the following preset files:
 
 ## Setup Instructions
 
-See [Windows WSL setup](#windows-wsl-setup-instructions) instructions if developing on Windows
+See [CICA specific Windows WSL setup and confguration instructions](#windows-wsl-setup-instructions) instructions if developing on Windows
 
 If using VSCode install the Microsoft Python extensions, Python Debugger, Python, Pylance, Python Environments
 
@@ -35,7 +35,7 @@ If using VSCode install the Microsoft Python extensions, Python Debugger, Python
 
 We recommend using [pyenv](https://pypi.org/project/pyenv/) to easily switch between multiple versions of Python.
 
-This project uses the [UV](https://docs.astral.sh/uv/) for packaging and dependency management.
+This project uses [UV](https://docs.astral.sh/uv/) for packaging and dependency management.
 
 #### Installing UV
 
@@ -85,7 +85,7 @@ After this, whenever you call `git commit` the defined pre-commit hooks will be 
 ### Windows WSL setup instructions
 
 Microsoft recommends developing Pyhon Apps using WSL.
-[Windows WSL setup instructions](https://dsdmoj.atlassian.net/wiki/spaces/CICA/pages/5882806404/Set+up+instructions+for+WSL+for+windows)
+[CICA specific Windows WSL setup and configuration instructions](https://dsdmoj.atlassian.net/wiki/spaces/CICA/pages/5882806404/Set+up+instructions+for+WSL+for+windows)
 
 
 ## Running the project
