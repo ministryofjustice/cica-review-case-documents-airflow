@@ -104,7 +104,7 @@ The project is still a WIP to ingest an S3 document, call textract to perform OC
 - log in to the [modernisation aws console](https://user-guide.modernisation-platform.service.justice.gov.uk/user-guide/accessing-the-aws-console.html#logging-in)
 - retireve access keys from the cica-sandbox-development aws account (if you can't see this make sure you have been added to the [cica-review-case-documents](https://github.com/orgs/ministryofjustice/teams/cica-review-case-documents) github team
 - replace the aws env vars within the .env file
-- run ```uv run src/ingestion_pipeline/runner.py```
+- run ```bash run_locally_with_dot_env.sh```
 - watch the terminal logs, note Textract can take from ~30 secs to ~2 mins to process
 - once the pipeline has completed use the Opensearch dashboard to view the extracted data
 
