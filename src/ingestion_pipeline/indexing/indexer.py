@@ -83,7 +83,7 @@ class OpenSearchIndexer:
             return 0, []
 
         source_doc_id = documents[0].source_doc_id
-        self._delete_documents_by_source_doc_id(source_doc_id)
+        self.delete_documents_by_source_doc_id(source_doc_id)
         actions = self._generate_bulk_actions(documents, id_field)
 
         try:
@@ -94,18 +94,18 @@ class OpenSearchIndexer:
                     f"Encountered {len(errors)} errors during bulk indexing cleaning up partially indexed chunks"
                 )
                 # Clean up any partially indexed documents from this batch
-                self._delete_documents_by_source_doc_id(source_doc_id)
+                self.delete_documents_by_source_doc_id(source_doc_id)
                 raise IndexingError(f"Failed to index all chunks: {errors}")
 
             logger.info(f"Successfully indexed {len(documents)} chunks into index {self.index_name}")
             return success, errors
         except helpers.BulkIndexError as e:
             logger.error(f"A BulkIndexError occurred. Removing all associated chunks: {e.errors}")
-            self._delete_documents_by_source_doc_id(source_doc_id)
+            self.delete_documents_by_source_doc_id(source_doc_id)
             raise IndexingError(f"Failed to index documents due to bulk errors: {str(e)}") from e
         except Exception as e:
             logger.error(f"An unexpected exception occurred. Removing all associated chunks: {e}")
-            self._delete_documents_by_source_doc_id(source_doc_id)
+            self.delete_documents_by_source_doc_id(source_doc_id)
             raise IndexingError(f"Failed to index: {str(e)}") from e
 
     def _generate_bulk_actions(self, documents: List[Any], id_field: str):
@@ -132,7 +132,7 @@ class OpenSearchIndexer:
                 "_source": doc.model_dump(),
             }
 
-    def _delete_documents_by_source_doc_id(self, source_doc_id: str):
+    def delete_documents_by_source_doc_id(self, source_doc_id: str):
         """Deletes all documents in the index with the given source_doc_id."""
         query = {"query": {"match": {"source_doc_id": source_doc_id}}}
         try:
@@ -142,3 +142,6 @@ class OpenSearchIndexer:
                 logger.info(f"Deleted {deleted_count} documents from index {self.index_name}")
         except ConflictError as e:
             logger.debug(f"Version conflict during delete (harmless): {e}")
+        except Exception as e:
+            logger.error(f"Failed to delete documents by source_doc_id: {e}", exc_info=True)
+            raise
