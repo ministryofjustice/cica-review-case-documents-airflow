@@ -47,6 +47,7 @@ services:
       - SKIP_SSL_CERT_DOWNLOAD=1
     volumes:
       - ./init-scripts:/etc/localstack/init/ready.d
+      - ${PWD}/.env:/etc/localstack/.env:ro # Use absolute path via ${PWD}
     healthcheck: # Custom healthcheck for LocalStack, ensuring index creation
       test:
         [

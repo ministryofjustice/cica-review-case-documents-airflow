@@ -319,6 +319,10 @@ packaging==26.0 \
     --hash=sha256:00243ae351a257117b6a241061796684b084ed1c516a08c48a3f7e147a9d80b4 \
     --hash=sha256:b36f1fef9334a5588b4166f8bcd26a14e521f2b55e6b9de3aaa80d3ff7a37529
     # via marshmallow
+pdf2image==1.17.0 \
+    --hash=sha256:eaa959bc116b420dd7ec415fcae49b98100dda3dd18cd2fdfa86d09f112f6d57 \
+    --hash=sha256:ecdd58d7afb810dffe21ef2b1bbc057ef434dabbac6c33778a38a3f7744a27e2
+    # via cica-document-search-airflow (pyproject.toml)
 pillow==12.1.0 \
     --hash=sha256:00162e9ca6d22b7c3ee8e61faa3c3253cd19b6a37f126cad04f2f88b306f557d \
     --hash=sha256:079af2fb0c599c2ec144ba2c02766d1b55498e373b3ac64687e43849fbbef5bc \
@@ -411,7 +415,9 @@ pillow==12.1.0 \
     --hash=sha256:f45bd71d1fa5e5749587613037b172e0b3b23159d1c00ef2fc920da6f470e6f0 \
     --hash=sha256:f61333d817698bdcdd0f9d7793e365ac3d2a21c1f1eb02b32ad6aefb8d8ea831 \
     --hash=sha256:fb125d860738a09d363a88daa0f59c4533529a90e564785e20fe875b200b6dbd
-    # via amazon-textract-textractor
+    # via
+    #   amazon-textract-textractor
+    #   pdf2image
 protobuf==6.33.4 \
     --hash=sha256:0f12ddbf96912690c3582f9dffb55530ef32015ad8e678cd494312bd78314c4f \
     --hash=sha256:1fe3730068fcf2e595816a6c34fe66eeedd37d51d0400b72fabc848811fdc1bc \

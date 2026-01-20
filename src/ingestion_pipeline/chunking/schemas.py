@@ -64,7 +64,7 @@ class DocumentBoundingBox(BaseModel):
 
 
 class DocumentMetadata(BaseModel):
-    """Immutable document metadata with Pydantic validation."""
+    """Document metadata with Pydantic validation."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -183,8 +183,10 @@ class DocumentPage(BaseModel):
 
     source_doc_id: str = Field(..., description="The unique ID of the source document.")
     page_num: int = Field(..., description="The page number (1-based).")
+    page_count: int = Field(..., description="Total number of pages in the document.")
     page_id: str = Field(..., description="UUID for the index.")
-    text: str = Field(..., description="Structured ocr content for the front end rendering")
+    s3_page_image_s3_uri: str = Field(..., description="S3 URI of the page image.")
+    text: str = Field(..., description="Structured ocr content for the front end rendering.")
     page_width: float
     page_height: float
     received_date: datetime
@@ -194,5 +196,3 @@ class ProcessedDocument(BaseModel):
     """Holds all structured data extracted from a single source document."""
 
     chunks: List[DocumentChunk]
-    pages: List[DocumentPage]
-    metadata: DocumentMetadata

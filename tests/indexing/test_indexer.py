@@ -277,6 +277,8 @@ def test_index_documents_with_document_page(mock_helpers_bulk, mock_opensearch_c
             page_width=8.5,
             page_height=11.0,
             received_date=datetime.datetime.fromisoformat("2025-11-06"),
+            page_count=2,
+            s3_page_image_s3_uri="s3://bucket/page1.png",
         ),
         DocumentPage(
             source_doc_id="doc1",
@@ -286,6 +288,8 @@ def test_index_documents_with_document_page(mock_helpers_bulk, mock_opensearch_c
             page_width=8.5,
             page_height=11.0,
             received_date=datetime.datetime.fromisoformat("2025-11-06"),
+            page_count=2,
+            s3_page_image_s3_uri="s3://bucket/page2.png",
         ),
     ]
     mock_helpers_bulk.return_value = (len(sample_pages), [])
