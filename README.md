@@ -104,7 +104,7 @@ The project is still a WIP to ingest an S3 document, call textract to perform OC
 - log in to the [modernisation aws console](https://user-guide.modernisation-platform.service.justice.gov.uk/user-guide/accessing-the-aws-console.html#logging-in)
 - retireve access keys from the cica-sandbox-development aws account (if you can't see this make sure you have been added to the [cica-review-case-documents](https://github.com/orgs/ministryofjustice/teams/cica-review-case-documents) github team
 - replace the aws env vars within the .env file
-- run ```uv run src/ingestion_pipeline/runner.py```
+- run ```bash run_locally_with_dot_env.sh```
 - watch the terminal logs, note Textract can take from ~30 secs to ~2 mins to process
 - once the pipeline has completed use the Opensearch dashboard to view the extracted data
 
@@ -141,6 +141,47 @@ On commit the pre-commit hooks will attempt to ```FIX``` any issues.
 ## Signing commits
 
 The project has been set up to enforce signing commits, follow the [github signing-commits guide](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits)
+
+## WSL issues seen when committing
+When working in a WSL environment you may experience some issues and messages that are not seen on a mac.
+
+>### TLS issue on pre-commit
+If you find the pre-commit fails with a message relating to TLS, check you have a `custom_ca_bundle.pem` in your home directory and if not follow the instructions here: [Manage CICA VPN SSL Certificates](https://dsdmoj.atlassian.net/wiki/spaces/CICA/pages/5882806404/CICA+set+up+instructions+for+WSL+for+windows#Manage-CICA-VPN-SSL-Certificates-within-your-Windows-Subsystem-for-Linux-environment)
+
+>### Golang errors on pre-commit
+If you find you are unable to commit and see an error like this:
+```
+An unexpected error has occurred: CalledProcessError: ...
+...
+go: downloading github...
+...
+golang-default/pkg/mod/...
+...
+```
+You will need to add a `goproxy` to your environment.  Add this to your ~/.bashrc or ~/.zshrc (whichever one you're using):
+```
+export GOPROXY=https://goproxy.dev,direct
+```
+then run `source ~/.bashrc` or `source ~/.zshrc` to enable the setting.
+
+>### Unable to enter signing pass-phrase
+When running `git commit -S` in a terminal GPG tries to spawn pinentry but fails with this message: 
+```
+[GNUPG:] BEGIN_SIGNING H10
+[GNUPG:] PINENTRY_LAUNCHED 226693 curses 1.2.1 - xterm-256color :0 - 1000/1000 -
+gpg: signing failed: Inappropriate ioctl for device
+[GNUPG:] FAILURE sign 83918950
+gpg: signing failed: Inappropriate ioctl for device
+```
+The issue is caused by WSL's tty not being correctly defined which prevents this from running.
+
+Add this to your ~/.bashrc or ~/.zshrc (whichever one you're using):
+```
+export GPG_TTY=$(tty)
+```
+then run `source ~/.bashrc` or `source ~/.zshrc` to enable the setting.
+
+
 
 ## Read about the GitHub repository standards
 
