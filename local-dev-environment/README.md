@@ -14,6 +14,7 @@ Docker and LocalStack resources to be created:
 - [Docker](https://docs.docker.com/get-started/get-docker/)
 - [Docker Desktop](https://docs.docker.com/desktop/)
 - [LocalStack Desktop](https://docs.localstack.cloud/aws/capabilities/web-app/localstack-desktop/)
+<<<<<<< HEAD
 - **For VPN WSL users**: If you are running the local environment from behind a corporate VPN with SSL inspection, you must also set the following environment variables in your .bashrc to allow LocalStack to trust your custom certificates:
 ```
 # Ensures LocalStack and its internal services trust the custom CA
@@ -21,6 +22,10 @@ export LOCALSTACK_REQUESTS_CA_BUNDLE="/home/your_user/custom_ca_bundle.pem"
 export LOCALSTACK_HOST_MOUNTS="/home/your_user/custom_ca_bundle.pem:/etc/ssl/certs/custom_ca_bundle.pem"
 ```
 This assumes you have already created the custom_ca_bundle.pem file as described in the main project README, CICA specific Windows WSL setup and confguration instructions.
+=======
+- Ensure yout `local-dev-environment/.env` file has the same valid AWS credentials see the `local-dev-environment/.env_template` file. 
+
+>>>>>>> 4a1bf1a (feature(wip): add page image local stack creation)
 
 ## Setup
 
@@ -113,6 +118,7 @@ This script allows you to perform hybrid (keyword + semantic) search queries aga
 
 - Ensure your OpenSearch instance is running and accessible.
 - Ensure your `.env` file in the project root contains valid AWS credentials and OpenSearch connection details (see main README for details).
+- Ensure yout `local-dev-environment/.env` file has the same valid AWS credentials see the `local-dev-environment/.env_template` file. 
 
 ## Running the Search Client
 

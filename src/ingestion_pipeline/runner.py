@@ -15,7 +15,9 @@ logger = logging.getLogger(__name__)
 
 # This is a placeholder for a real message from an SQS queue.
 # You can add your own S3 document URI here for testing.
-S3_DOCUMENT_URI = "s3://cica-textract-response-dev/Case1_TC19_50_pages_brain_injury.pdf"
+# This needs to be accessible in your S3 bucket and available to AWS Textract.
+# When developing locally with LocalStack, a copy of this document is added to localstack.
+S3_DOCUMENT_URI = "s3://cica-textract-response-dev/26-111111/Case1_TC19_50_pages_brain_injury.pdf"
 
 
 def main():

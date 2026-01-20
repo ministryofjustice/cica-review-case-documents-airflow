@@ -25,13 +25,13 @@ repos:
     hooks:
       - id: uv-lock
 
-  - repo: https://github.com/astral-sh/uv-pre-commit
-    # uv version.
-    rev: 0.9.5
-    hooks:
-      - id: uv-export # updates requirements.txt from pyproject.toml
-        always_run: true
-        pass_filenames: false
+  # - repo: https://github.com/astral-sh/uv-pre-commit
+  #   # uv version.
+  #   rev: 0.9.5
+  #   hooks:
+  #     - id: uv-export # updates requirements.txt from pyproject.toml
+  #       always_run: true
+  #       pass_filenames: false
 
   - repo: https://github.com/fpgmaas/deptry.git
     rev: "0.23.1"
@@ -61,6 +61,12 @@ repos:
       - id: update-requirements
         name: Update requirements.txt from pyproject.toml
         entry: bash -c 'uv pip compile --generate-hashes --output-file requirements.txt pyproject.toml && git add requirements.txt'
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: silent-uv-export
+        name: Silent uv-export
+        entry: bash -c 'uv pip compile --generate-hashes --output-file requirements.txt pyproject.toml > /dev/null 2>&1'
         language: system
         pass_filenames: false
         always_run: true

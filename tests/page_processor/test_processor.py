@@ -1,86 +1,94 @@
-import datetime
-from unittest import mock
+import io
+from datetime import datetime
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from ingestion_pipeline.chunking.schemas import DocumentMetadata, DocumentPage
-from ingestion_pipeline.page_processor.processor import PageProcessor
-from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
+from ingestion_pipeline.page_processor.processor import (
+    PageProcessingError,
+    PageProcessor,
+)
 
 
-@pytest.fixture
-def mock_page():
-    page = mock.Mock()
-    page.page_num = 1
-    page.width = 800
-    page.height = 600
-    page.text = "Sample page text"
-    return page
+class DummyPage:
+    def __init__(self, page_num, text="Some text"):
+        self.page_num = page_num
+        self.text = text
 
 
-@pytest.fixture
-def mock_document(mock_page):
-    doc = mock.Mock()
-    doc.pages = [mock_page]
-    return doc
+class DummyDocument:
+    def __init__(self, num_pages):
+        self.pages = [DummyPage(i + 1) for i in range(num_pages)]
 
 
 @pytest.fixture
 def metadata():
     return DocumentMetadata(
-        case_ref="25-111111",
-        source_doc_id="DOC456",
-        source_file_name="sample.pdf",
-        source_file_s3_uri="s3://bucket/sample.pdf",
-        received_date=datetime.datetime(2025, 1, 15, 12, 0, 0),
-        correspondence_type="TC19",
+        source_doc_id="doc123",
+        source_file_name="file.pdf",
+        correspondence_type="typeA",
+        case_ref="caseX",
+        page_count=2,
+        source_file_s3_uri="s3://bucket/26-111111/file.pdf",
+        received_date=datetime(2024, 1, 1),
     )
 
 
-def test_process_single_page(mock_document, metadata):
-    processor = PageProcessor()
-    result = processor.process(mock_document, metadata)
-    assert isinstance(result, list)
-    assert len(result) == 1
-    page = result[0]
-    assert isinstance(page, DocumentPage)
-    assert page.source_doc_id == "DOC456"
-    assert page.page_num == 1
-
-    # Compute expected page_id using DocumentIdentifier
-    identifier = DocumentIdentifier(
-        source_file_name=metadata.source_file_name,
-        correspondence_type=metadata.correspondence_type,
-        case_ref=metadata.case_ref,
-        page_num=page.page_num,
-    )
-    expected_page_id = identifier.generate_uuid()
-    assert page.page_id == expected_page_id
-
-    assert page.page_width == 800
-    assert page.page_height == 600
-    assert page.text == "Sample page text"
+@pytest.fixture
+def processor():
+    return PageProcessor()
 
 
-def test_process_multiple_pages(metadata):
-    page1 = mock.Mock(page_num=1, width=800, height=600, text="Text 1")
-    page2 = mock.Mock(page_num=2, width=1024, height=768, text="Text 2")
-    doc = mock.Mock()
-    doc.pages = [page1, page2]
-    processor = PageProcessor()
-    result = processor.process(doc, metadata)
-    assert len(result) == 2
-    assert result[0].page_num == 1
-    assert result[1].page_num == 2
-    assert result[0].text == "Text 1"
-    assert result[1].text == "Text 2"
+@patch("ingestion_pipeline.page_processor.processor.s3_client")
+@patch("ingestion_pipeline.page_processor.processor.convert_from_bytes")
+def test_process_success(mock_convert, mock_s3, processor, metadata):
+    # Mock S3 download
+    mock_s3.get_object.return_value = {"Body": io.BytesIO(b"pdfbytes")}
+    # Mock PDF to image conversion
+    mock_image1 = MagicMock()
+    mock_image1.size = (100, 200)
+    mock_image2 = MagicMock()
+    mock_image2.size = (150, 250)
+    mock_convert.return_value = [mock_image1, mock_image2]
+    # Mock upload
+    mock_s3.upload_fileobj.return_value = None
+
+    doc = DummyDocument(2)
+    pages = processor.process(doc, metadata)
+
+    assert len(pages) == 2
+    assert all(isinstance(p, DocumentPage) for p in pages)
+    assert pages[0].page_num == 1
+    assert pages[1].page_num == 2
+    assert pages[0].page_width == 100
+    assert pages[1].page_height == 250
+    assert pages[0].s3_page_image_s3_uri.endswith("/1.png")
+    assert pages[1].s3_page_image_s3_uri.endswith("/2.png")
 
 
-def test_process_page_without_text(metadata):
-    page = mock.Mock(page_num=3, width=500, height=400)
-    delattr(page, "text")
-    doc = mock.Mock()
-    doc.pages = [page]
-    processor = PageProcessor()
-    result = processor.process(doc, metadata)
-    assert result[0].text == ""
+@patch("ingestion_pipeline.page_processor.processor.s3_client")
+def test_process_zero_page_count(mock_s3, processor, metadata):
+    zero_page_metadata = metadata.model_copy(update={"page_count": 0})
+    doc = DummyDocument(0)
+    with pytest.raises(PageProcessingError):
+        processor.process(doc, zero_page_metadata)
+
+
+@patch("ingestion_pipeline.page_processor.processor.s3_client")
+@patch("ingestion_pipeline.page_processor.processor.convert_from_bytes")
+def test_process_page_count_mismatch(mock_convert, mock_s3, processor, metadata):
+    # 2 pages in doc, 1 image generated
+    mock_s3.get_object.return_value = {"Body": io.BytesIO(b"pdfbytes")}
+    mock_image1 = MagicMock()
+    mock_image1.size = (100, 200)
+    mock_convert.return_value = [mock_image1]
+    doc = DummyDocument(2)
+    with pytest.raises(PageProcessingError):
+        processor.process(doc, metadata)
+
+
+@patch("ingestion_pipeline.page_processor.processor.s3_client")
+def test_download_pdf_from_s3_invalid_uri(mock_s3, processor):
+    with pytest.raises(ValueError):
+        processor._download_pdf_from_s3("not-an-s3-uri")

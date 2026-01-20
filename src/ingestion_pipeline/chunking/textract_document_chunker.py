@@ -9,7 +9,7 @@ from ingestion_pipeline.chunking.exceptions import ChunkException
 from ingestion_pipeline.chunking.strategies.merge.chunk_merger import ChunkMerger
 
 from .chunking_config import ChunkingConfig
-from .schemas import DocumentChunk, DocumentMetadata, DocumentPage, ProcessedDocument
+from .schemas import DocumentChunk, DocumentMetadata, ProcessedDocument
 from .strategies.base import ChunkingStrategyHandler
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,6 @@ class DocumentChunker:
             self._validate_textract_document(doc)
 
             all_chunks = []
-            page_documents = []
             chunk_index_counter = 0
 
             raw_response = doc.response
@@ -70,24 +69,8 @@ class DocumentChunker:
                 all_chunks.extend(page_chunks)
                 chunk_index_counter += len(page_chunks)
 
-                # TODO use metadata to build page document
-                page_doc = DocumentPage(
-                    source_doc_id=metadata.source_doc_id,
-                    page_num=page.page_num,
-                    # Placeholders, these will be generated in another step and passed in,
-                    # probably key:object page_num:{s3_page_uri, page_width, page_height, page_text, anything else....}
-                    page_id=f"s3://bucket/{metadata.case_ref}/{metadata.source_doc_id}/page_images/page_{page.page_num}.png",
-                    page_width=page.width,
-                    page_height=page.height,
-                    # The place holders wlll be added outside of this step
-                    # and should be held within the document metadata
-                    text="To be added to DcoumentMetadata..........",
-                    received_date=metadata.received_date,
-                )
-                page_documents.append(page_doc)
-
             logger.info(f"Extracted {len(all_chunks)} chunks from {len(doc.pages)} pages")
-            return ProcessedDocument(chunks=all_chunks, pages=page_documents, metadata=metadata)
+            return ProcessedDocument(chunks=all_chunks)
 
         except Exception as e:
             logger.error(f"Error extracting chunks from document: {str(e)}")
@@ -136,7 +119,7 @@ class DocumentChunker:
 
                 if chunking_strategy is None:
                     logger.warning(f"No chunking strategy found for block type: {block_type}")
-                    continue
+                    raise ChunkError(f"Block type {block_type} has no associated strategy handler")
 
                 block_chunks = chunking_strategy.chunk(
                     layout_block, page.page_num, metadata, current_chunk_index, raw_response
