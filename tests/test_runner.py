@@ -65,7 +65,7 @@ def test_main_creates_correct_document_metadata(
         mock_identifier_class.assert_called_once_with(
             source_file_name="Case1_TC19_50_pages_brain_injury.pdf",
             correspondence_type="TC19",
-            case_ref="25-111111",
+            case_ref="26-111111",
         )
 
         call_args = mock_pipeline.process_document.call_args
@@ -74,7 +74,7 @@ def test_main_creates_correct_document_metadata(
         assert isinstance(metadata, DocumentMetadata)
         assert metadata.source_doc_id == "test-uuid-123"
         assert metadata.source_file_name == "Case1_TC19_50_pages_brain_injury.pdf"
-        assert metadata.case_ref == "25-111111"
+        assert metadata.case_ref == "26-111111"
         assert metadata.correspondence_type == "TC19"
         assert metadata.page_count is None
 
