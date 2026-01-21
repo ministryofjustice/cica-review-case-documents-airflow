@@ -20,15 +20,121 @@ from testing import evaluation_settings as settings
 # Initialize stemmer for English (matches OpenSearch's English analyzer)
 _stemmer = snowballstemmer.stemmer("english")
 
+# Common English stop words to exclude from term matching
+# These words are too common to provide meaningful matches
+STOP_WORDS = frozenset(
+    {
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "by",
+        "for",
+        "from",
+        "has",
+        "he",
+        "in",
+        "is",
+        "it",
+        "its",
+        "of",
+        "on",
+        "or",
+        "that",
+        "the",
+        "to",
+        "was",
+        "were",
+        "will",
+        "with",
+        "she",
+        "they",
+        "this",
+        "had",
+        "have",
+        "been",
+        "would",
+        "could",
+        "should",
+        "may",
+        "might",
+        "can",
+        "but",
+        "not",
+        "no",
+        "so",
+        "if",
+        "than",
+        "then",
+        "these",
+        "those",
+        "what",
+        "which",
+        "who",
+        "whom",
+        "whose",
+        "when",
+        "where",
+        "why",
+        "how",
+        "all",
+        "each",
+        "every",
+        "both",
+        "few",
+        "more",
+        "most",
+        "other",
+        "some",
+        "such",
+        "only",
+        "own",
+        "same",
+        "into",
+        "over",
+        "through",
+        "during",
+        "before",
+        "after",
+        "above",
+        "below",
+        "between",
+        "under",
+        "again",
+        "further",
+        "once",
+        "here",
+        "there",
+        "any",
+        "about",
+    }
+)
+
+
+def filter_stop_words(words: list[str]) -> list[str]:
+    """Remove stop words from a list of words.
+
+    Args:
+        words: List of words to filter.
+
+    Returns:
+        List with stop words removed.
+    """
+    return [w for w in words if w.lower() not in STOP_WORDS]
+
 
 def exact_match(term: str, text: str) -> bool:
     """Check if term appears as whole word(s) in text using word boundaries.
 
     This matches OpenSearch keyword search behavior where tokenized terms
-    must match tokenized text. For multi-word terms, matches if ANY word
-    in the term is found as a whole word.
+    must match tokenized text. For multi-word terms, matches if ANY non-stop
+    word in the term is found as a whole word.
     """
     term_words = re.findall(r"\b\w+\b", term.lower())
+    term_words = filter_stop_words(term_words)
     text_lower = text.lower()
 
     # Match if ANY term word appears as a whole word in text
@@ -53,10 +159,11 @@ def stemmed_match(term: str, text: str) -> bool:
 
     Uses Snowball English stemmer to match OpenSearch's English analyzer behavior.
     Tokenizes on word boundaries (strips punctuation like possessives) before stemming.
-    For multi-word terms, matches if ANY word in the term is found (stemmed).
+    For multi-word terms, matches if ANY non-stop word in the term is found (stemmed).
     """
     # Tokenize: extract alphanumeric words, stripping punctuation
     term_words = re.findall(r"\b\w+\b", term.lower())
+    term_words = filter_stop_words(term_words)
     text_words = re.findall(r"\b\w+\b", text.lower())
     stemmed_text = [_stemmer.stemWord(w) for w in text_words]
 
@@ -72,8 +179,8 @@ def fuzzy_match(term: str, text: str, threshold: int | None = None) -> bool:
 
     Uses rapidfuzz to find approximate matches. Handles both single words
     and hyphenated/multi-word terms by checking:
-    1. Word-to-word matching for individual term words
-    2. Partial ratio for the full term (handles hyphenated terms like "neuro-psychologist")
+    1. Partial ratio for the full term (handles hyphenated terms like "neuro-psychologist")
+    2. Word-to-word matching for individual term words (excluding stop words)
 
     Args:
         term: The term to search for.
@@ -89,17 +196,29 @@ def fuzzy_match(term: str, text: str, threshold: int | None = None) -> bool:
     term_lower = term.lower()
     text_lower = text.lower()
 
-    # First, check if the full term fuzzy-matches anywhere in the text
+    # Filter stop words from term for matching
+    term_words = filter_stop_words(term_lower.split())
+
+    # If all words are stop words, no match possible
+    if not term_words:
+        return False
+
+    # Build filtered term for partial ratio check
+    filtered_term = " ".join(term_words)
+
+    # First, check if the filtered term fuzzy-matches anywhere in the text
     # This handles hyphenated terms like "neuro-psychologist" matching "neuro psychologist"
-    if fuzz.partial_ratio(term_lower, text_lower) >= threshold:
+    if fuzz.partial_ratio(filtered_term, text_lower) >= threshold:
         return True
 
     # Fall back to word-by-word matching for multi-word terms
-    term_words = term_lower.split()
     text_words = text_lower.split()
 
     # Match if ANY term word fuzzy-matches any text word (OR logic)
+    # Skip short words (5 chars or less) to avoid false positives like "on" matching "one"
     for tw in term_words:
+        if len(tw) <= 5:
+            continue
         for word in text_words:
             if fuzz.ratio(tw, word) >= threshold:
                 return True

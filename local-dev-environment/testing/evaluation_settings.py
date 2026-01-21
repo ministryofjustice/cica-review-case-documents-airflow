@@ -19,22 +19,29 @@ For programmatic override (e.g., optimization), use:
 # Set boost to 0 to disable a search type, or >0 to enable and weight it.
 # Higher boost = more weight in the combined search score.
 
-KEYWORD_BOOST = 1.0  # Exact keyword matching
-ANALYSER_BOOST = 0.0  # English analyzer (stemming, stopwords)
-SEMANTIC_BOOST = 0.0  # Vector/embedding similarity search
-FUZZY_BOOST = 0.0  # Fuzzy matching (typo tolerance)
-WILDCARD_BOOST = 0.0  # Wildcard pattern matching
+KEYWORD_BOOST = 1.2  # Exact keyword matching
+ANALYSER_BOOST = 3.9  # English analyzer (stemming, stopwords)
+SEMANTIC_BOOST = 0.9  # Vector/embedding similarity search
+FUZZY_BOOST = 3.9  # Fuzzy matching (typo tolerance)
+WILDCARD_BOOST = 3.9  # Wildcard pattern matching
 
 # =============================================================================
 # SEARCH PARAMETERS
 # =============================================================================
 
-K_QUERIES = 60  # Number of results to retrieve per search
-SCORE_FILTER = 0.56  # Minimum score threshold (0.0 = no filter)
+K_QUERIES = 40  # Number of results to retrieve per search
+SCORE_FILTER = 0.57  # Minimum score threshold for initial results
+
+# Additive semantic fallback - supplements initial results when too few
+ADAPTIVE_SCORE_FILTER = False  # Enable/disable adaptive filtering
+MIN_RESULTS_BEFORE_FALLBACK = 3  # Minimum results needed before lowering score filter
+SEMANTIC_SCORE_FILTER = 0.5  # Threshold for semantic results (lower than keyword)
+MAX_SEMANTIC_RESULTS = 10  # Maximum semantic results to add as supplement
 
 # Fuzzy search settings
 FUZZINESS = "Auto"  # "Auto", "0", "1", "2" - Auto chooses based on term length
 MAX_EXPANSIONS = 50  # Maximum fuzzy term expansions
+PREFIX_LENGTH = 2  # Number of initial characters that must match exactly
 
 # =============================================================================
 # TERM MATCHING SETTINGS
@@ -42,7 +49,16 @@ MAX_EXPANSIONS = 50  # Maximum fuzzy term expansions
 # These control how we verify if returned chunks contain search terms when a
 # fuzzy match is conducted using rapidfuzz to simulate opensearch fuzzy matching.
 
-FUZZY_MATCH_THRESHOLD = 80  # Similarity threshold for fuzzy term matching (0-100)
+FUZZY_MATCH_THRESHOLD = 85  # Similarity threshold for fuzzy term matching (0-100)
+
+# =============================================================================
+# DATE FORMAT DETECTION
+# =============================================================================
+# When enabled, dates in search terms are detected and searched using exact
+# match_phrase queries with multiple format variants (e.g., "20-Jul-21" also
+# searches for "20 July 2021", "20/07/2021", etc.)
+
+DATE_FORMAT_DETECTION = True  # Enable/disable date format detection
 
 
 # =============================================================================
@@ -57,9 +73,15 @@ _DEFAULTS = {
     "WILDCARD_BOOST": WILDCARD_BOOST,
     "K_QUERIES": K_QUERIES,
     "SCORE_FILTER": SCORE_FILTER,
+    "ADAPTIVE_SCORE_FILTER": ADAPTIVE_SCORE_FILTER,
+    "MIN_RESULTS_BEFORE_FALLBACK": MIN_RESULTS_BEFORE_FALLBACK,
+    "SEMANTIC_SCORE_FILTER": SEMANTIC_SCORE_FILTER,
+    "MAX_SEMANTIC_RESULTS": MAX_SEMANTIC_RESULTS,
     "FUZZINESS": FUZZINESS,
     "MAX_EXPANSIONS": MAX_EXPANSIONS,
+    "PREFIX_LENGTH": PREFIX_LENGTH,
     "FUZZY_MATCH_THRESHOLD": FUZZY_MATCH_THRESHOLD,
+    "DATE_FORMAT_DETECTION": DATE_FORMAT_DETECTION,
 }
 
 
