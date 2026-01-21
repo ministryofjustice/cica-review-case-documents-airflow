@@ -12,13 +12,14 @@ Requirements:
     pip install optuna
 
 The script will:
-1. Phase 1: Coarse search with step=0.2 to explore the parameter space
+1. Phase 1: Coarse search with step=0.3 to explore the parameter space
 2. Phase 2: Fine-tuning with step=0.05 around the best region found
 3. Log all trials to the evaluation_log.csv (full audit trail)
 4. Save the best parameters found to a JSON file
 5. Print a summary of the optimization results
 """
 
+import argparse
 import json
 import logging
 from datetime import datetime
@@ -67,11 +68,11 @@ def create_objective(step: float = 0.1) -> callable:
             Optimization score (higher is better).
         """
         # Suggest boost parameters (0.0 to 3.0 range)
-        keyword_boost = trial.suggest_float("KEYWORD_BOOST", 0.0, 3.0, step=step)
-        analyser_boost = trial.suggest_float("ANALYSER_BOOST", 0.0, 3.0, step=step)
-        semantic_boost = trial.suggest_float("SEMANTIC_BOOST", 0.0, 3.0, step=step)
-        fuzzy_boost = trial.suggest_float("FUZZY_BOOST", 0.0, 3.0, step=step)
-        wildcard_boost = trial.suggest_float("WILDCARD_BOOST", 0.0, 3.0, step=step)
+        keyword_boost = trial.suggest_float("KEYWORD_BOOST", 0.0, 5.0, step=step)
+        analyser_boost = trial.suggest_float("ANALYSER_BOOST", 0.0, 5.0, step=step)
+        semantic_boost = trial.suggest_float("SEMANTIC_BOOST", 0.0, 5.0, step=step)
+        fuzzy_boost = trial.suggest_float("FUZZY_BOOST", 0.0, 5.0, step=step)
+        wildcard_boost = trial.suggest_float("WILDCARD_BOOST", 0.0, 5.0, step=step)
 
         # Ensure at least one search type is active
         total_boost = keyword_boost + analyser_boost + semantic_boost + fuzzy_boost + wildcard_boost
@@ -123,7 +124,7 @@ def create_objective(step: float = 0.1) -> callable:
 
 
 def run_optimization(
-    n_trials: int = 100,
+    n_trials: int = 30,
     study_name: str | None = None,
     two_phase: bool = True,
 ) -> optuna.Study:
@@ -156,16 +157,22 @@ def run_optimization(
         sampler=sampler,
     )
 
+    # Progress callback to show fraction instead of progress bar
+    def progress_callback(study: optuna.Study, trial: optuna.trial.FrozenTrial) -> None:
+        current = len(study.trials)
+        logger.info(f"Progress: {current}/{n_trials} trials completed")
+
     if two_phase:
         # Phase 1: Coarse search (first half of trials)
         phase1_trials = n_trials // 2
         phase2_trials = n_trials - phase1_trials
 
-        logger.info(f"Phase 1: Coarse search ({phase1_trials} trials, step=0.2)")
+        logger.info(f"Phase 1: Coarse search ({phase1_trials} trials, step=0.3)")
         study.optimize(
-            create_objective(step=0.2),
+            create_objective(step=0.3),
             n_trials=phase1_trials,
-            show_progress_bar=True,
+            show_progress_bar=False,
+            callbacks=[progress_callback],
         )
 
         logger.info(f"Phase 1 complete. Best score so far: {study.best_value:.4f}")
@@ -173,14 +180,16 @@ def run_optimization(
         study.optimize(
             create_objective(step=0.05),
             n_trials=phase2_trials,
-            show_progress_bar=True,
+            show_progress_bar=False,
+            callbacks=[progress_callback],
         )
     else:
         # Single phase with default step
         study.optimize(
             create_objective(step=0.1),
             n_trials=n_trials,
-            show_progress_bar=True,
+            show_progress_bar=False,
+            callbacks=[progress_callback],
         )
 
     return study
@@ -292,7 +301,7 @@ def print_summary(study: optuna.Study) -> None:
         logger.info(f"     Params: {_round_params(trial.params)}")
 
 
-def main(n_trials: int = 100, two_phase: bool = True) -> None:
+def main(n_trials: int = 30, two_phase: bool = True) -> None:
     """Main entry point for optimization.
 
     Args:
@@ -326,5 +335,17 @@ def main(n_trials: int = 100, two_phase: bool = True) -> None:
 
 
 if __name__ == "__main__":
-    # Default to 100 trials, can be modified here
-    main(n_trials=100)
+    parser = argparse.ArgumentParser(description="Optimize search configuration parameters")
+    parser.add_argument(
+        "--n-trials",
+        type=int,
+        default=30,
+        help="Total number of optimization trials to run (default: 30)",
+    )
+    parser.add_argument(
+        "--single-phase",
+        action="store_true",
+        help="Run single phase optimization instead of two-phase",
+    )
+    args = parser.parse_args()
+    main(n_trials=args.n_trials, two_phase=not args.single_phase)
