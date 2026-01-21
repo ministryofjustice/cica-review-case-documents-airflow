@@ -10,8 +10,10 @@ import re
 import dateparser
 
 # Regex components for building date patterns
+# Note: "Sept" is used as a non-standard abbreviation in some documents
 _FULL_MONTHS = r"(?:January|February|March|April|May|June|July|August|September|October|November|December)"
 _ABBR_MONTHS = r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
+_ABBR_MONTHS_4 = r"(?:Sept)"  # 4-letter abbreviations used in some documents
 _ORDINAL = r"(?:st|nd|rd|th)"
 
 # Date format patterns mapping format name to regex pattern
@@ -21,15 +23,21 @@ _DATE_PATTERNS_RAW: dict[str, str] = {
     "dd-mm-yyyy": r"\b\d{1,2}-\d{1,2}-\d{2,4}\b",
     "dd.mm.yyyy": r"\b\d{1,2}\.\d{1,2}\.\d{2,4}\b",
     "yyyy-mm-dd": r"\b\d{4}-\d{1,2}-\d{1,2}\b",
-    # Full month name formats (more specific first)
-    "ddth month yyyy": rf"\b\d{{1,2}}{_ORDINAL}\s+{_FULL_MONTHS}\s+\d{{4}}\b",
-    "dd month yyyy": rf"\b\d{{1,2}}\s+{_FULL_MONTHS}\s+\d{{4}}\b",
-    "month yyyy": rf"\b{_FULL_MONTHS}\s+\d{{4}}\b",
-    # Abbreviated month name formats (more specific first)
-    "ddth mon yyyy": rf"\b\d{{1,2}}{_ORDINAL}\s+{_ABBR_MONTHS}\s+\d{{4}}\b",
-    "dd mon yyyy": rf"\b\d{{1,2}}\s+{_ABBR_MONTHS}\s+\d{{4}}\b",
-    "mon dd, yyyy": rf"\b{_ABBR_MONTHS}\s+\d{{1,2}},?\s+\d{{4}}\b",
-    "mon yyyy": rf"\b{_ABBR_MONTHS}\s+\d{{4}}\b",
+    # Full month name formats (more specific first) - support 2 or 4 digit years
+    "ddth month yyyy": rf"\b\d{{1,2}}{_ORDINAL}\s+{_FULL_MONTHS}\s+\d{{2,4}}\b",
+    "dd month yyyy": rf"\b\d{{1,2}}\s+{_FULL_MONTHS}\s+\d{{2,4}}\b",
+    "dd-month-yyyy": rf"\b\d{{1,2}}-{_FULL_MONTHS}-\d{{2,4}}\b",
+    "month yyyy": rf"\b{_FULL_MONTHS}\s+\d{{2,4}}\b",
+    # Abbreviated month name formats (more specific first) - support 2 or 4 digit years
+    "ddth mon yyyy": rf"\b\d{{1,2}}{_ORDINAL}\s+{_ABBR_MONTHS}\s+\d{{2,4}}\b",
+    "dd mon yyyy": rf"\b\d{{1,2}}\s+{_ABBR_MONTHS}\s+\d{{2,4}}\b",
+    "dd-mon-yyyy": rf"\b\d{{1,2}}-{_ABBR_MONTHS}-\d{{2,4}}\b",
+    "mon dd, yyyy": rf"\b{_ABBR_MONTHS}\s+\d{{1,2}},?\s+\d{{2,4}}\b",
+    "mon yyyy": rf"\b{_ABBR_MONTHS}\s+\d{{2,4}}\b",
+    # 4-letter abbreviated month name formats (e.g., Sept) - support 2 or 4 digit years
+    "ddth mon4 yyyy": rf"\b\d{{1,2}}{_ORDINAL}\s+{_ABBR_MONTHS_4}\s+\d{{2,4}}\b",
+    "dd mon4 yyyy": rf"\b\d{{1,2}}\s+{_ABBR_MONTHS_4}\s+\d{{2,4}}\b",
+    "dd-mon4-yyyy": rf"\b\d{{1,2}}-{_ABBR_MONTHS_4}-\d{{2,4}}\b",
 }
 
 # Pre-compiled patterns for better performance
@@ -115,14 +123,17 @@ def generate_date_variants(date_str: str) -> list[str]:
     full_month = parsed.strftime("%B")
     abbr_month = parsed.strftime("%b")
 
+    # 4-letter abbreviations for specific months
+    abbr_month_4 = {9: "Sept"}.get(month)  # September -> Sept
+
     # Generate all format variants (using string formatting for cross-platform compatibility)
     variants = {
         date_str,
         # Numeric formats with slashes
-        f"{day}/{month}/{year}",  # 1/1/2018
+        f"{day}/{month}/{year}",  # 01/01/2018
         f"{day:02d}/{month:02d}/{year}",  # 01/01/2018
         # Numeric formats with hyphens
-        f"{day}-{month}-{year}",  # 1-1-2018
+        f"{day}-{month}-{year}",  # 01-01-2018
         f"{day:02d}-{month:02d}-{year}",  # 01-01-2018
         # ISO format
         f"{year}-{month:02d}-{day:02d}",  # 2018-01-01
@@ -132,25 +143,18 @@ def generate_date_variants(date_str: str) -> list[str]:
         # Abbreviated month name formats
         f"{day} {abbr_month} {year}",  # 1 Jan 2018
         f"{day}{ordinal} {abbr_month} {year}",  # 1st Jan 2018
+        # Hyphenated month name formats
+        f"{day}-{full_month}-{year}",  # 01-January-2018
+        f"{day}-{abbr_month}-{year}",  # 01-Jan-2018
     }
 
+    # Add 4-letter abbreviation variants if applicable
+    if abbr_month_4:
+        variants.add(f"{day} {abbr_month_4} {year}")  # 1 Sept 2018
+        variants.add(f"{day}{ordinal} {abbr_month_4} {year}")  # 1st Sept 2018
+        variants.add(f"{day}-{abbr_month_4}-{year}")  # 01-Sept-2018
+
     return list(variants)
-
-
-def remove_dates_from_text(text: str) -> str:
-    """Remove all date patterns from text, returning the remaining text.
-
-    Args:
-        text: The text to process.
-
-    Returns:
-        Text with all date patterns removed and extra whitespace collapsed.
-    """
-    result = text
-    for pattern in _COMPILED_PATTERNS.values():
-        result = pattern.sub("", result)
-    # Collapse multiple spaces and strip
-    return " ".join(result.split())
 
 
 def extract_dates_for_search(text: str) -> list[str]:
