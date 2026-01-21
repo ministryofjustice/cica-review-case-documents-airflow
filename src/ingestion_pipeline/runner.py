@@ -20,6 +20,15 @@ logger = logging.getLogger(__name__)
 S3_DOCUMENT_URI = "s3://cica-textract-response-dev/26-111111/Case1_TC19_50_pages_brain_injury.pdf"
 
 
+def extract_case_ref(s3_uri: str) -> str:
+    """Extract the case_ref from the S3 URI (the folder after the bucket)."""
+    # Example: s3://bucket/26-111111/filename.pdf → 26-111111
+    parts = s3_uri.replace("s3://", "").split("/")
+    if len(parts) >= 2:
+        return parts[1]
+    return ""
+
+
 def main():
     """Main entry point for the application runner."""
     logger.info("Pipeline runner started.")
@@ -27,11 +36,14 @@ def main():
         logger.critical("OpenSearch health check failed. Exiting pipeline runner.")
         return
 
+    case_ref = extract_case_ref(S3_DOCUMENT_URI)
+    logger.info(f"Processing document for case reference: {case_ref}")
+
     # In a real-world scenario, this metadata would come from an SQS message.
     identifier = DocumentIdentifier(
         source_file_name=S3_DOCUMENT_URI.split("/")[-1],
         correspondence_type="TC19",
-        case_ref="25-111111",
+        case_ref=case_ref,
     )
     source_doc_id = identifier.generate_uuid()
 
@@ -40,7 +52,7 @@ def main():
         source_file_name=S3_DOCUMENT_URI.split("/")[-1],
         source_file_s3_uri=S3_DOCUMENT_URI,
         page_count=None,  # Page count is determined during processing.
-        case_ref="25-111111",
+        case_ref=case_ref,
         received_date=datetime.datetime.now(),
         correspondence_type="TC19",
     )
