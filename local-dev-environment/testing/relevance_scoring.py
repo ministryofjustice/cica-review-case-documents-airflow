@@ -221,8 +221,10 @@ def _calculate_summary_stats(df: pd.DataFrame) -> EvaluationSummary:
     else:
         avg_f1_score = 0
 
-    # Calculate average chunks returned per query
-    total_chunks_returned = df["total_results"].sum()
+    # Calculate average chunks returned per query (only count results from searches with precision > 0)
+    # This prevents 0-precision searches from inflating the chunk count with noise
+    df_with_precision = df[df["acceptable_term_based_precision"] > 0]
+    total_chunks_returned = df_with_precision["total_results"].sum()
     avg_chunks_returned = total_chunks_returned / total_queries if total_queries > 0 else 0
 
     queries_with_expected_chunk = df["expected_chunk_id"].apply(lambda x: bool(str(x).strip())).sum()
@@ -234,7 +236,7 @@ def _calculate_summary_stats(df: pd.DataFrame) -> EvaluationSummary:
     )
 
     # Calculate optimization score: (total_chunks / total_queries) * (avg_acceptable_term_precision ^ 2)
-    # The power of 2 heavily penalizes low precision
+    # Squaring precision heavily penalizes low precision results
     # Dividing by total_queries normalizes across different search term sets
     # Convert percentage to decimal (0-1) for the calculation
     precision_decimal = avg_acceptable_term_based_precision / 100

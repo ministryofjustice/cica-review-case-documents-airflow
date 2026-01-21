@@ -22,7 +22,7 @@ from opensearchpy.exceptions import ConnectionError as OpenSearchConnectionError
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingGenerator
 from testing import evaluation_settings as eval_settings
-from testing.date_formats import extract_dates_for_search, remove_dates_from_text
+from testing.date_formats import extract_dates_for_search
 from testing.evaluation_config import get_active_search_type
 
 os.environ["AWS_MOD_PLATFORM_ACCESS_KEY_ID"] = settings.AWS_MOD_PLATFORM_ACCESS_KEY_ID
@@ -39,7 +39,7 @@ CHUNK_INDEX_NAME = settings.OPENSEARCH_CHUNK_INDEX_NAME
 
 # --- 2. Choose your search term and output name and location---
 
-SEARCH_TERM = "neuro-psychologist"
+SEARCH_TERM = "28th Jul 2021"  # Change this to use a different search term
 
 # Edit the output directory and path if needed
 # Use path relative to testing folder (parent of this file)
@@ -85,6 +85,7 @@ def _build_hybrid_clauses(query_text: str, query_vector: list[float], k: int) ->
                         "value": query_text,
                         "fuzziness": eval_settings.FUZZINESS,
                         "max_expansions": eval_settings.MAX_EXPANSIONS,
+                        "prefix_length": eval_settings.PREFIX_LENGTH,
                         "boost": eval_settings.FUZZY_BOOST,
                     }
                 }
@@ -115,28 +116,25 @@ def create_hybrid_query(query_text: str, query_vector: list[float], k: int = 5) 
     """Create a hybrid search query combining keyword, fuzzy, and semantic vector search.
 
     Each search type is only included if its boost value is greater than 0.
-    For queries containing dates, uses match_phrase for date variants and standard
-    hybrid search for any remaining non-date text.
+    For queries containing dates (when DATE_FORMAT_DETECTION is enabled), uses ONLY
+    match_phrase for date variants (no fuzzy/semantic).
     """
     should_clauses = []
 
-    # Extract dates and generate format variants
-    date_variants = extract_dates_for_search(query_text)
+    # Extract dates and generate format variants (if date detection is enabled)
+    date_variants = extract_dates_for_search(query_text) if eval_settings.DATE_FORMAT_DETECTION else []
 
-    # If dates are found, use match_phrase for dates + hybrid search for remaining text
+    # If dates are found, use ONLY match_phrase for dates (keyword matching only)
     if date_variants:
         for date in date_variants:
             should_clauses.append({"match_phrase": {"chunk_text": {"query": date, "boost": 2}}})
 
-        # Check for remaining non-date text and apply standard hybrid search
-        remaining_text = remove_dates_from_text(query_text)
-        if remaining_text:
-            should_clauses.extend(_build_hybrid_clauses(remaining_text, query_vector, k))
-
+        # Date-only search: no hybrid clauses, just exact phrase matching
+        # minimum_should_match=1 ensures at least one date variant must match
         return {
             "size": k,
             "_source": ["document_id", "page_number", "chunk_text", "case_ref"],
-            "query": {"bool": {"should": should_clauses}},
+            "query": {"bool": {"should": should_clauses, "minimum_should_match": 1}},
         }
 
     # No dates found - use standard hybrid search
@@ -196,16 +194,62 @@ def count_term_occurrences(text: str, search_term: str) -> int:
     return text.lower().count(search_term.lower())
 
 
+def apply_adaptive_score_filter(hits: list[dict], score_filter: float) -> tuple[list[dict], float, int]:
+    """Apply additive semantic fallback filtering based on evaluation settings.
+
+    Prioritizes keyword results (high score threshold). If fewer than
+    MIN_RESULTS_BEFORE_FALLBACK keyword results exist, supplements with
+    semantic results (lower score threshold) up to MAX_SEMANTIC_RESULTS.
+
+    Args:
+        hits: List of search hits from OpenSearch.
+        score_filter: Primary score threshold for keyword results.
+
+    Returns:
+        Tuple of (filtered_hits, effective_score_filter, semantic_results_added).
+    """
+    # First pass: get high-scoring keyword results
+    keyword_hits = [hit for hit in hits if hit["_score"] >= score_filter]
+
+    # Check if we need to supplement with semantic results
+    if eval_settings.ADAPTIVE_SCORE_FILTER and len(keyword_hits) < eval_settings.MIN_RESULTS_BEFORE_FALLBACK:
+        # Get IDs of keyword hits to avoid duplicates
+        keyword_ids = {hit["_id"] for hit in keyword_hits}
+
+        # Get semantic results (between semantic threshold and keyword threshold)
+        semantic_hits = [
+            hit
+            for hit in hits
+            if eval_settings.SEMANTIC_SCORE_FILTER <= hit["_score"] < score_filter and hit["_id"] not in keyword_ids
+        ]
+
+        # Limit semantic results and combine
+        semantic_to_add = semantic_hits[: eval_settings.MAX_SEMANTIC_RESULTS]
+        combined_hits = keyword_hits + semantic_to_add
+
+        return combined_hits, score_filter, len(semantic_to_add)
+
+    return keyword_hits, score_filter, 0
+
+
 def write_hits_to_xlsx(
     hits: list[dict],
     score_filter: float = eval_settings.SCORE_FILTER,
     search_term: str = SEARCH_TERM,
 ) -> None:
-    """Write the search hits to an Excel file, filtering by score."""
+    """Write the search hits to an Excel file, with additive semantic fallback.
+
+    Uses adaptive filtering if enabled: if too few keyword results pass the
+    primary score_filter, supplements with semantic results.
+    """
     OUTPUT_DIRECTORY.mkdir(parents=True, exist_ok=True)
     workbook = xlsxwriter.Workbook(str(OUTPUT_PATH))
     worksheet = workbook.add_worksheet()
-    filtered_hits = [hit for hit in hits if hit["_score"] >= score_filter]
+
+    # Apply additive semantic fallback filtering
+    filtered_hits, effective_filter, semantic_added = apply_adaptive_score_filter(hits, score_filter)
+    initial_search_results = len(filtered_hits) - semantic_added
+    adaptive_filter_used = semantic_added > 0
 
     # Get active search type from config
     search_type_str = get_active_search_type()
@@ -218,7 +262,7 @@ def write_hits_to_xlsx(
     worksheet.write(0, 2, "K_queries:")
     worksheet.write(1, 2, eval_settings.K_QUERIES)
     worksheet.write(0, 3, "Score filter:")
-    worksheet.write(1, 3, score_filter)
+    worksheet.write(1, 3, effective_filter)
     worksheet.write(0, 4, "Keyword boost:")
     worksheet.write(1, 4, eval_settings.KEYWORD_BOOST)
     worksheet.write(0, 5, "Analyser boost:")
@@ -227,10 +271,14 @@ def write_hits_to_xlsx(
     worksheet.write(1, 6, eval_settings.SEMANTIC_BOOST)
     worksheet.write(0, 7, "Fuzzy boost:")
     worksheet.write(1, 7, eval_settings.FUZZY_BOOST)
-    worksheet.write(0, 8, "No of results")
+    worksheet.write(0, 8, "Total results:")
     worksheet.write(1, 8, len(filtered_hits))
+    worksheet.write(0, 9, "Initial results:")
+    worksheet.write(1, 9, initial_search_results)
+    worksheet.write(0, 10, "Adaptive filter used:")
+    worksheet.write(1, 10, adaptive_filter_used)
 
-    headers = ["Score", "Term Freq", "Case Ref", "Chunk ID", "Page", "Text Snippet"]
+    headers = ["Score", "Type", "Term Freq", "Case Ref", "Chunk ID", "Page", "Text Snippet"]
     for col, header in enumerate(headers):
         worksheet.write(2, col, header)
 
@@ -239,13 +287,21 @@ def write_hits_to_xlsx(
         source = hit["_source"]
         text_snippet = source.get("chunk_text", "")
         term_freq = count_term_occurrences(text_snippet, search_term)
+        # Determine result type based on search configuration and adaptive filter
+        if adaptive_filter_used:
+            # Adaptive filter added semantic results after initial results
+            result_type = search_type_str if row < initial_search_results else "Semantic Fallback"
+        else:
+            # All results are from the configured search type
+            result_type = search_type_str
         worksheet.write(row + 3, 0, score)
-        worksheet.write(row + 3, 1, term_freq)
-        worksheet.write(row + 3, 2, source.get("case_ref", "N/A"))
-        worksheet.write(row + 3, 3, str(hit.get("_id", "N/A")))
+        worksheet.write(row + 3, 1, result_type)
+        worksheet.write(row + 3, 2, term_freq)
+        worksheet.write(row + 3, 3, source.get("case_ref", "N/A"))
+        worksheet.write(row + 3, 4, str(hit.get("_id", "N/A")))
         # "_id" is a top-level key in each hit, while other fields are in "_source"
-        worksheet.write(row + 3, 4, source.get("page_number", "N/A"))
-        worksheet.write(row + 3, 5, text_snippet)
+        worksheet.write(row + 3, 5, source.get("page_number", "N/A"))
+        worksheet.write(row + 3, 6, text_snippet)
     workbook.close()
     logging.info(f"Results written to {OUTPUT_PATH.resolve()}({len(filtered_hits)} results)")
 
