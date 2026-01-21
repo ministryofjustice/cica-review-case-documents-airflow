@@ -118,7 +118,7 @@ This script allows you to perform hybrid (keyword + semantic) search queries aga
 
 - Ensure your OpenSearch instance is running and accessible.
 - Ensure your `.env` file in the project root contains valid AWS credentials and OpenSearch connection details (see main README for details).
-- Ensure yout `local-dev-environment/.env` file has the same valid AWS credentials see the `local-dev-environment/.env_template` file. 
+- Ensure your `local-dev-environment/.env` file has the same valid AWS credentials see the `local-dev-environment/.env_template` file. 
 
 ## Running the Search Client
 
