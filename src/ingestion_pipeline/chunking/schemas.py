@@ -190,6 +190,7 @@ class DocumentPage(BaseModel):
     page_width: float
     page_height: float
     received_date: datetime
+    correspondence_type: str = Field(..., description="Type of correspondence.")
 
 
 class ProcessedDocument(BaseModel):

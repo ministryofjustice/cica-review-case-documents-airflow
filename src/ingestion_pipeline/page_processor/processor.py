@@ -137,6 +137,7 @@ class PageProcessor:
                 received_date=metadata.received_date,
                 page_count=page_count,
                 s3_page_image_s3_uri=s3_page_image_s3_uri,
+                correspondence_type=metadata.correspondence_type,
                 # Add more fields as needed
             )
             pages.append(page_doc)
