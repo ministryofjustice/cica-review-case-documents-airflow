@@ -36,13 +36,19 @@ def main():
         logger.critical("OpenSearch health check failed. Exiting pipeline runner.")
         return
 
+    # These values would typically come from an SQS message in a real-world scenario.
     case_ref = extract_case_ref(S3_DOCUMENT_URI)
+    correspondence_type = "TC19 - ADDITIONAL INFO REQUEST"
     logger.info(f"Processing document for case reference: {case_ref}")
 
     # In a real-world scenario, this metadata would come from an SQS message.
+    # TODO review the metadata fields needed here, can correspondence_type change?
+    # The source_file_name must be unique for a case?
+    # so source_file_name and case_ref together make a unique document?
+    # and should be enough to generate a unique source_doc_id
     identifier = DocumentIdentifier(
         source_file_name=S3_DOCUMENT_URI.split("/")[-1],
-        correspondence_type="TC19",
+        correspondence_type=correspondence_type,
         case_ref=case_ref,
     )
     source_doc_id = identifier.generate_uuid()
@@ -54,7 +60,7 @@ def main():
         page_count=None,  # Page count is determined during processing.
         case_ref=case_ref,
         received_date=datetime.datetime.now(),
-        correspondence_type="TC19",
+        correspondence_type=correspondence_type,
     )
 
     # Build the pipeline and process the document.
