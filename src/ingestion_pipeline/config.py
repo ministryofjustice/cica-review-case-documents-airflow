@@ -45,11 +45,20 @@ class Settings(BaseSettings):  # type: ignore
     OPENSEARCH_CHUNK_INDEX_NAME: str = "page_chunks"
     OPENSEARCH_PAGE_METADATA_INDEX_NAME: str = "page_metadata"
 
-    # -- AWS --
-    AWS_ACCESS_KEY_ID: str = "aws_access_key_id"
-    AWS_SECRET_ACCESS_KEY: str = "aws_secret_access_key"
-    AWS_SESSION_TOKEN: str = "aws_session_token"
-    AWS_REGION: str = "aws_region"
+    # -- GLOBAL AWS CONFIGURATION --
+    AWS_REGION: str = "eu-west-2"
+
+    # -- AWS TEXTRACT --
+    AWS_TEXTRACT_ACCESS_KEY_ID: str = "test"
+    AWS_TEXTRACT_SECRET_ACCESS_KEY: str = "test"
+    AWS_TEXTRACT_SESSION_TOKEN: str = "test"
+
+    # -- AWS S3 PAGE BUCKET --
+    AWS_S3_PAGE_BUCKET_URI: str = "s3://document-page-bucket"
+    AWS_S3_PAGE_BUCKET: str = "document-page-bucket"
+    AWS_S3_PAGE_BUCKET_AWS_ACCESS_KEY_ID: str = "test"
+    AWS_S3_PAGE_BUCKET_AWS_SECRET_ACCESS_KEY: str = "test"
+    AWS_S3_PAGE_BUCKET_AWS_SESSION_TOKEN: str = "test"
 
     # review these values when we have a working system
     MAXIMUM_CHUNK_SIZE: int = 80  # maximum chunk size

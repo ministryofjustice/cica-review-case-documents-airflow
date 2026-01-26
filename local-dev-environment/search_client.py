@@ -22,9 +22,9 @@ sys.path.append(str(Path(__file__).resolve().parent.parent / "src"))
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingGenerator
 
-os.environ["AWS_ACCESS_KEY_ID"] = settings.AWS_ACCESS_KEY_ID
-os.environ["AWS_SECRET_ACCESS_KEY"] = settings.AWS_SECRET_ACCESS_KEY
-os.environ["AWS_SESSION_TOKEN"] = settings.AWS_SESSION_TOKEN
+os.environ["AWS_TEXTRACT_ACCESS_KEY_ID"] = settings.AWS_TEXTRACT_ACCESS_KEY_ID
+os.environ["AWS_TEXTRACT_SECRET_ACCESS_KEY"] = settings.AWS_TEXTRACT_SECRET_ACCESS_KEY
+os.environ["AWS_TEXTRACT_SESSION_TOKEN"] = settings.AWS_TEXTRACT_SESSION_TOKEN
 os.environ["AWS_REGION"] = settings.AWS_REGION
 
 # --- 1. CONFIGURE YOUR RUNNING LOCALSTACK OPENSEARCH CONNECTION ---

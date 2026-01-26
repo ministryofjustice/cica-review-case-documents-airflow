@@ -27,11 +27,13 @@ if [ -f /etc/localstack/.env ]; then
 fi
 
 # Check required variables
-: "${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID not set}"
-: "${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY not set}"
-: "${AWS_SESSION_TOKEN:?AWS_SESSION_TOKEN not set}"
+: "${AWS_ACCESS_KEY_ID:?AWS_TEXTRACT_ACCESS_KEY_ID not set}"
+: "${AWS_SECRET_ACCESS_KEY:?AWS_TEXTRACT_SECRET_ACCESS_KEY not set}"
+: "${AWS_SESSION_TOKEN:?AWS_TEXTRACT_SESSION_TOKEN not set}"
 : "${AWS_REGION:?AWS_REGION not set}"
 
+
+# Define resource names
 S3_KTA_DOCUMENTS_BUCKET="local-kta-documents-bucket"
 S3_PAGE_BUCKET="document-page-bucket"
 SQS_DOCUMENT_QUEUE="cica-document-search-queue"
