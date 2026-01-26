@@ -24,6 +24,10 @@ from .config import settings
 from .iam_filters import (
     filter_iam_header_footer,
     filter_iam_signature,
+<<<<<<< HEAD
+=======
+    normalize_text,
+>>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
 )
 from .schemas import OCRResult
 from .textract_client import (
@@ -89,9 +93,15 @@ def process_single_image(
         printed_words, name_label_top = filter_iam_header_footer(printed_words)
         handwriting_words = filter_iam_signature(handwriting_words, name_label_top)
 
+<<<<<<< HEAD
     # Build text strings (raw, normalization happens at comparison time)
     printed_text = " ".join(w.text for w in printed_words)
     handwriting_text = " ".join(w.text for w in handwriting_words)
+=======
+    # Build text strings
+    printed_text = normalize_text(" ".join(w.text for w in printed_words))
+    handwriting_text = normalize_text(" ".join(w.text for w in handwriting_words))
+>>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
 
     # Calculate lowest quartile confidence (identifies problem areas)
     print_confidences = [w.confidence for w in printed_words]

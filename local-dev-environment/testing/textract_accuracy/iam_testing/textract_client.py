@@ -27,25 +27,37 @@ def get_textract_client() -> "TextractClient":
     return boto3.client(
         "textract",
         region_name=settings.AWS_REGION,
+<<<<<<< HEAD
         aws_access_key_id=settings.AWS_MOD_PLATFORM_ACCESS_KEY_ID,
         aws_secret_access_key=settings.AWS_MOD_PLATFORM_SECRET_ACCESS_KEY,
         aws_session_token=settings.AWS_MOD_PLATFORM_SESSION_TOKEN,
+=======
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        aws_session_token=settings.AWS_SESSION_TOKEN,
+>>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
     )
 
 
 def analyze_image_sync(
     textract_client: "TextractClient",
     image_path: Path,
+<<<<<<< HEAD
     use_analyze_api: bool = False,
+=======
+>>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
 ) -> dict:
     """Analyze an image using Textract synchronous API.
 
     Args:
         textract_client: Boto3 Textract client.
         image_path: Path to the image file.
+<<<<<<< HEAD
         use_analyze_api: If True, use analyze_document with FORMS feature
             which may improve handwriting detection. Default False uses
             detect_document_text.
+=======
+>>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
 
     Returns:
         Raw Textract response dict.
@@ -59,6 +71,7 @@ def analyze_image_sync(
     with open(image_path, "rb") as f:
         image_bytes = f.read()
 
+<<<<<<< HEAD
     if use_analyze_api:
         # analyze_document can provide better results for forms with handwriting
         # FeatureTypes: TABLES, FORMS, QUERIES, SIGNATURES, LAYOUT
@@ -68,6 +81,9 @@ def analyze_image_sync(
         )
     else:
         response = textract_client.detect_document_text(Document={"Bytes": image_bytes})
+=======
+    response = textract_client.detect_document_text(Document={"Bytes": image_bytes})
+>>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
 
     return response
 

@@ -1,5 +1,6 @@
 """Abstract base class for LLM clients."""
 
+<<<<<<< HEAD
 import json
 import logging
 import time
@@ -11,11 +12,18 @@ from botocore.exceptions import ClientError
 
 from .diff import generate_diff
 from .prompt import DEFAULT_PROMPT, get_prompt_hash, get_system_prompt, validate_prompt_version
+=======
+import logging
+from abc import ABC, abstractmethod
+
+from .prompt import SYSTEM_PROMPT, get_prompt_hash
+>>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
 from .response import LLMResponse
 
 logger = logging.getLogger(__name__)
 
 
+<<<<<<< HEAD
 # =============================================================================
 # Retry Logic
 # =============================================================================
@@ -199,6 +207,24 @@ class BaseLLMClient(ABC):
         """
         pass
 
+=======
+class BaseLLMClient(ABC):
+    """Abstract base class for LLM clients.
+
+    All LLM clients share the same system prompt and versioning logic.
+    Subclasses implement the actual API calls for different providers.
+    """
+
+    # Shared prompt (use functions from prompt.py)
+    SYSTEM_PROMPT = SYSTEM_PROMPT
+
+    @classmethod
+    def get_prompt_hash(cls) -> str:
+        """Get a hash of the system prompt for versioning."""
+        return get_prompt_hash()
+
+    @abstractmethod
+>>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
     def correct_ocr_text(self, ocr_text: str) -> LLMResponse:
         """Correct OCR errors in the given text.
 
@@ -208,6 +234,7 @@ class BaseLLMClient(ABC):
         Returns:
             LLMResponse with original and corrected text.
         """
+<<<<<<< HEAD
         if not ocr_text.strip():
             return self._empty_response(ocr_text)
 
@@ -224,3 +251,12 @@ class BaseLLMClient(ABC):
             output_tokens=output_tokens,
             diff_summary=generate_diff(ocr_text, corrected_text),
         )
+=======
+        pass
+
+    @property
+    @abstractmethod
+    def model_name(self) -> str:
+        """Return the model identifier."""
+        pass
+>>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
