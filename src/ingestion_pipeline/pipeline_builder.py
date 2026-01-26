@@ -1,6 +1,7 @@
 """Pipeline builder responsible for creating the ingestion pipeline components."""
 
 import logging
+import os
 
 import boto3
 from textractor import Textractor
@@ -31,9 +32,41 @@ def build_pipeline() -> Pipeline:
     Returns:
         Pipeline: A fully configured instance of the ingestion pipeline.
     """
-    # --- Textract and AWS Clients ---
-    textractor_instance = Textractor(region_name=settings.AWS_REGION)
-    boto3_textract_client = boto3.client("textract", region_name=settings.AWS_REGION)
+    # Textractor (the library) requires AWS credentials to be set in environment variables
+    # at instantiation time, as it does not accept credentials via constructor or config.
+    # We temporarily override the environment variables with the Textract account credentials
+    # to ensure Textractor uses the correct AWS account, then restore the originals after.
+
+    # Store original values
+    original_env = {
+        "AWS_ACCESS_KEY_ID": os.environ.get("AWS_ACCESS_KEY_ID"),
+        "AWS_SECRET_ACCESS_KEY": os.environ.get("AWS_SECRET_ACCESS_KEY"),
+        "AWS_SESSION_TOKEN": os.environ.get("AWS_SESSION_TOKEN"),
+    }
+
+    try:
+        # Set credentials for Textract account
+        os.environ["AWS_ACCESS_KEY_ID"] = settings.AWS_TEXTRACT_ACCESS_KEY_ID
+        os.environ["AWS_SECRET_ACCESS_KEY"] = settings.AWS_TEXTRACT_SECRET_ACCESS_KEY
+        os.environ["AWS_SESSION_TOKEN"] = settings.AWS_TEXTRACT_SESSION_TOKEN
+
+        textractor_instance = Textractor(region_name=settings.AWS_REGION)
+    finally:
+        # Restore original values
+        for key, value in original_env.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+    # boto3 client with explicit credentials (no env vars needed)
+    boto3_textract_client = boto3.client(
+        "textract",
+        region_name=settings.AWS_REGION,
+        aws_access_key_id=settings.AWS_TEXTRACT_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_TEXTRACT_SECRET_ACCESS_KEY,
+        aws_session_token=settings.AWS_TEXTRACT_SESSION_TOKEN,
+    )
 
     # --- Pipeline Components ---
     textract_processor = TextractProcessor(

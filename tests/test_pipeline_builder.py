@@ -27,6 +27,9 @@ def mock_boto3_client():
 def mock_settings():
     """Mock settings."""
     with patch("ingestion_pipeline.pipeline_builder.settings") as mock:
+        mock.AWS_TEXTRACT_ACCESS_KEY_ID = "test-access-key"
+        mock.AWS_TEXTRACT_SECRET_ACCESS_KEY = "test-secret-key"
+        mock.AWS_TEXTRACT_SESSION_TOKEN = "test-session-token"
         mock.AWS_REGION = "us-east-1"
         mock.BEDROCK_EMBEDDING_MODEL_ID = "test-model-id"
         mock.OPENSEARCH_CHUNK_INDEX_NAME = "test-index"
@@ -81,7 +84,13 @@ def test_build_pipeline_creates_boto3_textract_client(
     """Test that boto3 Textract client is created with correct region."""
     build_pipeline()
 
-    mock_boto3_client.assert_called_once_with("textract", region_name="us-east-1")
+    mock_boto3_client.assert_called_once_with(
+        "textract",
+        region_name="us-east-1",
+        aws_access_key_id="test-access-key",
+        aws_secret_access_key="test-secret-key",
+        aws_session_token="test-session-token",
+    )
 
 
 def test_build_pipeline_creates_textract_processor(mock_textractor, mock_boto3_client, mock_settings, mock_components):

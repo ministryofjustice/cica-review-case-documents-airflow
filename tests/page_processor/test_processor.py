@@ -41,7 +41,7 @@ def processor():
 
 
 @patch("ingestion_pipeline.page_processor.processor.s3_client")
-@patch("ingestion_pipeline.page_processor.processor.convert_from_bytes")
+@patch("ingestion_pipeline.page_processor.image_utils.convert_from_bytes")
 def test_process_success(mock_convert, mock_s3, processor, metadata):
     # Mock S3 download
     mock_s3.get_object.return_value = {"Body": io.BytesIO(b"pdfbytes")}
@@ -76,7 +76,7 @@ def test_process_zero_page_count(mock_s3, processor, metadata):
 
 
 @patch("ingestion_pipeline.page_processor.processor.s3_client")
-@patch("ingestion_pipeline.page_processor.processor.convert_from_bytes")
+@patch("ingestion_pipeline.page_processor.image_utils.convert_from_bytes")
 def test_process_page_count_mismatch(mock_convert, mock_s3, processor, metadata):
     # 2 pages in doc, 1 image generated
     mock_s3.get_object.return_value = {"Body": io.BytesIO(b"pdfbytes")}

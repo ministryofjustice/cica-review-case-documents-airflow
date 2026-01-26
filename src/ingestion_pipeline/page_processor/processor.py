@@ -18,28 +18,40 @@ import os
 from typing import List, Tuple
 
 import boto3
-from pdf2image import convert_from_bytes
 from textractor.entities.document import Document
 
 from ingestion_pipeline.chunking.schemas import DocumentMetadata, DocumentPage
+from ingestion_pipeline.config import settings
+from ingestion_pipeline.page_processor.image_utils import convert_pdf_to_images
+from ingestion_pipeline.page_processor.s3_utils import (
+    delete_files_from_s3,
+    download_file_from_s3,
+    upload_file_to_s3_with_retry,
+)
 from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
 
 logger = logging.getLogger(__name__)
 
 # Bucket for storing generated page images
-AWS_S3_PAGE_BUCKET = "document-page-bucket"
-AWS_S3_PAGE_BUCKET_URI = f"s3://{AWS_S3_PAGE_BUCKET}"
+AWS_S3_PAGE_BUCKET = settings.AWS_S3_PAGE_BUCKET
+AWS_S3_PAGE_BUCKET_URI = settings.AWS_S3_PAGE_BUCKET_URI
 
+# TODO fix this properly later
 # Bucket for sourcing the original PDF in the local environment
+# This will be the same AWS account once Textract is configured properly
+# to access the document bucket. For local development with LocalStack,
+# we use this bucket to source the original PDFs.
+# And this document is uploaded to LocalStack S3 when creating the localstack environment.
 LOCAL_SOURCE_DOCUMENT_BUCKET = "local-kta-documents-bucket"
 
 # S3 client setup for LocalStack
 s3_client = boto3.client(
     "s3",
     endpoint_url=os.getenv("AWS_S3_ENDPOINT_URL", "http://localhost:4566"),
-    aws_access_key_id="test",
-    aws_secret_access_key="test",
-    region_name="eu-west-2",
+    aws_access_key_id=settings.AWS_S3_PAGE_BUCKET_AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=settings.AWS_S3_PAGE_BUCKET_AWS_SECRET_ACCESS_KEY,
+    aws_session_token=settings.AWS_S3_PAGE_BUCKET_AWS_SESSION_TOKEN,
+    region_name=settings.AWS_REGION,
 )
 
 
@@ -55,38 +67,41 @@ class PageProcessor:
         if not s3_uri.startswith("s3://"):
             raise ValueError("source_file_s3_uri must be an S3 URI")
 
-        # Extract the full key (everything after the bucket name)
-        # e.g., "cica-textract-response-dev/26-111111/Case1.pdf" -> "26-111111/Case1.pdf"
         key = s3_uri.split("/", 3)[-1]
 
         logger.info(f"Original S3 URI was '{s3_uri}'")
         logger.info(f"Downloading PDF from LocalStack: Bucket='{LOCAL_SOURCE_DOCUMENT_BUCKET}', Key='{key}'")
 
-        pdf_obj = s3_client.get_object(Bucket=LOCAL_SOURCE_DOCUMENT_BUCKET, Key=key)
-        return pdf_obj["Body"].read()
+        return download_file_from_s3(s3_client, LOCAL_SOURCE_DOCUMENT_BUCKET, key)
+
+    def _delete_uploaded_images(self, s3_keys: list):
+        """Delete uploaded images from S3 if a failure occurs."""
+        delete_files_from_s3(s3_client, AWS_S3_PAGE_BUCKET, s3_keys)
 
     def _generate_and_upload_page_images(
         self, pdf_bytes: bytes, source_doc_id: str, key_prefix: str
     ) -> List[Tuple[str, int, int]]:
         """Generate PNG images for each page and upload to the page bucket, preserving the key prefix."""
-        images = convert_from_bytes(pdf_bytes)
+        images = convert_pdf_to_images(pdf_bytes)
         s3_uris_and_sizes = []
-        for i, image in enumerate(images, start=1):
-            buf = io.BytesIO()
-            image.save(buf, format="PNG")
-            buf.seek(0)
-
-            # Construct the key with the original prefix (e.g., "26-111111")
-            # This results in a path like: "26-111111/<source_doc_id>/pages/1.png"
-            s3_key = f"{key_prefix}/{source_doc_id}/pages/{i}.png"
-
-            logger.info(f"Uploading page image to Bucket='{AWS_S3_PAGE_BUCKET}', Key='{s3_key}'")
-            s3_client.upload_fileobj(buf, AWS_S3_PAGE_BUCKET, s3_key, ExtraArgs={"ContentType": "image/png"})
-
-            width, height = image.size
-            s3_uri = f"{AWS_S3_PAGE_BUCKET_URI}/{s3_key}"
-            s3_uris_and_sizes.append((s3_uri, width, height))
-        return s3_uris_and_sizes
+        uploaded_keys = []
+        try:
+            for i, image in enumerate(images, start=1):
+                buf = io.BytesIO()
+                image.save(buf, format="PNG")
+                buf.seek(0)
+                s3_key = f"{key_prefix}/{source_doc_id}/pages/{i}.png"
+                logger.info(f"Uploading page image to Bucket='{AWS_S3_PAGE_BUCKET}', Key='{s3_key}'")
+                upload_file_to_s3_with_retry(s3_client, buf, AWS_S3_PAGE_BUCKET, s3_key)
+                width, height = image.size
+                s3_uri = f"{AWS_S3_PAGE_BUCKET_URI}/{s3_key}"
+                s3_uris_and_sizes.append((s3_uri, width, height))
+                uploaded_keys.append(s3_key)
+            return s3_uris_and_sizes
+        except Exception as upload_error:
+            logger.critical(f"Image upload failed, cleaning up uploaded images: {upload_error}")
+            self._delete_uploaded_images(uploaded_keys)
+            raise PageProcessingError(f"Failed to upload all page images: {upload_error}")
 
     def process(self, doc: Document, metadata: DocumentMetadata) -> List[DocumentPage]:
         """Iterate over document pages, generate images, upload to S3, and build DocumentPage objects."""
