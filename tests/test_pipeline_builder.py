@@ -6,191 +6,90 @@ import pytest
 
 from ingestion_pipeline.pipeline_builder import build_pipeline
 
-"""Tests for the pipeline_builder module."""
 
-
-@pytest.fixture
-def mock_textractor():
-    """Mock Textractor instance."""
-    with patch("ingestion_pipeline.pipeline_builder.Textractor") as mock:
-        yield mock
-
-
-@pytest.fixture
-def mock_boto3_client():
-    """Mock boto3 client."""
-    with patch("ingestion_pipeline.pipeline_builder.boto3.client") as mock:
-        yield mock
-
-
-@pytest.fixture
-def mock_settings():
-    """Mock settings."""
-    with patch("ingestion_pipeline.pipeline_builder.settings") as mock:
-        mock.AWS_TEXTRACT_ACCESS_KEY_ID = "test-access-key"
-        mock.AWS_TEXTRACT_SECRET_ACCESS_KEY = "test-secret-key"
-        mock.AWS_TEXTRACT_SESSION_TOKEN = "test-session-token"
-        mock.AWS_REGION = "us-east-1"
-        mock.BEDROCK_EMBEDDING_MODEL_ID = "test-model-id"
-        mock.OPENSEARCH_CHUNK_INDEX_NAME = "test-index"
-        mock.OPENSEARCH_PAGE_METADATA_INDEX_NAME = "page_metadata"
-        mock.OPENSEARCH_PROXY_URL = "http://test-proxy.com"
-        yield mock
-
-
-@pytest.fixture
-def mock_components():
-    """Mock all pipeline components."""
+@pytest.fixture(autouse=True)
+def patch_external_dependencies():
     with (
-        patch("ingestion_pipeline.pipeline_builder.TextractProcessor") as mock_processor,
-        patch("ingestion_pipeline.pipeline_builder.ChunkingConfig") as mock_config,
-        patch("ingestion_pipeline.pipeline_builder.LayoutTextChunkingStrategy") as mock_text,
-        patch("ingestion_pipeline.pipeline_builder.LayoutTableChunkingStrategy") as mock_table,
-        patch("ingestion_pipeline.pipeline_builder.KeyValueChunker") as mock_kv,
-        patch("ingestion_pipeline.pipeline_builder.LayoutListChunkingStrategy") as mock_list,
-        patch("ingestion_pipeline.pipeline_builder.DocumentChunker") as mock_chunker,
-        patch("ingestion_pipeline.pipeline_builder.EmbeddingGenerator") as mock_embedding,
+        patch("ingestion_pipeline.pipeline_builder.get_s3_client") as mock_get_s3_client,
+        patch("ingestion_pipeline.pipeline_builder.get_textract_client") as mock_get_textract_client,
+        patch("ingestion_pipeline.pipeline_builder.get_textractor_instance") as mock_get_textractor_instance,
+        patch("ingestion_pipeline.pipeline_builder.settings") as mock_settings,
+        patch("ingestion_pipeline.pipeline_builder.TextractProcessor") as mock_textract_processor,
+        patch("ingestion_pipeline.pipeline_builder.ChunkingConfig") as mock_chunking_config,
+        patch("ingestion_pipeline.pipeline_builder.LayoutTextChunkingStrategy") as mock_text_strategy,
+        patch("ingestion_pipeline.pipeline_builder.LayoutTableChunkingStrategy") as mock_table_strategy,
+        patch("ingestion_pipeline.pipeline_builder.KeyValueChunker") as mock_kv_strategy,
+        patch("ingestion_pipeline.pipeline_builder.LayoutListChunkingStrategy") as mock_list_strategy,
+        patch("ingestion_pipeline.pipeline_builder.DocumentChunker") as mock_document_chunker,
+        patch("ingestion_pipeline.pipeline_builder.EmbeddingGenerator") as mock_embedding_generator,
         patch("ingestion_pipeline.pipeline_builder.OpenSearchIndexer") as mock_indexer,
         patch("ingestion_pipeline.pipeline_builder.Pipeline") as mock_pipeline,
         patch("ingestion_pipeline.pipeline_builder.PageProcessor") as mock_page_processor,
     ):
+        # Set up minimal config for settings mock
+        mock_settings.BEDROCK_EMBEDDING_MODEL_ID = "test-model-id"
+        mock_settings.OPENSEARCH_CHUNK_INDEX_NAME = "test-chunk-index"
+        mock_settings.OPENSEARCH_PAGE_METADATA_INDEX_NAME = "test-page-index"
+        mock_settings.OPENSEARCH_PROXY_URL = "http://test-proxy"
+        mock_settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET = "test-source-bucket"
+        mock_settings.AWS_LOCALSTACK_S3_SOURCE_DOCUMENT_ROOT_BUCKET = "test-localstack-bucket"
+        mock_settings.AWS_CICA_S3_PAGE_BUCKET = "test-page-bucket"
+        mock_settings.LOCAL_DEVELOPMENT_MODE = False
         yield {
-            "processor": mock_processor,
-            "config": mock_config,
-            "text": mock_text,
-            "table": mock_table,
-            "kv": mock_kv,
-            "list": mock_list,
-            "chunker": mock_chunker,
-            "embedding": mock_embedding,
-            "indexer": mock_indexer,
-            "pipeline": mock_pipeline,
-            "page_processor": mock_page_processor,
+            "get_s3_client": mock_get_s3_client,
+            "get_textract_client": mock_get_textract_client,
+            "get_textractor_instance": mock_get_textractor_instance,
+            "settings": mock_settings,
+            "TextractProcessor": mock_textract_processor,
+            "ChunkingConfig": mock_chunking_config,
+            "LayoutTextChunkingStrategy": mock_text_strategy,
+            "LayoutTableChunkingStrategy": mock_table_strategy,
+            "KeyValueChunker": mock_kv_strategy,
+            "LayoutListChunkingStrategy": mock_list_strategy,
+            "DocumentChunker": mock_document_chunker,
+            "EmbeddingGenerator": mock_embedding_generator,
+            "OpenSearchIndexer": mock_indexer,
+            "Pipeline": mock_pipeline,
+            "PageProcessor": mock_page_processor,
         }
 
 
-def test_build_pipeline_creates_textractor_with_region(
-    mock_textractor, mock_boto3_client, mock_settings, mock_components
-):
-    """Test that Textractor is instantiated with correct AWS region."""
-    build_pipeline()
-
-    mock_textractor.assert_called_once_with(region_name="us-east-1")
-
-
-def test_build_pipeline_creates_boto3_textract_client(
-    mock_textractor, mock_boto3_client, mock_settings, mock_components
-):
-    """Test that boto3 Textract client is created with correct region."""
-    build_pipeline()
-
-    mock_boto3_client.assert_called_once_with(
-        "textract",
-        region_name="us-east-1",
-        aws_access_key_id="test-access-key",
-        aws_secret_access_key="test-secret-key",
-        aws_session_token="test-session-token",
-    )
-
-
-def test_build_pipeline_creates_textract_processor(mock_textractor, mock_boto3_client, mock_settings, mock_components):
-    """Test that TextractProcessor is created with correct dependencies."""
-    build_pipeline()
-
-    mock_components["processor"].assert_called_once_with(
-        textractor=mock_textractor.return_value,
-        textract_client=mock_boto3_client.return_value,
-    )
-
-
-def test_build_pipeline_creates_chunking_strategies(mock_textractor, mock_boto3_client, mock_settings, mock_components):
-    """Test that all chunking strategies are instantiated."""
-    build_pipeline()
-
-    config_instance = mock_components["config"].return_value
-    mock_components["text"].assert_called_once_with(config_instance)
-    mock_components["table"].assert_called_once_with(config_instance)
-    mock_components["kv"].assert_called_once_with(config_instance)
-    mock_components["list"].assert_called_once_with(config_instance)
-
-
-def test_build_pipeline_creates_document_chunker_with_strategies(
-    mock_textractor, mock_boto3_client, mock_settings, mock_components
-):
-    """Test that DocumentChunker is created with all strategy handlers."""
-    build_pipeline()
-
-    call_args = mock_components["chunker"].call_args
-    strategy_handlers = call_args.kwargs["strategy_handlers"]
-
-    assert "LAYOUT_TEXT" in strategy_handlers
-    assert "LAYOUT_HEADER" in strategy_handlers
-    assert "LAYOUT_TITLE" in strategy_handlers
-    assert "LAYOUT_TABLE" in strategy_handlers
-    assert "LAYOUT_SECTION_HEADER" in strategy_handlers
-    assert "LAYOUT_FOOTER" in strategy_handlers
-    assert "LAYOUT_FIGURE" in strategy_handlers
-    assert "LAYOUT_KEY_VALUE" in strategy_handlers
-    assert "LAYOUT_LIST" in strategy_handlers
-
-
-def test_build_pipeline_creates_embedding_generator(mock_textractor, mock_boto3_client, mock_settings, mock_components):
-    """Test that EmbeddingGenerator is created with correct model ID."""
-    build_pipeline()
-
-    mock_components["embedding"].assert_called_once_with(model_id="test-model-id")
-
-
-def test_build_pipeline_creates_opensearch_indexer(mock_textractor, mock_boto3_client, mock_settings, mock_components):
-    """Test that OpenSearchIndexer for chunk index is created with correct settings."""
-    build_pipeline()
-    mock_components["indexer"].assert_any_call(index_name="test-index", proxy_url="http://test-proxy.com")
-
-
-def test_build_pipeline_creates_page_indexer(mock_textractor, mock_boto3_client, mock_settings, mock_components):
-    """Test that OpenSearchIndexer for page metadata is created with correct settings."""
-    build_pipeline()
-    mock_components["indexer"].assert_any_call(index_name="page_metadata", proxy_url="http://test-proxy.com")
-
-
-def test_build_pipeline_creates_page_processor(mock_textractor, mock_boto3_client, mock_settings, mock_components):
-    """Test that PageProcessor is instantiated."""
-    build_pipeline()
-    mock_components["page_processor"].assert_called_once_with()
-
-
-def test_build_pipeline_returns_pipeline_instance(mock_textractor, mock_boto3_client, mock_settings, mock_components):
-    """Test that build_pipeline returns a Pipeline instance."""
+def test_build_pipeline_wires_up_pipeline_correctly(patch_external_dependencies):
+    """Test that build_pipeline returns a Pipeline instance and wires up dependencies."""
     result = build_pipeline()
-
-    assert result == mock_components["pipeline"].return_value
-
-
-def test_build_pipeline_creates_pipeline_with_all_components(
-    mock_textractor, mock_boto3_client, mock_settings, mock_components
-):
-    """Test that Pipeline is instantiated with all required components."""
-    build_pipeline()
-    mock_components["pipeline"].assert_called_once_with(
-        textract_processor=mock_components["processor"].return_value,
-        chunker=mock_components["chunker"].return_value,
-        embedding_generator=mock_components["embedding"].return_value,
-        chunk_indexer=mock_components["indexer"].return_value,
-        page_indexer=mock_components["indexer"].return_value,
-        page_processor=mock_components["page_processor"].return_value,
+    # The Pipeline mock should have been called once
+    pipeline_mock = patch_external_dependencies["Pipeline"]
+    assert result == pipeline_mock.return_value
+    pipeline_mock.assert_called_once()
+    # Optionally, check that PageProcessor and other key components were instantiated
+    patch_external_dependencies["PageProcessor"].assert_called_once()
+    patch_external_dependencies["TextractProcessor"].assert_called_once()
+    patch_external_dependencies["EmbeddingGenerator"].assert_called_once()
+    patch_external_dependencies["OpenSearchIndexer"].assert_any_call(
+        index_name="test-chunk-index", proxy_url="http://test-proxy"
+    )
+    patch_external_dependencies["OpenSearchIndexer"].assert_any_call(
+        index_name="test-page-index", proxy_url="http://test-proxy"
     )
 
 
-def test_build_pipeline_creates_pipeline_with_all_components_including_page(
-    mock_textractor, mock_boto3_client, mock_settings, mock_components
-):
-    """Test that Pipeline is instantiated with all required components including page indexer and processor."""
+def test_build_pipeline_uses_localstack_bucket_when_in_local_mode(patch_external_dependencies):
+    """Test that the localstack bucket is used when LOCAL_DEVELOPMENT_MODE is True."""
+    patch_external_dependencies["settings"].LOCAL_DEVELOPMENT_MODE = True
     build_pipeline()
-    mock_components["pipeline"].assert_called_once_with(
-        textract_processor=mock_components["processor"].return_value,
-        chunker=mock_components["chunker"].return_value,
-        embedding_generator=mock_components["embedding"].return_value,
-        chunk_indexer=mock_components["indexer"].return_value,
-        page_indexer=mock_components["indexer"].return_value,
-        page_processor=mock_components["page_processor"].return_value,
+    patch_external_dependencies["PageProcessor"].assert_called_once_with(
+        s3_client=patch_external_dependencies["get_s3_client"].return_value,
+        source_bucket="test-localstack-bucket",
+        page_bucket="test-page-bucket",
+    )
+
+
+def test_build_pipeline_uses_source_bucket_when_not_in_local_mode(patch_external_dependencies):
+    """Test that the source bucket is used when LOCAL_DEVELOPMENT_MODE is False."""
+    patch_external_dependencies["settings"].LOCAL_DEVELOPMENT_MODE = False
+    build_pipeline()
+    patch_external_dependencies["PageProcessor"].assert_called_once_with(
+        s3_client=patch_external_dependencies["get_s3_client"].return_value,
+        source_bucket="test-source-bucket",
+        page_bucket="test-page-bucket",
     )

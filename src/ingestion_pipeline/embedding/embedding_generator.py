@@ -26,7 +26,13 @@ class EmbeddingGenerator:
             model_id (str): The ID of the Bedrock model to use for generating embeddings.
         """
         self.model_id = model_id
-        self.client = boto3.client("bedrock-runtime", region_name=settings.AWS_REGION)
+        self.client = boto3.client(
+            "bedrock-runtime",
+            region_name=settings.AWS_REGION,
+            aws_access_key_id=settings.AWS_MOD_PLATFORM_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_MOD_PLATFORM_SECRET_ACCESS_KEY,
+            aws_session_token=getattr(settings, "AWS_MOD_PLATFORM_SESSION_TOKEN", None),  # Optional
+        )
 
     def generate_embedding(self, text: str) -> list[float]:
         """Generates an embedding for the given text.

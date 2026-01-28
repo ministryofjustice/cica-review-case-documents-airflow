@@ -26,12 +26,20 @@ if [ -f /etc/localstack/.env ]; then
   export $(grep -v '^#' /etc/localstack/.env | xargs)
 fi
 
+# Map MOD_PLATFORM_SANDBOX variables to standard AWS variables
+export AWS_ACCESS_KEY_ID="${AWS_MOD_PLATFORM_ACCESS_KEY_ID}"
+export AWS_SECRET_ACCESS_KEY="${AWS_MOD_PLATFORM_SECRET_ACCESS_KEY}"
+export AWS_SESSION_TOKEN="${AWS_MOD_PLATFORM_SESSION_TOKEN}"
+
 # Check required variables
-: "${AWS_ACCESS_KEY_ID:?AWS_TEXTRACT_ACCESS_KEY_ID not set}"
-: "${AWS_SECRET_ACCESS_KEY:?AWS_TEXTRACT_SECRET_ACCESS_KEY not set}"
-: "${AWS_SESSION_TOKEN:?AWS_TEXTRACT_SESSION_TOKEN not set}"
+: "${AWS_ACCESS_KEY_ID:?AWS_MOD_PLATFORM_ACCESS_KEY_ID not set}"
+: "${AWS_SECRET_ACCESS_KEY:?AWS_MOD_PLATFORM_SECRET_ACCESS_KEY not set}"
+: "${AWS_SESSION_TOKEN:?AWS_MOD_PLATFORM_SESSION_TOKEN not set}"
 : "${AWS_REGION:?AWS_REGION not set}"
 
+export AWS_ACCESS_KEY_ID="${AWS_MOD_PLATFORM_ACCESS_KEY_ID}"
+export AWS_SECRET_ACCESS_KEY="${AWS_MOD_PLATFORM_SECRET_ACCESS_KEY}"
+export AWS_SESSION_TOKEN="${AWS_MOD_PLATFORM_SESSION_TOKEN}"
 
 # Define resource names
 S3_KTA_DOCUMENTS_BUCKET="local-kta-documents-bucket"
@@ -92,7 +100,8 @@ TMP_FILE="/tmp/Case1_TC19_50_pages_brain_injury.pdf"
 echo "Downloading sample document from AWS S3..."
 echo "Source S3 URI: s3://${SRC_BUCKET}/${SRC_KEY}"
 if ! aws s3 cp "s3://${SRC_BUCKET}/${SRC_KEY}" "${TMP_FILE}"; then
-  echo "ERROR: Failed to download sample document from AWS S3. Check your AWS credentials and network access." >&2
+  echo "ERROR: Failed to download sample document from AWS S3. Check your AWS credentials and network access.
+  You may need to update your local-dev-environment/.env file with correct AWS credentials." >&2
   exit 1
 fi
 
