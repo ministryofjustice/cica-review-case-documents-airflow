@@ -81,7 +81,7 @@ class MockLayout:
 
 @dataclass
 class MockDocumentMetadata:
-    document_id: str
+    source_doc_id: str
 
 
 @dataclass

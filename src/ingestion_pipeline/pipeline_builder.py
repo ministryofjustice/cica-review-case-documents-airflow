@@ -2,9 +2,11 @@
 
 import logging
 
-import boto3
-from textractor import Textractor
-
+from ingestion_pipeline.aws_client.clients import (
+    get_s3_client,
+    get_textract_client,
+    get_textractor_instance,
+)
 from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
 from ingestion_pipeline.chunking.strategies.key_value.layout_key_value import KeyValueChunker
 from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkingStrategy
@@ -31,14 +33,11 @@ def build_pipeline() -> Pipeline:
     Returns:
         Pipeline: A fully configured instance of the ingestion pipeline.
     """
-    # --- Textract and AWS Clients ---
-    textractor_instance = Textractor(region_name=settings.AWS_REGION)
-    boto3_textract_client = boto3.client("textract", region_name=settings.AWS_REGION)
-
     # --- Pipeline Components ---
+    textractor_instance = get_textractor_instance()
     textract_processor = TextractProcessor(
         textractor=textractor_instance,
-        textract_client=boto3_textract_client,
+        textract_client=get_textract_client(),
     )
 
     # --- Chunking Strategies ---
@@ -75,7 +74,19 @@ def build_pipeline() -> Pipeline:
         proxy_url=settings.OPENSEARCH_PROXY_URL,
     )
 
-    page_processor = PageProcessor()
+    # Choose bucket based on environment
+    if getattr(settings, "LOCAL_DEVELOPMENT_MODE", False):
+        bucket = settings.AWS_LOCALSTACK_S3_SOURCE_DOCUMENT_ROOT_BUCKET
+        logger.info("Using LocalStack S3 bucket for PDF download.")
+    else:
+        bucket = settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET
+        logger.info("Using original S3 bucket for PDF download.")
+
+    page_processor = PageProcessor(
+        s3_client=get_s3_client(),
+        source_bucket=bucket,
+        page_bucket=settings.AWS_CICA_S3_PAGE_BUCKET,
+    )
 
     # --- Construct and Return the Pipeline ---
     return Pipeline(

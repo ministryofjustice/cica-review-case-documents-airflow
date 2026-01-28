@@ -178,7 +178,7 @@ def test_delete_documents_by_source_doc_id_success(mock_opensearch_client, mocke
     source_doc_id = "doc1"
 
     mock_logger_info = mocker.patch("ingestion_pipeline.indexing.indexer.logger.info")
-    indexer._delete_documents_by_source_doc_id(source_doc_id)
+    indexer.delete_documents_by_source_doc_id(source_doc_id)
 
     mock_delete_by_query.assert_called_once_with(
         index="test_index",
@@ -196,7 +196,7 @@ def test_delete_documents_by_source_doc_id_exception(mock_opensearch_client):
     indexer.client = mock_opensearch_client
 
     with pytest.raises(Exception, match="Delete error"):
-        indexer._delete_documents_by_source_doc_id("doc3")
+        indexer.delete_documents_by_source_doc_id("doc3")
 
 
 def test_indexer_initialization_with_invalid_proxy_url():
@@ -277,6 +277,9 @@ def test_index_documents_with_document_page(mock_helpers_bulk, mock_opensearch_c
             page_width=8.5,
             page_height=11.0,
             received_date=datetime.datetime.fromisoformat("2025-11-06"),
+            page_count=2,
+            s3_page_image_s3_uri="s3://bucket/page1.png",
+            correspondence_type="TC19 - ADDITIONAL INFO REQUEST ",
         ),
         DocumentPage(
             source_doc_id="doc1",
@@ -286,6 +289,9 @@ def test_index_documents_with_document_page(mock_helpers_bulk, mock_opensearch_c
             page_width=8.5,
             page_height=11.0,
             received_date=datetime.datetime.fromisoformat("2025-11-06"),
+            page_count=2,
+            s3_page_image_s3_uri="s3://bucket/page2.png",
+            correspondence_type="TC19 - ADDITIONAL INFO REQUEST ",
         ),
     ]
     mock_helpers_bulk.return_value = (len(sample_pages), [])
