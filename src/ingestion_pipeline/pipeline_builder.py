@@ -1,11 +1,12 @@
 """Pipeline builder responsible for creating the ingestion pipeline components."""
 
 import logging
-import os
 
-import boto3
-from textractor import Textractor
-
+from ingestion_pipeline.aws_client.clients import (
+    get_s3_client,
+    get_textract_client,
+    get_textractor_instance,
+)
 from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
 from ingestion_pipeline.chunking.strategies.key_value.layout_key_value import KeyValueChunker
 from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkingStrategy
@@ -32,46 +33,11 @@ def build_pipeline() -> Pipeline:
     Returns:
         Pipeline: A fully configured instance of the ingestion pipeline.
     """
-    # Textractor (the library) requires AWS credentials to be set in environment variables
-    # at instantiation time, as it does not accept credentials via constructor or config.
-    # We temporarily override the environment variables with the Textract account credentials
-    # to ensure Textractor uses the correct AWS account, then restore the originals after.
-
-    # Store original values
-    original_env = {
-        "AWS_ACCESS_KEY_ID": os.environ.get("AWS_ACCESS_KEY_ID"),
-        "AWS_SECRET_ACCESS_KEY": os.environ.get("AWS_SECRET_ACCESS_KEY"),
-        "AWS_SESSION_TOKEN": os.environ.get("AWS_SESSION_TOKEN"),
-    }
-
-    try:
-        # Set credentials for Textract account
-        os.environ["AWS_ACCESS_KEY_ID"] = settings.AWS_TEXTRACT_ACCESS_KEY_ID
-        os.environ["AWS_SECRET_ACCESS_KEY"] = settings.AWS_TEXTRACT_SECRET_ACCESS_KEY
-        os.environ["AWS_SESSION_TOKEN"] = settings.AWS_TEXTRACT_SESSION_TOKEN
-
-        textractor_instance = Textractor(region_name=settings.AWS_REGION)
-    finally:
-        # Restore original values
-        for key, value in original_env.items():
-            if value is None:
-                os.environ.pop(key, None)
-            else:
-                os.environ[key] = value
-
-    # boto3 client with explicit credentials (no env vars needed)
-    boto3_textract_client = boto3.client(
-        "textract",
-        region_name=settings.AWS_REGION,
-        aws_access_key_id=settings.AWS_TEXTRACT_ACCESS_KEY_ID,
-        aws_secret_access_key=settings.AWS_TEXTRACT_SECRET_ACCESS_KEY,
-        aws_session_token=settings.AWS_TEXTRACT_SESSION_TOKEN,
-    )
-
     # --- Pipeline Components ---
+    textractor_instance = get_textractor_instance()
     textract_processor = TextractProcessor(
         textractor=textractor_instance,
-        textract_client=boto3_textract_client,
+        textract_client=get_textract_client(),
     )
 
     # --- Chunking Strategies ---
@@ -108,7 +74,19 @@ def build_pipeline() -> Pipeline:
         proxy_url=settings.OPENSEARCH_PROXY_URL,
     )
 
-    page_processor = PageProcessor()
+    # Choose bucket based on environment
+    if getattr(settings, "LOCAL_DEVELOPMENT_MODE", False):
+        bucket = settings.AWS_LOCALSTACK_S3_SOURCE_DOCUMENT_ROOT_BUCKET
+        logger.info("Using LocalStack S3 bucket for PDF download.")
+    else:
+        bucket = settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET
+        logger.info("Using original S3 bucket for PDF download.")
+
+    page_processor = PageProcessor(
+        s3_client=get_s3_client(),
+        source_bucket=bucket,
+        page_bucket=settings.AWS_CICA_S3_PAGE_BUCKET,
+    )
 
     # --- Construct and Return the Pipeline ---
     return Pipeline(

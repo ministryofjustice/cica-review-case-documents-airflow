@@ -1,5 +1,6 @@
 import io
 from datetime import datetime
+from unittest import mock
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -36,15 +37,19 @@ def metadata():
 
 
 @pytest.fixture
-def processor():
-    return PageProcessor()
+def mock_s3_client():
+    return mock.Mock()
 
 
-@patch("ingestion_pipeline.page_processor.processor.s3_client")
+@pytest.fixture
+def processor(mock_s3_client):
+    return PageProcessor(mock_s3_client)
+
+
 @patch("ingestion_pipeline.page_processor.image_utils.convert_from_bytes")
-def test_process_success(mock_convert, mock_s3, processor, metadata):
+def test_process_success(mock_convert, processor, metadata):
     # Mock S3 download
-    mock_s3.get_object.return_value = {"Body": io.BytesIO(b"pdfbytes")}
+    processor.s3_client.get_object.return_value = {"Body": io.BytesIO(b"pdfbytes")}
     # Mock PDF to image conversion
     mock_image1 = MagicMock()
     mock_image1.size = (100, 200)
@@ -52,7 +57,7 @@ def test_process_success(mock_convert, mock_s3, processor, metadata):
     mock_image2.size = (150, 250)
     mock_convert.return_value = [mock_image1, mock_image2]
     # Mock upload
-    mock_s3.upload_fileobj.return_value = None
+    processor.s3_client.upload_fileobj.return_value = None
 
     doc = DummyDocument(2)
     pages = processor.process(doc, metadata)
@@ -67,19 +72,17 @@ def test_process_success(mock_convert, mock_s3, processor, metadata):
     assert pages[1].s3_page_image_s3_uri.endswith("/2.png")
 
 
-@patch("ingestion_pipeline.page_processor.processor.s3_client")
-def test_process_zero_page_count(mock_s3, processor, metadata):
+def test_process_zero_page_count(processor, metadata):
     zero_page_metadata = metadata.model_copy(update={"page_count": 0})
     doc = DummyDocument(0)
     with pytest.raises(PageProcessingError):
         processor.process(doc, zero_page_metadata)
 
 
-@patch("ingestion_pipeline.page_processor.processor.s3_client")
 @patch("ingestion_pipeline.page_processor.image_utils.convert_from_bytes")
-def test_process_page_count_mismatch(mock_convert, mock_s3, processor, metadata):
+def test_process_page_count_mismatch(mock_convert, processor, metadata):
     # 2 pages in doc, 1 image generated
-    mock_s3.get_object.return_value = {"Body": io.BytesIO(b"pdfbytes")}
+    processor.s3_client.get_object.return_value = {"Body": io.BytesIO(b"pdfbytes")}
     mock_image1 = MagicMock()
     mock_image1.size = (100, 200)
     mock_convert.return_value = [mock_image1]
@@ -88,7 +91,6 @@ def test_process_page_count_mismatch(mock_convert, mock_s3, processor, metadata)
         processor.process(doc, metadata)
 
 
-@patch("ingestion_pipeline.page_processor.processor.s3_client")
-def test_download_pdf_from_s3_invalid_uri(mock_s3, processor):
+def test_download_pdf_from_s3_invalid_uri(processor):
     with pytest.raises(ValueError):
         processor._download_pdf_from_s3("not-an-s3-uri")
