@@ -47,7 +47,12 @@ def test_main_handles_pipeline_exception(mock_check_opensearch_health, mock_logg
     main()
 
     mock_pipeline.process_document.assert_called_once()
-    mock_logger.critical.assert_called_once_with("Pipeline runner encountered a fatal error.", exc_info=True)
+    mock_logger.critical.assert_called_once_with(
+        "Pipeline runner encountered a fatal error for source_doc_id=4bcba3af-d9ab-53f2-9fd7-bf4263f8118e, "
+        "case_ref=26-711111, s3_uri=s3://test-kta-documents-bucket/26-711111/Case1_TC19_50_pages_brain_injury.pdf: "
+        "Exception: Pipeline error",
+        exc_info=True,
+    )
 
 
 @mock.patch("ingestion_pipeline.runner.build_pipeline")

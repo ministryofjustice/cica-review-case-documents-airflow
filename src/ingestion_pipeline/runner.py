@@ -54,27 +54,19 @@ def main():
         logger.critical("OpenSearch health check failed. Exiting pipeline runner.")
         return
 
-    # dev-documentsearch-kta-bucket
-    # mod-platfform-sandbox-kta-documents-bucket
     S3_DOCUMENT_URI = (
         f"s3://{settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET}/26-711111/Case1_TC19_50_pages_brain_injury.pdf"
     )
 
-    # Validate S3 URI before processing
+    logger.info(f"Validating S3 URI: {S3_DOCUMENT_URI}")
     if not validate_s3_uri(S3_DOCUMENT_URI, settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET):
         logger.critical(f"Invalid S3 URI: {S3_DOCUMENT_URI}")
         raise ValueError(f"Invalid S3 URI: {S3_DOCUMENT_URI}")
 
-    # These values would typically come from an SQS message in a real-world scenario.
     case_ref = extract_case_ref(S3_DOCUMENT_URI)
     correspondence_type = "TC19 - ADDITIONAL INFO REQUEST"
     logger.info(f"Processing document for case reference: {case_ref}")
 
-    # In a real-world scenario, this metadata would come from an SQS message.
-    # TODO review the metadata fields needed here, can correspondence_type change?
-    # The source_file_name must be unique for a case?
-    # so source_file_name and case_ref together make a unique document?
-    # and should be enough to generate a unique source_doc_id
     identifier = DocumentIdentifier(
         source_file_name=S3_DOCUMENT_URI.split("/")[-1],
         correspondence_type=correspondence_type,
@@ -86,19 +78,29 @@ def main():
         source_doc_id=source_doc_id,
         source_file_name=S3_DOCUMENT_URI.split("/")[-1],
         source_file_s3_uri=S3_DOCUMENT_URI,
-        page_count=None,  # Page count is determined during processing.
+        page_count=None,
         case_ref=case_ref,
         received_date=datetime.datetime.now(),
         correspondence_type=correspondence_type,
     )
 
-    # Build the pipeline and process the document.
+    logger.info(
+        f"Document metadata prepared: source_doc_id={source_doc_id}, "
+        f"file={document_metadata.source_file_name}, case_ref={case_ref}"
+    )
+
     pipeline = build_pipeline()
     try:
+        logger.info("Starting document processing in pipeline.")
         pipeline.process_document(document_metadata=document_metadata)
         logger.info("Pipeline runner finished successfully.")
-    except Exception:
-        logger.critical("Pipeline runner encountered a fatal error.", exc_info=True)
+    except Exception as exc:
+        logger.critical(
+            f"Pipeline runner encountered a fatal error for source_doc_id={source_doc_id}, "
+            f"case_ref={case_ref}, s3_uri={S3_DOCUMENT_URI}: {type(exc).__name__}: {exc}",
+            exc_info=True,
+        )
+        # Optionally: raise or exit(1)
 
 
 if __name__ == "__main__":

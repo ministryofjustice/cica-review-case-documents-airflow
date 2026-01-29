@@ -24,6 +24,9 @@ def patch_external_dependencies():
         patch("ingestion_pipeline.pipeline_builder.EmbeddingGenerator") as mock_embedding_generator,
         patch("ingestion_pipeline.pipeline_builder.OpenSearchIndexer") as mock_indexer,
         patch("ingestion_pipeline.pipeline_builder.Pipeline") as mock_pipeline,
+        patch("ingestion_pipeline.pipeline_builder.S3DocumentService") as mock_s3_document_service,
+        patch("ingestion_pipeline.pipeline_builder.ImageConverter") as mock_image_converter,
+        patch("ingestion_pipeline.pipeline_builder.DocumentPageFactory") as mock_page_factory,
         patch("ingestion_pipeline.pipeline_builder.PageProcessor") as mock_page_processor,
     ):
         # Set up minimal config for settings mock
@@ -50,6 +53,9 @@ def patch_external_dependencies():
             "EmbeddingGenerator": mock_embedding_generator,
             "OpenSearchIndexer": mock_indexer,
             "Pipeline": mock_pipeline,
+            "S3DocumentService": mock_s3_document_service,
+            "ImageConverter": mock_image_converter,
+            "DocumentPageFactory": mock_page_factory,
             "PageProcessor": mock_page_processor,
         }
 
@@ -57,12 +63,14 @@ def patch_external_dependencies():
 def test_build_pipeline_wires_up_pipeline_correctly(patch_external_dependencies):
     """Test that build_pipeline returns a Pipeline instance and wires up dependencies."""
     result = build_pipeline()
-    # The Pipeline mock should have been called once
     pipeline_mock = patch_external_dependencies["Pipeline"]
     assert result == pipeline_mock.return_value
     pipeline_mock.assert_called_once()
-    # Optionally, check that PageProcessor and other key components were instantiated
+    # Check that PageProcessor and other key components were instantiated
     patch_external_dependencies["PageProcessor"].assert_called_once()
+    patch_external_dependencies["S3DocumentService"].assert_called_once()
+    patch_external_dependencies["ImageConverter"].assert_called_once()
+    patch_external_dependencies["DocumentPageFactory"].assert_called_once()
     patch_external_dependencies["TextractProcessor"].assert_called_once()
     patch_external_dependencies["EmbeddingGenerator"].assert_called_once()
     patch_external_dependencies["OpenSearchIndexer"].assert_any_call(
@@ -77,7 +85,7 @@ def test_build_pipeline_uses_localstack_bucket_when_in_local_mode(patch_external
     """Test that the localstack bucket is used when LOCAL_DEVELOPMENT_MODE is True."""
     patch_external_dependencies["settings"].LOCAL_DEVELOPMENT_MODE = True
     build_pipeline()
-    patch_external_dependencies["PageProcessor"].assert_called_once_with(
+    patch_external_dependencies["S3DocumentService"].assert_called_once_with(
         s3_client=patch_external_dependencies["get_s3_client"].return_value,
         source_bucket="test-localstack-bucket",
         page_bucket="test-page-bucket",
@@ -88,7 +96,7 @@ def test_build_pipeline_uses_source_bucket_when_not_in_local_mode(patch_external
     """Test that the source bucket is used when LOCAL_DEVELOPMENT_MODE is False."""
     patch_external_dependencies["settings"].LOCAL_DEVELOPMENT_MODE = False
     build_pipeline()
-    patch_external_dependencies["PageProcessor"].assert_called_once_with(
+    patch_external_dependencies["S3DocumentService"].assert_called_once_with(
         s3_client=patch_external_dependencies["get_s3_client"].return_value,
         source_bucket="test-source-bucket",
         page_bucket="test-page-bucket",
