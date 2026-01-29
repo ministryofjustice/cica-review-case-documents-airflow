@@ -14,7 +14,6 @@ Docker and LocalStack resources to be created:
 - [Docker](https://docs.docker.com/get-started/get-docker/)
 - [Docker Desktop](https://docs.docker.com/desktop/)
 - [LocalStack Desktop](https://docs.localstack.cloud/aws/capabilities/web-app/localstack-desktop/)
-<<<<<<< HEAD
 - **For VPN WSL users**: If you are running the local environment from behind a corporate VPN with SSL inspection, you must also set the following environment variables in your .bashrc to allow LocalStack to trust your custom certificates:
 ```
 # Ensures LocalStack and its internal services trust the custom CA
@@ -22,10 +21,8 @@ export LOCALSTACK_REQUESTS_CA_BUNDLE="/home/your_user/custom_ca_bundle.pem"
 export LOCALSTACK_HOST_MOUNTS="/home/your_user/custom_ca_bundle.pem:/etc/ssl/certs/custom_ca_bundle.pem"
 ```
 This assumes you have already created the custom_ca_bundle.pem file as described in the main project README, CICA specific Windows WSL setup and confguration instructions.
-=======
 - Ensure yout `local-dev-environment/.env` file has the same valid AWS credentials see the `local-dev-environment/.env_template` file. 
 
->>>>>>> 4a1bf1a (feature(wip): add page image local stack creation)
 
 ## Setup
 
@@ -133,3 +130,21 @@ python local-dev-environment/search_client.py
 You can adjust search parameters (e.g., search term, number of results, score filter) and enable/disable fuzzy matching at the top of `search_client.py`.
 
 Results will be written to an Excel file in the `output/hybrid-test-results/<date>/` directory.
+
+## Page Image Generation and S3 Buckets
+
+The local environment now supports automatic generation and storage of PNG images for each page of a processed PDF document. These images are uploaded to a dedicated S3 bucket (`document-page-bucket` by default in localstack).
+
+**Environment Variables:**
+- `AWS_CICA_S3_PAGE_BUCKET_URI`: Endpoint for the page image S3 bucket (e.g., `http://localhost:4566` for localstack)
+- `AWS_CICA_S3_PAGE_BUCKET`: Name of the S3 bucket for page images (default: `document-page-bucket`)
+- `AWS_CICA_AWS_ACCESS_KEY_ID`, `AWS_CICA_AWS_SECRET_ACCESS_KEY`, `AWS_CICA_AWS_SESSION_TOKEN`: Credentials for accessing the page image bucket
+
+See `.env_template` for example values.
+
+**Automatic Sample Document Provisioning:**
+When you start the local environment, a sample PDF is automatically downloaded from AWS S3 and uploaded to the localstack S3 bucket. This allows you to test the full pipeline without manual setup.
+
+**How it works:**
+- When a PDF is processed, each page is converted to a PNG image and uploaded to the page image S3 bucket.
+- The S3 URI for each image is stored in the page metadata and can be used for display or further processing.
