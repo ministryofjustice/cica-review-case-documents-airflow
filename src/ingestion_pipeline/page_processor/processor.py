@@ -14,7 +14,6 @@ Methods:
 
 import io
 import logging
-import os
 from typing import List, Tuple
 
 from textractor.entities.document import Document
@@ -98,25 +97,13 @@ class PageProcessor:
             logger.error(f"Page count is zero for document {metadata.source_doc_id}. Aborting page processing.")
             raise PageProcessingError(f"Page count is zero for document {metadata.source_doc_id}.")
 
-        # logger.info(f"AWS_CICA_S3_PAGE_BUCKET: {settings.AWS_CICA_S3_PAGE_BUCKET}")
-        # logger.info(f"AWS_CICA_S3_PAGE_BUCKET_URI: {settings.AWS_CICA_S3_PAGE_BUCKET_URI}")
-        # logger.info(f"AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET: {settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET}")
-        # logger.info(f"AWS_CICA_AWS_ACCESS_KEY_ID: {settings.AWS_CICA_AWS_ACCESS_KEY_ID}")
-        # logger.info(f"AWS_CICA_AWS_SECRET_ACCESS_KEY: {settings.AWS_CICA_AWS_SECRET_ACCESS_KEY}")
-        # logger.info(f"AWS_REGION: {settings.AWS_REGION}")
-        # logger.info(f"AWS_S3_ENDPOINT_URL: {os.getenv('AWS_S3_ENDPOINT_URL', 'http://localhost:4566')}")
-        # logger.info(f"USE_LOCALSTACK: {getattr(settings, 'USE_LOCALSTACK', False)}")
-
         # Download the PDF using the URI from the metadata
         pdf_bytes = self._download_pdf_from_s3(metadata.source_file_s3_uri)
 
-        # Extract the prefix from the original key to maintain structure.
-        # e.g., "s3://.../26-111111/Case1.pdf" -> "26-111111"
-        original_key = metadata.source_file_s3_uri.split("/", 3)[-1]
-        key_prefix = os.path.dirname(original_key)
-
         # Pass the prefix to the upload function
-        s3_page_uris_and_sizes = self._generate_and_upload_page_images(pdf_bytes, metadata.source_doc_id, key_prefix)
+        s3_page_uris_and_sizes = self._generate_and_upload_page_images(
+            pdf_bytes, metadata.source_doc_id, metadata.case_ref
+        )
 
         if len(doc.pages) != len(s3_page_uris_and_sizes):
             logger.error(

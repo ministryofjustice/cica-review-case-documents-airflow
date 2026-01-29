@@ -5,7 +5,7 @@ set -euo pipefail # Exit immediately if a command exits with a non-zero status o
 # TROUBLESHOOTING STEPS
 #
 # 1. Ensure your AWS credentials are valid and have access to the source S3 bucket/object.
-#    - Test with: aws s3 cp s3://cica-textract-response-dev/26-111111/Case1_TC19_50_pages_brain_injury.pdf /tmp/test.pdf
+#    - Test with: aws s3 cp s3://mod-platfform-sandbox-kta-documents-bucket/26-711111/Case1_TC19_50_pages_brain_injury.pdf /tmp/test.pdf
 #    - If this fails, check your AWS credentials and permissions.
 #
 # 2. Ensure awslocal is installed and available in the PATH.
@@ -13,7 +13,7 @@ set -euo pipefail # Exit immediately if a command exits with a non-zero status o
 # 3. If the sample document is not present in LocalStack S3, check the logs for errors in the download/upload steps.
 #
 # 4. To verify the file exists in LocalStack S3:
-#    - awslocal s3 ls s3://local-kta-documents-bucket/26-111111/
+#    - awslocal s3 ls s3://local-kta-documents-bucket/26-711111/
 #
 # 5. If you see 404 (NoSuchKey) errors, the file was not uploaded to LocalStack S3.
 #
@@ -91,10 +91,10 @@ fi
 
 # --- Copy sample document from AWS S3 to LocalStack S3 ---
 
-SRC_BUCKET="cica-textract-response-dev"
-SRC_KEY="26-111111/Case1_TC19_50_pages_brain_injury.pdf"
+SRC_BUCKET="mod-platfform-sandbox-kta-documents-bucket"
+SRC_KEY="26-711111/Case1_TC19_50_pages_brain_injury.pdf"
 DEST_BUCKET="${S3_KTA_DOCUMENTS_BUCKET}"
-DEST_KEY="26-111111/Case1_TC19_50_pages_brain_injury.pdf"
+DEST_KEY="26-711111/Case1_TC19_50_pages_brain_injury.pdf"
 TMP_FILE="/tmp/Case1_TC19_50_pages_brain_injury.pdf"
 
 echo "Downloading sample document from AWS S3..."
@@ -112,8 +112,8 @@ if ! awslocal s3 cp "${TMP_FILE}" "s3://${DEST_BUCKET}/${DEST_KEY}"; then
   exit 1
 fi
 
-echo "Listing contents of s3://${DEST_BUCKET}/26-111111/ in LocalStack S3:"
-awslocal s3 ls "s3://${DEST_BUCKET}/26-111111/"
+echo "Listing contents of s3://${DEST_BUCKET}/26-711111/ in LocalStack S3:"
+awslocal s3 ls "s3://${DEST_BUCKET}/26-711111/"
 
 # Clean up temp file
 rm -f "${TMP_FILE}"

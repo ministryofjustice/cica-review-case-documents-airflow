@@ -89,7 +89,7 @@ def test_process_document_happy_path(
     mock_textract_client,
 ):
     """Tests the end-to-end success scenario of the main `process_document` method."""
-    s3_uri = "s3://cica-textract-response-dev/Case1.pdf"
+    s3_uri = "s3://test-kta-documents-bucket/Case1.pdf"
     mock_start_job.return_value = "job-abc"
     mock_poll.return_value = "SUCCEEDED"
 

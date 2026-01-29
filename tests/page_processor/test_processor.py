@@ -31,7 +31,7 @@ def metadata():
         correspondence_type="typeA",
         case_ref="caseX",
         page_count=2,
-        source_file_s3_uri="s3://bucket/26-111111/file.pdf",
+        source_file_s3_uri="s3://bucket/26-711111/file.pdf",
         received_date=datetime(2024, 1, 1),
     )
 

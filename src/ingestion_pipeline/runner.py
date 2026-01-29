@@ -2,6 +2,7 @@
 
 import datetime
 import logging
+import re
 
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
 from ingestion_pipeline.config import settings
@@ -17,16 +18,33 @@ logger = logging.getLogger(__name__)
 # You can add your own S3 document URI here for testing.
 # This needs to be accessible in your S3 bucket and available to AWS Textract.
 # When developing locally with LocalStack, a copy of this document is added to localstack.
-S3_DOCUMENT_URI = "s3://cica-textract-response-dev/26-111111/Case1_TC19_50_pages_brain_injury.pdf"
 
 
+# /\d{2}[-][78]d{5}/gm
 def extract_case_ref(s3_uri: str) -> str:
     """Extract the case_ref from the S3 URI (the folder after the bucket)."""
-    # Example: s3://bucket/26-111111/filename.pdf → 26-111111
+    # Example: s3://bucket/26-711111/filename.pdf → 26-711111
     parts = s3_uri.replace("s3://", "").split("/")
     if len(parts) >= 2:
         return parts[1]
     return ""
+
+
+def validate_s3_uri(s3_uri: str, expected_bucket: str) -> bool:
+    """Validates whether the given S3 URI matches the expected bucket and follows the required path pattern.
+
+    Args:
+        s3_uri (str): The S3 URI to validate (e.g., 's3://bucket/26-711111/').
+        expected_bucket (str): The expected S3 bucket name.
+
+    Returns:
+        bool: True if the S3 URI matches the expected bucket and path pattern, False otherwise.
+    Pattern:
+        The S3 URI must start with 's3://{expected_bucket}/', followed by a directory in the format 'NN-NNNNNN/',
+        where 'NN' is any two digits, and 'NNNNNN' starts with either 7 or 8.
+    """
+    pattern = rf"^s3://{re.escape(expected_bucket)}/\d{{2}}-[78]\d{{5}}/"
+    return re.match(pattern, s3_uri) is not None
 
 
 def main():
@@ -35,6 +53,17 @@ def main():
     if not check_opensearch_health(settings.OPENSEARCH_PROXY_URL):
         logger.critical("OpenSearch health check failed. Exiting pipeline runner.")
         return
+
+    # dev-documentsearch-kta-bucket
+    # mod-platfform-sandbox-kta-documents-bucket
+    S3_DOCUMENT_URI = (
+        f"s3://{settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET}/26-711111/Case1_TC19_50_pages_brain_injury.pdf"
+    )
+
+    # Validate S3 URI before processing
+    if not validate_s3_uri(S3_DOCUMENT_URI, settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET):
+        logger.critical(f"Invalid S3 URI: {S3_DOCUMENT_URI}")
+        raise ValueError(f"Invalid S3 URI: {S3_DOCUMENT_URI}")
 
     # These values would typically come from an SQS message in a real-world scenario.
     case_ref = extract_case_ref(S3_DOCUMENT_URI)
