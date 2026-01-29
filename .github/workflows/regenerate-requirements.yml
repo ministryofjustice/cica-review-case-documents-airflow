@@ -1,4 +1,5 @@
 name: Regenerate requirements.txt
+
 permissions:
   contents: read
   pull-requests: read
@@ -6,6 +7,7 @@ permissions:
 on:
   pull_request:
     paths:
+      - "pyproject.toml"
       - "uv.lock"
       - ".github/workflows/regenerate-requirements.yml"
   workflow_dispatch:
@@ -15,10 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
@@ -29,11 +31,12 @@ jobs:
         run: uv pip compile --generate-hashes --output-file requirements.txt pyproject.toml
 
       - name: Check if requirements.txt is up to date
+        id: check_requirements
         run: |
           git diff --exit-code requirements.txt || (
             echo "❌ requirements.txt is not up to date with pyproject.toml and uv.lock."
             echo "Please run:"
             echo "  uv pip compile --generate-hashes --output-file requirements.txt pyproject.toml"
-            echo "and commit the result with a verified signature before merging."
+            echo "and commit the result."
             exit 1
           )
