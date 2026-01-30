@@ -21,7 +21,7 @@ export LOCALSTACK_REQUESTS_CA_BUNDLE="/home/your_user/custom_ca_bundle.pem"
 export LOCALSTACK_HOST_MOUNTS="/home/your_user/custom_ca_bundle.pem:/etc/ssl/certs/custom_ca_bundle.pem"
 ```
 This assumes you have already created the custom_ca_bundle.pem file as described in the main project README, CICA specific Windows WSL setup and confguration instructions.
-- Ensure yout `local-dev-environment/.env` file has the same valid AWS credentials see the `local-dev-environment/.env_template` file. 
+- Ensure your `local-dev-environment/.env` file is created and contains valid AWS credentials for the `AWS_MOD_PLATFORM_*` variables. You can copy the structure from the `local-dev-environment/.env_template` file.
 
 
 ## Setup
@@ -131,20 +131,20 @@ You can adjust search parameters (e.g., search term, number of results, score fi
 
 Results will be written to an Excel file in the `output/hybrid-test-results/<date>/` directory.
 
-## Page Image Generation and S3 Buckets
+## Local Environment Resources
 
-The local environment now supports automatic generation and storage of PNG images for each page of a processed PDF document. These images are uploaded to a dedicated S3 bucket (`document-page-bucket` by default in localstack).
+The local environment uses Docker to spin up LocalStack and OpenSearch. The `docker-compose.yml` file orchestrates this setup.
 
-**Environment Variables:**
-- `AWS_CICA_S3_PAGE_BUCKET_URI`: Endpoint for the page image S3 bucket (e.g., `http://localhost:4566` for localstack)
-- `AWS_CICA_S3_PAGE_BUCKET`: Name of the S3 bucket for page images (default: `document-page-bucket`)
-- `AWS_CICA_AWS_ACCESS_KEY_ID`, `AWS_CICA_AWS_SECRET_ACCESS_KEY`, `AWS_CICA_AWS_SESSION_TOKEN`: Credentials for accessing the page image bucket
+### AWS Resources (via LocalStack)
 
-See `.env_template` for example values.
+The following AWS resources are automatically created by the `init-scripts/create-aws-resources.sh` script when you run `docker compose up`. All resource names are configured in the `.env_template` file.
 
-**Automatic Sample Document Provisioning:**
-When you start the local environment, a sample PDF is automatically downloaded from AWS S3 and uploaded to the localstack S3 bucket. This allows you to test the full pipeline without manual setup.
+-   **S3 Buckets**:
+    -   `local-kta-documents-bucket`: For storing the source PDF documents to be processed.
+    -   `document-page-bucket`: For storing the generated PNG images of each document page.
+-   **SQS Queue**:
+    -   `cica-document-search-queue`: A queue for receiving messages to trigger the ingestion pipeline.
 
-**How it works:**
-- When a PDF is processed, each page is converted to a PNG image and uploaded to the page image S3 bucket.
-- The S3 URI for each image is stored in the page metadata and can be used for display or further processing.
+### Automatic Sample Document Provisioning
+
+When you start the local environment, a sample PDF is automatically downloaded from a real AWS S3 bucket (defined by `SRC_S3_BUCKET` and `SRC_S3_KEY` in your `.env` file) and uploaded to the `local-kta-documents-bucket` in LocalStack. This allows you to test the full pipeline without any manual setup.

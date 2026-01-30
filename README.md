@@ -82,6 +82,12 @@ pre-commit install
 
 After this, whenever you call `git commit` the defined pre-commit hooks will be ran against files staged for commit. Notification will be given where hooks fail and in some instances such as nbstrip out the failing file will be automatically modified. In these instances the modifications to the file will need to be added to the commit before calling `git commit` again.
 
+**Dependency Synchronization:**
+
+One of the key pre-commit hooks is `update-requirements`. This hook automatically compiles your dependencies from `pyproject.toml` into `requirements.txt` every time you commit. This ensures that your dependency files are always in sync. The `requirements.txt` file is maintained for compatibility with deployment environments like Docker and Airflow, which are often simpler to configure with a flat requirements file.
+
+A corresponding GitHub Action (`regenerate-requirements.yml`) runs on every pull request to verify that `requirements.txt` is up-to-date, acting as a safeguard for the project's integrity.
+
 ### Windows WSL setup instructions
 
 Microsoft recommends developing Pyhon Apps using WSL.
