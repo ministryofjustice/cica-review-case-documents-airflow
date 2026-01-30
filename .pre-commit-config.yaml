@@ -49,6 +49,7 @@ repos:
         pass_filenames: false
         additional_dependencies:
           - deptry
+        stages: [pre-commit, pre-push]
 
   - repo: local
     hooks:
@@ -58,15 +59,11 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
+        stages: [pre-commit, pre-push]
       - id: update-requirements
         name: Update requirements.txt from pyproject.toml
         entry: bash -c 'uv pip compile --generate-hashes --output-file requirements.txt pyproject.toml && git add requirements.txt'
         language: system
         pass_filenames: false
         always_run: true
-      - id: silent-uv-export
-        name: Silent uv-export
-        entry: bash -c 'uv pip compile --generate-hashes --output-file requirements.txt pyproject.toml > /dev/null 2>&1'
-        language: system
-        pass_filenames: false
-        always_run: true
+        stages: [pre-commit, pre-push]
