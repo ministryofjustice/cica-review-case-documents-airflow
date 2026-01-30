@@ -1,86 +1,215 @@
-import datetime
-from unittest import mock
+from datetime import datetime
+from unittest.mock import MagicMock, Mock
 
 import pytest
 
 from ingestion_pipeline.chunking.schemas import DocumentMetadata, DocumentPage
-from ingestion_pipeline.page_processor.processor import PageProcessor
-from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
+from ingestion_pipeline.page_processor.page_factory import DocumentPageFactory
+from ingestion_pipeline.page_processor.processor import (
+    PageProcessingError,
+    PageProcessor,
+)
+from ingestion_pipeline.page_processor.s3_document_service import PageImageUploadResult
 
 
-@pytest.fixture
-def mock_page():
-    page = mock.Mock()
-    page.page_num = 1
-    page.width = 800
-    page.height = 600
-    page.text = "Sample page text"
-    return page
+class DummyPage:
+    def __init__(self, page_num, text="Some text"):
+        self.page_num = page_num
+        self.text = text
 
 
-@pytest.fixture
-def mock_document(mock_page):
-    doc = mock.Mock()
-    doc.pages = [mock_page]
-    return doc
+class DummyDocument:
+    def __init__(self, num_pages):
+        self.pages = [DummyPage(i + 1) for i in range(num_pages)]
 
 
 @pytest.fixture
 def metadata():
     return DocumentMetadata(
-        case_ref="25-111111",
-        source_doc_id="DOC456",
-        source_file_name="sample.pdf",
-        source_file_s3_uri="s3://bucket/sample.pdf",
-        received_date=datetime.datetime(2025, 1, 15, 12, 0, 0),
-        correspondence_type="TC19",
+        source_doc_id="doc123",
+        source_file_name="file.pdf",
+        correspondence_type="typeA",
+        case_ref="caseX",
+        page_count=2,
+        source_file_s3_uri="s3://bucket/26-711111/file.pdf",
+        received_date=datetime(2024, 1, 1),
     )
 
 
-def test_process_single_page(mock_document, metadata):
-    processor = PageProcessor()
-    result = processor.process(mock_document, metadata)
-    assert isinstance(result, list)
-    assert len(result) == 1
-    page = result[0]
-    assert isinstance(page, DocumentPage)
-    assert page.source_doc_id == "DOC456"
-    assert page.page_num == 1
+@pytest.fixture
+def mock_s3_document_service():
+    service = Mock()
+    service.download_pdf.return_value = b"pdfbytes"
+    service.upload_page_images.return_value = []
+    service.delete_images.return_value = None
+    service.page_bucket = "page-bucket"
+    return service
 
-    # Compute expected page_id using DocumentIdentifier
-    identifier = DocumentIdentifier(
-        source_file_name=metadata.source_file_name,
-        correspondence_type=metadata.correspondence_type,
-        case_ref=metadata.case_ref,
-        page_num=page.page_num,
+
+@pytest.fixture
+def mock_image_converter():
+    return Mock()
+
+
+@pytest.fixture
+def mock_page_factory():
+    return DocumentPageFactory()
+
+
+@pytest.fixture
+def processor(mock_s3_document_service, mock_image_converter, mock_page_factory):
+    return PageProcessor(
+        s3_document_service=mock_s3_document_service,
+        image_converter=mock_image_converter,
+        page_factory=mock_page_factory,
     )
-    expected_page_id = identifier.generate_uuid()
-    assert page.page_id == expected_page_id
-
-    assert page.page_width == 800
-    assert page.page_height == 600
-    assert page.text == "Sample page text"
 
 
-def test_process_multiple_pages(metadata):
-    page1 = mock.Mock(page_num=1, width=800, height=600, text="Text 1")
-    page2 = mock.Mock(page_num=2, width=1024, height=768, text="Text 2")
-    doc = mock.Mock()
-    doc.pages = [page1, page2]
-    processor = PageProcessor()
-    result = processor.process(doc, metadata)
-    assert len(result) == 2
-    assert result[0].page_num == 1
-    assert result[1].page_num == 2
-    assert result[0].text == "Text 1"
-    assert result[1].text == "Text 2"
+def test_process_success(processor, mock_s3_document_service, mock_image_converter, metadata):
+    # Arrange
+    mock_image1 = MagicMock()
+    mock_image1.size = (100, 200)
+    mock_image2 = MagicMock()
+    mock_image2.size = (150, 250)
+    mock_image_converter.pdf_to_images.return_value = [mock_image1, mock_image2]
+
+    # Mock upload_page_images to return PageImageUploadResult objects
+    mock_s3_document_service.upload_page_images.return_value = [
+        PageImageUploadResult(
+            s3_uri="s3://page-bucket/caseX/doc123/pages/1.png",
+            s3_key="caseX/doc123/pages/1.png",
+            width=100,
+            height=200,
+        ),
+        PageImageUploadResult(
+            s3_uri="s3://page-bucket/caseX/doc123/pages/2.png",
+            s3_key="caseX/doc123/pages/2.png",
+            width=150,
+            height=250,
+        ),
+    ]
+
+    doc = DummyDocument(2)
+    # Act
+    pages = processor.process(doc, metadata)
+
+    # Assert
+    assert len(pages) == 2
+    assert all(isinstance(p, DocumentPage) for p in pages)
+    assert pages[0].page_num == 1
+    assert pages[1].page_num == 2
+    assert pages[0].page_width == 100
+    assert pages[1].page_height == 250
+    assert pages[0].s3_page_image_s3_uri.endswith("/1.png")
+    assert pages[1].s3_page_image_s3_uri.endswith("/2.png")
+    assert mock_s3_document_service.upload_page_images.call_count == 1
 
 
-def test_process_page_without_text(metadata):
-    page = mock.Mock(page_num=3, width=500, height=400)
-    delattr(page, "text")
-    doc = mock.Mock()
-    doc.pages = [page]
-    processor = PageProcessor()
-    result = processor.process(doc, metadata)
-    assert result[0].text == ""
+def test_process_zero_page_count(processor, metadata):
+    zero_page_metadata = metadata.model_copy(update={"page_count": 0})
+    doc = DummyDocument(0)
+    with pytest.raises(PageProcessingError):
+        processor.process(doc, zero_page_metadata)
+
+
+def test_process_page_count_mismatch(processor, mock_image_converter, metadata):
+    # 2 pages in doc, 1 image generated
+    mock_image1 = MagicMock()
+    mock_image1.size = (100, 200)
+    mock_image_converter.pdf_to_images.return_value = [mock_image1]
+    doc = DummyDocument(2)
+    with pytest.raises(PageProcessingError):
+        processor.process(doc, metadata)
+
+
+def test_process_image_upload_failure_triggers_cleanup(
+    processor, mock_s3_document_service, mock_image_converter, metadata
+):
+    mock_image1 = MagicMock()
+    mock_image1.size = (100, 200)
+    mock_image2 = MagicMock()
+    mock_image2.size = (150, 250)
+    mock_image_converter.pdf_to_images.return_value = [mock_image1, mock_image2]
+    # Simulate upload_page_images raising an exception
+    mock_s3_document_service.upload_page_images.side_effect = Exception("upload failed")
+
+    doc = DummyDocument(2)
+    with pytest.raises(PageProcessingError) as excinfo:
+        processor.process(doc, metadata)
+    assert "Image upload failed" in str(excinfo.value) or "Failed to process document pages" in str(excinfo.value)
+    assert not mock_s3_document_service.delete_images.called
+
+
+def test_process_cleanup_failure_raises_enriched_error(
+    processor, mock_s3_document_service, mock_image_converter, metadata
+):
+    mock_image1 = MagicMock()
+    mock_image1.size = (100, 200)
+    mock_image2 = MagicMock()
+    mock_image2.size = (150, 250)
+    mock_image_converter.pdf_to_images.return_value = [mock_image1, mock_image2]
+    # Simulate upload_page_images raises, and delete_images also raises
+    mock_s3_document_service.upload_page_images.side_effect = Exception("upload failed")
+    mock_s3_document_service.delete_images.side_effect = Exception("cleanup failed")
+
+    doc = DummyDocument(2)
+    with pytest.raises(PageProcessingError) as excinfo:
+        processor.process(doc, metadata)
+    assert (
+        "Failed to process document pages for source_doc_id=doc123, case_ref=caseX, s3_uri=s3://bucket/26-711111/file.pdf"
+        in str(excinfo.value)
+    )
+
+
+def test_process_partial_upload_then_cleanup_failure(
+    processor, mock_s3_document_service, mock_image_converter, metadata
+):
+    # Arrange
+    mock_image_converter.pdf_to_images.return_value = [MagicMock(), MagicMock()]
+
+    # Simulate upload failing after one success
+    partial_result = [PageImageUploadResult("s3://uri", "key", 100, 100)]
+
+    def upload_side_effect(*args, **kwargs):
+        # This is a way to modify the state (uploaded_results) before the exception
+        processor.uploaded_results = partial_result
+        raise RuntimeError("Upload failed mid-way")
+
+    mock_s3_document_service.upload_page_images.side_effect = upload_side_effect
+
+    # Simulate cleanup also failing
+    mock_s3_document_service.delete_images.side_effect = RuntimeError("Cleanup failed")
+
+    doc = DummyDocument(2)
+
+    # Act & Assert
+    # The 'match' parameter is a regex. We just need to check for the key part of the message.
+    with pytest.raises(PageProcessingError, match="Image upload failed and cleanup also failed"):
+        processor.process(doc, metadata)
+
+    mock_s3_document_service.delete_images.assert_called_once_with(["key"])
+
+
+def test_process_image_upload_failure_triggers_cleanup_on_second_upload(
+    processor, mock_s3_document_service, mock_image_converter, metadata
+):
+    mock_image1 = MagicMock()
+    mock_image1.size = (100, 200)
+    mock_image2 = MagicMock()
+    mock_image2.size = (150, 250)
+    mock_image_converter.pdf_to_images.return_value = [mock_image1, mock_image2]
+
+    # Simulate upload_page_images raises after uploading one image
+    # We'll simulate this by having upload_page_images return a partial list, then raise
+    def upload_page_images_side_effect(images, case_ref, source_doc_id):
+        # Simulate uploading the first image, then fail
+        raise Exception("upload failed")
+
+    mock_s3_document_service.upload_page_images.side_effect = upload_page_images_side_effect
+
+    doc = DummyDocument(2)
+    with pytest.raises(PageProcessingError) as excinfo:
+        processor.process(doc, metadata)
+    assert "Image upload failed" in str(excinfo.value) or "Failed to process document pages" in str(excinfo.value)
+    # Since upload failed immediately, no images were uploaded, so cleanup should not be called
+    assert not mock_s3_document_service.delete_images.called

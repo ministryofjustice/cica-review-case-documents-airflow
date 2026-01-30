@@ -22,9 +22,15 @@ sys.path.append(str(Path(__file__).resolve().parent.parent / "src"))
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingGenerator
 
+<<<<<<< HEAD
 os.environ["AWS_ACCESS_KEY_ID"] = settings.AWS_MOD_PLATFORM_ACCESS_KEY_ID
 os.environ["AWS_SECRET_ACCESS_KEY"] = settings.AWS_MOD_PLATFORM_SECRET_ACCESS_KEY
 os.environ["AWS_SESSION_TOKEN"] = settings.AWS_MOD_PLATFORM_SESSION_TOKEN
+=======
+os.environ["AWS_MOD_PLATFORM_ACCESS_KEY_ID"] = settings.AWS_MOD_PLATFORM_ACCESS_KEY_ID
+os.environ["AWS_MOD_PLATFORM_SECRET_ACCESS_KEY"] = settings.AWS_MOD_PLATFORM_SECRET_ACCESS_KEY
+os.environ["AWS_MOD_PLATFORM_SESSION_TOKEN"] = settings.AWS_MOD_PLATFORM_SESSION_TOKEN
+>>>>>>> 9e80290 (Feature/cicads 493 create and store page images (#134))
 os.environ["AWS_REGION"] = settings.AWS_REGION
 
 # --- 1. CONFIGURE YOUR RUNNING LOCALSTACK OPENSEARCH CONNECTION ---
@@ -63,7 +69,7 @@ def create_hybrid_query(query_text: str, query_vector: list[float], k: int = 5) 
     if not FUZZY:
         return {
             "size": k,
-            "_source": ["document_id", "page_number", "chunk_text", "case_ref"],
+            "_source": ["source_doc_id", "page_number", "chunk_text", "case_ref"],
             "query": {
                 "bool": {
                     "should": [
@@ -76,7 +82,7 @@ def create_hybrid_query(query_text: str, query_vector: list[float], k: int = 5) 
     else:
         return {
             "size": k,
-            "_source": ["document_id", "page_number", "chunk_text", "case_ref"],
+            "_source": ["source_doc_id", "page_number", "chunk_text", "case_ref"],
             "query": {
                 "bool": {
                     "should": [

@@ -82,6 +82,12 @@ pre-commit install
 
 After this, whenever you call `git commit` the defined pre-commit hooks will be ran against files staged for commit. Notification will be given where hooks fail and in some instances such as nbstrip out the failing file will be automatically modified. In these instances the modifications to the file will need to be added to the commit before calling `git commit` again.
 
+**Dependency Synchronization:**
+
+One of the key pre-commit hooks is `update-requirements`. This hook automatically compiles your dependencies from `pyproject.toml` into `requirements.txt` every time you commit. This ensures that your dependency files are always in sync. The `requirements.txt` file is maintained for compatibility with deployment environments like Docker and Airflow, which are often simpler to configure with a flat requirements file.
+
+A corresponding GitHub Action (`regenerate-requirements.yml`) runs on every pull request to verify that `requirements.txt` is up-to-date, acting as a safeguard for the project's integrity.
+
 ### Windows WSL setup instructions
 
 Microsoft recommends developing Pyhon Apps using WSL.
@@ -108,6 +114,30 @@ The project is still a WIP to ingest an S3 document, call textract to perform OC
 - watch the terminal logs, note Textract can take from ~30 secs to ~2 mins to process
 - once the pipeline has completed use the Opensearch dashboard to view the extracted data
 
+### New Page Image Feature
+
+This project now includes a feature to generate and store PNG images for each page of a processed PDF document. This is useful for displaying page images alongside extracted text in a user interface.
+
+**How it works:**
+
+1.  When a PDF is processed, each page is converted into a PNG image.
+2.  These images are uploaded to a dedicated S3 bucket (`document-page-bucket` in the local environment).
+3.  The S3 URI of each page image is stored in the `page_metadata` index in OpenSearch, alongside the rest of the page's metadata.
+
+**Configuration:**
+
+The following new environment variables have been added to configure this feature. See the `.env_template` file for default values.
+For [local development](/local-dev-environment/README.md) these will be the default Localstack keys.
+
+-   `AWS_CICA_S3_PAGE_BUCKET_URI`: The endpoint URL for the page image S3 bucket (for local development).
+-   `AWS_CICA_S3_PAGE_BUCKET`: The name of the S3 bucket for storing page images.
+-   `AWS_CICA_AWS_ACCESS_KEY_ID`: AWS access key for the page image bucket.
+-   `AWS_CICA_AWS_SECRET_ACCESS_KEY`: AWS secret key for the page image bucket.
+-   `AWS_CICA_AWS_SESSION_TOKEN`: AWS session token for the page image bucket.
+
+**Local Development:**
+
+When running the local development environment, a sample document is now automatically downloaded from a source AWS S3 bucket and placed into the localstack S3 bucket (`local-kta-documents-bucket`), making it easier to test the full pipeline.
 
 ### Logging
 

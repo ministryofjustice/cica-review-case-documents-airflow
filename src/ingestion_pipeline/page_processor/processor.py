@@ -13,42 +13,82 @@ Methods:
 """
 
 import logging
-from typing import List
+from typing import List, Optional
 
 from textractor.entities.document import Document
 
 from ingestion_pipeline.chunking.schemas import DocumentMetadata, DocumentPage
-from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
+from ingestion_pipeline.page_processor.image_converter import ImageConverter
+from ingestion_pipeline.page_processor.page_factory import DocumentPageFactory
+from ingestion_pipeline.page_processor.s3_document_service import PageImageUploadResult, S3DocumentService
 
 logger = logging.getLogger(__name__)
+
+
+class PageProcessingError(Exception):
+    """Raised when page processing fails due to invalid page count."""
 
 
 class PageProcessor:
     """Processes pages from a Textract Document and builds DocumentPage objects."""
 
-    def process(self, doc: Document, metadata: DocumentMetadata) -> List[DocumentPage]:
-        """Iterate over document pages and build DocumentPage objects."""
-        logger.info(f"Processing document pages with source_doc_id: {metadata.source_doc_id}")
-        pages = []
-        for page in doc.pages:
-            identifier = DocumentIdentifier(
-                source_file_name=metadata.source_file_name,
-                correspondence_type=metadata.correspondence_type,
-                case_ref=metadata.case_ref,
-                page_num=page.page_num,
-            )
-            page_id = identifier.generate_uuid()
+    def __init__(
+        self,
+        s3_document_service: S3DocumentService,
+        image_converter: ImageConverter,
+        page_factory: Optional[DocumentPageFactory] = None,
+    ):
+        """Initializes the PageProcessor instance.
 
-            page_id = page_id
-            page_doc = DocumentPage(
-                source_doc_id=metadata.source_doc_id,
-                page_num=page.page_num,
-                page_id=page_id,
-                page_width=page.width,
-                page_height=page.height,
-                text=page.text if hasattr(page, "text") else "",
-                received_date=metadata.received_date,
-                # Add more fields as needed
+        Args:
+            s3_document_service (S3DocumentService): Service for S3 operations.
+            image_converter (ImageConverter): Service for PDF-to-image conversion.
+            page_factory (Optional[DocumentPageFactory]): Factory for DocumentPage creation.
+        """
+        self.s3_document_service = s3_document_service
+        self.image_converter = image_converter
+        self.page_factory = page_factory or DocumentPageFactory()
+        self.uploaded_results: List[PageImageUploadResult] = []
+
+    def process(self, doc: Document, metadata: DocumentMetadata) -> List[DocumentPage]:
+        """Iterate over document pages, generate images, upload to S3, and build DocumentPage objects."""
+        logger.info(f"Processing document pages with source_doc_id: {metadata.source_doc_id}")
+        source_doc_id = metadata.source_doc_id
+        case_ref = metadata.case_ref
+        page_count = metadata.page_count if metadata.page_count is not None else 0
+        if page_count == 0:
+            raise PageProcessingError(f"Page count is zero for document {source_doc_id} (case_ref={case_ref}).")
+
+        self.uploaded_results = []  # Reset for each run
+        try:
+            pdf_bytes = self.s3_document_service.download_pdf(metadata.source_file_s3_uri)
+            images = self.image_converter.pdf_to_images(pdf_bytes)
+            self.uploaded_results = self.s3_document_service.upload_page_images(images, case_ref, source_doc_id)
+        except Exception as e:
+            # Attempt cleanup if any images were uploaded before failure
+            try:
+                if self.uploaded_results:
+                    uploaded_keys = [r.s3_key for r in self.uploaded_results]
+                    self.s3_document_service.delete_images(uploaded_keys)
+            except Exception as cleanup_error:
+                raise PageProcessingError(
+                    f"Image upload failed and cleanup also failed. "
+                    f"SourceDocID='{source_doc_id}', UploadedKeys={self.uploaded_results}, "
+                    f"UploadError={e}, CleanupError={cleanup_error}"
+                ) from e
+            raise PageProcessingError(
+                f"Failed to process document pages for source_doc_id={source_doc_id}, "
+                f"case_ref={case_ref}, s3_uri={metadata.source_file_s3_uri}"
+            ) from e
+
+        if len(doc.pages) != len(self.uploaded_results):
+            raise PageProcessingError(
+                f"Mismatch between Textract pages ({len(doc.pages)}) and generated images "
+                f"({len(self.uploaded_results)}) for document {source_doc_id} (case_ref={case_ref})."
             )
+        pages = []
+        for idx, page in enumerate(doc.pages):
+            result = self.uploaded_results[idx]
+            page_doc = self.page_factory.create(metadata, page, result.s3_uri, result.width, result.height)
             pages.append(page_doc)
         return pages

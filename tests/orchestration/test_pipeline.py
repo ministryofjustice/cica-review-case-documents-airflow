@@ -186,3 +186,4 @@ def test_process_document_unexpected_error(
     mock_textract_processor.process_document.side_effect = RuntimeError("unexpected")
     with pytest.raises(PipelineError):
         pipeline.process_document(document_metadata)
+        assert pipeline._cleanup_indexed_data.called_once_with(document_metadata.source_doc_id)

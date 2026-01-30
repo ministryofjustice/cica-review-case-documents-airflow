@@ -72,6 +72,10 @@ class Settings(BaseSettings):  # type: ignore
 
     BEDROCK_EMBEDDING_MODEL_ID: str = "amazon.titan-embed-text-v2:0"
 
+    # -- Local Development Mode --
+    # Confgure via .env or environment variable
+    LOCAL_DEVELOPMENT_MODE: bool = False
+
     LOG_LEVEL: str = "INFO"
 
 
