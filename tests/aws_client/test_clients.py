@@ -117,3 +117,19 @@ def test_get_textractor_instance(monkeypatch, mock_settings):
     # Restore original env
     os.environ.clear()
     os.environ.update(orig_env)
+
+
+def test_get_textractor_instance_restores_existing_env_vars(monkeypatch, mock_settings):
+    mock_textractor = MagicMock()
+    monkeypatch.setattr(clients, "Textractor", mock_textractor)
+
+    # Set a pre-existing environment variable
+    os.environ["AWS_ACCESS_KEY_ID"] = "original_key"
+
+    try:
+        clients.get_textractor_instance()
+        # Check that the environment variable was correctly restored
+        assert os.environ["AWS_ACCESS_KEY_ID"] == "original_key"
+    finally:
+        # Clean up the environment variable after the test
+        os.environ.pop("AWS_ACCESS_KEY_ID", None)

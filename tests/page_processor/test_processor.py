@@ -161,6 +161,35 @@ def test_process_cleanup_failure_raises_enriched_error(
     )
 
 
+def test_process_partial_upload_then_cleanup_failure(
+    processor, mock_s3_document_service, mock_image_converter, metadata
+):
+    # Arrange
+    mock_image_converter.pdf_to_images.return_value = [MagicMock(), MagicMock()]
+
+    # Simulate upload failing after one success
+    partial_result = [PageImageUploadResult("s3://uri", "key", 100, 100)]
+
+    def upload_side_effect(*args, **kwargs):
+        # This is a way to modify the state (uploaded_results) before the exception
+        processor.uploaded_results = partial_result
+        raise RuntimeError("Upload failed mid-way")
+
+    mock_s3_document_service.upload_page_images.side_effect = upload_side_effect
+
+    # Simulate cleanup also failing
+    mock_s3_document_service.delete_images.side_effect = RuntimeError("Cleanup failed")
+
+    doc = DummyDocument(2)
+
+    # Act & Assert
+    # The 'match' parameter is a regex. We just need to check for the key part of the message.
+    with pytest.raises(PageProcessingError, match="Image upload failed and cleanup also failed"):
+        processor.process(doc, metadata)
+
+    mock_s3_document_service.delete_images.assert_called_once_with(["key"])
+
+
 def test_process_image_upload_failure_triggers_cleanup_on_second_upload(
     processor, mock_s3_document_service, mock_image_converter, metadata
 ):
