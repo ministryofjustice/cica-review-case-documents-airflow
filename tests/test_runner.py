@@ -1,10 +1,19 @@
 import datetime
 from unittest import mock
 
+import pytest
+
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
 from ingestion_pipeline.runner import main
 
 """Tests for the pipeline runner module."""
+
+
+@pytest.fixture(autouse=True)
+def patch_settings():
+    with mock.patch("ingestion_pipeline.runner.settings") as mock_settings:
+        mock_settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET = "test-kta-documents-bucket"
+        yield mock_settings
 
 
 @mock.patch("ingestion_pipeline.runner.build_pipeline")
@@ -38,7 +47,12 @@ def test_main_handles_pipeline_exception(mock_check_opensearch_health, mock_logg
     main()
 
     mock_pipeline.process_document.assert_called_once()
-    mock_logger.critical.assert_called_once_with("Pipeline runner encountered a fatal error.", exc_info=True)
+    mock_logger.critical.assert_called_once_with(
+        "Pipeline runner encountered a fatal error for source_doc_id=4bcba3af-d9ab-53f2-9fd7-bf4263f8118e, "
+        "case_ref=26-711111, s3_uri=s3://test-kta-documents-bucket/26-711111/Case1_TC19_50_pages_brain_injury.pdf: "
+        "Exception: Pipeline error",
+        exc_info=True,
+    )
 
 
 @mock.patch("ingestion_pipeline.runner.build_pipeline")
@@ -64,8 +78,8 @@ def test_main_creates_correct_document_metadata(
 
         mock_identifier_class.assert_called_once_with(
             source_file_name="Case1_TC19_50_pages_brain_injury.pdf",
-            correspondence_type="TC19",
-            case_ref="25-111111",
+            correspondence_type="TC19 - ADDITIONAL INFO REQUEST",
+            case_ref="26-711111",
         )
 
         call_args = mock_pipeline.process_document.call_args
@@ -74,8 +88,8 @@ def test_main_creates_correct_document_metadata(
         assert isinstance(metadata, DocumentMetadata)
         assert metadata.source_doc_id == "test-uuid-123"
         assert metadata.source_file_name == "Case1_TC19_50_pages_brain_injury.pdf"
-        assert metadata.case_ref == "25-111111"
-        assert metadata.correspondence_type == "TC19"
+        assert metadata.case_ref == "26-711111"
+        assert metadata.correspondence_type == "TC19 - ADDITIONAL INFO REQUEST"
         assert metadata.page_count is None
 
 

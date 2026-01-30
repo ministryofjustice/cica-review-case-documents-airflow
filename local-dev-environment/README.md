@@ -21,6 +21,8 @@ export LOCALSTACK_REQUESTS_CA_BUNDLE="/home/your_user/custom_ca_bundle.pem"
 export LOCALSTACK_HOST_MOUNTS="/home/your_user/custom_ca_bundle.pem:/etc/ssl/certs/custom_ca_bundle.pem"
 ```
 This assumes you have already created the custom_ca_bundle.pem file as described in the main project README, CICA specific Windows WSL setup and confguration instructions.
+- Ensure your `local-dev-environment/.env` file is created and contains valid AWS credentials for the `AWS_MOD_PLATFORM_*` variables. You can copy the structure from the `local-dev-environment/.env_template` file.
+
 
 ## Setup
 
@@ -113,6 +115,7 @@ This script allows you to perform hybrid (keyword + semantic) search queries aga
 
 - Ensure your OpenSearch instance is running and accessible.
 - Ensure your `.env` file in the project root contains valid AWS credentials and OpenSearch connection details (see main README for details).
+- Ensure your `local-dev-environment/.env` file has the same valid AWS credentials see the `local-dev-environment/.env_template` file. 
 
 ## Running the Search Client
 
@@ -127,3 +130,21 @@ python local-dev-environment/search_client.py
 You can adjust search parameters (e.g., search term, number of results, score filter) and enable/disable fuzzy matching at the top of `search_client.py`.
 
 Results will be written to an Excel file in the `output/hybrid-test-results/<date>/` directory.
+
+## Local Environment Resources
+
+The local environment uses Docker to spin up LocalStack and OpenSearch. The `docker-compose.yml` file orchestrates this setup.
+
+### AWS Resources (via LocalStack)
+
+The following AWS resources are automatically created by the `init-scripts/create-aws-resources.sh` script when you run `docker compose up`. All resource names are configured in the `.env_template` file.
+
+-   **S3 Buckets**:
+    -   `local-kta-documents-bucket`: For storing the source PDF documents to be processed.
+    -   `document-page-bucket`: For storing the generated PNG images of each document page.
+-   **SQS Queue**:
+    -   `cica-document-search-queue`: A queue for receiving messages to trigger the ingestion pipeline.
+
+### Automatic Sample Document Provisioning
+
+When you start the local environment, a sample PDF is automatically downloaded from a real AWS S3 bucket (defined by `SRC_S3_BUCKET` and `SRC_S3_KEY` in your `.env` file) and uploaded to the `local-kta-documents-bucket` in LocalStack. This allows you to test the full pipeline without any manual setup.

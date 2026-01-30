@@ -2,9 +2,11 @@
 
 import logging
 
-import boto3
-from textractor import Textractor
-
+from ingestion_pipeline.aws_client.clients import (
+    get_s3_client,
+    get_textract_client,
+    get_textractor_instance,
+)
 from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
 from ingestion_pipeline.chunking.strategies.key_value.layout_key_value import KeyValueChunker
 from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkingStrategy
@@ -16,7 +18,10 @@ from ingestion_pipeline.custom_logging.log_context import setup_logging
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingGenerator
 from ingestion_pipeline.indexing.indexer import OpenSearchIndexer
 from ingestion_pipeline.orchestration.pipeline import Pipeline
+from ingestion_pipeline.page_processor.image_converter import ImageConverter
+from ingestion_pipeline.page_processor.page_factory import DocumentPageFactory
 from ingestion_pipeline.page_processor.processor import PageProcessor
+from ingestion_pipeline.page_processor.s3_document_service import S3DocumentService
 from ingestion_pipeline.textract.textract_processor import TextractProcessor
 
 setup_logging()
@@ -31,14 +36,11 @@ def build_pipeline() -> Pipeline:
     Returns:
         Pipeline: A fully configured instance of the ingestion pipeline.
     """
-    # --- Textract and AWS Clients ---
-    textractor_instance = Textractor(region_name=settings.AWS_REGION)
-    boto3_textract_client = boto3.client("textract", region_name=settings.AWS_REGION)
-
     # --- Pipeline Components ---
+    textractor_instance = get_textractor_instance()
     textract_processor = TextractProcessor(
         textractor=textractor_instance,
-        textract_client=boto3_textract_client,
+        textract_client=get_textract_client(),
     )
 
     # --- Chunking Strategies ---
@@ -75,7 +77,29 @@ def build_pipeline() -> Pipeline:
         proxy_url=settings.OPENSEARCH_PROXY_URL,
     )
 
-    page_processor = PageProcessor()
+    # Choose bucket based on environment
+    # Temporary solution until we have a better way to manage test vs prod resources
+    # Textract needs access to the S3 bucket where the PDFs are stored
+    if getattr(settings, "LOCAL_DEVELOPMENT_MODE", False):
+        document_source_s3_bucket = settings.AWS_LOCALSTACK_S3_SOURCE_DOCUMENT_ROOT_BUCKET
+        logger.info("Using LocalStack S3 bucket for PDF download.")
+    else:
+        document_source_s3_bucket = settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET
+        logger.info("Using original S3 bucket for PDF download.")
+
+    image_converter = ImageConverter()
+    s3_document_service = S3DocumentService(
+        s3_client=get_s3_client(),
+        source_bucket=document_source_s3_bucket,
+        page_bucket=settings.AWS_CICA_S3_PAGE_BUCKET,
+    )
+
+    page_factory = DocumentPageFactory()
+    page_processor = PageProcessor(
+        s3_document_service=s3_document_service,
+        image_converter=image_converter,
+        page_factory=page_factory,
+    )
 
     # --- Construct and Return the Pipeline ---
     return Pipeline(

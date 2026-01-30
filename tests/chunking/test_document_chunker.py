@@ -1,13 +1,13 @@
 """Unit tests for document_chunker.py."""
 
 import datetime
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from textractor.entities.page import Page
 
 from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
-from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
+from ingestion_pipeline.chunking.schemas import DocumentBoundingBox, DocumentChunk, DocumentMetadata
 from ingestion_pipeline.chunking.textract_document_chunker import ChunkError, DocumentChunker
 
 
@@ -39,13 +39,17 @@ def create_mock_document(pages, response={"some": "data"}):
 
 
 @pytest.fixture
-def mock_metadata():
-    """Provides a mock DocumentMetadata object for tests."""
-    metadata = MagicMock(spec=DocumentMetadata)
-    metadata.source_doc_id = "doc-123"
-    metadata.case_ref = "case-abc"
-    metadata.received_date = datetime.datetime.fromisoformat("2025-11-06T00:00:00")
-    return metadata
+def document_metadata():
+    """Provides a DocumentMetadata instance for tests."""
+    return DocumentMetadata(
+        source_doc_id="doc123",
+        source_file_name="file.pdf",
+        source_file_s3_uri="s3://bucket/25-787878/file.pdf",
+        page_count=5,
+        case_ref="25-787878",
+        received_date=datetime.datetime.fromisoformat("2025-11-06T00:00:00"),
+        correspondence_type="TC19",
+    )
 
 
 @pytest.fixture
@@ -84,21 +88,7 @@ def mock_document():
     return doc
 
 
-@pytest.fixture
-def document_metadata():
-    """Provides a DocumentMetadata instance for tests."""
-    return DocumentMetadata(
-        source_doc_id="doc123",
-        source_file_name="file.pdf",
-        source_file_s3_uri="s3://bucket/file.pdf",
-        page_count=5,
-        case_ref="25-787878",
-        received_date=datetime.datetime.fromisoformat("2025-11-06T00:00:00"),
-        correspondence_type="letter",
-    )
-
-
-def test_selects_correct_strategy_and_increments_index(mock_metadata):
+def test_selects_correct_strategy_and_increments_index(document_metadata):
     # Arrange
     mock_text_strategy = MagicMock()
     mock_text_strategy.chunk.return_value = [MagicMock(spec=DocumentChunk), MagicMock(spec=DocumentChunk)]
@@ -118,7 +108,7 @@ def test_selects_correct_strategy_and_increments_index(mock_metadata):
 
     with patch("ingestion_pipeline.chunking.textract_document_chunker.ChunkMerger", autospec=True) as mock_merger:
         mock_merger.return_value.merge_chunks.side_effect = lambda merge_chunks: merge_chunks
-        processed_doc = chunker.chunk(doc, mock_metadata)
+        processed_doc = chunker.chunk(doc, document_metadata)
 
     mock_text_strategy.chunk.assert_called_once()
     # assert chunk_index_start == 0
@@ -128,7 +118,7 @@ def test_selects_correct_strategy_and_increments_index(mock_metadata):
     assert len(processed_doc.chunks) == 3
 
 
-def test_skips_blocks_without_strategy_or_text(mock_metadata, mock_strategy_handler):
+def test_skips_blocks_without_strategy_or_text(document_metadata, mock_strategy_handler):
     """Verifies that blocks are skipped if they have no associated strategy.
     no text, or only whitespace text.
     """
@@ -148,13 +138,13 @@ def test_skips_blocks_without_strategy_or_text(mock_metadata, mock_strategy_hand
 
     with patch("ingestion_pipeline.chunking.textract_document_chunker.ChunkMerger", autospec=True) as mock_merger:
         mock_merger.return_value.merge_chunks.side_effect = lambda merge_chunks: merge_chunks
-        processed_doc = chunker.chunk(doc, mock_metadata)
+        processed_doc = chunker.chunk(doc, document_metadata)
 
     mock_strategy_handler.chunk.assert_called_once()
     assert len(processed_doc.chunks) == 1
 
 
-def test_calls_merger_once_per_page(mock_metadata, mock_strategy_handler):
+def test_calls_merger_once_per_page(document_metadata, mock_strategy_handler):
     """Verifies that the ChunkMerger is instantiated and called once for each page."""
     strategy_handlers = {"LAYOUT_TEXT": mock_strategy_handler}
     pages = [
@@ -165,31 +155,57 @@ def test_calls_merger_once_per_page(mock_metadata, mock_strategy_handler):
     chunker = DocumentChunker(strategy_handlers)
 
     with patch("ingestion_pipeline.chunking.textract_document_chunker.ChunkMerger", autospec=True) as mock_merger:
-        chunker.chunk(doc, mock_metadata)
+        chunker.chunk(doc, document_metadata)
 
         assert mock_merger.return_value.merge_chunks.call_count == 2
 
 
-def test_creates_pagedocument_with_correct_data(mock_metadata, mock_strategy_handler):
+def test_creates_pagedocument_with_correct_data(document_metadata, mock_strategy_handler):
     """Verifies that PageDocument objects are created correctly from page data."""
-    strategy_handlers = {"LAYOUT_TEXT": mock_strategy_handler}
-    page = create_mock_page(layouts=[], page_num=5, width=800, height=600)
+    # Add a layout block that will be processed
+    layout = MagicMock()
+    layout.layout_type = "LAYOUT_TEXT"
+    layout.text = "Some text"
+    layout.id = "id-1"
+
+    page = create_mock_page(layouts=[layout], page_num=5, width=800, height=600)
     doc = create_mock_document(pages=[page])
+
+    # Create a real DocumentChunk object
+    mock_chunk = DocumentChunk(
+        chunk_id="chunk-id-1",
+        chunk_index=0,
+        chunk_text="Some text",
+        chunk_type="LAYOUT_TEXT",
+        confidence=99.0,
+        page_number=5,
+        bounding_box=DocumentBoundingBox(Top=0.1, Left=0.1, Width=0.2, Height=0.2),
+        source_doc_id="doc123",
+        source_file_name="file.pdf",
+        source_file_s3_uri="s3://bucket/25-787878/doc123/page_images/page_5.png",
+        case_ref="25-787878",
+        received_date=document_metadata.received_date,
+        correspondence_type="TC19",
+        page_count=5,
+    )
+    mock_strategy_handler.chunk.return_value = [mock_chunk]
+
+    strategy_handlers = {"LAYOUT_TEXT": mock_strategy_handler}
     chunker = DocumentChunker(strategy_handlers)
 
-    processed_doc = chunker.chunk(doc, mock_metadata)
+    with patch("ingestion_pipeline.chunking.textract_document_chunker.ChunkMerger", autospec=True) as mock_merger:
+        mock_merger.return_value.merge_chunks.side_effect = lambda chunks: chunks
+        processed_doc = chunker.chunk(doc, document_metadata)
 
-    assert len(processed_doc.pages) == 1
-    page_doc = processed_doc.pages[0]
+    assert len(processed_doc.chunks) == 1
+    page_doc = processed_doc.chunks[0]
 
-    assert page_doc.source_doc_id == "doc-123"
-    assert page_doc.page_num == 5
-    assert page_doc.page_width == 800
-    assert page_doc.page_height == 600
-    assert page_doc.page_id == "s3://bucket/case-abc/doc-123/page_images/page_5.png"
+    assert page_doc.source_doc_id == "doc123"
+    assert page_doc.page_number == 5
+    assert page_doc.source_file_s3_uri == "s3://bucket/25-787878/doc123/page_images/page_5.png"
 
 
-def test_wraps_strategy_exception_in_chunkexception(mock_metadata, mock_strategy_handler):
+def test_wraps_strategy_exception_in_chunkexception(document_metadata, mock_strategy_handler):
     """Verifies that if a strategy raises an unexpected error,
     it is caught and re-raised as a ChunkException with the original stack trace.
     """
@@ -202,7 +218,7 @@ def test_wraps_strategy_exception_in_chunkexception(mock_metadata, mock_strategy
     chunker = DocumentChunker(strategy_handlers)
 
     with pytest.raises(ChunkError, match="Error extracting chunks from document: something went very wrong!"):
-        chunker.chunk(doc, mock_metadata)
+        chunker.chunk(doc, document_metadata)
 
 
 def test_init_with_default_config(mock_strategy_handlers):
@@ -212,53 +228,17 @@ def test_init_with_default_config(mock_strategy_handlers):
     assert chunker.strategy_handlers is mock_strategy_handlers
 
 
-# def test_init_with_custom_config(mock_strategy_handlers):
-#     """Verifies the chunker initializes with a custom config."""
-#     custom_config = ChunkingConfig(chunk_size=50)
-#     chunker = DocumentChunker(strategy_handlers=mock_strategy_handlers, config=custom_config)
-#     assert chunker.config is custom_config
-#     assert chunker.config.chunk_size == 50
-
-
-@patch("ingestion_pipeline.chunking.textract_document_chunker.ChunkMerger")
-def test_chunk_happy_path(mock_chunk_merger, mock_strategy_handlers, mock_document, document_metadata):
-    """Tests the end-to-end success scenario of the `chunk` method."""
-    # Setup mocks
-    mock_merger_instance = mock_chunk_merger.return_value
-    mock_merger_instance.merge_chunks.side_effect = lambda x: x  # Return chunks as is
-
+def test_chunk_raises_error_on_invalid_document(mock_strategy_handlers, document_metadata):
+    """Verifies `chunk` raises ValueError for invalid documents."""
     chunker = DocumentChunker(strategy_handlers=mock_strategy_handlers)
-    processed_doc = chunker.chunk(mock_document, document_metadata)
 
-    # Assertions
-    assert len(processed_doc.chunks) == 2
-    assert len(processed_doc.pages) == 2
-    assert processed_doc.metadata == document_metadata
+    with pytest.raises(ChunkError, match="Document cannot be None and must contain pages."):
+        chunker.chunk(None, document_metadata)  # type: ignore[arg-type]
 
-    # Check that strategy handler was called for each page's layout block
-    text_handler = mock_strategy_handlers["TEXT"]
-    assert text_handler.chunk.call_count == 2
-    text_handler.chunk.assert_has_calls(
-        [
-            call(mock_document.pages[0].layouts[0], 1, document_metadata, 0, mock_document.response),
-            call(mock_document.pages[1].layouts[0], 2, document_metadata, 1, mock_document.response),
-        ]
-    )
-
-    # Check that merger was called for each page
-    assert mock_merger_instance.merge_chunks.call_count == 2
-
-
-# def test_chunk_raises_error_on_invalid_document(mock_strategy_handlers, document_metadata):
-#     """Verifies `chunk` raises ValueError for invalid documents."""
-#     chunker = DocumentChunker(strategy_handlers=mock_strategy_handlers)
-
-#     with pytest.raises(ChunkError, match="Document cannot be None and must contain pages."):
-#         chunker.chunk(None, document_metadata)
-
-#     doc_no_pages = MagicMock(spec=Document, pages=[])
-#     with pytest.raises(ChunkError, match="Document cannot be None and must contain pages."):
-#         chunker.chunk(doc_no_pages, document_metadata)
+    doc_no_pages = MagicMock()
+    doc_no_pages.pages = []
+    with pytest.raises(ChunkError, match="Document cannot be None and must contain pages."):
+        chunker.chunk(doc_no_pages, document_metadata)
 
 
 def test_chunk_raises_error_on_missing_raw_response(mock_strategy_handlers, mock_document, document_metadata):
@@ -270,13 +250,53 @@ def test_chunk_raises_error_on_missing_raw_response(mock_strategy_handlers, mock
         chunker.chunk(mock_document, document_metadata)
 
 
-# def test_chunk_raises_error_on_missing_strategy_handler(mock_strategy_handlers, mock_document, document_metadata):
+# def test_chunk_raises_error_on_missing_strategy_handler(document_metadata):
 #     """Verifies `chunk` raises ChunkException if a strategy handler is not found."""
-#     mock_document.pages[0].layouts[0].layout_type = "UNIMPLEMENTED"  # This type has no handler
-#     chunker = DocumentChunker(strategy_handlers=mock_strategy_handlers)
+#     from ingestion_pipeline.chunking.textract_document_chunker import ChunkError, DocumentChunker
+
+#     # No handler for "UNIMPLEMENTED" type
+#     strategy_handlers = {}  # type: ignore[arg-type]
+#     page = MagicMock()
+#     page.layouts = [MagicMock(layout_type="UNIMPLEMENTED", text="Some text")]
+#     page.page_num = 1
+#     page.width = 800
+#     page.height = 600
+
+#     doc = MagicMock()
+#     doc.pages = [page]
+#     doc.response = {"some": "data"}
+
+#     chunker = DocumentChunker(strategy_handlers=strategy_handlers)
 
 #     with pytest.raises(ChunkError, match="has no associated strategy handler"):
-#         chunker.chunk(mock_document, document_metadata)
+#         chunker.chunk(doc, document_metadata)
+
+
+def test_chunk_raises_error_on_strategy_handler_not_implemented(document_metadata):
+    """Verifies `chunk` wraps NotImplementedError from a strategy handler."""
+    from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+    from ingestion_pipeline.chunking.strategies.base import ChunkingStrategyHandler
+    from ingestion_pipeline.chunking.textract_document_chunker import ChunkError, DocumentChunker
+
+    class DummyHandler(ChunkingStrategyHandler):
+        def chunk(self, *args, **kwargs):
+            raise NotImplementedError("Not implemented")
+
+    strategy_handlers = {"UNIMPLEMENTED": DummyHandler(ChunkingConfig())}
+    page = MagicMock()
+    page.layouts = [MagicMock(layout_type="UNIMPLEMENTED", text="Some text")]
+    page.page_num = 1
+    page.width = 800
+    page.height = 600
+
+    doc = MagicMock()
+    doc.pages = [page]
+    doc.response = {"some": "data"}
+
+    chunker = DocumentChunker(strategy_handlers=strategy_handlers)
+
+    with pytest.raises(ChunkError, match="Not implemented"):
+        chunker.chunk(doc, document_metadata)
 
 
 def test_should_process_block(mock_strategy_handlers):

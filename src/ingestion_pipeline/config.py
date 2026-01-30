@@ -45,11 +45,24 @@ class Settings(BaseSettings):  # type: ignore
     OPENSEARCH_CHUNK_INDEX_NAME: str = "page_chunks"
     OPENSEARCH_PAGE_METADATA_INDEX_NAME: str = "page_metadata"
 
-    # -- AWS --
-    AWS_ACCESS_KEY_ID: str = "aws_access_key_id"
-    AWS_SECRET_ACCESS_KEY: str = "aws_secret_access_key"
-    AWS_SESSION_TOKEN: str = "aws_session_token"
-    AWS_REGION: str = "aws_region"
+    # -- GLOBAL AWS CONFIGURATION --
+    AWS_REGION: str = "eu-west-2"
+
+    # -- AWS TEXTRACT --
+    AWS_MOD_PLATFORM_ACCESS_KEY_ID: str = "test"
+    AWS_MOD_PLATFORM_SECRET_ACCESS_KEY: str = "test"
+    AWS_MOD_PLATFORM_SESSION_TOKEN: str = "test"
+
+    # -- AWS S3 PAGE BUCKET --
+    AWS_CICA_S3_PAGE_BUCKET_URI: str = "s3://document-page-bucket"
+    AWS_CICA_S3_PAGE_BUCKET: str = "document-page-bucket"
+    AWS_CICA_AWS_ACCESS_KEY_ID: str = "test"
+    AWS_CICA_AWS_SECRET_ACCESS_KEY: str = "test"
+    AWS_CICA_AWS_SESSION_TOKEN: str = "test"
+
+    # -- SOURCE DOCUMENT BUCKET --
+    AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET: str = "dev-kta-documents-bucket"
+    AWS_LOCALSTACK_S3_SOURCE_DOCUMENT_ROOT_BUCKET: str = "local-kta-documents-bucket"
 
     # review these values when we have a working system
     MAXIMUM_CHUNK_SIZE: int = 80  # maximum chunk size
@@ -71,6 +84,10 @@ class Settings(BaseSettings):  # type: ignore
     # S3_PREFIX: str = "textract-test"
 
     BEDROCK_EMBEDDING_MODEL_ID: str = "amazon.titan-embed-text-v2:0"
+
+    # -- Local Development Mode --
+    # Confgure via .env or environment variable
+    LOCAL_DEVELOPMENT_MODE: bool = False
 
     LOG_LEVEL: str = "INFO"
 

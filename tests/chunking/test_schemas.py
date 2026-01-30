@@ -54,7 +54,7 @@ def make_metadata():
 
 
 @mock.patch("ingestion_pipeline.chunking.schemas.DocumentIdentifier")
-def test_generate_chunk_id_calls_document_identifier(mock_identifier_cls):
+def test_generate_chunk_id_calls_source_doc_identifier(mock_identifier_cls):
     metadata = make_metadata()
     mock_identifier = mock_identifier_cls.return_value
     mock_identifier.generate_uuid.return_value = "mocked-uuid"
