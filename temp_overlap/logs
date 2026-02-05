@@ -1,0 +1,402 @@
+2026-02-05 16:08:36 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Processing page 3 of 50
+2026-02-05 16:11:33 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 6 - bounding boxes before combine:
+2026-02-05 16:11:40 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.8195235133171082, y=0.041290465742349625, width=0.11331271380186081, height=0.013645618222653866
+2026-02-05 16:11:05 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_HEADER chunk : iGPR Report
+2026-02-05 16:11:05 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-6
+2026-02-05 16:11:05 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: af297921-3ddf-57da-9fd0-177e4dc86dd1
+2026-02-05 16:11:26 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 7 - bounding boxes before combine:
+2026-02-05 16:11:31 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.09177860617637634, y=0.0592414066195488, width=0.08497828990221024, height=0.008611883036792278
+2026-02-05 16:13:01 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : 28-Nov-2022
+2026-02-05 16:13:01 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-7
+2026-02-05 16:13:01 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: c516130e-83d4-53f2-9407-230ff369c313
+2026-02-05 16:13:03 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 8 - bounding boxes before combine:
+2026-02-05 16:13:03 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.3470091223716736, y=0.05903144180774689, width=0.15168222784996033, height=0.00888877920806408
+2026-02-05 16:13:03 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 1: x=0.5561255216598511, y=0.05885738134384155, width=0.15202105045318604, height=0.008894143626093864
+2026-02-05 16:13:03 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TITLE chunk : NHS Foundation Trust NHS Foundation Trust
+2026-02-05 16:13:03 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-8
+2026-02-05 16:13:03 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 4d5867ee-c6b6-5c71-8189-75bcd527b09b
+2026-02-05 16:13:06 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 9 - bounding boxes before combine:
+2026-02-05 16:13:06 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.17272421717643738, y=0.08405808359384537, width=0.06382482498884201, height=0.007732434663921595
+2026-02-05 16:13:06 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 1: x=0.25411930680274963, y=0.08395687490701675, width=0.06359101831912994, height=0.007753088604658842
+2026-02-05 16:13:06 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 2: x=0.2539680600166321, y=0.09396763890981674, width=0.13543617725372314, height=0.009184647351503372
+2026-02-05 16:13:06 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 3: x=0.5061578154563904, y=0.09358660876750946, width=0.12502644956111908, height=0.007714202161878347
+2026-02-05 16:13:06 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Attachment Attachment Appointment Letter from NHS Foundation Trust
+2026-02-05 16:13:06 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-9
+2026-02-05 16:13:06 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 9133b16c-6853-5584-9f5a-f5d9ae397ca1
+2026-02-05 16:13:10 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 10 - bounding boxes before combine:
+2026-02-05 16:13:10 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.0916743203997612, y=0.11041001230478287, width=0.0848914086818695, height=0.008702966384589672
+2026-02-05 16:13:10 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : 02-Nov-2022
+2026-02-05 16:13:10 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-10
+2026-02-05 16:13:10 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: ce6610b6-bc95-50da-905c-f8d6e1390e4b
+2026-02-05 16:12:37 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 11 - bounding boxes before combine:
+2026-02-05 16:13:38 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.313663125038147, y=0.110200896859169, width=0.05414088815450668, height=0.010791034437716007
+2026-02-05 16:13:38 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Surgery
+2026-02-05 16:13:49 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-11
+2026-02-05 16:13:49 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: f38e9b8a-4c8c-56a6-93aa-c35ca6264502
+2026-02-05 16:13:52 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 12 - bounding boxes before combine:
+2026-02-05 16:13:52 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.1732913851737976, y=0.13500253856182098, width=0.0636201947927475, height=0.007813210599124432
+2026-02-05 16:13:52 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 1: x=0.254734069108963, y=0.1349230855703354, width=0.15545080602169037, height=0.009292629547417164
+2026-02-05 16:13:52 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 2: x=0.4125174283981323, y=0.13517959415912628, width=0.0029913971666246653, height=0.0072297896258533
+2026-02-05 16:13:52 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 3: x=0.477967768907547, y=0.1347527951002121, width=0.09921849519014359, height=0.009313743561506271
+2026-02-05 16:13:52 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Read Code E-mail sent to patient Dear I Smoking can lead
+2026-02-05 16:13:57 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-12
+2026-02-05 16:13:57 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 7215d293-1d91-5d5a-9fbd-5cc26c5ce5d8
+2026-02-05 16:13:58 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 13 - bounding boxes before combine:
+2026-02-05 16:13:58 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.25417569279670715, y=0.14489997923374176, width=0.3069612681865692, height=0.009193952195346355
+2026-02-05 16:13:58 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : to cancer, heart disease, lung disease and strokes. We
+2026-02-05 16:14:02 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-13
+2026-02-05 16:14:02 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 8a48dd49-f8db-5205-9a09-0219f5c8f12e
+2026-02-05 16:13:12 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 14 - bounding boxes before combine:
+2026-02-05 16:13:12 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.2545895278453827, y=0.15502341091632843, width=0.29162850975990295, height=0.009314008988440037
+2026-02-05 16:13:12 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : strongly advise you to quit. The best way of stopping
+2026-02-05 16:13:24 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-14
+2026-02-05 16:13:24 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 5a987bce-306f-581e-a508-5c4a18ca457b
+2026-02-05 16:13:25 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 15 - bounding boxes before combine:
+2026-02-05 16:13:25 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.2547016739845276, y=0.16482838988304138, width=0.3211771845817566, height=0.009284907020628452
+2026-02-05 16:13:25 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : smoking is with a combination of medication and specialist
+2026-02-05 16:13:28 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-15
+2026-02-05 16:13:28 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: c6507598-abbe-5235-bb46-5ca4ebafc354
+2026-02-05 16:13:29 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 16 - bounding boxes before combine:
+2026-02-05 16:13:29 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.25449448823928833, y=0.17473116517066956, width=0.3107641935348511, height=0.0095137320458889
+2026-02-05 16:13:29 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : support. See the following link for advice on ways to quit
+2026-02-05 16:13:32 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-16
+2026-02-05 16:13:32 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: c4eb765d-54f3-5ea7-949a-6c064ad6eaeb
+2026-02-05 16:14:28 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 17 - bounding boxes before combine:
+2026-02-05 16:14:28 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.2544381022453308, y=0.18480883538722992, width=0.2307668775320053, height=0.009265992790460587
+2026-02-05 16:14:28 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : and how to access local support services:
+2026-02-05 16:13:36 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-17
+2026-02-05 16:13:36 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: e9209038-51f6-55d7-89aa-8210c452dcfc
+2026-02-05 16:13:38 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 18 - bounding boxes before combine:
+2026-02-05 16:13:38 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.2537246644496918, y=0.19451463222503662, width=0.30719906091690063, height=0.009560316801071167
+2026-02-05 16:13:38 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 1: x=0.254597544670105, y=0.2046947032213211, width=0.14858758449554443, height=0.009413004852831364
+2026-02-05 16:13:38 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : https://www.nhs.uk/smokefree You can also try the NHS Quit Smoking app. Thanks,
+2026-02-05 16:13:40 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-18
+2026-02-05 16:13:40 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 156ff6e4-a371-5e26-b3b2-3a59e77206fe
+2026-02-05 16:13:43 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 19 - bounding boxes before combine:
+2026-02-05 16:13:43 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.4724176526069641, y=0.20448903739452362, width=0.09017235785722733, height=0.007836565375328064
+2026-02-05 16:13:43 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 1: x=0.1732538789510727, y=0.2147192507982254, width=0.06390665471553802, height=0.0078011201694607735
+2026-02-05 16:13:43 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 2: x=0.2546220123767853, y=0.2146981656551361, width=0.14317506551742554, height=0.009296308271586895
+2026-02-05 16:13:43 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 3: x=0.17324958741664886, y=0.22478173673152924, width=0.05328705161809921, height=0.0074387891218066216
+2026-02-05 16:13:43 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Medical Practice Read Code Smoking cessation advice Comment
+2026-02-05 16:13:47 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-19
+2026-02-05 16:13:47 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: dfcdc9d5-d9c9-512f-a0ac-69447521fc8d
+2026-02-05 16:13:49 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 20 - bounding boxes before combine:
+2026-02-05 16:13:49 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.25449109077453613, y=0.2244766652584076, width=0.13786110281944275, height=0.007830099202692509
+2026-02-05 16:13:49 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Comment Email sent to:
+2026-02-05 16:13:52 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-20
+2026-02-05 16:13:52 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 5117beec-3a79-501b-8c73-5d1135781b4f
+2026-02-05 16:13:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 21 - bounding boxes before combine:
+2026-02-05 16:13:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.09240328520536423, y=0.2410288155078888, width=0.07959350198507309, height=0.008699608966708183
+2026-02-05 16:13:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : 12-Oct-2022
+2026-02-05 16:13:54 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-21
+2026-02-05 16:13:54 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 3b89dab2-8176-5eb8-8d92-4b662ccde06e
+2026-02-05 16:13:55 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 22 - bounding boxes before combine:
+2026-02-05 16:13:55 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.38558322191238403, y=0.24063126742839813, width=0.15056343376636505, height=0.008943661116063595
+2026-02-05 16:13:55 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : NHS Foundation Trust
+2026-02-05 16:13:58 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-22
+2026-02-05 16:13:58 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: ab7449fb-db93-5f1a-8b99-7a20eccb9db2
+2026-02-05 16:13:59 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 23 - bounding boxes before combine:
+2026-02-05 16:13:59 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.17252077162265778, y=0.26576733589172363, width=0.06412447988986969, height=0.007628805004060268
+2026-02-05 16:13:59 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Attachment
+2026-02-05 16:14:01 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-23
+2026-02-05 16:14:01 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: c36169ad-db15-5ef2-b372-f56aecfeb8fa
+2026-02-05 16:14:02 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 24 - bounding boxes before combine:
+2026-02-05 16:14:02 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.253920316696167, y=0.26564833521842957, width=0.06425471603870392, height=0.007791015785187483
+2026-02-05 16:14:02 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Attachment
+2026-02-05 16:14:04 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-24
+2026-02-05 16:14:04 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 444450fc-e92d-5bdf-b987-090d708e3ce9
+2026-02-05 16:14:04 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 25 - bounding boxes before combine:
+2026-02-05 16:14:04 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.25371989607810974, y=0.27565494179725647, width=0.13583897054195404, height=0.009323913604021072
+2026-02-05 16:14:04 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Appointment Letter from
+2026-02-05 16:14:07 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-25
+2026-02-05 16:14:07 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 6ea4e906-6e08-5ded-b3c8-28545c9426af
+2026-02-05 16:15:03 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 26 - bounding boxes before combine:
+2026-02-05 16:15:03 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.09142889827489853, y=0.2918901741504669, width=0.08848638832569122, height=0.010635541751980782
+2026-02-05 16:15:03 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : 26-Sept-2022
+2026-02-05 16:14:10 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-26
+2026-02-05 16:14:10 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: e800581a-ebf9-554d-9118-b75875a493d9
+2026-02-05 16:14:13 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 27 - bounding boxes before combine:
+2026-02-05 16:14:13 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.09165145456790924, y=0.3228887915611267, width=0.08484935015439987, height=0.01103472150862217
+2026-02-05 16:14:13 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : 05-Aug-2022
+2026-02-05 16:15:11 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-27
+2026-02-05 16:15:11 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 4f5f7a2f-d7bc-51b9-a76a-e005348ca157
+2026-02-05 16:15:12 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 28 - bounding boxes before combine:
+2026-02-05 16:15:12 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.0914720818400383, y=0.3539533317089081, width=0.21845605969429016, height=0.011014865711331367
+2026-02-05 16:15:12 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : 05-July-2022 Auto-filed Surgery
+2026-02-05 16:15:14 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-28
+2026-02-05 16:15:14 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: de9db72b-c2a3-5407-812c-3c702b91328f
+2026-02-05 16:15:16 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 29 - bounding boxes before combine:
+2026-02-05 16:15:16 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.17318055033683777, y=0.3784479796886444, width=0.06398139148950577, height=0.008220184594392776
+2026-02-05 16:15:16 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Read Code
+2026-02-05 16:14:24 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-29
+2026-02-05 16:14:24 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: be16dbbf-2b42-5255-b8c5-e41595ab437e
+2026-02-05 16:14:25 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 30 - bounding boxes before combine:
+2026-02-05 16:14:25 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.17313410341739655, y=0.4895727038383484, width=0.05384763330221176, height=0.007625006604939699
+2026-02-05 16:14:25 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Comment
+2026-02-05 16:14:26 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-30
+2026-02-05 16:14:26 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: ef31a4a4-df43-5a1e-8fc8-a2f110bbc9f0
+2026-02-05 16:14:28 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 31 - bounding boxes before combine:
+2026-02-05 16:14:28 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.5946226716041565, y=0.24045175313949585, width=0.15213170647621155, height=0.008966314606368542
+2026-02-05 16:14:28 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : NHS Foundation Trust
+2026-02-05 16:14:29 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-31
+2026-02-05 16:14:29 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 2cd67160-ce76-59c7-b6f9-2f7f208d354b
+2026-02-05 16:14:31 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 32 - bounding boxes before combine:
+2026-02-05 16:14:31 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.5412696003913879, y=0.2753942310810089, width=0.12703651189804077, height=0.007770454976707697
+2026-02-05 16:14:31 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : NHS Foundation Trust
+2026-02-05 16:14:32 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-32
+2026-02-05 16:14:32 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 3fd8dd7c-d6c0-5449-826a-ca0512dba2aa
+2026-02-05 16:14:33 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 33 - bounding boxes before combine:
+2026-02-05 16:14:33 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.4060031473636627, y=0.29150211811065674, width=0.1611177921295166, height=0.011047006584703922
+2026-02-05 16:14:33 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Medical Centre, Surgery
+2026-02-05 16:14:35 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-33
+2026-02-05 16:14:35 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 495d95b5-fc3b-5d3a-a8bb-a76a49c5e09a
+2026-02-05 16:14:36 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 34 - bounding boxes before combine:
+2026-02-05 16:14:36 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.42542991042137146, y=0.32255420088768005, width=0.1612045168876648, height=0.011162806302309036
+2026-02-05 16:14:36 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Medical Centre, Surgery
+2026-02-05 16:14:38 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-34
+2026-02-05 16:14:38 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: b8d3b153-8bee-599d-a215-c553a3ccbcab
+2026-02-05 16:14:39 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 35 - bounding boxes before combine:
+2026-02-05 16:14:39 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.2543363571166992, y=0.3783431649208069, width=0.27461719512939453, height=0.00975603424012661
+2026-02-05 16:14:39 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : SARS-CoV-2 (severe acute respiratory syndrome
+2026-02-05 16:14:40 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-35
+2026-02-05 16:14:40 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 1f097e79-6620-5df8-93be-79a7f36c915b
+2026-02-05 16:14:41 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 36 - bounding boxes before combine:
+2026-02-05 16:14:41 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.2540850043296814, y=0.3882142901420593, width=0.29530954360961914, height=0.009567887522280216
+2026-02-05 16:14:41 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : coronavirus 2) antigen detection result positive PHE
+2026-02-05 16:14:45 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-36
+2026-02-05 16:14:45 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 54e84cc8-1e04-5069-bf92-b5de0e5a8ea6
+2026-02-05 16:14:46 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 37 - bounding boxes before combine:
+2026-02-05 16:14:46 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.25417420268058777, y=0.3981950283050537, width=0.3172607123851776, height=0.008059798739850521
+2026-02-05 16:14:46 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : informed. No notifiable disease notification needed. Pillar
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-37
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: b1dbb753-b6ca-5642-a8a8-2e17e2410345
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 38 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.25412270426750183, y=0.40828272700309753, width=0.2899571359157562, height=0.009838303551077843
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : 2 assisted (operative reported) Lateral Flow Test Kit
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-38
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: df6835d2-2959-5739-882c-6d77eb4a2b4b
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 39 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.25454601645469666, y=0.41841763257980347, width=0.03876606374979019, height=0.007904266007244587
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Result.
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-39
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 1f3a0d09-7294-543e-847d-e58227e2c649
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 40 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.25419870018959045, y=0.4279603958129883, width=0.5458328127861023, height=0.009801659733057022
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : SARS-CoV-2 (severe acute respiratory syndrome coronavirus 2) antigen detection result
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-40
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 8da7c0f4-7768-5df5-bd0e-888d88b4a1a0
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 41 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.2543412148952484, y=0.4384811818599701, width=0.11443585157394409, height=0.009342897683382034
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : positive: Unknown
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-41
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 20e35db2-693d-5be9-96d7-90cbf98d4463
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 42 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.09168573468923569, y=0.4547187387943268, width=0.0857880637049675, height=0.010939168743789196
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : 04-July-2022
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-42
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: b8415400-b49b-5f28-8f63-4719c49c676b
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 43 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.28640225529670715, y=0.45462408661842346, width=0.05404268577694893, height=0.011063079349696636
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Surgery
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-43
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 3a518cd8-766c-5d9d-b2d7-b621233668e8
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 44 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.17328868806362152, y=0.47949784994125366, width=0.06392324715852737, height=0.008002424612641335
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Read Code
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-44
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 3eb4e8b3-de2b-5f0e-81de-be89aefb164a
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 45 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.25408488512039185, y=0.47940343618392944, width=0.12062329798936844, height=0.009374186396598816
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Telephone encounter
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-45
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: f162eaa9-f361-5362-a326-06b9d823936a
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 46 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.2546142637729645, y=0.48922693729400635, width=0.3252006769180298, height=0.00959828495979309
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : History Telephone encounter withhoatient balled to review
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-46
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: d7c4f66c-de76-5fba-9f96-dfcb08b52d43
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 47 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.254177451133728, y=0.4993211627006531, width=0.3116770386695862, height=0.009273436851799488
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : meds hx noted. no issues at alpon Gabapentin taking as
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-47
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: f027f677-82cc-5c6f-9e9b-d6656f565832
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 48 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.254276841878891, y=0.5094186067581177, width=0.31750547885894775, height=0.009256530553102493
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : prescrtibed good compliance on one daily. does not want
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-48
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: b71b0998-1bff-5c5b-a2fd-cd633bcf9d21
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 49 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.25419944524765015, y=0.5193525552749634, width=0.3087686002254486, height=0.009447608143091202
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : to make any changes. ct OR repeats review as required.
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-49
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 1d2b132b-f755-5432-9a66-f0dc5e61c31c
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 50 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.09137360751628876, y=0.5357523560523987, width=0.08340328186750412, height=0.0087830675765872
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : 08-Jun-2022
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-50
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 4f608a1a-a6d0-5c45-aabf-0523301bcc59
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 51 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.29432815313339233, y=0.5355947017669678, width=0.054037582129240036, height=0.010851902887225151
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Surgery
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-51
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: ee859e13-588f-5d5b-a6c2-f5ddc9a58f58
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 52 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.17239321768283844, y=0.5603811740875244, width=0.06415336579084396, height=0.00753674004226923
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Attachment
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-52
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 484f4971-bcc9-565e-8b81-877a4422d873
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 53 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.25399479269981384, y=0.5603417754173279, width=0.06375128030776978, height=0.007464082911610603
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Attachment
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-53
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: c32b64a8-571e-53b1-93de-43f8bebf8d8f
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 54 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.2543385326862335, y=0.5702337026596069, width=0.11985248327255249, height=0.007907605729997158
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Letter to Patient from
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-54
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 7f122c81-e65c-5e3d-8255-11aa398ed9c6
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 55 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.4413664638996124, y=0.5701056718826294, width=0.0910334587097168, height=0.007812128867954016
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Medical Practice
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-55
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: a2935323-70f6-59e5-9932-2c247a2ebf94
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 56 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.09154848009347916, y=0.586706280708313, width=0.08324041217565536, height=0.008914506994187832
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : 08-Jun-2022
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-56
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: eeb6c158-d288-5b05-aefd-d5cc38f22a35
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 57 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.2721545398235321, y=0.5865836143493652, width=0.052960410714149475, height=0.010657364502549171
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Surgery
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-57
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 87ad73a5-e57d-5786-b293-aedb65d1e7e6
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 58 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.09126082807779312, y=0.618034839630127, width=0.08346951007843018, height=0.008652869611978531
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : 08-Jun-2022
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-58
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 4ed0c441-7052-5221-a627-fbc79e76a45f
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 59 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.2723253071308136, y=0.618005096912384, width=0.052821751683950424, height=0.010290415957570076
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Surgery
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-59
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 2d108fb8-1c3d-58ac-b2aa-e4f8bd02c99c
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 60 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.09153389930725098, y=0.6487510204315186, width=0.08508498221635818, height=0.010339411906898022
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : 03-May-2022
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-60
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: baa34655-960e-5b11-88af-c033ce1b3358
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 61 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.2659960687160492, y=0.6483322381973267, width=0.054428864270448685, height=0.010697794146835804
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Surgery
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-61
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 94b77634-dbfd-5609-a2dd-25dfe3b65910
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 62 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.1723620593547821, y=0.6736221313476562, width=0.06425889581441879, height=0.007591702044010162
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Attachment
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-62
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 756f0d6e-47f0-591b-b04e-f143d60d0ad3
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 63 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.25382742285728455, y=0.673482358455658, width=0.0638589859008789, height=0.007636434864252806
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Attachment
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-63
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 76113cac-a38e-5974-92fb-a8677a535509
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 64 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.2549303472042084, y=0.6831316351890564, width=0.10458744317293167, height=0.008359262719750404
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Clinical Letter from
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-64
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 7f248b2c-c5e0-5584-a20f-104d93c0bbc9
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 65 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.4981553256511688, y=0.6832770705223083, width=0.10766610503196716, height=0.0077448394149541855
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Medical Practice ->
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-65
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 392fb23f-62ef-59c2-8098-18c1e58b2f10
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 66 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.09137903153896332, y=0.6996850371360779, width=0.08153035491704941, height=0.010180188342928886
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : 25-Apr-2022
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-66
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 07e1251e-23ca-5f1b-a27d-ed3e590eb2da
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 67 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.2898997664451599, y=0.6993355751037598, width=0.05395789071917534, height=0.010924629867076874
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Surgery
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-67
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 422612aa-7bc1-51d8-ad12-d42b5bd685da
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 68 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.1727345734834671, y=0.7244543433189392, width=0.05401720851659775, height=0.007765364367514849
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Comment
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-68
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 63cf25d9-6ded-52cd-96bd-7892ed69efdc
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 69 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.09132862091064453, y=0.750516951084137, width=0.08156163990497589, height=0.010459096170961857
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : 21-Apr-2022
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-69
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: eeaceb92-108b-567f-b3fe-43ae5dade392
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 70 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.6951636075973511, y=0.6829453706741333, width=0.10823477059602737, height=0.009279877878725529
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Blood & Transplant
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-70
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: c40b976e-008b-5026-9a65-514bd94ab7a1
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 71 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.25425127148628235, y=0.7239902019500732, width=0.30329862236976624, height=0.009523604065179825
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Comment Blood and trnasfussion service req letter re
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-71
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 0c5ea68f-6046-578c-ae45-9fd6b9dcded5
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 72 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.25414612889289856, y=0.7340353727340698, width=0.18417085707187653, height=0.009368913248181343
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : previous brain injury. Letter done
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-72
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: d720b68e-242f-54d9-b59a-9aa16c55ba20
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 73 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.4220533072948456, y=0.7502632737159729, width=0.16101038455963135, height=0.010676986537873745
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Medical Centre, Surgery
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-73
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: d869ab5a-2534-5b76-949f-9dd8fa8fd10a
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 74 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.17210625112056732, y=0.7755296230316162, width=0.06427077949047089, height=0.007611860055476427
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Attachment
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-74
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: fd15bf49-3ad9-5d67-9f3d-7e0aadc074a9
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 75 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.25357022881507874, y=0.7755941152572632, width=0.06386764347553253, height=0.007806341163814068
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Attachment
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-75
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: f6b0cacf-bc6f-501f-9b84-aaac281e4018
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 76 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.2542389929294586, y=0.7848209738731384, width=0.20881162583827972, height=0.009344382211565971
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Letter from NHS Blood and Transport
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-76
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: d1ace2ff-3f1e-5a18-b8ee-30f366c0b5f4
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 77 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.09111617505550385, y=0.8015123605728149, width=0.08273054659366608, height=0.008873708546161652
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : 30-Mar-2022
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-77
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 9d020e1d-198b-5ff5-a4d3-6102ce94a94d
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 78 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.3131841719150543, y=0.8014761209487915, width=0.054330796003341675, height=0.011172107420861721
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Surgery
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-78
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 48f49229-a82e-5d70-a546-aa156a592a42
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 79 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.09143060445785522, y=0.8327219486236572, width=0.08226668834686279, height=0.009012507274746895
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : 31-Jan-2022
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-79
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 5d6c2468-71e5-5dd9-896b-350586ebab5b
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 80 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.3520779311656952, y=0.832201361656189, width=0.054506320506334305, height=0.011220303364098072
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Surgery
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-80
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 0c328fca-2c30-5ae0-8429-93b72ee0d241
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Page number 3 Chunk index 81 - bounding boxes before combine:
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e   Line 0: x=0.5519542098045349, y=0.7852316498756409, width=0.045222967863082886, height=0.007571863010525703
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Layout LAYOUT_TEXT chunk : Medical
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-81
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: eaf09858-dd9e-52f7-85e4-67e669578ab1
+2026-02-05 16:14:53 INFO 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Skipping layout block of type LAYOUT_PAGE_NUMBER Page 2 of 49
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-0
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: dcbcd331-50ad-5e73-9289-74ee9669a158
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-1
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 2a32cc43-8d22-534b-8e30-bbadfd405a77
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-2
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 0be7492f-e55d-5a4d-8322-223a251d1fdc
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generating UUID with data string: case1_tc19_50_pages_brain_injury.pdf-tc19 - additional info request-26-711111-3-3
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Generated 16-digit UUID: 175ae36d-c9a6-5641-9843-e2f8d24fae6b
+2026-02-05 16:14:53 DEBUG 4bcba3af-d9ab-53f2-9fd7-bf4263f8118e Grouped 4 page-level chunks from 76 atomic chunks. Word limit: 80, Y-tolerance-ratio: 0.5. 

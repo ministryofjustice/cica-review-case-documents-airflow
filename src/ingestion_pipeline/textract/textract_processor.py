@@ -120,6 +120,12 @@ class TextractProcessor:
             Document: Document, or None on failure.
         """
         logger.info(f"Processing s3 file: {s3_document_uri}")
+        # TEMP hardcoding for writing to CICA AWS S3 DEV..
+        # AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET=mod-platfform-sandbox-kta-documents-bucket
+
+        s3_document_uri = (
+            "s3://mod-platfform-sandbox-kta-documents-bucket/26-711111/Case1_TC19_50_pages_brain_injury.pdf"
+        )
 
         try:
             job_id = self._start_textract_job(s3_document_uri)
