@@ -83,7 +83,8 @@ class OpenSearchIndexer:
             return 0, []
 
         source_doc_id = documents[0].source_doc_id
-        self.delete_documents_by_source_doc_id(source_doc_id)
+        if self.client.indices.exists(index=self.index_name):
+            self.delete_documents_by_source_doc_id(source_doc_id)
         actions = self._generate_bulk_actions(documents, id_field)
 
         try:

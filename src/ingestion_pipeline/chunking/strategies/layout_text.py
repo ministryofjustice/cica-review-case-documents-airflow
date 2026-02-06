@@ -50,6 +50,9 @@ class LayoutTextChunkingStrategy(ChunkingStrategyHandler):
         current_chunk_lines = []
         current_chunk_bboxes = []
 
+        if page_number == 3:
+            logger.info(f"Page number {page_number} Chunk index {chunk_index} - merging")
+
         for child_block in layout_block.children:
             line_text = child_block.text.strip()
             line_bbox = child_block.bbox
@@ -112,11 +115,28 @@ class LayoutTextChunkingStrategy(ChunkingStrategyHandler):
         Returns:
             DocumentChunk: The created document chunk.
         """
+        # Debug: Only log bounding boxes for page 3
+        if page_number == 3:
+            logger.info(
+                f"[layout_text] Page {page_number} Chunk index {chunk_index} - bounding boxes before combine:")
+            min_left = min(bbox.x for bbox in bboxes)
+            min_top = min(bbox.y for bbox in bboxes)
+            max_right = max(bbox.x + bbox.width for bbox in bboxes)
+            max_bottom = max(bbox.y + bbox.height for bbox in bboxes)
+            for i, bbox in enumerate(bboxes):
+                logger.info(
+                    f"  Line {i}: x={bbox.x}, y={bbox.y}, width={bbox.width}, height={bbox.height}, "
+                    f"right={bbox.x + bbox.width}, bottom={bbox.y + bbox.height}"
+                )
+            logger.info(
+                f"  Bounding box union: min_left={min_left}, min_top={min_top}, max_right={max_right}, max_bottom={max_bottom}, "
+                f"union_width={max_right - min_left}, union_height={max_bottom - min_top}"
+            )
+
         combined_bbox = combine_bounding_boxes(bboxes)
         chunk_text = " ".join(lines)
 
-        logger.debug(f"Layout {layout_block.layout_type} chunk : {chunk_text}")
-        # Do we need to pass in the block type, is layout_block.layout_type enough?
+        logger.info(f"Layout {layout_block.layout_type} chunk : {chunk_text}")
         return DocumentChunk.from_textractor_layout(
             block=layout_block,
             page_number=page_number,

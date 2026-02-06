@@ -64,7 +64,7 @@ class DocumentChunker:
                 raise ChunkException(f"Response docment {metadata} missing raw response from Textract.")
 
             for page in doc.pages:
-                logger.debug(f"Processing page {page.page_num} of {len(doc.pages)}")
+                logger.info(f"Processing page {page.page_num} of {len(doc.pages)}")
                 page_chunks = self._process_page(page, metadata, chunk_index_counter, raw_response)
                 all_chunks.extend(page_chunks)
                 chunk_index_counter += len(page_chunks)
@@ -129,7 +129,7 @@ class DocumentChunker:
                 current_chunk_index += len(block_chunks)
 
         chunk_merger = ChunkMerger()
-        grouped_chunks = chunk_merger.merge_chunks(page_chunks)
+        grouped_chunks = chunk_merger.group_atomic_chunks(page_chunks)
 
         return grouped_chunks
 
