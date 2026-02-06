@@ -25,9 +25,12 @@ from .iam_filters import (
     filter_iam_header_footer,
     filter_iam_signature,
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
     normalize_text,
 >>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
+=======
+>>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 )
 from .schemas import OCRResult
 from .textract_client import (
@@ -94,6 +97,7 @@ def process_single_image(
         handwriting_words = filter_iam_signature(handwriting_words, name_label_top)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     # Build text strings (raw, normalization happens at comparison time)
     printed_text = " ".join(w.text for w in printed_words)
     handwriting_text = " ".join(w.text for w in handwriting_words)
@@ -102,6 +106,11 @@ def process_single_image(
     printed_text = normalize_text(" ".join(w.text for w in printed_words))
     handwriting_text = normalize_text(" ".join(w.text for w in handwriting_words))
 >>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
+=======
+    # Build text strings (raw, normalization happens at comparison time)
+    printed_text = " ".join(w.text for w in printed_words)
+    handwriting_text = " ".join(w.text for w in handwriting_words)
+>>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 
     # Calculate lowest quartile confidence (identifies problem areas)
     print_confidences = [w.confidence for w in printed_words]

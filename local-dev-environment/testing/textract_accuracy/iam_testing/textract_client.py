@@ -43,9 +43,13 @@ def analyze_image_sync(
     textract_client: "TextractClient",
     image_path: Path,
 <<<<<<< HEAD
+<<<<<<< HEAD
     use_analyze_api: bool = False,
 =======
 >>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
+=======
+    use_analyze_api: bool = False,
+>>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 ) -> dict:
     """Analyze an image using Textract synchronous API.
 
@@ -53,11 +57,17 @@ def analyze_image_sync(
         textract_client: Boto3 Textract client.
         image_path: Path to the image file.
 <<<<<<< HEAD
+<<<<<<< HEAD
         use_analyze_api: If True, use analyze_document with FORMS feature
             which may improve handwriting detection. Default False uses
             detect_document_text.
 =======
 >>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
+=======
+        use_analyze_api: If True, use analyze_document with FORMS feature
+            which may improve handwriting detection. Default False uses
+            detect_document_text.
+>>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 
     Returns:
         Raw Textract response dict.
@@ -72,6 +82,9 @@ def analyze_image_sync(
         image_bytes = f.read()
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
     if use_analyze_api:
         # analyze_document can provide better results for forms with handwriting
         # FeatureTypes: TABLES, FORMS, QUERIES, SIGNATURES, LAYOUT
@@ -81,9 +94,12 @@ def analyze_image_sync(
         )
     else:
         response = textract_client.detect_document_text(Document={"Bytes": image_bytes})
+<<<<<<< HEAD
 =======
     response = textract_client.detect_document_text(Document={"Bytes": image_bytes})
 >>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
+=======
+>>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 
     return response
 

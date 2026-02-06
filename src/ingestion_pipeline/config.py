@@ -106,6 +106,11 @@ class Settings(BaseSettings):  # type: ignore
     # Confgure via .env or environment variable
     LOCAL_DEVELOPMENT_MODE: bool = False
 
+    # -- IAM Handwriting Testing --
+    # Default prompt version for LLM-augmented OCR correction
+    # Options: v1 (detailed), v2 (concise - best performing), v3 (context-aware), v4 (few-shot)
+    IAM_DEFAULT_PROMPT_VERSION: str = "v2"
+
     LOG_LEVEL: str = "INFO"
 
     DEBUG_PAGE_NUMBERS: set[int] = {1}

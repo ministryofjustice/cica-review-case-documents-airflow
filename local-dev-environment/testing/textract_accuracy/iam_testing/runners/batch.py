@@ -11,6 +11,7 @@ Usage:
 
 import argparse
 <<<<<<< HEAD
+<<<<<<< HEAD
 import logging
 import time
 from pathlib import Path
@@ -27,15 +28,27 @@ from ..textract_ocr import process_single_image
 from .utils import append_jsonl, generate_run_id, get_baseline_paths, get_completed_ids, list_baseline_runs
 =======
 import json
+=======
+>>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 import logging
-from datetime import datetime, timezone
+import time
 from pathlib import Path
 
 from ..config import settings
-from ..scoring import load_all_ground_truth, score_ocr_result, write_score_result
+from ..scoring import load_all_ground_truth, score_ocr_result
+from ..summary_stats import (
+    generate_baseline_summary,
+    print_baseline_summary,
+    save_summary,
+)
 from ..textract_client import get_textract_client
+<<<<<<< HEAD
 from ..textract_ocr import process_single_image, write_ocr_result
 >>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
+=======
+from ..textract_ocr import process_single_image
+from .utils import append_jsonl, generate_run_id, get_baseline_paths, get_completed_ids, list_baseline_runs
+>>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +72,7 @@ def get_all_form_ids(data_dir: Path) -> list[str]:
     return form_ids
 
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 def run_batch(
     form_ids: list[str],
@@ -103,20 +117,27 @@ def generate_run_id() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 
 
+=======
+>>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 def run_batch(
     form_ids: list[str],
     data_dir: Path,
-    output_dir: Path,
+    batch_runs_dir: Path,
     run_id: str,
     ground_truth: dict[str, dict],
     resume: bool = False,
+<<<<<<< HEAD
 >>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
+=======
+    delay_seconds: float = 0.0,
+>>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 ) -> tuple[int, int]:
     """Process a batch of forms through Textract and calculate scores.
 
     Args:
         form_ids: List of form IDs to process.
         data_dir: Path to the data directory.
+<<<<<<< HEAD
 <<<<<<< HEAD
         batch_runs_dir: Path to the batch_runs directory.
         run_id: Unique identifier for this run.
@@ -129,31 +150,48 @@ def run_batch(
         ground_truth: Dict mapping form_id to ground truth record.
         resume: If True, skip already completed forms.
 >>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
+=======
+        batch_runs_dir: Path to the batch_runs directory.
+        run_id: Unique identifier for this run.
+        ground_truth: Dict mapping form_id to ground truth record.
+        resume: If True, skip already completed forms.
+        delay_seconds: Delay between API calls to avoid throttling.
+>>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 
     Returns:
         Tuple of (successful_count, failed_count).
     """
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
     # Output paths (hierarchical structure)
     paths = get_baseline_paths(batch_runs_dir, run_id)
     paths["dir"].mkdir(parents=True, exist_ok=True)
 
     ocr_results_path = paths["ocr"]
     score_results_path = paths["scores"]
+<<<<<<< HEAD
 =======
     # Output paths
     ocr_results_path = output_dir / f"ocr_results_{run_id}.jsonl"
     score_results_path = output_dir / f"score_results_{run_id}.jsonl"
 >>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
+=======
+>>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 
     # Check for completed forms if resuming
     completed_forms: set[str] = set()
     if resume:
 <<<<<<< HEAD
+<<<<<<< HEAD
         completed_forms = get_completed_ids(score_results_path)
 =======
         completed_forms = load_completed_form_ids(score_results_path)
 >>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
+=======
+        completed_forms = get_completed_ids(score_results_path)
+>>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 
     # Filter to pending forms
     pending_forms = [fid for fid in form_ids if fid not in completed_forms]
@@ -193,12 +231,17 @@ def run_batch(
 
             # Write results (append)
 <<<<<<< HEAD
+<<<<<<< HEAD
             append_jsonl(ocr_result, ocr_results_path)
             append_jsonl(score, score_results_path)
 =======
             write_ocr_result(ocr_result, ocr_results_path)
             write_score_result(score, score_results_path)
 >>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
+=======
+            append_jsonl(ocr_result, ocr_results_path)
+            append_jsonl(score, score_results_path)
+>>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 
             successful += 1
             logger.info(
@@ -211,12 +254,18 @@ def run_batch(
             )
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
             # Rate limiting between API calls
             if delay_seconds > 0 and i < len(pending_forms):
                 time.sleep(delay_seconds)
 
+<<<<<<< HEAD
 =======
 >>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
+=======
+>>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
         except Exception:
             logger.exception("[%d/%d] Failed: %s", i, len(pending_forms), form_id)
             failed += 1
@@ -224,6 +273,7 @@ def run_batch(
     return successful, failed
 
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 def print_summary(score_results_path: Path, run_id: str) -> None:
     """Generate, save, and print summary statistics from a completed batch run.
@@ -245,19 +295,24 @@ def print_summary(score_results_path: Path, run_id: str) -> None:
 =======
 def print_summary(score_results_path: Path) -> None:
     """Print summary statistics from a completed batch run.
+=======
+def print_summary(score_results_path: Path, run_id: str) -> None:
+    """Generate, save, and print summary statistics from a completed batch run.
+>>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 
     Args:
         score_results_path: Path to the score results JSONL file.
+        run_id: Run identifier for the summary.
     """
-    if not score_results_path.exists():
-        logger.warning("No results file found")
+    summary = generate_baseline_summary(score_results_path, run_id)
+    if summary is None:
         return
 
-    wer_hw_values = []
-    cer_hw_values = []
-    wer_print_values = []
-    cer_print_values = []
+    # Save summary JSON (in same directory as results)
+    summary_path = score_results_path.parent / "summary.json"
+    save_summary(summary, summary_path)
 
+<<<<<<< HEAD
     with open(score_results_path, encoding="utf-8") as f:
         for line in f:
             record = json.loads(line)
@@ -284,6 +339,10 @@ def print_summary(score_results_path: Path) -> None:
     logger.info("  Mean CER: %.2f%%", sum(cer_print_values) / n * 100)
     logger.info("=" * 60)
 >>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
+=======
+    # Print to console
+    print_baseline_summary(summary)
+>>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 
 
 def main() -> None:
@@ -316,18 +375,25 @@ def main() -> None:
         help="Only print summary of latest run, don't process",
     )
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
     parser.add_argument(
         "--delay",
         type=float,
         default=0.0,
         help="Delay in seconds between API calls for rate limiting (default: 0)",
     )
+<<<<<<< HEAD
 =======
 >>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
+=======
+>>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
     args = parser.parse_args()
 
     # Paths
     data_dir = Path(__file__).parent.parent.parent / "data"
+<<<<<<< HEAD
 <<<<<<< HEAD
     batch_runs_dir = data_dir / "batch_runs"
     batch_runs_dir.mkdir(parents=True, exist_ok=True)
@@ -351,6 +417,19 @@ def main() -> None:
         if score_files:
             print_summary(score_files[-1])
 >>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
+=======
+    batch_runs_dir = data_dir / "batch_runs"
+    batch_runs_dir.mkdir(parents=True, exist_ok=True)
+
+    # Handle summary-only mode
+    if args.summary_only:
+        # Find latest run
+        runs = list_baseline_runs(batch_runs_dir)
+        if runs:
+            latest_run = runs[-1]
+            paths = get_baseline_paths(batch_runs_dir, latest_run)
+            print_summary(paths["scores"], latest_run)
+>>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
         else:
             logger.warning("No batch runs found")
         return
@@ -361,6 +440,7 @@ def main() -> None:
     elif args.resume:
         # Find latest run
 <<<<<<< HEAD
+<<<<<<< HEAD
         runs = list_baseline_runs(batch_runs_dir)
         if runs:
             run_id = runs[-1]
@@ -369,6 +449,11 @@ def main() -> None:
         if score_files:
             run_id = score_files[-1].stem.replace("score_results_", "")
 >>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
+=======
+        runs = list_baseline_runs(batch_runs_dir)
+        if runs:
+            run_id = runs[-1]
+>>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
             logger.info("Resuming run: %s", run_id)
         else:
             run_id = generate_run_id()
@@ -401,6 +486,7 @@ def main() -> None:
         form_ids=form_ids,
         data_dir=data_dir,
 <<<<<<< HEAD
+<<<<<<< HEAD
         batch_runs_dir=batch_runs_dir,
         run_id=run_id,
         ground_truth=ground_truth,
@@ -412,10 +498,18 @@ def main() -> None:
         ground_truth=ground_truth,
         resume=args.resume,
 >>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
+=======
+        batch_runs_dir=batch_runs_dir,
+        run_id=run_id,
+        ground_truth=ground_truth,
+        resume=args.resume,
+        delay_seconds=args.delay,
+>>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
     )
 
     logger.info("Batch complete: %d successful, %d failed", successful, failed)
 
+<<<<<<< HEAD
 <<<<<<< HEAD
     # Print and save summary
     paths = get_baseline_paths(batch_runs_dir, run_id)
@@ -425,6 +519,11 @@ def main() -> None:
     score_results_path = output_dir / f"score_results_{run_id}.jsonl"
     print_summary(score_results_path)
 >>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
+=======
+    # Print and save summary
+    paths = get_baseline_paths(batch_runs_dir, run_id)
+    print_summary(paths["scores"], run_id)
+>>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 
 
 if __name__ == "__main__":

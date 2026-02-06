@@ -27,10 +27,12 @@ from dataclasses import dataclass
     python -m iam_testing.runners.augment --baseline-run 20260126_140000
     python -m iam_testing.runners.augment --baseline-run 20260126_140000 --mode low_confidence
     python -m iam_testing.runners.augment --baseline-run 20260126_140000 --model nova-pro
+
+    # Custom documents
+    python -m iam_testing.runners.augment --baseline-run 20260126_140000 --dataset custom
 """
 
 import argparse
-import json
 import logging
 from dataclasses import asdict, dataclass
 >>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
@@ -39,6 +41,7 @@ from typing import Literal
 
 from jiwer import cer, wer
 
+from ..config import settings
 from ..iam_filters import normalize_text
 from ..llm import LLMResponse, get_llm_client
 <<<<<<< HEAD
@@ -282,31 +285,16 @@ def print_summary(results_path: Path) -> None:
 
     Args:
         results_path: Path to augmented results JSONL file.
+        summary_path: Path to save summary JSON.
+        run_id: Augmented run identifier.
+        baseline_run_id: Baseline run identifier.
     """
-    if not results_path.exists():
-        logger.warning("No augmented results found")
+    summary = generate_augmented_summary(results_path, run_id, baseline_run_id)
+    if summary is None:
         return
 
-    results = []
-    with open(results_path, encoding="utf-8") as f:
-        for line in f:
-            results.append(json.loads(line))
-
-    if not results:
-        return
-
-    augmented = [r for r in results if r["was_augmented"]]
-    total_input_tokens = sum(r["input_tokens"] for r in results)
-    total_output_tokens = sum(r["output_tokens"] for r in results)
-
-    # Calculate means
-    mean_baseline_wer = sum(r["baseline_wer"] for r in results) / len(results)
-    mean_augmented_wer = sum(r["augmented_wer"] for r in results) / len(results)
-    mean_wer_improvement = sum(r["wer_improvement"] for r in results) / len(results)
-
-    mean_baseline_cer = sum(r["baseline_cer"] for r in results) / len(results)
-    mean_augmented_cer = sum(r["augmented_cer"] for r in results) / len(results)
-    mean_cer_improvement = sum(r["cer_improvement"] for r in results) / len(results)
+    # Save summary JSON
+    save_summary(summary, summary_path)
 
     # Count improvements
     improved_wer = len([r for r in augmented if r["wer_improvement"] > 0])
@@ -461,25 +449,37 @@ def main() -> None:
 =======
     args = parser.parse_args()
 
-    # Paths
+    # Use config default if not specified
+    prompt_version = args.prompt or settings.IAM_DEFAULT_PROMPT_VERSION
+
+    # Paths - adjust based on dataset type
     data_dir = Path(__file__).parent.parent.parent / "data"
-    batch_dir = data_dir / "batch_runs"
+    if args.dataset == "custom":
+        batch_runs_dir = data_dir / "custom_batch_runs"
+    else:
+        batch_runs_dir = data_dir / "batch_runs"
 
-    baseline_scores_path = batch_dir / f"score_results_{args.baseline_run}.jsonl"
-    baseline_ocr_path = batch_dir / f"ocr_results_{args.baseline_run}.jsonl"
+    # Get baseline paths from hierarchical structure
+    baseline_paths = get_baseline_paths(batch_runs_dir, args.baseline_run)
+    baseline_scores_path = baseline_paths["scores"]
+    baseline_ocr_path = baseline_paths["ocr"]
 
-    # Generate augmented run ID
+    # Get augmented paths
     model_name = args.model
-    augmented_run_id = f"{args.baseline_run}_augmented_{model_name}_{args.mode}"
-    output_path = batch_dir / f"augmented_results_{augmented_run_id}.jsonl"
+    augmented_run_id = f"{model_name}_{prompt_version}_{args.mode}"
+    augmented_paths = get_augmented_paths(batch_runs_dir, args.baseline_run, model_name, prompt_version, args.mode)
+    augmented_paths["dir"].mkdir(parents=True, exist_ok=True)
+    output_path = augmented_paths["results"]
+    summary_path = augmented_paths["summary"]
 
     if args.summary_only:
-        print_summary(output_path)
+        print_summary(output_path, summary_path, augmented_run_id, args.baseline_run)
         return
 
     # Load baseline results
-    baseline_results = load_baseline_results(baseline_scores_path)
+    baseline_results = load_jsonl(baseline_scores_path)
     if not baseline_results:
+        logger.error("Baseline results not found: %s", baseline_scores_path)
         return
 
     # Load OCR results for confidence checking
