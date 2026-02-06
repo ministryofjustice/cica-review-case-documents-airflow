@@ -36,12 +36,16 @@ def get_textract_client() -> "TextractClient":
 def analyze_image_sync(
     textract_client: "TextractClient",
     image_path: Path,
+    use_analyze_api: bool = False,
 ) -> dict:
     """Analyze an image using Textract synchronous API.
 
     Args:
         textract_client: Boto3 Textract client.
         image_path: Path to the image file.
+        use_analyze_api: If True, use analyze_document with FORMS feature
+            which may improve handwriting detection. Default False uses
+            detect_document_text.
 
     Returns:
         Raw Textract response dict.
@@ -55,7 +59,15 @@ def analyze_image_sync(
     with open(image_path, "rb") as f:
         image_bytes = f.read()
 
-    response = textract_client.detect_document_text(Document={"Bytes": image_bytes})
+    if use_analyze_api:
+        # analyze_document can provide better results for forms with handwriting
+        # FeatureTypes: TABLES, FORMS, QUERIES, SIGNATURES, LAYOUT
+        response = textract_client.analyze_document(
+            Document={"Bytes": image_bytes},
+            FeatureTypes=["FORMS"],  # FORMS helps with field/value detection
+        )
+    else:
+        response = textract_client.detect_document_text(Document={"Bytes": image_bytes})
 
     return response
 

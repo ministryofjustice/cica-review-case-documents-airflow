@@ -105,12 +105,14 @@ def score_ocr_result(result: OCRResult, gt: dict) -> ScoreResult:
     """
     # Handwriting scoring
     gt_hw_text = normalize_text(gt.get("gt_handwriting_text", ""))
-    ocr_hw_text = result.ocr_handwriting_text
+    # Normalize OCR output before scoring to match ground truth normalization
+    ocr_hw_text = normalize_text(result.ocr_handwriting_text)
     wer_hw, cer_hw = _calculate_wer_cer(gt_hw_text, ocr_hw_text, result.form_id, "handwriting")
 
     # Print scoring (uses filtered OCR output)
     gt_print_text = normalize_text(gt.get("gt_print_text", ""))
-    ocr_print_text = result.ocr_print_text
+    # Normalize OCR print text as well
+    ocr_print_text = normalize_text(result.ocr_print_text)
     wer_print, cer_print = _calculate_wer_cer(gt_print_text, ocr_print_text, result.form_id, "print")
 
     return ScoreResult(

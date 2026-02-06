@@ -10,23 +10,40 @@ Modes:
     - low_confidence: Only augment pages below confidence threshold
 
 Usage:
+    # IAM dataset
     python -m iam_testing.runners.augment --baseline-run 20260126_140000
     python -m iam_testing.runners.augment --baseline-run 20260126_140000 --mode low_confidence
     python -m iam_testing.runners.augment --baseline-run 20260126_140000 --model nova-pro
+
+    # Custom documents
+    python -m iam_testing.runners.augment --baseline-run 20260126_140000 --dataset custom
 """
 
 import argparse
-import json
 import logging
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
 from jiwer import cer, wer
 
+from ..config import settings
 from ..iam_filters import normalize_text
 from ..llm import LLMResponse, get_llm_client
-from ..llm.prompt import get_prompt_hash
+from ..llm.prompt import PROMPTS
+from ..summary_stats import (
+    generate_augmented_summary,
+    print_augmented_summary,
+    save_summary,
+)
+from .utils import (
+    append_jsonl,
+    get_augmented_paths,
+    get_baseline_paths,
+    get_completed_ids,
+    load_jsonl,
+    load_jsonl_as_dict,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -67,28 +84,6 @@ class AugmentedScoreResult:
     output_tokens: int
 
 
-def load_baseline_results(results_path: Path) -> list[dict]:
-    """Load baseline score results from JSONL file.
-
-    Args:
-        results_path: Path to the score_results JSONL file.
-
-    Returns:
-        List of score result dicts.
-    """
-    if not results_path.exists():
-        logger.error("Baseline results not found: %s", results_path)
-        return []
-
-    results = []
-    with open(results_path, encoding="utf-8") as f:
-        for line in f:
-            results.append(json.loads(line))
-
-    logger.info("Loaded %d baseline results", len(results))
-    return results
-
-
 def should_augment(
     baseline: dict,
     mode: Literal["all", "low_confidence"],
@@ -118,27 +113,6 @@ def should_augment(
 
     confidence = ocr.get("avg_handwriting_confidence", 100.0)
     return confidence < confidence_threshold
-
-
-def load_ocr_results(ocr_path: Path) -> dict[str, dict]:
-    """Load OCR results into a dict keyed by form_id.
-
-    Args:
-        ocr_path: Path to the ocr_results JSONL file.
-
-    Returns:
-        Dict mapping form_id to OCR result.
-    """
-    if not ocr_path.exists():
-        return {}
-
-    results = {}
-    with open(ocr_path, encoding="utf-8") as f:
-        for line in f:
-            record = json.loads(line)
-            results[record["form_id"]] = record
-
-    return results
 
 
 def augment_and_score(
@@ -199,84 +173,24 @@ def augment_and_score(
     )
 
 
-def write_augmented_result(result: AugmentedScoreResult, output_path: Path) -> None:
-    """Append augmented result to JSONL file.
-
-    Args:
-        result: AugmentedScoreResult to write.
-        output_path: Path to output JSONL file.
-    """
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(output_path, "a", encoding="utf-8") as f:
-        json.dump(asdict(result), f, ensure_ascii=False)
-        f.write("\n")
-
-
-def print_summary(results_path: Path) -> None:
-    """Print summary of augmented results.
+def print_summary(results_path: Path, summary_path: Path, run_id: str, baseline_run_id: str) -> None:
+    """Generate, save, and print summary of augmented results.
 
     Args:
         results_path: Path to augmented results JSONL file.
+        summary_path: Path to save summary JSON.
+        run_id: Augmented run identifier.
+        baseline_run_id: Baseline run identifier.
     """
-    if not results_path.exists():
-        logger.warning("No augmented results found")
+    summary = generate_augmented_summary(results_path, run_id, baseline_run_id)
+    if summary is None:
         return
 
-    results = []
-    with open(results_path, encoding="utf-8") as f:
-        for line in f:
-            results.append(json.loads(line))
+    # Save summary JSON
+    save_summary(summary, summary_path)
 
-    if not results:
-        return
-
-    augmented = [r for r in results if r["was_augmented"]]
-    total_input_tokens = sum(r["input_tokens"] for r in results)
-    total_output_tokens = sum(r["output_tokens"] for r in results)
-
-    # Calculate means
-    mean_baseline_wer = sum(r["baseline_wer"] for r in results) / len(results)
-    mean_augmented_wer = sum(r["augmented_wer"] for r in results) / len(results)
-    mean_wer_improvement = sum(r["wer_improvement"] for r in results) / len(results)
-
-    mean_baseline_cer = sum(r["baseline_cer"] for r in results) / len(results)
-    mean_augmented_cer = sum(r["augmented_cer"] for r in results) / len(results)
-    mean_cer_improvement = sum(r["cer_improvement"] for r in results) / len(results)
-
-    # Count improvements
-    improved_wer = len([r for r in augmented if r["wer_improvement"] > 0])
-    worse_wer = len([r for r in augmented if r["wer_improvement"] < 0])
-    unchanged_wer = len([r for r in augmented if r["wer_improvement"] == 0])
-
-    logger.info("=" * 70)
-    logger.info("LLM AUGMENTATION SUMMARY")
-    logger.info("=" * 70)
-    logger.info(
-        "Model: %s | Prompt: %s | Mode: %s",
-        results[0]["llm_model"],
-        results[0]["prompt_version"],
-        results[0]["augmentation_mode"],
-    )
-    logger.info(
-        "Total forms: %d | Augmented: %d | Skipped: %d", len(results), len(augmented), len(results) - len(augmented)
-    )
-    logger.info("-" * 70)
-    logger.info("WER (Word Error Rate):")
-    logger.info("  Baseline Mean:  %.2f%%", mean_baseline_wer * 100)
-    logger.info("  Augmented Mean: %.2f%%", mean_augmented_wer * 100)
-    logger.info("  Improvement:    %.2f%% (positive = better)", mean_wer_improvement * 100)
-    logger.info("  Improved: %d | Worse: %d | Unchanged: %d", improved_wer, worse_wer, unchanged_wer)
-    logger.info("-" * 70)
-    logger.info("CER (Character Error Rate):")
-    logger.info("  Baseline Mean:  %.2f%%", mean_baseline_cer * 100)
-    logger.info("  Augmented Mean: %.2f%%", mean_augmented_cer * 100)
-    logger.info("  Improvement:    %.2f%% (positive = better)", mean_cer_improvement * 100)
-    logger.info("-" * 70)
-    logger.info("Token Usage:")
-    logger.info("  Input:  %d tokens", total_input_tokens)
-    logger.info("  Output: %d tokens", total_output_tokens)
-    logger.info("=" * 70)
+    # Print to console
+    print_augmented_summary(summary)
 
 
 def main() -> None:
@@ -300,6 +214,15 @@ def main() -> None:
             "nova-micro",
             "nova-lite",
             "nova-pro",
+            # Llama (typically auto-enabled)
+            "llama-3-8b",
+            "llama-3-70b",
+            "llama-3-1-8b",
+            "llama-3-1-70b",
+            # Mistral (typically auto-enabled)
+            "mistral-7b",
+            "mixtral-8x7b",
+            "mistral-large",
             # Claude (requires Bedrock model access)
             "claude-3-haiku",
             "claude-3-5-haiku",
@@ -331,49 +254,67 @@ def main() -> None:
         action="store_true",
         help="Only print summary of existing augmented results",
     )
+    parser.add_argument(
+        "--prompt",
+        choices=list(PROMPTS.keys()),
+        default=None,
+        help=f"Prompt version to use (default: {settings.IAM_DEFAULT_PROMPT_VERSION} from config)",
+    )
+    parser.add_argument(
+        "--dataset",
+        choices=["iam", "custom"],
+        default="iam",
+        help="Dataset type: 'iam' for IAM database or 'custom' for custom documents (default: iam)",
+    )
     args = parser.parse_args()
 
-    # Paths
+    # Use config default if not specified
+    prompt_version = args.prompt or settings.IAM_DEFAULT_PROMPT_VERSION
+
+    # Paths - adjust based on dataset type
     data_dir = Path(__file__).parent.parent.parent / "data"
-    batch_dir = data_dir / "batch_runs"
+    if args.dataset == "custom":
+        batch_runs_dir = data_dir / "custom_batch_runs"
+    else:
+        batch_runs_dir = data_dir / "batch_runs"
 
-    baseline_scores_path = batch_dir / f"score_results_{args.baseline_run}.jsonl"
-    baseline_ocr_path = batch_dir / f"ocr_results_{args.baseline_run}.jsonl"
+    # Get baseline paths from hierarchical structure
+    baseline_paths = get_baseline_paths(batch_runs_dir, args.baseline_run)
+    baseline_scores_path = baseline_paths["scores"]
+    baseline_ocr_path = baseline_paths["ocr"]
 
-    # Generate augmented run ID
+    # Get augmented paths
     model_name = args.model
-    augmented_run_id = f"{args.baseline_run}_augmented_{model_name}_{args.mode}"
-    output_path = batch_dir / f"augmented_results_{augmented_run_id}.jsonl"
+    augmented_run_id = f"{model_name}_{prompt_version}_{args.mode}"
+    augmented_paths = get_augmented_paths(batch_runs_dir, args.baseline_run, model_name, prompt_version, args.mode)
+    augmented_paths["dir"].mkdir(parents=True, exist_ok=True)
+    output_path = augmented_paths["results"]
+    summary_path = augmented_paths["summary"]
 
     if args.summary_only:
-        print_summary(output_path)
+        print_summary(output_path, summary_path, augmented_run_id, args.baseline_run)
         return
 
     # Load baseline results
-    baseline_results = load_baseline_results(baseline_scores_path)
+    baseline_results = load_jsonl(baseline_scores_path)
     if not baseline_results:
+        logger.error("Baseline results not found: %s", baseline_scores_path)
         return
 
     # Load OCR results for confidence checking
-    ocr_results = load_ocr_results(baseline_ocr_path)
+    ocr_results = load_jsonl_as_dict(baseline_ocr_path)
 
     # Apply limit
     if args.limit:
         baseline_results = baseline_results[: args.limit]
         logger.info("Limited to %d forms", len(baseline_results))
 
-    # Initialize LLM client
-    llm_client = get_llm_client(model=args.model)
-    logger.info("Using LLM: %s", llm_client.model_name)
+    # Initialize LLM client with prompt version
+    llm_client = get_llm_client(model=args.model, prompt_version=prompt_version)
+    logger.info("Using LLM: %s with prompt: %s", llm_client.model_name, prompt_version)
 
     # Check for already processed forms
-    processed_forms: set[str] = set()
-    if output_path.exists():
-        with open(output_path, encoding="utf-8") as f:
-            for line in f:
-                record = json.loads(line)
-                processed_forms.add(record["form_id"])
-        logger.info("Found %d already processed forms", len(processed_forms))
+    processed_forms = get_completed_ids(output_path)
 
     # Process forms
     for i, baseline in enumerate(baseline_results, 1):
@@ -398,7 +339,7 @@ def main() -> None:
                     original_text=baseline["ocr_handwriting_text"],
                     corrected_text=baseline["ocr_handwriting_text"],
                     model=llm_client.model_name,
-                    prompt_version=get_prompt_hash(),
+                    prompt_version=llm_client.get_prompt_hash(),
                     input_tokens=0,
                     output_tokens=0,
                     diff_summary="(skipped)",
@@ -412,7 +353,7 @@ def main() -> None:
                 mode=args.mode,
                 was_augmented=should,
             )
-            write_augmented_result(result, output_path)
+            append_jsonl(result, output_path)
 
             if should:
                 logger.info(
@@ -430,8 +371,8 @@ def main() -> None:
         except Exception:
             logger.exception("[%d/%d] Failed: %s", i, len(baseline_results), form_id)
 
-    # Print summary
-    print_summary(output_path)
+    # Print and save summary
+    print_summary(output_path, summary_path, augmented_run_id, args.baseline_run)
 
 
 if __name__ == "__main__":

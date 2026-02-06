@@ -4,6 +4,7 @@ The IAM handwriting dataset has a specific format with printed headers/footers
 that need to be filtered out when comparing handwriting OCR results.
 """
 
+import html
 import logging
 import re
 
@@ -115,8 +116,16 @@ def normalize_text(text: str) -> str:
     """Normalize text for comparison.
 
     Applies standard normalization:
+    - Decode HTML entities (e.g., &quot; -> ", &amp; -> &)
+    - Normalize dash variants (em-dash, en-dash -> hyphen)
+    - Rejoin line-break hyphenation (e.g., "govern- ment" -> "government")
+    - Strip punctuation including hyphens (OpenSearch tokenizes on hyphens)
+    - Convert to lowercase (case-insensitive matching)
     - Collapse multiple spaces to single space
     - Strip leading/trailing whitespace
+
+    These normalizations are search-neutral: OpenSearch's standard analyzer
+    applies equivalent transformations during indexing.
 
     Args:
         text: Input text.
@@ -124,4 +133,15 @@ def normalize_text(text: str) -> str:
     Returns:
         Normalized text.
     """
-    return " ".join(text.split())
+    # Decode HTML entities first (handles &quot;, &amp;, etc.)
+    text = html.unescape(text)
+    # Normalize dash variants to standard hyphen
+    text = text.replace("—", "-").replace("–", "-")
+    # Rejoin line-break hyphenation (word- word -> wordword)
+    # This handles cases where words were split across lines in the original
+    text = re.sub(r"(\w+)-\s+(\w+)", r"\1\2", text)
+    # Strip all punctuation including hyphens
+    # OpenSearch's standard analyzer splits on hyphens, so "self-determination"
+    # becomes ["self", "determination"] - same as "selfdetermination" after rejoining
+    text = re.sub(r"[^\w\s]", "", text)
+    return " ".join(text.lower().split())

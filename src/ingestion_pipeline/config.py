@@ -72,6 +72,11 @@ class Settings(BaseSettings):  # type: ignore
 
     BEDROCK_EMBEDDING_MODEL_ID: str = "amazon.titan-embed-text-v2:0"
 
+    # -- IAM Handwriting Testing --
+    # Default prompt version for LLM-augmented OCR correction
+    # Options: v1 (detailed), v2 (concise - best performing), v3 (context-aware), v4 (few-shot)
+    IAM_DEFAULT_PROMPT_VERSION: str = "v2"
+
     LOG_LEVEL: str = "INFO"
 
 

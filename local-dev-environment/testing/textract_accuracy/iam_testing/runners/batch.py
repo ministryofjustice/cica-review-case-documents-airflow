@@ -10,15 +10,20 @@ Usage:
 """
 
 import argparse
-import json
 import logging
-from datetime import datetime, timezone
+import time
 from pathlib import Path
 
 from ..config import settings
-from ..scoring import load_all_ground_truth, score_ocr_result, write_score_result
+from ..scoring import load_all_ground_truth, score_ocr_result
+from ..summary_stats import (
+    generate_baseline_summary,
+    print_baseline_summary,
+    save_summary,
+)
 from ..textract_client import get_textract_client
-from ..textract_ocr import process_single_image, write_ocr_result
+from ..textract_ocr import process_single_image
+from .utils import append_jsonl, generate_run_id, get_baseline_paths, get_completed_ids, list_baseline_runs
 
 logger = logging.getLogger(__name__)
 
@@ -42,69 +47,40 @@ def get_all_form_ids(data_dir: Path) -> list[str]:
     return form_ids
 
 
-def load_completed_form_ids(results_path: Path) -> set[str]:
-    """Load form IDs that have already been processed.
-
-    Args:
-        results_path: Path to the JSONL results file.
-
-    Returns:
-        Set of completed form IDs.
-    """
-    if not results_path.exists():
-        return set()
-
-    completed = set()
-    with open(results_path, encoding="utf-8") as f:
-        for line in f:
-            try:
-                record = json.loads(line)
-                completed.add(record.get("form_id"))
-            except json.JSONDecodeError:
-                continue
-
-    logger.info("Found %d already completed forms", len(completed))
-    return completed
-
-
-def generate_run_id() -> str:
-    """Generate a unique run ID based on timestamp.
-
-    Returns:
-        Run ID in format: YYYYMMDD_HHMMSS
-    """
-    return datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-
-
 def run_batch(
     form_ids: list[str],
     data_dir: Path,
-    output_dir: Path,
+    batch_runs_dir: Path,
     run_id: str,
     ground_truth: dict[str, dict],
     resume: bool = False,
+    delay_seconds: float = 0.0,
 ) -> tuple[int, int]:
     """Process a batch of forms through Textract and calculate scores.
 
     Args:
         form_ids: List of form IDs to process.
         data_dir: Path to the data directory.
-        output_dir: Path to the output directory.
+        batch_runs_dir: Path to the batch_runs directory.
         run_id: Unique identifier for this run.
         ground_truth: Dict mapping form_id to ground truth record.
         resume: If True, skip already completed forms.
+        delay_seconds: Delay between API calls to avoid throttling.
 
     Returns:
         Tuple of (successful_count, failed_count).
     """
-    # Output paths
-    ocr_results_path = output_dir / f"ocr_results_{run_id}.jsonl"
-    score_results_path = output_dir / f"score_results_{run_id}.jsonl"
+    # Output paths (hierarchical structure)
+    paths = get_baseline_paths(batch_runs_dir, run_id)
+    paths["dir"].mkdir(parents=True, exist_ok=True)
+
+    ocr_results_path = paths["ocr"]
+    score_results_path = paths["scores"]
 
     # Check for completed forms if resuming
     completed_forms: set[str] = set()
     if resume:
-        completed_forms = load_completed_form_ids(score_results_path)
+        completed_forms = get_completed_ids(score_results_path)
 
     # Filter to pending forms
     pending_forms = [fid for fid in form_ids if fid not in completed_forms]
@@ -143,8 +119,8 @@ def run_batch(
             score = score_ocr_result(ocr_result, gt)
 
             # Write results (append)
-            write_ocr_result(ocr_result, ocr_results_path)
-            write_score_result(score, score_results_path)
+            append_jsonl(ocr_result, ocr_results_path)
+            append_jsonl(score, score_results_path)
 
             successful += 1
             logger.info(
@@ -156,6 +132,10 @@ def run_batch(
                 score.cer_handwriting * 100,
             )
 
+            # Rate limiting between API calls
+            if delay_seconds > 0 and i < len(pending_forms):
+                time.sleep(delay_seconds)
+
         except Exception:
             logger.exception("[%d/%d] Failed: %s", i, len(pending_forms), form_id)
             failed += 1
@@ -163,46 +143,23 @@ def run_batch(
     return successful, failed
 
 
-def print_summary(score_results_path: Path) -> None:
-    """Print summary statistics from a completed batch run.
+def print_summary(score_results_path: Path, run_id: str) -> None:
+    """Generate, save, and print summary statistics from a completed batch run.
 
     Args:
         score_results_path: Path to the score results JSONL file.
+        run_id: Run identifier for the summary.
     """
-    if not score_results_path.exists():
-        logger.warning("No results file found")
+    summary = generate_baseline_summary(score_results_path, run_id)
+    if summary is None:
         return
 
-    wer_hw_values = []
-    cer_hw_values = []
-    wer_print_values = []
-    cer_print_values = []
+    # Save summary JSON (in same directory as results)
+    summary_path = score_results_path.parent / "summary.json"
+    save_summary(summary, summary_path)
 
-    with open(score_results_path, encoding="utf-8") as f:
-        for line in f:
-            record = json.loads(line)
-            wer_hw_values.append(record["wer_handwriting"])
-            cer_hw_values.append(record["cer_handwriting"])
-            wer_print_values.append(record["wer_print"])
-            cer_print_values.append(record["cer_print"])
-
-    n = len(wer_hw_values)
-    if n == 0:
-        logger.warning("No results to summarize")
-        return
-
-    logger.info("=" * 60)
-    logger.info("BATCH SUMMARY (%d forms)", n)
-    logger.info("=" * 60)
-    logger.info("HANDWRITING:")
-    logger.info("  Mean WER: %.2f%%", sum(wer_hw_values) / n * 100)
-    logger.info("  Mean CER: %.2f%%", sum(cer_hw_values) / n * 100)
-    logger.info("  Min WER:  %.2f%%", min(wer_hw_values) * 100)
-    logger.info("  Max WER:  %.2f%%", max(wer_hw_values) * 100)
-    logger.info("PRINT:")
-    logger.info("  Mean WER: %.2f%%", sum(wer_print_values) / n * 100)
-    logger.info("  Mean CER: %.2f%%", sum(cer_print_values) / n * 100)
-    logger.info("=" * 60)
+    # Print to console
+    print_baseline_summary(summary)
 
 
 def main() -> None:
@@ -234,19 +191,27 @@ def main() -> None:
         action="store_true",
         help="Only print summary of latest run, don't process",
     )
+    parser.add_argument(
+        "--delay",
+        type=float,
+        default=0.0,
+        help="Delay in seconds between API calls for rate limiting (default: 0)",
+    )
     args = parser.parse_args()
 
     # Paths
     data_dir = Path(__file__).parent.parent.parent / "data"
-    output_dir = data_dir / "batch_runs"
-    output_dir.mkdir(parents=True, exist_ok=True)
+    batch_runs_dir = data_dir / "batch_runs"
+    batch_runs_dir.mkdir(parents=True, exist_ok=True)
 
     # Handle summary-only mode
     if args.summary_only:
-        # Find latest score results file
-        score_files = sorted(output_dir.glob("score_results_*.jsonl"))
-        if score_files:
-            print_summary(score_files[-1])
+        # Find latest run
+        runs = list_baseline_runs(batch_runs_dir)
+        if runs:
+            latest_run = runs[-1]
+            paths = get_baseline_paths(batch_runs_dir, latest_run)
+            print_summary(paths["scores"], latest_run)
         else:
             logger.warning("No batch runs found")
         return
@@ -256,9 +221,9 @@ def main() -> None:
         run_id = args.run_id
     elif args.resume:
         # Find latest run
-        score_files = sorted(output_dir.glob("score_results_*.jsonl"))
-        if score_files:
-            run_id = score_files[-1].stem.replace("score_results_", "")
+        runs = list_baseline_runs(batch_runs_dir)
+        if runs:
+            run_id = runs[-1]
             logger.info("Resuming run: %s", run_id)
         else:
             run_id = generate_run_id()
@@ -290,17 +255,18 @@ def main() -> None:
     successful, failed = run_batch(
         form_ids=form_ids,
         data_dir=data_dir,
-        output_dir=output_dir,
+        batch_runs_dir=batch_runs_dir,
         run_id=run_id,
         ground_truth=ground_truth,
         resume=args.resume,
+        delay_seconds=args.delay,
     )
 
     logger.info("Batch complete: %d successful, %d failed", successful, failed)
 
-    # Print summary
-    score_results_path = output_dir / f"score_results_{run_id}.jsonl"
-    print_summary(score_results_path)
+    # Print and save summary
+    paths = get_baseline_paths(batch_runs_dir, run_id)
+    print_summary(paths["scores"], run_id)
 
 
 if __name__ == "__main__":

@@ -13,54 +13,56 @@ Usage:
 
 Available models:
     Amazon Nova (auto-enabled, no subscription needed):
-    - nova-micro: Fastest, cheapest
-    - nova-lite: Good balance of speed/quality (default)
-    - nova-pro: Best Nova quality
+    - nova-micro, nova-lite, nova-pro
+
+    Meta Llama (typically auto-enabled):
+    - llama-3-8b, llama-3-70b, llama-3-1-8b, llama-3-1-70b
+
+    Mistral (typically auto-enabled):
+    - mistral-7b, mixtral-8x7b, mistral-large
 
     Anthropic Claude (requires Bedrock model access):
-    - claude-3-haiku: Fast, cheap
-    - claude-3-5-haiku: Improved haiku
-    - claude-3-sonnet: Better quality
-    - claude-3-5-sonnet: Best quality
+    - claude-3-haiku, claude-3-5-haiku, claude-3-sonnet, claude-3-5-sonnet
 """
 
 import logging
 
 from .base import BaseLLMClient
-from .clients import BedrockClaudeClient, BedrockNovaClient
+from .clients import (
+    BedrockClaudeClient,
+    BedrockLlamaClient,
+    BedrockMistralClient,
+    BedrockNovaClient,
+)
+from .prompt import DEFAULT_PROMPT
 from .response import LLMResponse
 
 logger = logging.getLogger(__name__)
 
-# Models grouped by API format
-NOVA_MODELS = {"nova-micro", "nova-lite", "nova-pro"}
-CLAUDE_MODELS = {"claude-3-haiku", "claude-3-sonnet", "claude-3-5-sonnet", "claude-3-5-haiku"}
+# Build client registry from MODEL_IDS defined in each client class
+_CLIENT_CLASSES = [BedrockNovaClient, BedrockClaudeClient, BedrockLlamaClient, BedrockMistralClient]
+CLIENT_REGISTRY: dict[str, type[BaseLLMClient]] = {model: cls for cls in _CLIENT_CLASSES for model in cls.MODEL_IDS}
 
-# All supported models
-SUPPORTED_MODELS = NOVA_MODELS | CLAUDE_MODELS
+# Export model sets for external use
+SUPPORTED_MODELS = set(CLIENT_REGISTRY.keys())
 
 
-def get_llm_client(model: str | None = None) -> BaseLLMClient:
+def get_llm_client(
+    model: str | None = None,
+    prompt_version: str = DEFAULT_PROMPT,
+) -> BaseLLMClient:
     """Get a Bedrock LLM client for OCR correction.
 
     Args:
         model: Model name. If None, uses 'nova-lite' (auto-enabled, fast).
+        prompt_version: Prompt variant to use (v1, v2, v3). Defaults to v1.
 
     Returns:
-        Configured BedrockNovaClient or BedrockClaudeClient.
-
-    Raises:
-        ValueError: If model is not recognized.
+        Configured LLM client for the specified model.
     """
     model = model or "nova-lite"
-
-    if model in NOVA_MODELS:
-        return BedrockNovaClient(model=model)
-    elif model in CLAUDE_MODELS:
-        return BedrockClaudeClient(model=model)
-    else:
-        logger.warning("Unknown model '%s', trying as Nova model ID", model)
-        return BedrockNovaClient(model=model)
+    client_class = CLIENT_REGISTRY.get(model, BedrockNovaClient)
+    return client_class(model=model, prompt_version=prompt_version)
 
 
 __all__ = [
@@ -68,8 +70,9 @@ __all__ = [
     "LLMResponse",
     "BaseLLMClient",
     "BedrockNovaClient",
+    "BedrockLlamaClient",
+    "BedrockMistralClient",
     "BedrockClaudeClient",
     "SUPPORTED_MODELS",
-    "NOVA_MODELS",
-    "CLAUDE_MODELS",
+    "CLIENT_REGISTRY",
 ]
