@@ -5,6 +5,7 @@ handles chunking strategies, and indexes the processed content into OpenSearch.
 
 import logging
 import time
+from urllib.parse import urlparse
 
 from textractcaller.t_call import Textract_API, get_full_json
 from textractor import Textractor
@@ -21,6 +22,9 @@ CHUNK_INDEX_NAME = settings.OPENSEARCH_CHUNK_INDEX_NAME
 # --- Configuration for Polling ---
 POLL_INTERVAL_SECONDS = settings.TEXTRACT_API_POLL_INTERVAL_SECONDS
 JOB_TIMEOUT_SECONDS = settings.TEXTRACT_API_JOB_TIMEOUT_SECONDS
+
+# Local development mode flag (can be set via environment variable)
+LOCAL_DEVELOPMENT_MODE = settings.LOCAL_DEVELOPMENT_MODE
 
 
 class TextractProcessingError(Exception):
@@ -120,6 +124,11 @@ class TextractProcessor:
             Document: Document, or None on failure.
         """
         logger.info(f"Processing s3 file: {s3_document_uri}")
+        if LOCAL_DEVELOPMENT_MODE:
+            parsed = urlparse(s3_document_uri)
+            s3_case_bucket_and_file = parsed.path.lstrip("/")
+            s3_document_uri = f"s3://{settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET}/{s3_case_bucket_and_file}"
+            logger.info(f"Switched s3 file location for local development testing to: {s3_document_uri}")
 
         try:
             job_id = self._start_textract_job(s3_document_uri)
