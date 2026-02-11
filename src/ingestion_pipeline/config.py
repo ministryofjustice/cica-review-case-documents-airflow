@@ -91,5 +91,7 @@ class Settings(BaseSettings):  # type: ignore
 
     LOG_LEVEL: str = "INFO"
 
+    DEBUG_PAGE_NUMBERS: set[int] = {1}
+
 
 settings = Settings()

@@ -14,6 +14,11 @@ from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkin
 from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes
 
 
+@pytest.fixture(autouse=True)
+def set_local_dev_mode_false(monkeypatch):
+    monkeypatch.setattr("ingestion_pipeline.chunking.strategies.layout_text.DEBUG_PAGE_NUMBERS", {})
+
+
 @pytest.fixture
 def document_metadata_factory():
     """Returns a factory function to create DocumentMetadata objects.
