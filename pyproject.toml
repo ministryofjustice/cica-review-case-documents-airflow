@@ -26,6 +26,12 @@ dev = ["deptry>=0.23.1,<0.25", "numpy>=2.3.4", "pre-commit>=4.2.0,<5"]
 
 [tool.uv]
 default-groups = ["test", "dev"]
+# Override sub-dependencies to patch security vulnerabilities
+# Update with `uv lock --upgrade` after modifying
+constraint-dependencies = [
+    "pillow>=12.1.1",      # CVE fix - remove when amazon-textract-textractor updates
+    "protobuf>=6.33.5",    # CVE fix - remove when opensearch-protobufs updates  
+]
 
 [tool.hatch.build.targets.sdist]
 include = ["src/ingestion_pipeline"]
@@ -37,5 +43,5 @@ include = ["src/ingestion_pipeline"]
 "src/ingestion_pipeline" = "ingestion_pipeline"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "wheel"]
 build-backend = "hatchling.build"

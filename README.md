@@ -58,11 +58,86 @@ To install the project's package requirements and their versions defined in `pyp
 uv sync 
 ```
 
-
 The `uv.lock` file is required to ensure the specific package versions defined there are installed, rather than their latest versions.
-
-
 If you need to run a Python script from outside the `uv` environment, you can do so using the following format: `uv run src/ingestion_pipeline/main.py`
+
+#### Managing Vulnerabilities and Dependency Overrides
+
+This project uses uv's `constraint-dependencies` feature in `pyproject.toml` to ensure patched versions of sub-dependencies are installed, even if direct dependencies do not specify them. This is important for addressing vulnerabilities identified by tools like Trivy.
+
+##### **Workflow:**
+1. Add any required overrides (e.g., for security patches) to the `[tool.uv]` section in `pyproject.toml`
+   Example:
+   ```toml
+      [tool.uv]
+      constraint-dependencies = [
+         "pillow>=12.1.1",
+         "protobuf>=6.33.5",
+      ]
+   ```
+2. Update the lock file to apply constraints:
+
+```uv lock --upgrade```
+
+3. Sync your environment:
+
+```uv sync```
+
+4. Commit the updated uv.lock and pyproject.toml files.
+
+**Note:**  
+- The Docker build and local environment will use the versions specified in `uv.lock`.
+- Always update `uv.lock` after changing `constraints.txt` to ensure patched versions are installed.
+
+##### Managing Trivy Exceptions:
+Some vulnerabilities may need to be explicitly ignored if they:
+
+Affect build-time only dependencies that are not controllable via pyproject.toml
+Are false positives or not exploitable in your application context
+Cannot be fixed due to upstream package constraints
+To ignore a vulnerability, add it to the [trivyignore](.trivyignore) file with justification:
+
+```
+# wheel CVE-2026-24049 - Build-time only dependency from base image
+# Not a runtime risk as application does not unpack untrusted wheel files
+CVE-2026-24049
+```
+Document the reason for each exception to help future maintainers understand the security posture.
+
+This approach ensures your project remains secure and reproducible, even when upstream packages are slow to update their dependencies.
+
+##### Maintenance and Review Process:
+
+###### For constraint-dependencies:
+1. **Document when added:** Include dates in comments:
+   ```toml
+   "pillow>=12.1.1",  # CVE-2024-XXXXX - Added 2026-02-12, review after Q2 2026
+2. Periodic review: After updating dependencies, test if constraints are still needed:
+```
+# Temporarily remove a constraint from pyproject.toml
+uv lock
+# Check if the patched version is now automatically included
+# If yes, the constraint can be removed
+```
+3. Monitor upstream packages: Watch release notes of direct dependencies (e.g., amazon-textract-textractor, opensearch-protobufs) to see when they update their sub-dependencies.
+4. Review schedule: Set a reminder to review constraints quarterly or when major dependency updates occur.
+
+###### For .trivyignore:
+1. Document thoroughly: Each ignored CVE should include:
+   - The CVE ID
+   - Why it's being ignored
+   - When it was added
+   - When it should be reviewed
+2. Review regularly: Check ignored vulnerabilities during security reviews or dependency updates to see if they can be removed.
+3. Link to issues: Consider creating GitHub issues to track ignored vulnerabilities and their resolution.
+
+Example with dates:
+```
+# wheel CVE-2026-24049 - Added 2026-02-12
+# Build-time only dependency from base image
+# Review when base image updates or Q3 2026
+CVE-2026-24049
+```
 
 #### Setting up pre-commit
 
@@ -210,7 +285,6 @@ Add this to your ~/.bashrc or ~/.zshrc (whichever one you're using):
 export GPG_TTY=$(tty)
 ```
 then run `source ~/.bashrc` or `source ~/.zshrc` to enable the setting.
-
 
 
 ## Read about the GitHub repository standards
