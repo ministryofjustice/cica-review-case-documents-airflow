@@ -232,4 +232,6 @@ def test_process_document_remaps_s3_uri_for_local_dev(monkeypatch, mock_textract
         processor.process_document(original_uri)
 
         processor._start_textract_job.assert_called_once_with(remapped_uri)
-        mock_logger.info.assert_any_call(f"Switched s3 file location for local development testing to: {remapped_uri}")
+        mock_logger.info.assert_any_call(
+            f"Switched s3 file location for local development AWS Textract integration to: {remapped_uri}"
+        )

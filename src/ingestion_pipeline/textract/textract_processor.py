@@ -136,7 +136,9 @@ class TextractProcessor:
             parsed = urlparse(s3_document_uri)
             s3_case_bucket_and_file = parsed.path.lstrip("/")
             s3_document_uri = f"s3://{settings.AWS_LOCAL_DEV_TEXTRACT_S3_ROOT_BUCKET}/{s3_case_bucket_and_file}"
-            logger.info(f"Switched s3 file location for local development testing to: {s3_document_uri}")
+            logger.info(
+                f"Switched s3 file location for local development AWS Textract integration to: {s3_document_uri}"
+            )
 
         try:
             job_id = self._start_textract_job(s3_document_uri)
