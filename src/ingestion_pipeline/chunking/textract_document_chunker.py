@@ -150,7 +150,7 @@ class DocumentChunker:
                 current_chunk_index += len(block_chunks)
 
         chunk_merger = ChunkMerger()
-        grouped_chunks = chunk_merger.group_atomic_chunks(page_chunks)
+        grouped_chunks = chunk_merger.group_and_merge_atomic_chunks(page_chunks)
 
         return grouped_chunks
 

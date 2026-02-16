@@ -33,12 +33,12 @@ class ChunkMerger:
         self.word_limit = word_limit
         self.max_vertical_gap = max_vertical_gap
 
-    def group_atomic_chunks(self, atomic_chunks: List[DocumentChunk]) -> List[DocumentChunk]:
-        """Groups atomic chunks into larger merged chunks.
+    def group_and_merge_atomic_chunks(self, atomic_chunks: List[DocumentChunk]) -> List[DocumentChunk]:
+        """Groups and merges atomic chunks into larger merged chunks.
 
         This method processes atomic chunks (typically line-based, each with its own bounding
-        box and text) and groups them into larger merged chunks. It buffers atomic chunks and
-        determines when to start a new group based on:
+        box and text) by grouping them based on criteria and merging them into larger chunks.
+        It buffers atomic chunks and determines when to start a new group based on:
             - word count limit
             - vertical gap between chunks
             - page number changes
@@ -47,7 +47,7 @@ class ChunkMerger:
         chunk using the _merge_chunks method.
 
         Args:
-            atomic_chunks (List[DocumentChunk]): List of atomic (line-based) chunks to group.
+            atomic_chunks (List[DocumentChunk]): List of atomic (line-based) chunks to group and merge.
 
         Returns:
             List[DocumentChunk]: List of merged chunks with combined text and bounding boxes.
@@ -82,12 +82,12 @@ class ChunkMerger:
                 # High-level debug logging for specified pages
                 if atomic_chunk.page_number in DEBUG_PAGE_NUMBERS:
                     logger.debug(
-                        f"[chunk_merger:group_atomic_chunks] "
+                        f"[chunk_merger:group_and_merge_atomic_chunks] "
                         f"Extra logging enabled for page {atomic_chunk.page_number}. "
                         f"To change, update DEBUG_PAGE_NUMBERS in config."
                     )
                     logger.debug(
-                        f"[chunk_merger:group_atomic_chunks] Page {atomic_chunk.page_number}: "
+                        f"[chunk_merger:group_and_merge_atomic_chunks] Page {atomic_chunk.page_number}: "
                         f"merged_chunk_index={merged_chunk_index}, "
                         f"buffer_size={len(atomic_chunk_buffer)}, "
                         f"should_group_buffer={should_group_buffer}, "
@@ -112,14 +112,14 @@ class ChunkMerger:
             merged_chunks.append(self._merge_chunks(atomic_chunk_buffer, merged_chunk_index))
 
         logger.debug(
-            f"[chunk_merger:group_atomic_chunks] Grouped {len(merged_chunks)} merged chunks from "
+            f"[chunk_merger:group_and_merge_atomic_chunks] Grouped {len(merged_chunks)} merged chunks from "
             f"{len(atomic_chunks)} atomic chunks. "
             f"Word limit: {self.word_limit}, Y-tolerance-ratio: {self.max_vertical_gap}. "
         )
 
         for c in merged_chunks:
             logger.debug(
-                f"[chunk_merger:group_atomic_chunks] Merged Chunk "
+                f"[chunk_merger:group_and_merge_atomic_chunks] Merged Chunk "
                 f"{c.chunk_id} (Page {c.page_number}, new index: {c.chunk_index}, "
                 f"Words: {c.word_count}), "
                 f"{c.chunk_text[:30]}...{c.chunk_text[-10:]},"
@@ -132,7 +132,7 @@ class ChunkMerger:
     def _merge_chunks(self, chunks: List[DocumentChunk], chunk_index: int) -> DocumentChunk:
         """Merges a list of atomic chunks into a single DocumentChunk.
 
-        Combines the text from multiple atomic chunks (previously grouped by group_atomic_chunks),
+        Combines the text from multiple atomic chunks (previously grouped by group_and_merge_atomic_chunks),
         merges their bounding boxes, and creates a new chunk object with combined metadata.
 
         Args:

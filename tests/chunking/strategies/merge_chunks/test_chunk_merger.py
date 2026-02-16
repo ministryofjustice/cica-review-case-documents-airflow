@@ -66,7 +66,7 @@ def test_handles_empty_input_list(doc_metadata):
     """
     merger = ChunkMerger()
     atomic_chunks = []
-    result = merger.group_atomic_chunks(atomic_chunks)
+    result = merger.group_and_merge_atomic_chunks(atomic_chunks)
     assert result == []
 
 
@@ -86,7 +86,7 @@ def test_handles_single_atomic_chunk(doc_metadata):
     )
     atomic_chunks = [chunk1]
 
-    result = merger.group_atomic_chunks(atomic_chunks)
+    result = merger.group_and_merge_atomic_chunks(atomic_chunks)
 
     assert len(result) == 1
     merged_chunk = result[0]
@@ -129,7 +129,7 @@ def test_basic_merging_within_limits(doc_metadata):
     )
     atomic_chunks = [chunk1, chunk2]
 
-    result = merger.group_atomic_chunks(atomic_chunks)
+    result = merger.group_and_merge_atomic_chunks(atomic_chunks)
 
     assert len(result) == 1
     merged_chunk = result[0]
@@ -167,7 +167,7 @@ def test_flushes_on_word_limit_exceeded(doc_metadata):
     )
     atomic_chunks = [chunk1, chunk2]
 
-    result = merger.group_atomic_chunks(atomic_chunks)
+    result = merger.group_and_merge_atomic_chunks(atomic_chunks)
 
     assert len(result) == 2
     assert result[0].chunk_text == "This is the first line."
@@ -202,7 +202,7 @@ def test_flushes_on_large_positive_vertical_gap(doc_metadata):
     )
     atomic_chunks = [chunk1, chunk2]
 
-    result = merger.group_atomic_chunks(atomic_chunks)
+    result = merger.group_and_merge_atomic_chunks(atomic_chunks)
 
     assert len(result) == 2
     assert result[0].chunk_text == "This is a paragraph."
@@ -236,7 +236,7 @@ def test_flushes_on_large_negative_vertical_gap_for_columns(doc_metadata):
     )
     atomic_chunks = [chunk1, chunk2]
 
-    result = merger.group_atomic_chunks(atomic_chunks)
+    result = merger.group_and_merge_atomic_chunks(atomic_chunks)
 
     assert len(result) == 2
     assert result[0].chunk_text == "End of column one."
@@ -276,7 +276,7 @@ def test_flushes_on_page_change(doc_metadata):
     )
     atomic_chunks = [chunk1_p1, chunk2_p1, chunk3_p2]
 
-    result = merger.group_atomic_chunks(atomic_chunks)
+    result = merger.group_and_merge_atomic_chunks(atomic_chunks)
 
     assert len(result) == 2
     # First merged chunk contains both chunks from page 1
@@ -313,7 +313,7 @@ def test_final_buffer_is_flushed_correctly(doc_metadata):
     )
     atomic_chunks = [chunk1, chunk2, chunk3, chunk4]
 
-    result = merger.group_atomic_chunks(atomic_chunks)
+    result = merger.group_and_merge_atomic_chunks(atomic_chunks)
 
     assert len(result) == 2
     assert result[0].chunk_text == "First part. Second part."
@@ -342,7 +342,7 @@ def test_multiple_flush_conditions_in_sequence(doc_metadata):
     # End of loop, FLUSHES final buffer. Creates chunk D.
     atomic_chunks = [chunk1, chunk2, chunk3, chunk4, chunk5]
 
-    result = merger.group_atomic_chunks(atomic_chunks)
+    result = merger.group_and_merge_atomic_chunks(atomic_chunks)
 
     assert len(result) == 4
     assert result[0].chunk_text == "Line one is short. Line two is also short."
@@ -386,7 +386,7 @@ def test_handles_atomic_chunk_already_over_limit(doc_metadata):
     )
 
     atomic_chunks = [oversized_chunk, next_chunk]
-    result = merger.group_atomic_chunks(atomic_chunks)
+    result = merger.group_and_merge_atomic_chunks(atomic_chunks)
 
     # Expect two separate chunks
     assert len(result) == 2

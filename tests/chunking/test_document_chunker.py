@@ -107,7 +107,7 @@ def test_selects_correct_strategy_and_increments_index(document_metadata):
     chunker = DocumentChunker(strategy_handlers)
 
     with patch("ingestion_pipeline.chunking.textract_document_chunker.ChunkMerger", autospec=True) as mock_merger:
-        mock_merger.return_value.group_atomic_chunks.side_effect = lambda group_atomic_chunks: group_atomic_chunks
+        mock_merger.return_value.group_and_merge_atomic_chunks.side_effect = lambda chunks: chunks
         processed_doc = chunker.chunk(doc, document_metadata)
 
     mock_text_strategy.chunk.assert_called_once()
@@ -137,7 +137,7 @@ def test_skips_blocks_without_strategy_or_text(document_metadata, mock_strategy_
     chunker = DocumentChunker(strategy_handlers)
 
     with patch("ingestion_pipeline.chunking.textract_document_chunker.ChunkMerger", autospec=True) as mock_merger:
-        mock_merger.return_value.group_atomic_chunks.side_effect = lambda group_atomic_chunks: group_atomic_chunks
+        mock_merger.return_value.group_and_merge_atomic_chunks.side_effect = lambda chunks: chunks
         processed_doc = chunker.chunk(doc, document_metadata)
 
     mock_strategy_handler.chunk.assert_called_once()
@@ -157,7 +157,7 @@ def test_calls_merger_once_per_page(document_metadata, mock_strategy_handler):
     with patch("ingestion_pipeline.chunking.textract_document_chunker.ChunkMerger", autospec=True) as mock_merger:
         chunker.chunk(doc, document_metadata)
 
-        assert mock_merger.return_value.group_atomic_chunks.call_count == 2
+        assert mock_merger.return_value.group_and_merge_atomic_chunks.call_count == 2
 
 
 def test_creates_pagedocument_with_correct_data(document_metadata, mock_strategy_handler):
@@ -194,7 +194,7 @@ def test_creates_pagedocument_with_correct_data(document_metadata, mock_strategy
     chunker = DocumentChunker(strategy_handlers)
 
     with patch("ingestion_pipeline.chunking.textract_document_chunker.ChunkMerger", autospec=True) as mock_merger:
-        mock_merger.return_value.group_atomic_chunks.side_effect = lambda chunks: chunks
+        mock_merger.return_value.group_and_merge_atomic_chunks.side_effect = lambda chunks: chunks
         processed_doc = chunker.chunk(doc, document_metadata)
 
     assert len(processed_doc.chunks) == 1
