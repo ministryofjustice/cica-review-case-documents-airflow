@@ -87,6 +87,8 @@ def build_pipeline() -> Pipeline:
         document_source_s3_bucket = settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET
         logger.info("Using original S3 bucket for PDF download.")
 
+    document_source_s3_bucket = settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET
+
     image_converter = ImageConverter()
     s3_document_service = S3DocumentService(
         s3_client=get_s3_client(),

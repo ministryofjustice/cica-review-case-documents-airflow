@@ -84,28 +84,30 @@ class OpenSearchIndexer:
 
         source_doc_id = documents[0].source_doc_id
         if self.client.indices.exists(index=self.index_name):
+            logger.info(
+                f"Attempting document deletion of existing documents from index {self.index_name} before reindexing"
+            )
             self.delete_documents_by_source_doc_id(source_doc_id)
         actions = self._generate_bulk_actions(documents, id_field)
 
         try:
+            logger.info(f"Indexing {len(documents)} documents into index {self.index_name}")
             success, errors = helpers.bulk(self.client, actions, raise_on_error=False)
 
             if errors:
-                logger.error(
-                    f"Encountered {len(errors)} errors during bulk indexing cleaning up partially indexed chunks"
-                )
+                logger.info(f"Deleted existing documents due to indexing errors. Errors:{errors}")
                 # Clean up any partially indexed documents from this batch
                 self.delete_documents_by_source_doc_id(source_doc_id)
                 raise IndexingError(f"Failed to index all chunks: {errors}")
 
-            logger.info(f"Successfully indexed {len(documents)} chunks into index {self.index_name}")
+            logger.info(f"Indexed {len(documents)} chunks into index {self.index_name}")
             return success, errors
         except helpers.BulkIndexError as e:
-            logger.error(f"A BulkIndexError occurred. Removing all associated chunks: {e.errors}")
+            logger.info(f"Deleted all document chunks due to BulkIndexError during indexing. Error: {e.errors}")
             self.delete_documents_by_source_doc_id(source_doc_id)
             raise IndexingError(f"Failed to index documents due to bulk errors: {str(e)}") from e
         except Exception as e:
-            logger.error(f"An unexpected exception occurred. Removing all associated chunks: {e}")
+            logger.info(f"An unexpected exception occurred indexing removing all associated chunks: {e}")
             self.delete_documents_by_source_doc_id(source_doc_id)
             raise IndexingError(f"Failed to index: {str(e)}") from e
 
@@ -142,7 +144,7 @@ class OpenSearchIndexer:
             if deleted_count > 0:
                 logger.info(f"Deleted {deleted_count} documents from index {self.index_name}")
         except ConflictError as e:
-            logger.debug(f"Version conflict during delete (harmless): {e}")
+            logger.debug(f"Version conflict during delete (harmless): {e}", exc_info=True)
         except Exception as e:
             logger.error(f"Failed to delete documents by source_doc_id: {e}", exc_info=True)
             raise

@@ -127,7 +127,7 @@ class TextractProcessor:
         if LOCAL_DEVELOPMENT_MODE:
             parsed = urlparse(s3_document_uri)
             s3_case_bucket_and_file = parsed.path.lstrip("/")
-            s3_document_uri = f"s3://{settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET}/{s3_case_bucket_and_file}"
+            s3_document_uri = f"s3://{settings.AWS_LOCAL_DEV_TEXTRACT_S3_ROOT_BUCKET}/{s3_case_bucket_and_file}"
             logger.info(f"Switched s3 file location for local development testing to: {s3_document_uri}")
 
         try:

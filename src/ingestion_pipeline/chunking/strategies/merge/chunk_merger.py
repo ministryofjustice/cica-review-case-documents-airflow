@@ -54,7 +54,9 @@ class ChunkMerger:
         if not atomic_chunks:
             return []
 
-        logger.info(f"Grouping {len(atomic_chunks)} atomic chunks into merged chunks with word limit {self.word_limit}")
+        logger.debug(
+            f"Grouping {len(atomic_chunks)} atomic chunks into merged chunks with word limit {self.word_limit}"
+        )
         merged_chunks = []
         atomic_chunk_buffer = []
         buffer_word_count = 0
@@ -108,7 +110,7 @@ class ChunkMerger:
         if atomic_chunk_buffer:
             merged_chunks.append(self._merge_chunks(atomic_chunk_buffer, merged_chunk_index))
 
-        logger.info(
+        logger.debug(
             f"[chunk_merger:group_atomic_chunks] Grouped {len(merged_chunks)} merged chunks from "
             f"{len(atomic_chunks)} atomic chunks. "
             f"Word limit: {self.word_limit}, Y-tolerance-ratio: {self.max_vertical_gap}. "

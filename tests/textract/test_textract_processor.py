@@ -219,7 +219,7 @@ def test_process_document_remaps_s3_uri_for_local_dev(monkeypatch, mock_textract
     # Patch settings and logger
     monkeypatch.setattr("ingestion_pipeline.textract.textract_processor.LOCAL_DEVELOPMENT_MODE", True)
     monkeypatch.setattr(
-        "ingestion_pipeline.textract.textract_processor.settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET",
+        "ingestion_pipeline.textract.textract_processor.settings.AWS_LOCAL_DEV_TEXTRACT_S3_ROOT_BUCKET",
         remapped_bucket,
     )
     with patch("ingestion_pipeline.textract.textract_processor.logger") as mock_logger:

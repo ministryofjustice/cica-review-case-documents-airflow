@@ -51,8 +51,22 @@ class PageProcessor:
         self.uploaded_results: List[PageImageUploadResult] = []
 
     def process(self, doc: Document, metadata: DocumentMetadata) -> List[DocumentPage]:
-        """Iterate over document pages, generate images, upload to S3, and build DocumentPage objects."""
-        logger.info(f"Processing document pages with source_doc_id: {metadata.source_doc_id}")
+        """Iterate over document pages, generate images, upload to S3, and build DocumentPage objects.
+
+        Args:
+            doc (Document): The Textract Document to process.
+            metadata (DocumentMetadata): Metadata associated with the document.
+
+        Raises:
+            PageProcessingError: If the page count is zero.
+            PageProcessingError: If image upload fails.
+            PageProcessingError: If cleanup after a failed upload fails.
+            PageProcessingError: If there is a mismatch between Textract pages and generated images.
+
+        Returns:
+            List[DocumentPage]: A list of DocumentPage instances.
+        """
+        logger.info("Processing document pages")
         source_doc_id = metadata.source_doc_id
         case_ref = metadata.case_ref
         page_count = metadata.page_count if metadata.page_count is not None else 0
