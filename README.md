@@ -251,6 +251,40 @@ Running with debug logs:
 ```
 This feature is particularly useful when investigating highlighting accuracy and chunking issues without overwhelming the logs with debug information from all pages.
 
+#### Error Handling and Logging Architecture
+
+The pipeline uses a **centralized error handling pattern** to ensure all failures are properly logged and traced:
+
+**Centralized Exception Handling:**
+- The `runner.py` module catches all exceptions from the pipeline execution
+- All failures are logged at **CRITICAL** level with full stack traces (`exc_info=True`)
+- Error logs include complete context: `source_doc_id`, `case_ref`, `s3_uri`, exception type and message
+
+**Component-Level Logging:**
+- Individual components (e.g., indexer, chunker, textract processor) raise exceptions when errors occur
+- Remediation actions (like rolling back partial indexes) are logged at **INFO** level
+- This separates operational logging from error alerting
+
+**Example log flow for a failed indexing operation:**
+
+```
+INFO: Indexing 150 documents into index page_chunks
+INFO: Deleted existing documents due to indexing errors. Errors: [...]
+CRITICAL: Pipeline runner encountered a fatal error for source_doc_id=xxx, case_ref=25-123456: IndexingError: Failed to index all chunks
+```
+
+**Why this pattern:**
+- Single source of truth for pipeline failures (runner logs)
+- All errors include full context for troubleshooting
+- Operational actions (cleanups, retries) logged separately at INFO level
+- Easier to monitor production: watch for CRITICAL logs from runner
+
+**Troubleshooting pipeline failures:**
+1. Search logs for `CRITICAL` level messages from `runner.py`
+2. Use the `source_doc_id` to trace all related log entries
+3. Review INFO-level remediation actions for cleanup details
+
+
 ### Testing the project
 
 The project uses [pytest](https://docs.pytest.org/en/stable/) to run tests see [pytest.ini](`.pytest.ini`) for test configuration and [install pytest](https://docs.pytest.org/en/stable/getting-started.html#get-started)
