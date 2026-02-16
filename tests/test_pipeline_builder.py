@@ -35,7 +35,6 @@ def patch_external_dependencies():
         mock_settings.OPENSEARCH_PAGE_METADATA_INDEX_NAME = "test-page-index"
         mock_settings.OPENSEARCH_PROXY_URL = "http://test-proxy"
         mock_settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET = "test-source-bucket"
-        mock_settings.AWS_LOCALSTACK_S3_SOURCE_DOCUMENT_ROOT_BUCKET = "test-localstack-bucket"
         mock_settings.AWS_CICA_S3_PAGE_BUCKET = "test-page-bucket"
         mock_settings.LOCAL_DEVELOPMENT_MODE = False
         yield {

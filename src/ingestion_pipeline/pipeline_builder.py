@@ -77,22 +77,10 @@ def build_pipeline() -> Pipeline:
         proxy_url=settings.OPENSEARCH_PROXY_URL,
     )
 
-    # Choose bucket based on environment
-    # Temporary solution until we have a better way to manage test vs prod resources
-    # Textract needs access to the S3 bucket where the PDFs are stored
-    if getattr(settings, "LOCAL_DEVELOPMENT_MODE", False):
-        document_source_s3_bucket = settings.AWS_LOCALSTACK_S3_SOURCE_DOCUMENT_ROOT_BUCKET
-        logger.info("Using LocalStack S3 bucket for PDF download.")
-    else:
-        document_source_s3_bucket = settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET
-        logger.info("Using original S3 bucket for PDF download.")
-
-    document_source_s3_bucket = settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET
-
     image_converter = ImageConverter()
     s3_document_service = S3DocumentService(
         s3_client=get_s3_client(),
-        source_bucket=document_source_s3_bucket,
+        source_bucket=settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET,
         page_bucket=settings.AWS_CICA_S3_PAGE_BUCKET,
     )
 

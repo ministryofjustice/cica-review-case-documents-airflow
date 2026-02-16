@@ -72,8 +72,8 @@ class Settings(BaseSettings):  # type: ignore
     AWS_CICA_AWS_SESSION_TOKEN: str = "test"
 
     # -- SOURCE DOCUMENT BUCKET --
-    AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET: str = "dev-kta-documents-bucket"
-    AWS_LOCALSTACK_S3_SOURCE_DOCUMENT_ROOT_BUCKET: str = "local-kta-documents-bucket"
+    AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET: str = "local-kta-documents-bucket"
+
     AWS_LOCAL_DEV_TEXTRACT_S3_ROOT_BUCKET: str = "mod-platfform-sandbox-kta-documents-bucket"
 
     # review these values when we have a working system
