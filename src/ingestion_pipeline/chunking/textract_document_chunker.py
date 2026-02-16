@@ -5,9 +5,9 @@ from typing import List, Mapping, Optional
 
 from textractor.entities.document import Document
 
-from ingestion_pipeline.chunking.debug_logger import is_verbose_page_debug, log_verbose_page_debug
 from ingestion_pipeline.chunking.exceptions import ChunkException
 from ingestion_pipeline.chunking.strategies.merge.chunk_merger import ChunkMerger
+from ingestion_pipeline.chunking.verbose_page_debug_logger import is_verbose_page_debug, log_verbose_page_debug
 
 from .chunking_config import ChunkingConfig
 from .schemas import DocumentChunk, DocumentMetadata, ProcessedDocument
