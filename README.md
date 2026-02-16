@@ -220,6 +220,37 @@ The project has been set up to add the source document uuid (generated during in
 
 ```2025-11-06 15:05:03 INFO source_doc_id: 91c8ac49-2d20-5b35-b3f9-4563c8553a33 Step 1: Fetching and parsing document with Textract...```
 
+#### Debug Logging for Specific Pages
+
+For troubleshooting chunking and bounding box issues, you can enable detailed debug logging for specific page numbers using the `DEBUG_PAGE_NUMBERS` environment variable in your `.env` file:
+
+```bash
+# Enable debug logging for pages 1, 3, and 5
+DEBUG_PAGE_NUMBERS={1,3,5}
+
+# Disable debug logging (empty set)
+DEBUG_PAGE_NUMBERS={}
+```
+
+When enabled, the chunking pipeline will output detailed information including:
+
+- Bounding box coordinates (left, top, width, height, bottom, right)
+- Chunk text previews
+- Atomic chunk merging decisions
+- Word counts and vertical gap calculations
+
+Running with debug logs:
+
+```
+# View output in terminal (default)
+./run_locally_with_dot_env.sh
+
+# Capture debug output to file for analysis
+./run_locally_with_dot_env.sh --log-to-file
+# Then view: cat debug.log
+```
+This feature is particularly useful when investigating highlighting accuracy and chunking issues without overwhelming the logs with debug information from all pages.
+
 ### Testing the project
 
 The project uses [pytest](https://docs.pytest.org/en/stable/) to run tests see [pytest.ini](`.pytest.ini`) for test configuration and [install pytest](https://docs.pytest.org/en/stable/getting-started.html#get-started)
