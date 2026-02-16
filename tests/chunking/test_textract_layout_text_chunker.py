@@ -16,7 +16,7 @@ from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes
 
 @pytest.fixture(autouse=True)
 def set_local_dev_mode_false(monkeypatch):
-    monkeypatch.setattr("ingestion_pipeline.chunking.strategies.layout_text.DEBUG_PAGE_NUMBERS", {})
+    monkeypatch.setattr("ingestion_pipeline.chunking.debug_logger.DEBUG_PAGE_NUMBERS", set())
 
 
 @pytest.fixture

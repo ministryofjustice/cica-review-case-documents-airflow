@@ -18,7 +18,7 @@ def default_config():
 # Set this DEBUG param to an empty set to disable debug logging during tests
 @pytest.fixture(autouse=True)
 def set_local_dev_mode_false(monkeypatch):
-    monkeypatch.setattr("ingestion_pipeline.chunking.strategies.layout_text.DEBUG_PAGE_NUMBERS", {})
+    monkeypatch.setattr("ingestion_pipeline.chunking.debug_logger.DEBUG_PAGE_NUMBERS", set())
 
 
 @pytest.fixture

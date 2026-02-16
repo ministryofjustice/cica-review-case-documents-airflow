@@ -5,12 +5,11 @@ from typing import List
 
 from textractor.entities.layout import Layout
 
+from ingestion_pipeline.chunking.debug_logger import is_verbose_page_debug, log_verbose_page_debug
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes
-from ingestion_pipeline.config import settings
 
 logger = logging.getLogger(__name__)
-DEBUG_PAGE_NUMBERS = settings.DEBUG_PAGE_NUMBERS
 
 
 class ChunkMerger:
@@ -80,20 +79,17 @@ class ChunkMerger:
                     should_group_buffer = True
 
                 # High-level debug logging for specified pages
-                if atomic_chunk.page_number in DEBUG_PAGE_NUMBERS:
-                    logger.debug(
-                        f"[chunk_merger:group_and_merge_atomic_chunks] "
-                        f"Extra logging enabled for page {atomic_chunk.page_number}. "
-                        f"To change, update DEBUG_PAGE_NUMBERS in config."
-                    )
-                    logger.debug(
-                        f"[chunk_merger:group_and_merge_atomic_chunks] Page {atomic_chunk.page_number}: "
+                if is_verbose_page_debug(atomic_chunk.page_number, "chunk_merger:group_and_merge_atomic_chunks"):
+                    log_verbose_page_debug(
+                        atomic_chunk.page_number,
+                        f"Page {atomic_chunk.page_number}: "
                         f"merged_chunk_index={merged_chunk_index}, "
                         f"buffer_size={len(atomic_chunk_buffer)}, "
                         f"should_group_buffer={should_group_buffer}, "
                         f"inter_chunk_vertical_gap={inter_chunk_vertical_gap:.5f}, "
                         f"buffer_word_count={buffer_word_count}, "
-                        f"atomic_chunk_word_count={atomic_chunk_word_count}"
+                        f"atomic_chunk_word_count={atomic_chunk_word_count}",
+                        "chunk_merger:group_and_merge_atomic_chunks",
                     )
 
             if should_group_buffer:
@@ -144,31 +140,36 @@ class ChunkMerger:
                 and unified bounding box.
         """
         first_chunk = chunks[0]
-        if first_chunk.page_number in DEBUG_PAGE_NUMBERS:
-            logger.debug(
-                f"[chunk_merger:_merge_chunks] Merging page {first_chunk.page_number} "
-                f"new page chunk index {chunk_index} - merging, chunk count {len(chunks)}"
+        if is_verbose_page_debug(first_chunk.page_number, "chunk_merger:_merge_chunks"):
+            log_verbose_page_debug(
+                first_chunk.page_number,
+                f"Merging page {first_chunk.page_number} "
+                f"new page chunk index {chunk_index} - merging, chunk count {len(chunks)}",
+                "chunk_merger:_merge_chunks",
             )
             for i, c in enumerate(chunks):
                 bbox = c.bounding_box
-                logger.debug(
-                    f"[chunk_merger:_merge_chunks] Atomic chunk {i}: index={c.chunk_index}, "
+                log_verbose_page_debug(
+                    first_chunk.page_number,
+                    f"Atomic chunk {i}: index={c.chunk_index}, "
                     f"text='{c.chunk_text[:30]}...{c.chunk_text[-20:]}', "
                     f"bbox: left={bbox.left}, top={bbox.top}, width={bbox.width}, "
-                    f"height={bbox.height}, bottom={bbox.bottom}, right={bbox.right}"
+                    f"height={bbox.height}, bottom={bbox.bottom}, right={bbox.right}",
+                    "chunk_merger:_merge_chunks",
                 )
 
         merged_text = " ".join([c.chunk_text for c in chunks]).strip()
         merged_bbox = combine_bounding_boxes([c.bounding_box.to_textractor_bbox() for c in chunks])
 
-        if first_chunk.page_number in DEBUG_PAGE_NUMBERS:
-            logger.debug(
-                f"[chunk_merger:_merge_chunks] Merged chunk {chunk_index} bbox: left={merged_bbox.x}, "
-                f"top={merged_bbox.y}, width={merged_bbox.width}, "
-                f"height={merged_bbox.height}, "
-                f"bottom={merged_bbox.y + merged_bbox.height}, "
-                f"right={merged_bbox.x + merged_bbox.width}"
-            )
+        log_verbose_page_debug(
+            first_chunk.page_number,
+            f"Merged chunk {chunk_index} bbox: left={merged_bbox.x}, "
+            f"top={merged_bbox.y}, width={merged_bbox.width}, "
+            f"height={merged_bbox.height}, "
+            f"bottom={merged_bbox.y + merged_bbox.height}, "
+            f"right={merged_bbox.x + merged_bbox.width}",
+            "chunk_merger:_merge_chunks",
+        )
 
         first_chunk = chunks[0]
         page_number = first_chunk.page_number

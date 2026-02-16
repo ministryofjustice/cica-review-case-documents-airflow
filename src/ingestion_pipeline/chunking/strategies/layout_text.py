@@ -6,13 +6,12 @@ from typing import List, Optional
 from textractor.entities.bbox import BoundingBox
 
 from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+from ingestion_pipeline.chunking.debug_logger import is_verbose_page_debug, log_verbose_page_debug
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 from ingestion_pipeline.chunking.strategies.base import ChunkingStrategyHandler
 from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes
-from ingestion_pipeline.config import settings
 
 logger = logging.getLogger(__name__)
-DEBUG_PAGE_NUMBERS = settings.DEBUG_PAGE_NUMBERS
 
 
 class LayoutTextChunkingStrategy(ChunkingStrategyHandler):
@@ -55,13 +54,12 @@ class LayoutTextChunkingStrategy(ChunkingStrategyHandler):
         current_chunk_lines = []
         current_chunk_bboxes = []
 
-        if page_number in DEBUG_PAGE_NUMBERS:
-            logger.debug(
-                f"[layout_text:_process_page] "
-                f"Extra logging enabled for page {page_number}. "
-                f"To change, update DEBUG_PAGE_NUMBERS in config."
+        if is_verbose_page_debug(page_number, "layout_text:chunk"):
+            log_verbose_page_debug(
+                page_number,
+                f"Layout text chunking: Page number {page_number} document chunk index {chunk_index}",
+                "layout_text:chunk",
             )
-            logger.debug(f"Layout text chunking: Page number {page_number} document chunk index {chunk_index}")
 
         for child_block in layout_block.children:
             line_text = child_block.text.strip()
@@ -129,39 +127,51 @@ class LayoutTextChunkingStrategy(ChunkingStrategyHandler):
             DocumentChunk: The created document chunk with combined text and merged bounding box.
         """
         # Debug: Only log bounding boxes for specified pages
-        if page_number in DEBUG_PAGE_NUMBERS:
-            logger.debug(f"[layout_text] Page {page_number} creating chunk from {len(lines)} layout elements")
+        if is_verbose_page_debug(page_number, "layout_text:_create_chunk_from_lines"):
+            log_verbose_page_debug(
+                page_number,
+                f"Page {page_number} creating chunk from {len(lines)} layout elements",
+                "layout_text:_create_chunk_from_lines",
+            )
             for i, bbox in enumerate(bboxes):
-                logger.debug(
-                    f"  Line {i}, text='{lines[i][:30]}...{lines[i][-20:]}', text_count={len(lines[i])}:"
+                log_verbose_page_debug(
+                    page_number,
+                    f"  Line {i}, text='{lines[i][:30]}...{lines[i][-20:]}', text_count={len(lines[i])}: "
                     f"left={bbox.x}, top={bbox.y}, width={bbox.width}, height={bbox.height}, "
-                    f"bottom={bbox.y + bbox.height}, right={bbox.x + bbox.width}"
+                    f"bottom={bbox.y + bbox.height}, right={bbox.x + bbox.width}",
+                    "layout_text:_create_chunk_from_lines",
                 )
             combined_bbox_x_left = min(bbox.x for bbox in bboxes)
             combined_bbox_y_top = min(bbox.y for bbox in bboxes)
             combined_bbox_x_right = max(bbox.x + bbox.width for bbox in bboxes)
             combined_bbox_y_bottom = max(bbox.y + bbox.height for bbox in bboxes)
-            logger.debug(
-                f"[layout_text] pre-combining bounding box union: "
+            log_verbose_page_debug(
+                page_number,
+                f"pre-combining bounding box union: "
                 f"left={combined_bbox_x_left}, top={combined_bbox_y_top}, "
                 f"_width={combined_bbox_x_right - combined_bbox_x_left}, "
-                f"height={combined_bbox_y_bottom - combined_bbox_y_top}"
-                f"bottom={combined_bbox_y_bottom}, right={combined_bbox_x_right}"
+                f"height={combined_bbox_y_bottom - combined_bbox_y_top} "
+                f"bottom={combined_bbox_y_bottom}, right={combined_bbox_x_right}",
+                "layout_text:_create_chunk_from_lines",
             )
 
         combined_bbox = combine_bounding_boxes(bboxes)
-        if page_number in DEBUG_PAGE_NUMBERS:
-            logger.debug(
-                f"[layout_text]Combined bounding box: "
+        if is_verbose_page_debug(page_number, "layout_text:_create_chunk_from_lines"):
+            log_verbose_page_debug(
+                page_number,
+                f"Combined bounding box: "
                 f"left={combined_bbox.x}, top={combined_bbox.y}, "
                 f"width={combined_bbox.width}, height={combined_bbox.height}, "
-                f"bottom={combined_bbox.y + combined_bbox.height}, right={combined_bbox.x + combined_bbox.width}"
+                f"bottom={combined_bbox.y + combined_bbox.height}, right={combined_bbox.x + combined_bbox.width}",
+                "layout_text:_create_chunk_from_lines",
             )
         chunk_text = " ".join(lines)
-        if page_number in DEBUG_PAGE_NUMBERS:
-            logger.debug(
-                f"[layout_text] Created chunk index {chunk_index} text='{chunk_text[:30]}...{chunk_text[-20:]}', "
-                f"text_count={len(chunk_text)}"
+        if is_verbose_page_debug(page_number, "layout_text:_create_chunk_from_lines"):
+            log_verbose_page_debug(
+                page_number,
+                f"Created chunk index {chunk_index} text='{chunk_text[:30]}...{chunk_text[-20:]}', "
+                f"text_count={len(chunk_text)}",
+                "layout_text:_create_chunk_from_lines",
             )
 
         # logger.info(f"[layout_text] Layout {layout_block.layout_type} chunk : {chunk_text}")

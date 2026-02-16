@@ -5,16 +5,15 @@ from typing import List, Mapping, Optional
 
 from textractor.entities.document import Document
 
+from ingestion_pipeline.chunking.debug_logger import is_verbose_page_debug, log_verbose_page_debug
 from ingestion_pipeline.chunking.exceptions import ChunkException
 from ingestion_pipeline.chunking.strategies.merge.chunk_merger import ChunkMerger
-from ingestion_pipeline.config import settings
 
 from .chunking_config import ChunkingConfig
 from .schemas import DocumentChunk, DocumentMetadata, ProcessedDocument
 from .strategies.base import ChunkingStrategyHandler
 
 logger = logging.getLogger(__name__)
-DEBUG_PAGE_NUMBERS = settings.DEBUG_PAGE_NUMBERS
 
 
 class ChunkError(Exception):
@@ -125,17 +124,13 @@ class DocumentChunker:
                 block_type = layout_block.layout_type
                 chunking_strategy = self.strategy_handlers.get(block_type)
 
-                if page.page_num in DEBUG_PAGE_NUMBERS:
-                    logger.debug(
-                        f"[textract_document_chunker:_process_page] "
-                        f"Extra logging enabled for page {page.page_num}. "
-                        f"To change, update DEBUG_PAGE_NUMBERS in config."
-                    )
-                    logger.debug(
-                        f"[textract_document_chunker:_process_page] chunking "
-                        f"{layout_block.layout_type} {block_type} on page {page.page_num} "
+                if is_verbose_page_debug(page.page_num, "textract_document_chunker:_process_page"):
+                    log_verbose_page_debug(
+                        page.page_num,
+                        f"chunking {layout_block.layout_type} {block_type} on page {page.page_num} "
                         f"with chunk index {current_chunk_index}, "
-                        f"text='{layout_block.text[:30]}...{layout_block.text[-20:]}'"
+                        f"text='{layout_block.text[:30]}...{layout_block.text[-20:]}'",
+                        "textract_document_chunker:_process_page",
                     )
 
                 if chunking_strategy is None:
