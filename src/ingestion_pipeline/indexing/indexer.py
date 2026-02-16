@@ -71,12 +71,21 @@ class OpenSearchIndexer:
     def index_documents(self, documents: List[Any], id_field: str = "chunk_id"):
         """Indexes a list of Pydantic models into OpenSearch using the Bulk API.
 
+        Deletes any existing documents with the same source_doc_id before indexing new ones.
+        If any errors occur during indexing, all partially indexed documents are cleaned up.
+
         Args:
-            documents: A list of Pydantic models (e.g., OpenSearchDocument).
-            id_field: The attribute name on the model to use as the document's _id.
+            documents (List[Any]): A list of Pydantic models to index (e.g., DocumentChunk or DocumentPage).
+            id_field (str): The attribute name on the model to use as the document's _id.
+                Defaults to "chunk_id".
 
         Returns:
-            A tuple containing the number of successfully indexed documents and any errors.
+            Tuple[int, List]: A tuple containing:
+                - int: The number of successfully indexed documents.
+                - List: Any errors that occurred during indexing (empty list if all succeeded).
+
+        Raises:
+            IndexingError: If bulk indexing fails or if an unexpected error occurs.
         """
         if not documents:
             logger.warning("No documents provided to index.")
@@ -136,7 +145,15 @@ class OpenSearchIndexer:
             }
 
     def delete_documents_by_source_doc_id(self, source_doc_id: str):
-        """Deletes all documents in the index with the given source_doc_id."""
+        """Deletes all documents in the index with the given source_doc_id.
+
+        Args:
+            source_doc_id (str): The unique identifier of the source document whose
+                associated documents should be deleted.
+
+        Raises:
+            Exception: If deletion fails for reasons other than version conflicts.
+        """
         query = {"query": {"match": {"source_doc_id": source_doc_id}}}
         try:
             response = self.client.delete_by_query(index=self.index_name, body=query)

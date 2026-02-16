@@ -34,17 +34,20 @@ class LayoutTextChunkingStrategy(ChunkingStrategyHandler):
         chunk_index_start: int,
         raw_response: Optional[dict] = None,
     ) -> List[DocumentChunk]:
-        """Extract chunks using line-based splitting strategy.
+        """Extracts chunks using line-based splitting strategy.
+
+        Processes a layout block by splitting its child lines into chunks based on character
+        size limits. Creates atomic chunks that will later be merged by ChunkMerger.
 
         Args:
-            layout_block (LayoutBlock): The Textractor LayoutBlock to process.
-            page_number (int): The page number of the layout_block.
-            metadata (DocumentMetadata): The document metadata.
-            chunk_index_start (int): The starting index for the chunks produced by this block.
-            raw_response (Optional[dict], optional): The raw response from Textract. Defaults to None.
+            layout_block (LayoutBlock): The Textractor LayoutBlock containing lines to process.
+            page_number (int): The page number where this layout block appears.
+            metadata (DocumentMetadata): Document metadata for chunk creation.
+            chunk_index_start (int): The starting index for numbering chunks from this block.
+            raw_response (Optional[dict]): The raw Textract API response. Defaults to None.
 
         Returns:
-            List[DocumentChunk]: The list of document chunks produced from the layout_block.
+            List[DocumentChunk]: Atomic chunks created from the layout block's lines.
         """
         chunks = []
         chunk_index = chunk_index_start
@@ -105,22 +108,25 @@ class LayoutTextChunkingStrategy(ChunkingStrategyHandler):
         lines: List[str],
         bboxes: List[BoundingBox],
         layout_block,
-        page_number,
+        page_number: int,
         metadata: DocumentMetadata,
         chunk_index: int,
     ) -> DocumentChunk:
         """Creates a document chunk from the given lines and metadata.
 
+        Combines multiple lines into a single chunk by joining their text and merging
+        their bounding boxes into a unified boundary.
+
         Args:
-            lines (List[str]): The lines to include in the chunk.
-            bboxes (List[BoundingBox]): The bounding boxes of the lines.
-            layout_block (LayoutBlock): The Textractor LayoutBlock type.
-            page_number (int): The page number of the layout block.
-            metadata (DocumentMetadata): The document metadata.
-            chunk_index (int): The index of the chunk.
+            lines (List[str]): The text lines to combine into the chunk.
+            bboxes (List[BoundingBox]): The bounding boxes corresponding to each line.
+            layout_block (LayoutBlock): The parent Textractor LayoutBlock.
+            page_number (int): The page number where this chunk appears.
+            metadata (DocumentMetadata): Document metadata for chunk creation.
+            chunk_index (int): The sequential index for this chunk.
 
         Returns:
-            DocumentChunk: The created document chunk.
+            DocumentChunk: The created document chunk with combined text and merged bounding box.
         """
         # Debug: Only log bounding boxes for specified pages
         if page_number in DEBUG_PAGE_NUMBERS:

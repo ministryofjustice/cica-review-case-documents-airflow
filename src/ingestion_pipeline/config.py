@@ -27,7 +27,17 @@ ENV_FILE_PATH = PROJECT_ROOT / ".env"
 
 
 class Settings(BaseSettings):  # type: ignore
-    """Configuration settings for the ingestion pipeline."""
+    """Configuration settings for the ingestion pipeline.
+
+    Loads settings from environment variables and .env file (if present in local development).
+    Priority order: CLI args > Environment variables > .env file > Default values.
+
+    Attributes:
+        OPENSEARCH_PROXY_URL: OpenSearch endpoint URL for document indexing.
+        AWS_REGION: AWS region for all AWS service clients.
+        DEBUG_PAGE_NUMBERS: Set of page numbers to enable detailed debug logging for.
+        LOCAL_DEVELOPMENT_MODE: Flag to enable local development features (LocalStack, URI remapping).
+    """
 
     model_config = SettingsConfigDict(
         # Only load .env if it exists (local dev)

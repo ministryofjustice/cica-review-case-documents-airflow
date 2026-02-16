@@ -40,17 +40,23 @@ class DocumentChunker:
         self.strategy_handlers = strategy_handlers
 
     def chunk(self, doc: Document, metadata: DocumentMetadata) -> ProcessedDocument:
-        """Parses a Textractor Document and extracts specified layout blocks as structured chunks.
+        """Parses a Textractor Document and extracts layout blocks as structured chunks.
+
+        Processes all pages in the document, applying appropriate chunking strategies to each
+        layout block based on its type. Returns atomic chunks that are later merged into larger
+        chunks by ChunkMerger.
 
         Args:
-            doc: Textractor Document to process
-            metadata: Document metadata
+            doc (Document): Textractor Document containing pages and layout blocks to process.
+            metadata (DocumentMetadata): Document metadata including source file information.
+
         Returns:
-            List of OpenSearchChunk objects
+            ProcessedDocument: Container with the list of extracted DocumentChunk objects.
 
         Raises:
-            ValueError: If metadata validation fails
-            ChunkException: If chunk extraction fails
+            ValueError: If the document is None or contains no pages.
+            ChunkException: If the raw Textract response is missing.
+            ChunkError: If chunk extraction fails during processing.
         """
         try:
             # Metadata is a Pydantic model, so its fields are validated on instantiation.
@@ -149,14 +155,18 @@ class DocumentChunker:
         return grouped_chunks
 
     def _should_process_block(self, layout_block, layout_types: Mapping[str, ChunkingStrategyHandler]) -> bool:
-        """Determine if a layout block should be processed.
+        """Determines if a layout block should be processed.
+
+        A block is processed if it has a recognized layout type, contains non-empty text,
+        and has a registered strategy handler.
 
         Args:
-            layout_block (layout_block): The layout block to check.
-            layout_types (Mapping[str, ChunkingStrategyHandler]): The mapping of layout types to their handlers.
+            layout_block (LayoutBlock): The layout block to evaluate.
+            layout_types (Mapping[str, ChunkingStrategyHandler]): Mapping of layout types
+                to their corresponding strategy handlers.
 
         Returns:
-            bool: True if the block should be processed, False otherwise.
+            bool: True if the block meets processing criteria, False otherwise.
         """
         if not (
             layout_block.layout_type in layout_types

@@ -34,22 +34,23 @@ class ChunkMerger:
         self.max_vertical_gap = max_vertical_gap
 
     def group_atomic_chunks(self, atomic_chunks: List[DocumentChunk]) -> List[DocumentChunk]:
-        """Groups atomic chunks.
+        """Groups atomic chunks into larger merged chunks.
 
-        This method(typically line-based, each with its own bounding box and text)
-        into larger merged chunks. This method buffers atomic chunks and determines when to
-        start a new group based on:
+        This method processes atomic chunks (typically line-based, each with its own bounding
+        box and text) and groups them into larger merged chunks. It buffers atomic chunks and
+        determines when to start a new group based on:
             - word count limit
             - vertical gap between chunks
             - page number changes
-        When a flush condition is met, the buffered atomic chunks are merged into a single chunk
-        using the _merge_chunks method.
+
+        When a flush condition is met, the buffered atomic chunks are merged into a single
+        chunk using the _merge_chunks method.
 
         Args:
-            atomic_chunks: List of atomic (line-based) chunks.
+            atomic_chunks (List[DocumentChunk]): List of atomic (line-based) chunks to group.
 
         Returns:
-            List[DocumentChunk]: List of merged chunks.
+            List[DocumentChunk]: List of merged chunks with combined text and bounding boxes.
         """
         if not atomic_chunks:
             return []
@@ -129,17 +130,18 @@ class ChunkMerger:
         return merged_chunks
 
     def _merge_chunks(self, chunks: List[DocumentChunk], chunk_index: int) -> DocumentChunk:
-        """Merges a list of atomic chunks (previously grouped by group_atomic_chunks).
+        """Merges a list of atomic chunks into a single DocumentChunk.
 
-        Merges into a single DocumentChunk. This combines their text, merges their bounding boxes,
-        and creates a new chunk object with combined metadata.
+        Combines the text from multiple atomic chunks (previously grouped by group_atomic_chunks),
+        merges their bounding boxes, and creates a new chunk object with combined metadata.
 
         Args:
-            chunks: List of atomic chunks to merge (from the buffer in group_atomic_chunks).
-            chunk_index: Index for the new chunk.
+            chunks (List[DocumentChunk]): List of atomic chunks to merge from the buffer.
+            chunk_index (int): Index for the newly created merged chunk.
 
         Returns:
-            DocumentChunk: A merged DocumentChunk representing the group.
+            DocumentChunk: A merged DocumentChunk representing the group with combined text
+                and unified bounding box.
         """
         first_chunk = chunks[0]
         if first_chunk.page_number in DEBUG_PAGE_NUMBERS:

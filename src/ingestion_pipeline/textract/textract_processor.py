@@ -57,13 +57,13 @@ class TextractProcessor:
         self.poll_interval = poll_interval
 
     def _start_textract_job(self, s3_document_uri: str) -> str:
-        """Starts a Textract analysis job and returns the JobId.
+        """Starts a Textract document analysis job.
 
         Args:
-            s3_document_uri (str): The S3 URI of the document to process.
+            s3_document_uri (str): The S3 URI of the document to analyze.
 
         Returns:
-            str: The JobId of the started Textract job.
+            str: The unique JobId assigned to the Textract analysis job.
         """
         logger.info(f"Begin Textract job for {s3_document_uri}")
         document = self.textractor.start_document_analysis(
@@ -78,13 +78,13 @@ class TextractProcessor:
         """Polls Textract until the job completes, fails, or times out.
 
         Args:
-            job_id (str): The JobId of the Textract job to poll.
-
-        Raises:
-            TimeoutError: If the job does not complete within the timeout period.
+            job_id (str): The unique JobId of the Textract job to monitor.
 
         Returns:
-            str: The final status of the Textract job.
+            str: The final status of the Textract job (e.g., 'SUCCEEDED', 'FAILED', 'PARTIAL_SUCCESS').
+
+        Raises:
+            TimeoutError: If the job does not complete within the configured timeout period.
         """
         start_time = time.time()
         while time.time() - start_time < self.timeout_seconds:
@@ -100,13 +100,14 @@ class TextractProcessor:
         raise TimeoutError(f"Textract job {job_id} timed out after {self.timeout_seconds} seconds.")
 
     def _get_job_results(self, job_id: str) -> Document:
-        """Fetches the results of a completed Textract job.
+        """Fetches and parses the results of a completed Textract job.
 
         Args:
-            job_id (str): The JobId of the Textract job to fetch results for.
+            job_id (str): The unique JobId of the completed Textract job.
 
         Returns:
-            Document: The parsed document containing the Textract job results.
+            Document: The parsed Textractor document containing all detected blocks,
+                layout information, and text elements.
         """
         logger.info(f"Fetching results for Textract job {job_id}")
         full_response = get_full_json(
@@ -115,13 +116,20 @@ class TextractProcessor:
         return parse(full_response)
 
     def process_document(self, s3_document_uri: str) -> Document | None:
-        """Process and parse a document from S3 using Textract.
+        """Process and parse a document from S3 using AWS Textract.
+
+        Starts a Textract analysis job, polls until completion, and retrieves the parsed results.
+        In LOCAL_DEVELOPMENT_MODE, remaps the S3 URI to use the local development bucket.
 
         Args:
-            s3_document_uri (str): The S3 URI of the document to process.
+            s3_document_uri (str): The S3 URI of the document to process
+                (e.g., 's3://bucket/path/to/document.pdf').
 
         Returns:
-            Document: Document, or None on failure.
+            Document | None: The parsed Textract document with layout analysis, or None on failure.
+
+        Raises:
+            TextractProcessingError: If the Textract job fails or if document processing encounters an error.
         """
         logger.info(f"Processing s3 file: {s3_document_uri}")
         if LOCAL_DEVELOPMENT_MODE:

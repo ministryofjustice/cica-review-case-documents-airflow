@@ -56,8 +56,19 @@ class Pipeline:
     def process_document(self, document_metadata: DocumentMetadata):
         """Runs the full pipeline for a single document.
 
+        Orchestrates the complete document processing workflow including Textract analysis,
+        page processing, chunking, embedding generation, and indexing into OpenSearch.
+
         Args:
-            document_metadata: Metadata of the document to process.
+            document_metadata (DocumentMetadata): Metadata of the document to process including
+                source file location, case reference, and correspondence type.
+
+        Raises:
+            TextractProcessingError: If Textract analysis fails.
+            ChunkError: If document chunking fails.
+            EmbeddingError: If embedding generation fails.
+            IndexingError: If OpenSearch indexing fails.
+            PipelineError: If an unexpected error occurs during processing.
         """
         source_doc_id = document_metadata.source_doc_id
 
@@ -96,7 +107,14 @@ class Pipeline:
             raise PipelineError(f"Unexpected pipeline failure: {str(e)}") from e
 
     def _cleanup_indexed_data(self, source_doc_id: str):
-        """Removes any indexed data for the failed document."""
+        """Removes any indexed data for a failed document.
+
+        Attempts to delete all chunks and page metadata from OpenSearch indices
+        associated with the given source document ID.
+
+        Args:
+            source_doc_id (str): The unique identifier of the source document.
+        """
         try:
             logger.info("Cleaning up indexed data")
             self.chunk_indexer.delete_documents_by_source_doc_id(source_doc_id)

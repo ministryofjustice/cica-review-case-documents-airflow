@@ -9,14 +9,13 @@ from ingestion_pipeline.config import settings
 
 
 def get_s3_client():
-    """Creates and returns a boto3 S3 client configured for either local or external development environments.
+    """Creates a boto3 S3 client configured for local or AWS environments.
 
-    If the LOCAL_DEVELOPMENT_MODE setting is set to "true" (case-insensitive), the client is configured
-    to connect to a local S3-compatible endpoint (e.g., LocalStack) with test credentials.
-    Otherwise, the client is configured to connect to AWS S3 using credentials and region specified in settings.
+    In LOCAL_DEVELOPMENT_MODE, connects to LocalStack at localhost:4566 with test credentials.
+    Otherwise, connects to AWS S3 using credentials from settings.
 
     Returns:
-        boto3.client: A configured boto3 S3 client instance.
+        boto3.client: Configured S3 client instance for the appropriate environment.
     """
     local_mode = getattr(settings, "LOCAL_DEVELOPMENT_MODE", False)
     if isinstance(local_mode, str):
@@ -41,21 +40,18 @@ def get_s3_client():
 
 
 def get_textractor_instance():
-    """Creates and returns a Textractor instance configured with temporary AWS credentials.
+    """Creates a Textractor instance with AWS credentials from settings.
 
-    This function temporarily overrides the AWS credential environment variables with values
-    from the application settings to instantiate a Textractor client for the specified AWS region.
-    After the client is created, the original environment variables if present are restored to their previous values.
+    Temporarily sets AWS credential environment variables from settings to instantiate
+    the Textractor client, then restores original environment variables. This is required
+    because Textractor reads credentials from environment variables.
 
     Returns:
-        Textractor: An instance of the Textractor client configured with the specified AWS credentials and region.
+        Textractor: Configured Textractor client instance for the specified AWS region.
 
-    Raises:
-        Any exception raised by the Textractor constructor or environment variable manipulation.
-
-    Note:
-        This function modifies process-wide environment variables and should be used with caution
-        in multi-threaded or multi-process environments.
+    Warning:
+        Modifies process-wide environment variables. Use with caution in multi-threaded
+        or multi-process environments.
     """
     # Store original values
     original_env = {
@@ -77,7 +73,11 @@ def get_textractor_instance():
 
 
 def get_textract_client():
-    """Creates and returns a boto3 Textract client configured with credentials from settings."""
+    """Creates a boto3 Textract client configured with credentials from settings.
+
+    Returns:
+        boto3.client: Configured Textract client instance for document analysis API calls.
+    """
     return boto3.client(
         "textract",
         aws_access_key_id=settings.AWS_MOD_PLATFORM_ACCESS_KEY_ID,
