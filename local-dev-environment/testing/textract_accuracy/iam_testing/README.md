@@ -83,6 +83,7 @@ def normalize_text(text: str) -> str:
    ```bash
    export AWS_MOD_PLATFORM_ACCESS_KEY_ID="..."
    export AWS_MOD_PLATFORM_SECRET_ACCESS_KEY="..."
+<<<<<<< HEAD
    export AWS_REGION="us-east-1"
    ```
    Or add to `.env` file in project root.
@@ -129,6 +130,8 @@ def normalize_text(text: str) -> str:
    ```bash
    export AWS_ACCESS_KEY_ID="..."
    export AWS_SECRET_ACCESS_KEY="..."
+=======
+>>>>>>> 435e12b (add/custom_doc_ocr_and_augmentation)
    export AWS_REGION="us-east-1"
    ```
    Or add to `.env` file in project root.

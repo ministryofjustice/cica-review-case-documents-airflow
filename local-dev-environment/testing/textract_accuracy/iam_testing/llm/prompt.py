@@ -190,15 +190,6 @@ PROMPTS = {
         "Use British English (UK) spellings. "
         "Return ONLY the corrected text."
     ),
-    # v2.3: v2 + single anti-insertion constraint (minimal token increase)
-    "v2.3": (
-        "Fix OCR errors in the following handwritten text transcription. "
-        "Correct character misrecognitions, spacing issues, and obvious typos. "
-        "Do NOT add or remove words. "
-        "Preserve proper nouns (names, places) and short ambiguous words (in/is/on, we/he) exactly as written. "
-        "Use British English (UK) spellings. "
-        "Return ONLY the corrected text."
-    ),
     # v2.1: Concise prompt with anti-insertion rules
     "v2.1": (
         "Fix OCR errors in the following handwritten text transcription. "
@@ -217,14 +208,20 @@ PROMPTS = {
         "Fix obvious proper noun misspellings but preserve ambiguous short words (in/is/on, we/he). "
         "Use British English. Return ONLY the corrected text."
     ),
+    # v2.3: v2 + single anti-insertion constraint (minimal token increase)
+    "v2.3": (
+        "Fix OCR errors in the following handwritten text transcription. "
+        "Correct character misrecognitions, spacing issues, and obvious typos. "
+        "Do NOT add or remove words. "
+        "Preserve proper nouns (names, places) and short ambiguous words (in/is/on, we/he) exactly as written. "
+        "Use British English (UK) spellings. "
+        "Return ONLY the corrected text."
+    ),
     # v2.4: Domain-specific for clinical/mental health notes (CICA documents)
     "v2.4": (
         "Fix OCR errors in handwritten clinical/mental health notes. "
         "Correct character misrecognitions, spacing issues, and obvious typos. "
         "Do NOT add or remove words. "
-        "Common terms: patient, assessment, MHA (Mental Health Act), section 136/s136, "
-        "police, hospital, admission, cannabis, medication names, HCA (Healthcare Assistant). "
-        "Preserve dates (e.g., 15/05/2020), times (e.g., 23.20hr), and abbreviations exactly. "
         "Use British English (UK) spellings. "
         "Return ONLY the corrected text."
     ),
@@ -234,10 +231,18 @@ PROMPTS = {
         "These are often fragmented notes, not full sentences - preserve the original structure. "
         "Correct character misrecognitions and spacing issues only. "
         "Do NOT add, remove, or rearrange words. Do NOT add punctuation. "
-        "Common terms: patient, assessment, MHA, section 136/s136, police, hospital, "
-        "admission, cannabis, HCA, ward, bed, staff. "
         "Preserve dates, times, and abbreviations exactly as written. "
         "Use British English. Return ONLY the corrected text."
+    ),
+    # v2.6: Clinical domain + no multi-word deletions, best-guess unrecognisable words
+    "v2.6": (
+        "Fix OCR errors in handwritten clinical/mental health notes. "
+        "Correct character misrecognitions and spacing issues only. "
+        "Do NOT delete multiple words or replace a sequence of words with fewer words. "
+        "If a word is unrecognisable, make your best single-word guess - do NOT skip it. "
+        "Preserve dates (e.g., 15/05/2020), times (e.g., 23.20hr), and abbreviations exactly. "
+        "Use British English (UK) spellings. "
+        "Return ONLY the corrected text."
     ),
     # v3: Context-aware prompt - emphasizes understanding (commented out for testing)
     # "v3": (
@@ -249,33 +254,6 @@ PROMPTS = {
     #     "Preserve proper nouns (names, places) exactly. Keep short ambiguous words (in/is/on, we/he) as-is. "
     #     "Use British English (UK) spellings (e.g., 'organisation', 'colour'). "
     #     "Output ONLY the corrected text, nothing else."
-    # ),
-    # v4: Few-shot with OCR confusion patterns (commented out for testing)
-    # "v4": (
-    #     "You are an OCR error correction assistant. Fix recognition errors in handwritten text.\n\n"
-    #     "COMMON OCR CONFUSIONS:\n"
-    #     "- l/1/I (lowercase L, one, uppercase i)\n"
-    #     "- 0/O (zero vs letter O)\n"
-    #     "- rn/m (r+n misread as m)\n"
-    #     "- cl/d (c+l misread as d)\n"
-    #     "- vv/w (v+v misread as w)\n"
-    #     "- Missing/extra spaces between words\n"
-    #     "- h/b, e/c, t/f confusions\n\n"
-    #     "EXAMPLES:\n"
-    #     'Input: "tbe quich brown fox jurnps over tbe lazy d0g"\n'
-    #     'Output: "the quick brown fox jumps over the lazy dog"\n\n'
-    #     'Input: "Mr. Srnith went to tne bank on Monclay rnorning"\n'
-    #     'Output: "Mr. Smith went to the bank on Monday morning"\n\n'
-    #     'Input: "Tbe cornmittee will rneet at 3:00 prn tomorrow"\n'
-    #     'Output: "The committee will meet at 3:00 pm tomorrow"\n\n'
-    #     "RULES:\n"
-    #     "- Make MINIMAL changes - only fix clear OCR errors\n"
-    #     "- Do NOT rephrase or add words\n"
-    #     "- Preserve original meaning exactly\n"
-    #     "- Preserve proper nouns exactly (names of people, places, organisations)\n"
-    #     "- Keep short ambiguous words as-is (e.g., 'in', 'is', 'on', 'we', 'he')\n"
-    #     "- Use British English (UK) spellings (e.g., 'organisation', 'colour', 'behaviour')\n"
-    #     "- Return ONLY the corrected text, no explanations or commentary"
     # ),
 }
 

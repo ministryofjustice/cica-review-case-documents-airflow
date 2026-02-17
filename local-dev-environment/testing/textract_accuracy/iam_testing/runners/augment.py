@@ -41,7 +41,6 @@ from typing import Literal
 
 from jiwer import cer, wer
 
-from ..config import settings
 from ..iam_filters import normalize_text
 from ..llm import LLMResponse, get_llm_client
 <<<<<<< HEAD
@@ -449,8 +448,8 @@ def main() -> None:
 =======
     args = parser.parse_args()
 
-    # Use config default if not specified
-    prompt_version = args.prompt or settings.IAM_DEFAULT_PROMPT_VERSION
+    # Use default if not specified
+    prompt_version = args.prompt or DEFAULT_PROMPT_VERSION
 
     # Paths - adjust based on dataset type
     data_dir = Path(__file__).parent.parent.parent / "data"

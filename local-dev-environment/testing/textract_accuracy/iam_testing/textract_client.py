@@ -28,6 +28,7 @@ def get_textract_client() -> "TextractClient":
         "textract",
         region_name=settings.AWS_REGION,
 <<<<<<< HEAD
+<<<<<<< HEAD
         aws_access_key_id=settings.AWS_MOD_PLATFORM_ACCESS_KEY_ID,
         aws_secret_access_key=settings.AWS_MOD_PLATFORM_SECRET_ACCESS_KEY,
         aws_session_token=settings.AWS_MOD_PLATFORM_SESSION_TOKEN,
@@ -36,6 +37,11 @@ def get_textract_client() -> "TextractClient":
         aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
         aws_session_token=settings.AWS_SESSION_TOKEN,
 >>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
+=======
+        aws_access_key_id=settings.AWS_MOD_PLATFORM_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_MOD_PLATFORM_SECRET_ACCESS_KEY,
+        aws_session_token=settings.AWS_MOD_PLATFORM_SESSION_TOKEN,
+>>>>>>> 435e12b (add/custom_doc_ocr_and_augmentation)
     )
 
 
