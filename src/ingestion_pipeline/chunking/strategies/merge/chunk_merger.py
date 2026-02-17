@@ -7,6 +7,7 @@ from textractor.entities.layout import Layout
 
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes
+from ingestion_pipeline.chunking.verbose_page_debug_logger import is_verbose_page_debug, log_verbose_page_debug
 
 logger = logging.getLogger(__name__)
 
@@ -31,84 +32,144 @@ class ChunkMerger:
         self.word_limit = word_limit
         self.max_vertical_gap = max_vertical_gap
 
-    def merge_chunks(self, atomic_chunks: List[DocumentChunk]) -> List[DocumentChunk]:
-        """Groups atomic chunks into larger chunks.
+    def group_and_merge_atomic_chunks(self, atomic_chunks: List[DocumentChunk]) -> List[DocumentChunk]:
+        """Groups and merges atomic chunks into larger merged chunks.
 
-        Uses word limit and spatial grouping.
+        This method processes atomic chunks (typically line-based, each with its own bounding
+        box and text) by grouping them based on criteria and merging them into larger chunks.
+        It buffers atomic chunks and determines when to start a new group based on:
+            - word count limit
+            - vertical gap between chunks
+            - page number changes
+
+        When a flush condition is met, the buffered atomic chunks are merged into a single
+        chunk using the _merge_chunks method.
 
         Args:
-            atomic_chunks: A list of atomic chunks from layout block handlers.
+            atomic_chunks (List[DocumentChunk]): List of atomic (line-based) chunks to group and merge.
 
         Returns:
-            List[DocumentChunk]: A list of grouped OpenSearchDocument chunks.
+            List[DocumentChunk]: List of merged chunks with combined text and bounding boxes.
         """
         if not atomic_chunks:
             return []
 
-        grouped_chunks = []
-        buffer = []
+        logger.debug(
+            f"Grouping {len(atomic_chunks)} atomic chunks into merged chunks with word limit {self.word_limit}"
+        )
+        merged_chunks = []
+        atomic_chunk_buffer = []
         buffer_word_count = 0
         current_page = atomic_chunks[0].page_number
-        chunk_index = 0
+        merged_chunk_index = 0
 
-        for chunk in atomic_chunks:
-            chunk_word_count = len(chunk.chunk_text.split())
+        for atomic_chunk in atomic_chunks:
+            atomic_chunk_word_count = len(atomic_chunk.chunk_text.split())
+            should_group_buffer = False
+            if atomic_chunk_buffer:
+                last_atomic_chunk = atomic_chunk_buffer[-1]
+                inter_chunk_vertical_gap = atomic_chunk.bounding_box.top - last_atomic_chunk.bounding_box.bottom
 
-            # Determine if we need to flush the buffer before adding the new chunk
-            should_flush = False
-            if buffer:
-                last_chunk_in_buffer = buffer[-1]
+                # Flush conditions
+                if atomic_chunk.page_number != current_page:
+                    should_group_buffer = True
+                elif buffer_word_count + atomic_chunk_word_count > self.word_limit:
+                    should_group_buffer = True
+                elif abs(inter_chunk_vertical_gap) > self.max_vertical_gap:
+                    should_group_buffer = True
 
-                # Check for flush conditions in order of priority
-                if chunk.page_number != current_page:
-                    should_flush = True
-                elif buffer_word_count + chunk_word_count > self.word_limit:
-                    should_flush = True
-                else:
-                    # Spatially-aware check: flush if there's a large vertical gap
-                    vertical_gap = chunk.bounding_box.top - last_chunk_in_buffer.bounding_box.bottom
-                    if abs(vertical_gap) > self.max_vertical_gap:
-                        should_flush = True
+                # High-level debug logging for specified pages
+                if is_verbose_page_debug(atomic_chunk.page_number, "chunk_merger:group_and_merge_atomic_chunks"):
+                    log_verbose_page_debug(
+                        atomic_chunk.page_number,
+                        f"Page {atomic_chunk.page_number}: "
+                        f"merged_chunk_index={merged_chunk_index}, "
+                        f"buffer_size={len(atomic_chunk_buffer)}, "
+                        f"should_group_buffer={should_group_buffer}, "
+                        f"inter_chunk_vertical_gap={inter_chunk_vertical_gap:.5f}, "
+                        f"buffer_word_count={buffer_word_count}, "
+                        f"atomic_chunk_word_count={atomic_chunk_word_count}",
+                        "chunk_merger:group_and_merge_atomic_chunks",
+                    )
 
-            if should_flush:
-                grouped_chunks.append(self._merge_chunks(buffer, chunk_index))
-                chunk_index += 1
-                buffer = []
+            if should_group_buffer:
+                merged_chunks.append(self._merge_chunks(atomic_chunk_buffer, merged_chunk_index))
+                merged_chunk_index += 1
+                atomic_chunk_buffer = []
                 buffer_word_count = 0
 
-            # Update the current page if it has changed (applies after a potential flush)
-            if chunk.page_number != current_page:
-                current_page = chunk.page_number
+            if atomic_chunk.page_number != current_page:
+                current_page = atomic_chunk.page_number
 
-            buffer.append(chunk)
-            buffer_word_count += chunk_word_count
+            atomic_chunk_buffer.append(atomic_chunk)
+            buffer_word_count += atomic_chunk_word_count
 
-        # After the loop, flush any remaining chunks in the buffer
-        if buffer:
-            grouped_chunks.append(self._merge_chunks(buffer, chunk_index))
+        if atomic_chunk_buffer:
+            merged_chunks.append(self._merge_chunks(atomic_chunk_buffer, merged_chunk_index))
 
         logger.debug(
-            f"Grouped {len(grouped_chunks)} page-level chunks from {len(atomic_chunks)} atomic chunks. "
+            f"[chunk_merger:group_and_merge_atomic_chunks] Grouped {len(merged_chunks)} merged chunks from "
+            f"{len(atomic_chunks)} atomic chunks. "
             f"Word limit: {self.word_limit}, Y-tolerance-ratio: {self.max_vertical_gap}. "
         )
 
-        for c in grouped_chunks:
-            logger.debug(f"Chunk {c.chunk_id} (Page {c.page_number}, Words: {c.word_count}): {c.chunk_text}")
+        for c in merged_chunks:
+            logger.debug(
+                f"[chunk_merger:group_and_merge_atomic_chunks] Merged Chunk "
+                f"{c.chunk_id} (Page {c.page_number}, new index: {c.chunk_index}, "
+                f"Words: {c.word_count}), "
+                f"{c.chunk_text[:30]}...{c.chunk_text[-10:]},"
+                f"bbox: left={c.bounding_box.left}, top={c.bounding_box.top}, width={c.bounding_box.width}, "
+                f"height={c.bounding_box.height}, bottom={c.bounding_box.bottom}, right={c.bounding_box.right}"
+            )
 
-        return grouped_chunks
+        return merged_chunks
 
     def _merge_chunks(self, chunks: List[DocumentChunk], chunk_index: int) -> DocumentChunk:
-        """Merges a list of atomic chunks into a single OpenSearchDocument.
+        """Merges a list of atomic chunks into a single DocumentChunk.
+
+        Combines the text from multiple atomic chunks (previously grouped by group_and_merge_atomic_chunks),
+        merges their bounding boxes, and creates a new chunk object with combined metadata.
 
         Args:
-            chunks: List of atomic chunks to merge.
-            chunk_index: Index for the new chunk.
+            chunks (List[DocumentChunk]): List of atomic chunks to merge from the buffer.
+            chunk_index (int): Index for the newly created merged chunk.
 
         Returns:
-            DocumentChunk: A merged OpenSearchDocument.
+            DocumentChunk: A merged DocumentChunk representing the group with combined text
+                and unified bounding box.
         """
+        first_chunk = chunks[0]
+        if is_verbose_page_debug(first_chunk.page_number, "chunk_merger:_merge_chunks"):
+            log_verbose_page_debug(
+                first_chunk.page_number,
+                f"Merging page {first_chunk.page_number} "
+                f"new page chunk index {chunk_index} - merging, chunk count {len(chunks)}",
+                "chunk_merger:_merge_chunks",
+            )
+            for i, c in enumerate(chunks):
+                bbox = c.bounding_box
+                log_verbose_page_debug(
+                    first_chunk.page_number,
+                    f"Atomic chunk {i}: index={c.chunk_index}, "
+                    f"text='{c.chunk_text[:30]}...{c.chunk_text[-20:]}', "
+                    f"bbox: left={bbox.left}, top={bbox.top}, width={bbox.width}, "
+                    f"height={bbox.height}, bottom={bbox.bottom}, right={bbox.right}",
+                    "chunk_merger:_merge_chunks",
+                )
+
         merged_text = " ".join([c.chunk_text for c in chunks]).strip()
         merged_bbox = combine_bounding_boxes([c.bounding_box.to_textractor_bbox() for c in chunks])
+
+        log_verbose_page_debug(
+            first_chunk.page_number,
+            f"Merged chunk {chunk_index} bbox: left={merged_bbox.x}, "
+            f"top={merged_bbox.y}, width={merged_bbox.width}, "
+            f"height={merged_bbox.height}, "
+            f"bottom={merged_bbox.y + merged_bbox.height}, "
+            f"right={merged_bbox.x + merged_bbox.width}",
+            "chunk_merger:_merge_chunks",
+        )
 
         first_chunk = chunks[0]
         page_number = first_chunk.page_number

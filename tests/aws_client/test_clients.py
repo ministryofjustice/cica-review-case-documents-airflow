@@ -12,6 +12,7 @@ def mock_settings(monkeypatch):
         AWS_REGION = "eu-west-2"
         AWS_CICA_AWS_ACCESS_KEY_ID = "real-key"
         AWS_CICA_AWS_SECRET_ACCESS_KEY = "real-secret"
+        AWS_CICA_AWS_SESSION_TOKEN = "mock-seesion-token"
         AWS_MOD_PLATFORM_ACCESS_KEY_ID = "mod-key"
         AWS_MOD_PLATFORM_SECRET_ACCESS_KEY = "mod-secret"
         AWS_MOD_PLATFORM_SESSION_TOKEN = "mod-token"
@@ -30,6 +31,7 @@ def test_get_s3_client_production(monkeypatch, mock_settings):
         "s3",
         aws_access_key_id="real-key",
         aws_secret_access_key="real-secret",
+        aws_session_token="mock-seesion-token",
         region_name="eu-west-2",
     )
 

@@ -58,11 +58,86 @@ To install the project's package requirements and their versions defined in `pyp
 uv sync 
 ```
 
-
 The `uv.lock` file is required to ensure the specific package versions defined there are installed, rather than their latest versions.
-
-
 If you need to run a Python script from outside the `uv` environment, you can do so using the following format: `uv run src/ingestion_pipeline/main.py`
+
+#### Managing Vulnerabilities and Dependency Overrides
+
+This project uses uv's `constraint-dependencies` feature in `pyproject.toml` to ensure patched versions of sub-dependencies are installed, even if direct dependencies do not specify them. This is important for addressing vulnerabilities identified by tools like Trivy.
+
+##### **Workflow:**
+1. Add any required overrides (e.g., for security patches) to the `[tool.uv]` section in `pyproject.toml`
+   Example:
+   ```toml
+      [tool.uv]
+      constraint-dependencies = [
+         "pillow>=12.1.1",
+         "protobuf>=6.33.5",
+      ]
+   ```
+2. Update the lock file to apply constraints:
+
+```uv lock --upgrade```
+
+3. Sync your environment:
+
+```uv sync```
+
+4. Commit the updated uv.lock and pyproject.toml files.
+
+**Note:**  
+- The Docker build and local environment will use the versions specified in `uv.lock`.
+- Always update `uv.lock` after changing `constraints.txt` to ensure patched versions are installed.
+
+##### Managing Trivy Exceptions:
+Some vulnerabilities may need to be explicitly ignored if they:
+
+Affect build-time only dependencies that are not controllable via pyproject.toml
+Are false positives or not exploitable in your application context
+Cannot be fixed due to upstream package constraints
+To ignore a vulnerability, add it to the [trivyignore](.trivyignore) file with justification:
+
+```
+# wheel CVE-2026-24049 - Build-time only dependency from base image
+# Not a runtime risk as application does not unpack untrusted wheel files
+CVE-2026-24049
+```
+Document the reason for each exception to help future maintainers understand the security posture.
+
+This approach ensures your project remains secure and reproducible, even when upstream packages are slow to update their dependencies.
+
+##### Maintenance and Review Process:
+
+###### For constraint-dependencies:
+1. **Document when added:** Include dates in comments:
+   ```toml
+   "pillow>=12.1.1",  # CVE-2024-XXXXX - Added 2026-02-12, review after Q2 2026
+2. Periodic review: After updating dependencies, test if constraints are still needed:
+```
+# Temporarily remove a constraint from pyproject.toml
+uv lock
+# Check if the patched version is now automatically included
+# If yes, the constraint can be removed
+```
+3. Monitor upstream packages: Watch release notes of direct dependencies (e.g., amazon-textract-textractor, opensearch-protobufs) to see when they update their sub-dependencies.
+4. Review schedule: Set a reminder to review constraints quarterly or when major dependency updates occur.
+
+###### For .trivyignore:
+1. Document thoroughly: Each ignored CVE should include:
+   - The CVE ID
+   - Why it's being ignored
+   - When it was added
+   - When it should be reviewed
+2. Review regularly: Check ignored vulnerabilities during security reviews or dependency updates to see if they can be removed.
+3. Link to issues: Consider creating GitHub issues to track ignored vulnerabilities and their resolution.
+
+Example with dates:
+```
+# wheel CVE-2026-24049 - Added 2026-02-12
+# Build-time only dependency from base image
+# Review when base image updates or Q3 2026
+CVE-2026-24049
+```
 
 #### Setting up pre-commit
 
@@ -145,6 +220,71 @@ The project has been set up to add the source document uuid (generated during in
 
 ```2025-11-06 15:05:03 INFO source_doc_id: 91c8ac49-2d20-5b35-b3f9-4563c8553a33 Step 1: Fetching and parsing document with Textract...```
 
+#### Debug Logging for Specific Pages
+
+For troubleshooting chunking and bounding box issues, you can enable detailed debug logging for specific page numbers using the `DEBUG_PAGE_NUMBERS` environment variable in your `.env` file:
+
+```bash
+# Enable debug logging for pages 1, 3, and 5
+DEBUG_PAGE_NUMBERS={1,3,5}
+
+# Disable debug logging (empty set)
+DEBUG_PAGE_NUMBERS={}
+```
+
+When enabled, the chunking pipeline will output detailed information including:
+
+- Bounding box coordinates (left, top, width, height, bottom, right)
+- Chunk text previews
+- Atomic chunk merging decisions
+- Word counts and vertical gap calculations
+
+Running with debug logs:
+
+```
+# View output in terminal (default)
+./run_locally_with_dot_env.sh
+
+# Capture debug output to file for analysis
+./run_locally_with_dot_env.sh --log-to-file
+# Then view: cat debug.log
+```
+This feature is particularly useful when investigating highlighting accuracy and chunking issues without overwhelming the logs with debug information from all pages.
+
+#### Error Handling and Logging Architecture
+
+The pipeline uses a **centralized error handling pattern** to ensure all failures are properly logged and traced:
+
+**Centralized Exception Handling:**
+- The `runner.py` module catches all exceptions from the pipeline execution
+- All failures are logged at **CRITICAL** level with full stack traces (`exc_info=True`)
+- Error logs include complete context: `source_doc_id`, `case_ref`, `s3_uri`, exception type and message
+
+**Component-Level Logging:**
+- Individual components (e.g., indexer, chunker, textract processor) raise exceptions when errors occur
+- Remediation actions (like rolling back partial indexes) are logged at **INFO** level
+- This separates operational logging from error alerting
+
+**Example log flow for a failed indexing operation:**
+
+```
+INFO: Indexing 150 documents into index page_chunks
+INFO: Deleted existing documents due to indexing errors. Errors: [...]
+CRITICAL: Pipeline runner encountered a fatal error for source_doc_id=xxx, case_ref=25-123456: IndexingError: Failed to index all chunks
+```
+
+**Why this pattern:**
+- Single source of truth for pipeline failures (runner logs)
+- All errors include full context for troubleshooting
+- Operational actions (cleanups, retries) logged separately at INFO level
+- Easier to monitor production: watch for CRITICAL logs from runner
+
+**Troubleshooting pipeline failures:**
+1. Search logs for `CRITICAL` level messages from `runner.py`
+2. Use the `source_doc_id` to trace all related log entries
+3. Review INFO-level remediation actions for cleanup details
+
+
 ### Testing the project
 
 The project uses [pytest](https://docs.pytest.org/en/stable/) to run tests see [pytest.ini](`.pytest.ini`) for test configuration and [install pytest](https://docs.pytest.org/en/stable/getting-started.html#get-started)
@@ -210,7 +350,6 @@ Add this to your ~/.bashrc or ~/.zshrc (whichever one you're using):
 export GPG_TTY=$(tty)
 ```
 then run `source ~/.bashrc` or `source ~/.zshrc` to enable the setting.
-
 
 
 ## Read about the GitHub repository standards

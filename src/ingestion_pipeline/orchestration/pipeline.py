@@ -5,7 +5,6 @@ import logging
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
 from ingestion_pipeline.chunking.textract_document_chunker import ChunkError, DocumentChunker
 from ingestion_pipeline.config import settings
-from ingestion_pipeline.custom_logging.log_context import source_doc_id_context
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingError, EmbeddingGenerator
 from ingestion_pipeline.indexing.indexer import IndexingError, OpenSearchIndexer
 from ingestion_pipeline.page_processor.processor import PageProcessor
@@ -57,12 +56,21 @@ class Pipeline:
     def process_document(self, document_metadata: DocumentMetadata):
         """Runs the full pipeline for a single document.
 
+        Orchestrates the complete document processing workflow including Textract analysis,
+        page processing, chunking, embedding generation, and indexing into OpenSearch.
+
         Args:
-            document_metadata: Metadata of the document to process.
+            document_metadata (DocumentMetadata): Metadata of the document to process including
+                source file location, case reference, and correspondence type.
+
+        Raises:
+            TextractProcessingError: If Textract analysis fails.
+            ChunkError: If document chunking fails.
+            EmbeddingError: If embedding generation fails.
+            IndexingError: If OpenSearch indexing fails.
+            PipelineError: If an unexpected error occurs during processing.
         """
         source_doc_id = document_metadata.source_doc_id
-        source_doc_id_context.set(source_doc_id)
-        logger.info("Starting document processing pipeline")
 
         try:
             document = self.textract_processor.process_document(document_metadata.source_file_s3_uri)
@@ -81,8 +89,10 @@ class Pipeline:
                 logger.warning("No chunks were generated. Skipping embedding and indexing.")
                 return
 
+            logger.info(f"Generating embeddings for {len(processed_data.chunks)} chunks")
             for chunk in processed_data.chunks:
                 chunk.embedding = self.embedding_generator.generate_embedding(chunk.chunk_text)
+            logger.info(f"Finished generating embeddings for {len(processed_data.chunks)} chunks")
 
             self.chunk_indexer.index_documents(processed_data.chunks)
             logger.info("Successfully finished processing document")
@@ -95,14 +105,18 @@ class Pipeline:
             logger.critical(f"An unexpected error occurred in the pipeline for document: {e}", exc_info=True)
             self._cleanup_indexed_data(source_doc_id)
             raise PipelineError(f"Unexpected pipeline failure: {str(e)}") from e
-        finally:
-            logger.info("Cleaning up context for document")
-            source_doc_id_context.set(None)
 
     def _cleanup_indexed_data(self, source_doc_id: str):
-        """Removes any indexed data for the failed document."""
+        """Removes any indexed data for a failed document.
+
+        Attempts to delete all chunks and page metadata from OpenSearch indices
+        associated with the given source document ID.
+
+        Args:
+            source_doc_id (str): The unique identifier of the source document.
+        """
         try:
-            logger.info(f"Cleaning up indexed data for document {source_doc_id}")
+            logger.info("Cleaning up indexed data")
             self.chunk_indexer.delete_documents_by_source_doc_id(source_doc_id)
             self.page_indexer.delete_documents_by_source_doc_id(source_doc_id)
         except Exception as cleanup_error:

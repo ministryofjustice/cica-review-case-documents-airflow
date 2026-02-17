@@ -11,6 +11,13 @@ from ingestion_pipeline.orchestration.pipeline import Pipeline
 from ingestion_pipeline.textract.textract_processor import TextractProcessor
 
 
+# Note: This is a workaround until we get a better solution for handling the LOCAL_DEVELOPMENT_MODE
+# for Textract processing.
+@pytest.fixture(autouse=True)
+def set_local_dev_mode_false(monkeypatch):
+    monkeypatch.setattr("ingestion_pipeline.textract.textract_processor.LOCAL_DEVELOPMENT_MODE", False)
+
+
 @pytest.fixture
 def mock_textractor():
     """Provides a mock Textractor object."""
@@ -199,3 +206,32 @@ def test_get_job_results_calls_dependencies_correctly(
     )
     mock_parse.assert_called_once_with(mock_raw_json_response)
     assert result_document is mock_parsed_document
+
+
+def test_process_document_remaps_s3_uri_for_local_dev(monkeypatch, mock_textractor, mock_textract_client):
+    """Test that process_document remaps the S3 URI when LOCAL_DEVELOPMENT_MODE is True."""
+    original_bucket = "original_s3_uri"
+    original_key = "26-711111/Case1_TC19_50_pages_brain_injury.pdf"
+    original_uri = f"s3://{original_bucket}/{original_key}"
+    remapped_bucket = "remapped-bucket"
+    remapped_uri = f"s3://{remapped_bucket}/{original_key}"
+
+    # Patch settings and logger
+    monkeypatch.setattr("ingestion_pipeline.textract.textract_processor.LOCAL_DEVELOPMENT_MODE", True)
+    monkeypatch.setattr(
+        "ingestion_pipeline.textract.textract_processor.settings.AWS_LOCAL_DEV_TEXTRACT_S3_ROOT_BUCKET",
+        remapped_bucket,
+    )
+    with patch("ingestion_pipeline.textract.textract_processor.logger") as mock_logger:
+        # Patch methods to avoid actual AWS calls
+        processor = TextractProcessor(mock_textractor, mock_textract_client)
+        processor._start_textract_job = MagicMock(return_value="job-id")
+        processor._poll_for_job_completion = MagicMock(return_value="SUCCEEDED")
+        processor._get_job_results = MagicMock(return_value="mock-document")
+
+        processor.process_document(original_uri)
+
+        processor._start_textract_job.assert_called_once_with(remapped_uri)
+        mock_logger.info.assert_any_call(
+            f"Switched s3 file location for local development AWS Textract integration to: {remapped_uri}"
+        )

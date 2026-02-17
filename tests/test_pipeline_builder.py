@@ -35,7 +35,6 @@ def patch_external_dependencies():
         mock_settings.OPENSEARCH_PAGE_METADATA_INDEX_NAME = "test-page-index"
         mock_settings.OPENSEARCH_PROXY_URL = "http://test-proxy"
         mock_settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET = "test-source-bucket"
-        mock_settings.AWS_LOCALSTACK_S3_SOURCE_DOCUMENT_ROOT_BUCKET = "test-localstack-bucket"
         mock_settings.AWS_CICA_S3_PAGE_BUCKET = "test-page-bucket"
         mock_settings.LOCAL_DEVELOPMENT_MODE = False
         yield {
@@ -87,7 +86,7 @@ def test_build_pipeline_uses_localstack_bucket_when_in_local_mode(patch_external
     build_pipeline()
     patch_external_dependencies["S3DocumentService"].assert_called_once_with(
         s3_client=patch_external_dependencies["get_s3_client"].return_value,
-        source_bucket="test-localstack-bucket",
+        source_bucket="test-source-bucket",
         page_bucket="test-page-bucket",
     )
 

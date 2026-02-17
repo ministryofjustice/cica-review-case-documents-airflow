@@ -71,40 +71,52 @@ class OpenSearchIndexer:
     def index_documents(self, documents: List[Any], id_field: str = "chunk_id"):
         """Indexes a list of Pydantic models into OpenSearch using the Bulk API.
 
+        Deletes any existing documents with the same source_doc_id before indexing new ones.
+        If any errors occur during indexing, all partially indexed documents are cleaned up.
+
         Args:
-            documents: A list of Pydantic models (e.g., OpenSearchDocument).
-            id_field: The attribute name on the model to use as the document's _id.
+            documents (List[Any]): A list of Pydantic models to index (e.g., DocumentChunk or DocumentPage).
+            id_field (str): The attribute name on the model to use as the document's _id.
+                Defaults to "chunk_id".
 
         Returns:
-            A tuple containing the number of successfully indexed documents and any errors.
+            Tuple[int, List]: A tuple containing:
+                - int: The number of successfully indexed documents.
+                - List: Any errors that occurred during indexing (empty list if all succeeded).
+
+        Raises:
+            IndexingError: If bulk indexing fails or if an unexpected error occurs.
         """
         if not documents:
             logger.warning("No documents provided to index.")
             return 0, []
 
         source_doc_id = documents[0].source_doc_id
-        self.delete_documents_by_source_doc_id(source_doc_id)
+        if self.client.indices.exists(index=self.index_name):
+            logger.info(
+                f"Attempting document deletion of existing documents from index {self.index_name} before reindexing"
+            )
+            self.delete_documents_by_source_doc_id(source_doc_id)
         actions = self._generate_bulk_actions(documents, id_field)
 
         try:
+            logger.info(f"Indexing {len(documents)} documents into index {self.index_name}")
             success, errors = helpers.bulk(self.client, actions, raise_on_error=False)
 
             if errors:
-                logger.error(
-                    f"Encountered {len(errors)} errors during bulk indexing cleaning up partially indexed chunks"
-                )
+                logger.info(f"Deleted existing documents due to indexing errors. Errors:{errors}")
                 # Clean up any partially indexed documents from this batch
                 self.delete_documents_by_source_doc_id(source_doc_id)
                 raise IndexingError(f"Failed to index all chunks: {errors}")
 
-            logger.info(f"Successfully indexed {len(documents)} chunks into index {self.index_name}")
+            logger.info(f"Indexed {len(documents)} chunks into index {self.index_name}")
             return success, errors
         except helpers.BulkIndexError as e:
-            logger.error(f"A BulkIndexError occurred. Removing all associated chunks: {e.errors}")
+            logger.info(f"Deleted all document chunks due to BulkIndexError during indexing. Error: {e.errors}")
             self.delete_documents_by_source_doc_id(source_doc_id)
             raise IndexingError(f"Failed to index documents due to bulk errors: {str(e)}") from e
         except Exception as e:
-            logger.error(f"An unexpected exception occurred. Removing all associated chunks: {e}")
+            logger.info(f"An unexpected exception occurred indexing removing all associated chunks: {e}")
             self.delete_documents_by_source_doc_id(source_doc_id)
             raise IndexingError(f"Failed to index: {str(e)}") from e
 
@@ -133,7 +145,15 @@ class OpenSearchIndexer:
             }
 
     def delete_documents_by_source_doc_id(self, source_doc_id: str):
-        """Deletes all documents in the index with the given source_doc_id."""
+        """Deletes all documents in the index with the given source_doc_id.
+
+        Args:
+            source_doc_id (str): The unique identifier of the source document whose
+                associated documents should be deleted.
+
+        Raises:
+            Exception: If deletion fails for reasons other than version conflicts.
+        """
         query = {"query": {"match": {"source_doc_id": source_doc_id}}}
         try:
             response = self.client.delete_by_query(index=self.index_name, body=query)
@@ -141,7 +161,7 @@ class OpenSearchIndexer:
             if deleted_count > 0:
                 logger.info(f"Deleted {deleted_count} documents from index {self.index_name}")
         except ConflictError as e:
-            logger.debug(f"Version conflict during delete (harmless): {e}")
+            logger.debug(f"Version conflict during delete (harmless): {e}", exc_info=True)
         except Exception as e:
             logger.error(f"Failed to delete documents by source_doc_id: {e}", exc_info=True)
             raise

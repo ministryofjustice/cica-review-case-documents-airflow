@@ -7,6 +7,7 @@ from textractor.entities.document import Document
 
 from ingestion_pipeline.chunking.exceptions import ChunkException
 from ingestion_pipeline.chunking.strategies.merge.chunk_merger import ChunkMerger
+from ingestion_pipeline.chunking.verbose_page_debug_logger import is_verbose_page_debug, log_verbose_page_debug
 
 from .chunking_config import ChunkingConfig
 from .schemas import DocumentChunk, DocumentMetadata, ProcessedDocument
@@ -38,17 +39,23 @@ class DocumentChunker:
         self.strategy_handlers = strategy_handlers
 
     def chunk(self, doc: Document, metadata: DocumentMetadata) -> ProcessedDocument:
-        """Parses a Textractor Document and extracts specified layout blocks as structured chunks.
+        """Parses a Textractor Document and extracts layout blocks as structured chunks.
+
+        Processes all pages in the document, applying appropriate chunking strategies to each
+        layout block based on its type. Returns atomic chunks that are later merged into larger
+        chunks by ChunkMerger.
 
         Args:
-            doc: Textractor Document to process
-            metadata: Document metadata
+            doc (Document): Textractor Document containing pages and layout blocks to process.
+            metadata (DocumentMetadata): Document metadata including source file information.
+
         Returns:
-            List of OpenSearchChunk objects
+            ProcessedDocument: Container with the list of extracted DocumentChunk objects.
 
         Raises:
-            ValueError: If metadata validation fails
-            ChunkException: If chunk extraction fails
+            ValueError: If the document is None or contains no pages.
+            ChunkException: If the raw Textract response is missing.
+            ChunkError: If chunk extraction fails during processing.
         """
         try:
             # Metadata is a Pydantic model, so its fields are validated on instantiation.
@@ -64,12 +71,12 @@ class DocumentChunker:
                 raise ChunkException(f"Response docment {metadata} missing raw response from Textract.")
 
             for page in doc.pages:
-                logger.debug(f"Processing page {page.page_num} of {len(doc.pages)}")
+                logger.debug(f"Chunking page {page.page_num} of {len(doc.pages)}")
                 page_chunks = self._process_page(page, metadata, chunk_index_counter, raw_response)
                 all_chunks.extend(page_chunks)
                 chunk_index_counter += len(page_chunks)
 
-            logger.info(f"Extracted {len(all_chunks)} chunks from {len(doc.pages)} pages")
+                logger.debug(f"Extracted {len(all_chunks)} chunks from {len(doc.pages)} pages")
             return ProcessedDocument(chunks=all_chunks)
 
         except Exception as e:
@@ -117,6 +124,15 @@ class DocumentChunker:
                 block_type = layout_block.layout_type
                 chunking_strategy = self.strategy_handlers.get(block_type)
 
+                if is_verbose_page_debug(page.page_num, "textract_document_chunker:_process_page"):
+                    log_verbose_page_debug(
+                        page.page_num,
+                        f"chunking {layout_block.layout_type} {block_type} on page {page.page_num} "
+                        f"with chunk index {current_chunk_index}, "
+                        f"text='{layout_block.text[:30]}...{layout_block.text[-20:]}'",
+                        "textract_document_chunker:_process_page",
+                    )
+
                 if chunking_strategy is None:
                     logger.warning(f"No chunking strategy found for block type: {block_type}")
                     raise ChunkError(f"Block type {block_type} has no associated strategy handler")
@@ -129,19 +145,23 @@ class DocumentChunker:
                 current_chunk_index += len(block_chunks)
 
         chunk_merger = ChunkMerger()
-        grouped_chunks = chunk_merger.merge_chunks(page_chunks)
+        grouped_chunks = chunk_merger.group_and_merge_atomic_chunks(page_chunks)
 
         return grouped_chunks
 
     def _should_process_block(self, layout_block, layout_types: Mapping[str, ChunkingStrategyHandler]) -> bool:
-        """Determine if a layout block should be processed.
+        """Determines if a layout block should be processed.
+
+        A block is processed if it has a recognized layout type, contains non-empty text,
+        and has a registered strategy handler.
 
         Args:
-            layout_block (layout_block): The layout block to check.
-            layout_types (Mapping[str, ChunkingStrategyHandler]): The mapping of layout types to their handlers.
+            layout_block (LayoutBlock): The layout block to evaluate.
+            layout_types (Mapping[str, ChunkingStrategyHandler]): Mapping of layout types
+                to their corresponding strategy handlers.
 
         Returns:
-            bool: True if the block should be processed, False otherwise.
+            bool: True if the block meets processing criteria, False otherwise.
         """
         if not (
             layout_block.layout_type in layout_types

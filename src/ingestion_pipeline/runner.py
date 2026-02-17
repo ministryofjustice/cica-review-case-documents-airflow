@@ -6,7 +6,7 @@ import re
 
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
 from ingestion_pipeline.config import settings
-from ingestion_pipeline.custom_logging.log_context import setup_logging
+from ingestion_pipeline.custom_logging.log_context import setup_logging, source_doc_id_context
 from ingestion_pipeline.indexing.healthcheck import check_opensearch_health
 from ingestion_pipeline.pipeline_builder import build_pipeline
 from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
@@ -48,7 +48,11 @@ def validate_s3_uri(s3_uri: str, expected_bucket: str) -> bool:
 
 
 def main():
-    """Main entry point for the application runner."""
+    """Main entry point for the application runner for testing the pipeline with a single document."""
+    local_dev_mode = settings.LOCAL_DEVELOPMENT_MODE
+    if local_dev_mode:
+        logger.warning("Running in LOCAL_DEVELOPMENT_MODE. Ensure your S3 URI is accessible in LocalStack.")
+
     logger.info("Pipeline runner started.")
     if not check_opensearch_health(settings.OPENSEARCH_PROXY_URL):
         logger.critical("OpenSearch health check failed. Exiting pipeline runner.")
@@ -58,14 +62,8 @@ def main():
         f"s3://{settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET}/26-711111/Case1_TC19_50_pages_brain_injury.pdf"
     )
 
-    logger.info(f"Validating S3 URI: {S3_DOCUMENT_URI}")
-    if not validate_s3_uri(S3_DOCUMENT_URI, settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET):
-        logger.critical(f"Invalid S3 URI: {S3_DOCUMENT_URI}")
-        raise ValueError(f"Invalid S3 URI: {S3_DOCUMENT_URI}")
-
     case_ref = extract_case_ref(S3_DOCUMENT_URI)
     correspondence_type = "TC19 - ADDITIONAL INFO REQUEST"
-    logger.info(f"Processing document for case reference: {case_ref}")
 
     identifier = DocumentIdentifier(
         source_file_name=S3_DOCUMENT_URI.split("/")[-1],
@@ -73,6 +71,15 @@ def main():
         case_ref=case_ref,
     )
     source_doc_id = identifier.generate_uuid()
+    logger.info(f"Generated source_doc_id: {source_doc_id} for document: {S3_DOCUMENT_URI}")
+    source_doc_id_context.set(source_doc_id)
+
+    logger.info(f"Validating S3 URI: {S3_DOCUMENT_URI}")
+    if not validate_s3_uri(S3_DOCUMENT_URI, settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET):
+        logger.critical(f"Invalid S3 URI: {S3_DOCUMENT_URI}")
+        raise ValueError(f"Invalid S3 URI: {S3_DOCUMENT_URI}")
+
+    logger.info(f"Processing document for case reference: {case_ref}")
 
     document_metadata = DocumentMetadata(
         source_doc_id=source_doc_id,
@@ -84,14 +91,11 @@ def main():
         correspondence_type=correspondence_type,
     )
 
-    logger.info(
-        f"Document metadata prepared: source_doc_id={source_doc_id}, "
-        f"file={document_metadata.source_file_name}, case_ref={case_ref}"
-    )
+    logger.info(f"Document metadata prepared: file={document_metadata.source_file_name}, case_ref={case_ref}")
 
     pipeline = build_pipeline()
     try:
-        logger.info("Starting document processing in pipeline.")
+        logger.info(f"Starting document processing in pipeline {S3_DOCUMENT_URI}")
         pipeline.process_document(document_metadata=document_metadata)
         logger.info("Pipeline runner finished successfully.")
     except Exception as exc:
@@ -101,6 +105,9 @@ def main():
             exc_info=True,
         )
         # Optionally: raise or exit(1)
+    finally:
+        logger.info("Cleaning up context for document")
+        source_doc_id_context.set(None)
 
 
 if __name__ == "__main__":

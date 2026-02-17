@@ -9,6 +9,7 @@ from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 from ingestion_pipeline.chunking.strategies.base import ChunkingStrategyHandler
 from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes
+from ingestion_pipeline.chunking.verbose_page_debug_logger import is_verbose_page_debug, log_verbose_page_debug
 
 logger = logging.getLogger(__name__)
 
@@ -32,23 +33,33 @@ class LayoutTextChunkingStrategy(ChunkingStrategyHandler):
         chunk_index_start: int,
         raw_response: Optional[dict] = None,
     ) -> List[DocumentChunk]:
-        """Extract chunks using line-based splitting strategy.
+        """Extracts chunks using line-based splitting strategy.
+
+        Processes a layout block by splitting its child lines into chunks based on character
+        size limits. Creates atomic chunks that will later be merged by ChunkMerger.
 
         Args:
-            layout_block (LayoutBlock): The Textractor LayoutBlock to process.
-            page_number (int): The page number of the layout_block.
-            metadata (DocumentMetadata): The document metadata.
-            chunk_index_start (int): The starting index for the chunks produced by this block.
-            raw_response (Optional[dict], optional): The raw response from Textract. Defaults to None.
+            layout_block (LayoutBlock): The Textractor LayoutBlock containing lines to process.
+            page_number (int): The page number where this layout block appears.
+            metadata (DocumentMetadata): Document metadata for chunk creation.
+            chunk_index_start (int): The starting index for numbering chunks from this block.
+            raw_response (Optional[dict]): The raw Textract API response. Defaults to None.
 
         Returns:
-            List[DocumentChunk]: The list of document chunks produced from the layout_block.
+            List[DocumentChunk]: Atomic chunks created from the layout block's lines.
         """
         chunks = []
         chunk_index = chunk_index_start
 
         current_chunk_lines = []
         current_chunk_bboxes = []
+
+        if is_verbose_page_debug(page_number, "layout_text:chunk"):
+            log_verbose_page_debug(
+                page_number,
+                f"Layout text chunking: Page number {page_number} document chunk index {chunk_index}",
+                "layout_text:chunk",
+            )
 
         for child_block in layout_block.children:
             line_text = child_block.text.strip()
@@ -95,28 +106,75 @@ class LayoutTextChunkingStrategy(ChunkingStrategyHandler):
         lines: List[str],
         bboxes: List[BoundingBox],
         layout_block,
-        page_number,
+        page_number: int,
         metadata: DocumentMetadata,
         chunk_index: int,
     ) -> DocumentChunk:
         """Creates a document chunk from the given lines and metadata.
 
+        Combines multiple lines into a single chunk by joining their text and merging
+        their bounding boxes into a unified boundary.
+
         Args:
-            lines (List[str]): The lines to include in the chunk.
-            bboxes (List[BoundingBox]): The bounding boxes of the lines.
-            layout_block (LayoutBlock): The Textractor LayoutBlock type.
-            page_number (int): The page number of the layout block.
-            metadata (DocumentMetadata): The document metadata.
-            chunk_index (int): The index of the chunk.
+            lines (List[str]): The text lines to combine into the chunk.
+            bboxes (List[BoundingBox]): The bounding boxes corresponding to each line.
+            layout_block (LayoutBlock): The parent Textractor LayoutBlock.
+            page_number (int): The page number where this chunk appears.
+            metadata (DocumentMetadata): Document metadata for chunk creation.
+            chunk_index (int): The sequential index for this chunk.
 
         Returns:
-            DocumentChunk: The created document chunk.
+            DocumentChunk: The created document chunk with combined text and merged bounding box.
         """
-        combined_bbox = combine_bounding_boxes(bboxes)
-        chunk_text = " ".join(lines)
+        # Debug: Only log bounding boxes for specified pages
+        if is_verbose_page_debug(page_number, "layout_text:_create_chunk_from_lines"):
+            log_verbose_page_debug(
+                page_number,
+                f"Page {page_number} creating chunk from {len(lines)} layout elements",
+                "layout_text:_create_chunk_from_lines",
+            )
+            for i, bbox in enumerate(bboxes):
+                log_verbose_page_debug(
+                    page_number,
+                    f"  Line {i}, text='{lines[i][:30]}...{lines[i][-20:]}', text_count={len(lines[i])}: "
+                    f"left={bbox.x}, top={bbox.y}, width={bbox.width}, height={bbox.height}, "
+                    f"bottom={bbox.y + bbox.height}, right={bbox.x + bbox.width}",
+                    "layout_text:_create_chunk_from_lines",
+                )
+            combined_bbox_x_left = min(bbox.x for bbox in bboxes)
+            combined_bbox_y_top = min(bbox.y for bbox in bboxes)
+            combined_bbox_x_right = max(bbox.x + bbox.width for bbox in bboxes)
+            combined_bbox_y_bottom = max(bbox.y + bbox.height for bbox in bboxes)
+            log_verbose_page_debug(
+                page_number,
+                f"pre-combining bounding box union: "
+                f"left={combined_bbox_x_left}, top={combined_bbox_y_top}, "
+                f"_width={combined_bbox_x_right - combined_bbox_x_left}, "
+                f"height={combined_bbox_y_bottom - combined_bbox_y_top} "
+                f"bottom={combined_bbox_y_bottom}, right={combined_bbox_x_right}",
+                "layout_text:_create_chunk_from_lines",
+            )
 
-        logger.debug(f"Layout {layout_block.layout_type} chunk : {chunk_text}")
-        # Do we need to pass in the block type, is layout_block.layout_type enough?
+        combined_bbox = combine_bounding_boxes(bboxes)
+        if is_verbose_page_debug(page_number, "layout_text:_create_chunk_from_lines"):
+            log_verbose_page_debug(
+                page_number,
+                f"Combined bounding box: "
+                f"left={combined_bbox.x}, top={combined_bbox.y}, "
+                f"width={combined_bbox.width}, height={combined_bbox.height}, "
+                f"bottom={combined_bbox.y + combined_bbox.height}, right={combined_bbox.x + combined_bbox.width}",
+                "layout_text:_create_chunk_from_lines",
+            )
+        chunk_text = " ".join(lines)
+        if is_verbose_page_debug(page_number, "layout_text:_create_chunk_from_lines"):
+            log_verbose_page_debug(
+                page_number,
+                f"Created chunk index {chunk_index} text='{chunk_text[:30]}...{chunk_text[-20:]}', "
+                f"text_count={len(chunk_text)}",
+                "layout_text:_create_chunk_from_lines",
+            )
+
+        # logger.info(f"[layout_text] Layout {layout_block.layout_type} chunk : {chunk_text}")
         return DocumentChunk.from_textractor_layout(
             block=layout_block,
             page_number=page_number,
