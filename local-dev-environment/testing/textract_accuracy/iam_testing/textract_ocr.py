@@ -20,17 +20,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from statistics import mean
 
+from . import DATA_DIR
 from .config import settings
 from .iam_filters import (
     filter_iam_header_footer,
     filter_iam_signature,
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-    normalize_text,
->>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
-=======
->>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 )
 from .schemas import OCRResult
 from .textract_client import (
@@ -96,21 +90,9 @@ def process_single_image(
         printed_words, name_label_top = filter_iam_header_footer(printed_words)
         handwriting_words = filter_iam_signature(handwriting_words, name_label_top)
 
-<<<<<<< HEAD
-<<<<<<< HEAD
     # Build text strings (raw, normalization happens at comparison time)
     printed_text = " ".join(w.text for w in printed_words)
     handwriting_text = " ".join(w.text for w in handwriting_words)
-=======
-    # Build text strings
-    printed_text = normalize_text(" ".join(w.text for w in printed_words))
-    handwriting_text = normalize_text(" ".join(w.text for w in handwriting_words))
->>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
-=======
-    # Build text strings (raw, normalization happens at comparison time)
-    printed_text = " ".join(w.text for w in printed_words)
-    handwriting_text = " ".join(w.text for w in handwriting_words)
->>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 
     # Calculate lowest quartile confidence (identifies problem areas)
     print_confidences = [w.confidence for w in printed_words]
@@ -191,7 +173,7 @@ def main(form_id: str | None = None) -> None:
     )
 
     # Paths
-    data_dir = Path(__file__).parent.parent / "data"
+    data_dir = DATA_DIR
     test_form_id = form_id or "a01-000u"
     image_path = data_dir / "page_images" / f"{test_form_id}.png"
 

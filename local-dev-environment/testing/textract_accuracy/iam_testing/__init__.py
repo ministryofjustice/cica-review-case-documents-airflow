@@ -25,6 +25,7 @@ Usage:
 
 from .iam_filters import filter_iam_header_footer, filter_iam_signature, normalize_text
 from .llm import LLMResponse, get_llm_client
+from .paths import DATA_DIR, PACKAGE_ROOT, TEXTRACT_ACCURACY_ROOT, get_repo_root
 from .schemas import OCRResult, WordBlock
 from .scoring import (
     ScoreResult,
@@ -40,6 +41,11 @@ from .textract_client import (
 from .textract_ocr import process_single_image, write_ocr_result
 
 __all__ = [
+    # Path constants
+    "PACKAGE_ROOT",
+    "TEXTRACT_ACCURACY_ROOT",
+    "DATA_DIR",
+    "get_repo_root",
     # Data structures
     "OCRResult",
     "WordBlock",

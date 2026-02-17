@@ -1,7 +1,5 @@
 # IAM Handwriting OCR Accuracy Testing
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 Evaluates AWS Textract OCR accuracy on handwritten text using the [IAM Handwriting Database](https://fki.tic.heia-fr.ch/databases/iam-handwriting-database), with LLM augmentation to improve results. Further spot testing to be done on speicifc
 
 **Current Performance (1539 forms):**
@@ -19,11 +17,8 @@ This pipeline processes handwritten documents through:
 5. Optional LLM correction via AWS Bedrock
 
 ### Metrics
-=======
 > **Status: In Development** — This testing module is under active development and not yet production-ready.
-=======
 Evaluates AWS Textract OCR accuracy on handwritten text using the [IAM Handwriting Database](https://fki.tic.heia-fr.ch/databases/iam-handwriting-database), with LLM augmentation to improve results. Further spot testing to be done on speicifc
->>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 
 **Current Performance (1539 forms):**
 - Baseline WER: 13.26% | Augmented WER: 4.41% (with nova-pro + v2 prompt)
@@ -39,20 +34,14 @@ This pipeline processes handwritten documents through:
 4. WER/CER calculation against ground truth
 5. Optional LLM correction via AWS Bedrock
 
-<<<<<<< HEAD
 ## Metrics
->>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
-=======
 ### Metrics
->>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 
 | Metric | Description |
 |--------|-------------|
 | **WER** (Word Error Rate) | Fraction of words incorrect (0.0 = perfect, 1.0 = all wrong) |
 | **CER** (Character Error Rate) | Fraction of characters incorrect |
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 ### Text Normalization
 
 All text undergoes identical normalization before scoring to ensure WER improvements translate to real search quality. The pipeline removes differences that OpenSearch's standard analyzer would ignore:
@@ -83,7 +72,6 @@ def normalize_text(text: str) -> str:
    ```bash
    export AWS_MOD_PLATFORM_ACCESS_KEY_ID="..."
    export AWS_MOD_PLATFORM_SECRET_ACCESS_KEY="..."
-<<<<<<< HEAD
    export AWS_REGION="us-east-1"
    ```
    Or add to `.env` file in project root.
@@ -96,11 +84,8 @@ def normalize_text(text: str) -> str:
    ```
 
 4. **Python dependencies**:
-=======
 ## Quick Start
-=======
 ### Text Normalization
->>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 
 All text undergoes identical normalization before scoring to ensure WER improvements translate to real search quality. The pipeline removes differences that OpenSearch's standard analyzer would ignore:
 
@@ -130,8 +115,6 @@ def normalize_text(text: str) -> str:
    ```bash
    export AWS_ACCESS_KEY_ID="..."
    export AWS_SECRET_ACCESS_KEY="..."
-=======
->>>>>>> 435e12b (add/custom_doc_ocr_and_augmentation)
    export AWS_REGION="us-east-1"
    ```
    Or add to `.env` file in project root.
@@ -143,62 +126,41 @@ def normalize_text(text: str) -> str:
    └── xml/            # Ground truth XML files
    ```
 
-<<<<<<< HEAD
 3. **Dependencies**: Ensure `jiwer` is installed:
->>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
-=======
 4. **Python dependencies**:
->>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
    ```bash
    uv pip install jiwer
    ```
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 ## Quick Start
 
 ### 1. Parse Ground Truth (One-Time Setup)
-=======
 ### Parse Ground Truth (One-Time Setup)
->>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
-=======
 ## Quick Start
 
 ### 1. Parse Ground Truth (One-Time Setup)
->>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 
 ```bash
 python -m iam_testing.ground_truth_parser
 ```
-<<<<<<< HEAD
-<<<<<<< HEAD
 Generates `data/ground_truth.jsonl` with 1539 form records.
 
 ### 2. Test Single Form
 
 Validate the pipeline with one form:
-=======
 Creates `data/ground_truth.jsonl` with 1539 form records.
-=======
 Generates `data/ground_truth.jsonl` with 1539 form records.
->>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 
 ### 2. Test Single Form
 
-<<<<<<< HEAD
 Validate the pipeline with one form (low API cost):
->>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
-=======
 Validate the pipeline with one form:
->>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 
 ```bash
 python -m iam_testing.runners.single
 python -m iam_testing.runners.single --form-id r06-121
 python -m iam_testing.runners.single --form-id r06-121 --show-full-text
 ```
-<<<<<<< HEAD
-<<<<<<< HEAD
 Output: `data/latest_single_test.json`
 
 ### 3. Run Baseline Batch
@@ -213,10 +175,7 @@ python -m iam_testing.runners.batch --resume      # Resume interrupted run
 Output: `data/batch_runs/{run_id}/ocr_results.jsonl` and `score_results.jsonl`
 
 ### 4. Run LLM Augmentation
-=======
 
-=======
->>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 Output: `data/latest_single_test.json`
 
 ### 3. Run Baseline Batch
@@ -230,22 +189,16 @@ python -m iam_testing.runners.batch --resume      # Resume interrupted run
 ```
 Output: `data/batch_runs/{run_id}/ocr_results.jsonl` and `score_results.jsonl`
 
-<<<<<<< HEAD
 Output:
 - `data/ocr_results_<run_id>.jsonl` — Raw OCR output
 - `data/score_results_<run_id>.jsonl` — WER/CER scores
 
 ### Run LLM Augmentation
->>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
-=======
 ### 4. Run LLM Augmentation
->>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 
 Apply LLM correction to baseline results:
 
 ```bash
-<<<<<<< HEAD
-<<<<<<< HEAD
 python -m iam_testing.runners.augment --baseline-run 20260126_140000
 python -m iam_testing.runners.augment --baseline-run 20260126_140000 --model nova-pro
 ```
@@ -329,23 +282,17 @@ python -m iam_testing.runners.augment --baseline-run 20260204_120000 --dataset c
 ```
 
 Custom testing skips IAM-specific filtering (headers/footers/signatures) and works with arbitrary documents.
-=======
 # List available baseline runs
 ls data/score_results_*.jsonl
 
 # Augment a baseline run
-=======
->>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 python -m iam_testing.runners.augment --baseline-run 20260126_140000
 python -m iam_testing.runners.augment --baseline-run 20260126_140000 --model nova-pro
 ```
 
 The recommended prompt (v2) is used by default. Override with `--prompt v1/v3/v4` if needed.
 
-<<<<<<< HEAD
 Output: `data/augmented_results_<run_id>_<model>.jsonl`
->>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
-=======
 Output: `data/batch_runs/{run_id}/augmented/{model}_{prompt}_{mode}.jsonl`
 
 ## LLM Models & Prompts
@@ -423,17 +370,12 @@ python -m iam_testing.runners.augment --baseline-run 20260204_120000 --dataset c
 ```
 
 Custom testing skips IAM-specific filtering (headers/footers/signatures) and works with arbitrary documents.
->>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 
 ## Package Structure
 
 ```
 iam_testing/
 ├── runners/              # CLI entry points
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 │   ├── single.py         # IAM single-form test
 │   ├── batch.py          # IAM batch baseline runner  
 │   ├── augment.py        # LLM augmentation (IAM or custom)
@@ -449,7 +391,6 @@ iam_testing/
 ├── iam_filters.py        # Text normalization
 ├── ground_truth_parser.py # IAM XML parser
 └── config.py             # Configuration
-<<<<<<< HEAD
 ```
 
 ## How Normalization Works
@@ -472,7 +413,6 @@ Pipeline: `html.unescape()` → dash normalization → line-break rejoin → str
 ## Output Formats
 
 **Baseline** (`score_results/`):
-=======
 │   ├── single.py         # Single-form test
 │   ├── batch.py          # Batch baseline runner
 │   └── augment.py        # LLM augmentation runner
@@ -488,8 +428,6 @@ Pipeline: `html.unescape()` → dash normalization → line-break rejoin → str
 ├── iam_filters.py        # Header/footer/signature filters
 ├── ground_truth_parser.py # IAM XML → JSONL parser
 └── config.py             # Settings loader
-=======
->>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 ```
 
 ## How Normalization Works
@@ -511,32 +449,20 @@ Pipeline: `html.unescape()` → dash normalization → line-break rejoin → str
 
 ## Output Formats
 
-<<<<<<< HEAD
 ### score_results (Baseline)
->>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
-=======
 **Baseline** (`score_results/`):
->>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 ```json
 {
   "form_id": "r06-121",
   "wer_handwriting": 0.0789,
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
   "cer_handwriting": 0.0236,
   "wer_print": 0.0,
   "cer_print": 0.0,
->>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
-=======
->>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
   "gt_handwriting_text": "...",
   "ocr_handwriting_text": "..."
 }
 ```
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 **Augmented** (`augmented/`):
 ```json
 {
@@ -548,11 +474,8 @@ Pipeline: `html.unescape()` → dash normalization → line-break rejoin → str
   "wer_improvement": 0.0394
 }
 ```
-=======
 ### augmented_results (LLM)
-=======
 **Augmented** (`augmented/`):
->>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 ```json
 {
   "form_id": "r06-121",
@@ -563,7 +486,6 @@ Pipeline: `html.unescape()` → dash normalization → line-break rejoin → str
   "wer_improvement": 0.0394
 }
 ```
-<<<<<<< HEAD
 
 ## Cost Estimates
 
@@ -574,6 +496,3 @@ Pipeline: `html.unescape()` → dash normalization → line-break rejoin → str
 | Claude Haiku | ~$0.0003 | ~$0.30 |
 
 *Estimates based on typical form size. Actual costs may vary.*
->>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
-=======
->>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)

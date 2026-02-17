@@ -4,14 +4,7 @@ The IAM handwriting dataset has a specific format with printed headers/footers
 that need to be filtered out when comparing handwriting OCR results.
 """
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 import html
-=======
->>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
-=======
-import html
->>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
 import logging
 import re
 
@@ -123,10 +116,6 @@ def normalize_text(text: str) -> str:
     """Normalize text for comparison.
 
     Applies standard normalization:
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
     - Decode HTML entities (e.g., &quot; -> ", &amp; -> &)
     - Normalize dash variants (em-dash, en-dash -> hyphen)
     - Rejoin line-break hyphenation (e.g., "govern- ment" -> "government")
@@ -138,24 +127,15 @@ def normalize_text(text: str) -> str:
     These normalizations are search-neutral: OpenSearch's standard analyzer
     applies equivalent transformations during indexing.
 
-<<<<<<< HEAD
-=======
     - Collapse multiple spaces to single space
     - Strip leading/trailing whitespace
 
->>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
-=======
->>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
     Args:
         text: Input text.
 
     Returns:
         Normalized text.
     """
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)
     # Decode HTML entities first (handles &quot;, &amp;, etc.)
     text = html.unescape(text)
     # Normalize dash variants to standard hyphen
@@ -168,9 +148,3 @@ def normalize_text(text: str) -> str:
     # becomes ["self", "determination"] - same as "selfdetermination" after rejoining
     text = re.sub(r"[^\w\s]", "", text)
     return " ".join(text.lower().split())
-<<<<<<< HEAD
-=======
-    return " ".join(text.split())
->>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
-=======
->>>>>>> 57f41ff (feat: add clinical OCR prompts v2.4/v2.5 for CICA documents)

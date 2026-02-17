@@ -12,8 +12,8 @@ import argparse
 import json
 import logging
 from dataclasses import asdict
-from pathlib import Path
 
+from .. import DATA_DIR
 from ..config import settings
 from ..scoring import load_all_ground_truth, score_ocr_result
 from ..textract_client import get_textract_client
@@ -42,7 +42,7 @@ def main() -> None:
     args = parser.parse_args()
 
     # Paths
-    data_dir = Path(__file__).parent.parent.parent / "data"
+    data_dir = DATA_DIR
     image_path = data_dir / "page_images" / f"{args.form_id}.png"
     gt_path = data_dir / "ground_truth.jsonl"
 

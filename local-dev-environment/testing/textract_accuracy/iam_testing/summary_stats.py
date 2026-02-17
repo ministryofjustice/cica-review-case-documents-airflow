@@ -84,77 +84,28 @@ class AugmentedSummary:
 
 
 def calculate_percentiles(values: list[float]) -> dict[str, float]:
-    """Calculate percentiles for a list of values.
-
-    Args:
-        values: List of numeric values.
-
-    Returns:
-        Dict with p25, p50, p75, p90, p95, p99 percentiles.
-    """
+    """Calculate percentiles for a list of values."""
     if not values:
         return {f"p{p}": 0.0 for p in [25, 50, 75, 90, 95, 99]}
-
-    sorted_values = sorted(values)
-    n = len(sorted_values)
-
-    def percentile(p: float) -> float:
-        """Calculate the p-th percentile."""
-        k = (n - 1) * (p / 100)
-        f = int(k)
-        c = f + 1 if f + 1 < n else f
-        return sorted_values[f] + (k - f) * (sorted_values[c] - sorted_values[f])
-
-    return {
-        "p25": round(percentile(25), 4),
-        "p50": round(percentile(50), 4),
-        "p75": round(percentile(75), 4),
-        "p90": round(percentile(90), 4),
-        "p95": round(percentile(95), 4),
-        "p99": round(percentile(99), 4),
-    }
+    q = statistics.quantiles(values, n=100)
+    return {f"p{p}": round(q[p - 1], 4) for p in [25, 50, 75, 90, 95, 99]}
 
 
 def calculate_distribution(values: list[float]) -> dict[str, int]:
-    """Count values in each distribution bucket.
-
-    Args:
-        values: List of numeric values (typically 0.0 to 1.0).
-
-    Returns:
-        Dict mapping bucket label to count.
-    """
-    distribution = {label: 0 for _, _, label in DISTRIBUTION_BUCKETS}
-
-    for value in values:
+    """Count values in each distribution bucket."""
+    dist = {label: 0 for _, _, label in DISTRIBUTION_BUCKETS}
+    for v in values:
         for low, high, label in DISTRIBUTION_BUCKETS:
-            if low <= value < high or (label == "50%+" and value >= 0.5):
-                distribution[label] += 1
+            if low <= v < high or (high == 1.0 and v >= high):
+                dist[label] += 1
                 break
-
-    return distribution
+    return dist
 
 
 def calculate_metric_stats(values: list[float]) -> MetricStats:
-    """Calculate comprehensive statistics for a metric.
-
-    Args:
-        values: List of metric values.
-
-    Returns:
-        MetricStats with all statistics.
-    """
+    """Calculate comprehensive statistics for a metric."""
     if not values:
-        return MetricStats(
-            mean=0.0,
-            median=0.0,
-            std=0.0,
-            min=0.0,
-            max=0.0,
-            percentiles=calculate_percentiles([]),
-            distribution=calculate_distribution([]),
-        )
-
+        return MetricStats(0.0, 0.0, 0.0, 0.0, 0.0, calculate_percentiles([]), calculate_distribution([]))
     return MetricStats(
         mean=round(statistics.mean(values), 4),
         median=round(statistics.median(values), 4),
@@ -249,13 +200,11 @@ def generate_augmented_summary(
     wer_improvement = [r["wer_improvement"] for r in results]
     cer_improvement = [r["cer_improvement"] for r in results]
 
-    # Count improvements (only for augmented forms)
-    improved_wer = len([r for r in augmented if r["wer_improvement"] > 0])
-    worse_wer = len([r for r in augmented if r["wer_improvement"] < 0])
-    unchanged_wer = len([r for r in augmented if r["wer_improvement"] == 0])
-    improved_cer = len([r for r in augmented if r["cer_improvement"] > 0])
-    worse_cer = len([r for r in augmented if r["cer_improvement"] < 0])
-    unchanged_cer = len([r for r in augmented if r["cer_improvement"] == 0])
+    # Count improvements in single pass
+    wer_counts, cer_counts = [0, 0, 0], [0, 0, 0]  # [improved, worse, unchanged]
+    for r in augmented:
+        wer_counts[0 if r["wer_improvement"] > 0 else (1 if r["wer_improvement"] < 0 else 2)] += 1
+        cer_counts[0 if r["cer_improvement"] > 0 else (1 if r["cer_improvement"] < 0 else 2)] += 1
 
     return AugmentedSummary(
         run_id=run_id,
@@ -273,12 +222,12 @@ def generate_augmented_summary(
         augmented_cer=calculate_metric_stats(augmented_cer),
         wer_improvement=calculate_metric_stats(wer_improvement),
         cer_improvement=calculate_metric_stats(cer_improvement),
-        improved_wer_count=improved_wer,
-        worse_wer_count=worse_wer,
-        unchanged_wer_count=unchanged_wer,
-        improved_cer_count=improved_cer,
-        worse_cer_count=worse_cer,
-        unchanged_cer_count=unchanged_cer,
+        improved_wer_count=wer_counts[0],
+        worse_wer_count=wer_counts[1],
+        unchanged_wer_count=wer_counts[2],
+        improved_cer_count=cer_counts[0],
+        worse_cer_count=cer_counts[1],
+        unchanged_cer_count=cer_counts[2],
         total_input_tokens=sum(r["input_tokens"] for r in results),
         total_output_tokens=sum(r["output_tokens"] for r in results),
     )

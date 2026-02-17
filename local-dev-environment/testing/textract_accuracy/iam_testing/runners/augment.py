@@ -10,7 +10,6 @@ Modes:
     - low_confidence: Only augment pages below confidence threshold
 
 Usage:
-<<<<<<< HEAD
     # IAM dataset
     python -m iam_testing.runners.augment --baseline-run 20260126_140000
     python -m iam_testing.runners.augment --baseline-run 20260126_140000 --mode low_confidence
@@ -23,27 +22,14 @@ Usage:
 import argparse
 import logging
 from dataclasses import dataclass
-=======
-    python -m iam_testing.runners.augment --baseline-run 20260126_140000
-    python -m iam_testing.runners.augment --baseline-run 20260126_140000 --mode low_confidence
-    python -m iam_testing.runners.augment --baseline-run 20260126_140000 --model nova-pro
-
-    # Custom documents
-    python -m iam_testing.runners.augment --baseline-run 20260126_140000 --dataset custom
-"""
-
-import argparse
-import logging
-from dataclasses import asdict, dataclass
->>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
 from pathlib import Path
 from typing import Literal
 
 from jiwer import cer, wer
 
+from .. import DATA_DIR
 from ..iam_filters import normalize_text
 from ..llm import LLMResponse, get_llm_client
-<<<<<<< HEAD
 from ..llm.prompt import PROMPTS
 from ..summary_stats import (
     generate_augmented_summary,
@@ -64,12 +50,6 @@ logger = logging.getLogger(__name__)
 # Default prompt version for LLM-augmented OCR correction
 DEFAULT_PROMPT_VERSION = "v2"
 
-=======
-from ..llm.prompt import get_prompt_hash
-
-logger = logging.getLogger(__name__)
-
->>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
 
 @dataclass(frozen=True, slots=True)
 class AugmentedScoreResult:
@@ -107,31 +87,6 @@ class AugmentedScoreResult:
     output_tokens: int
 
 
-<<<<<<< HEAD
-=======
-def load_baseline_results(results_path: Path) -> list[dict]:
-    """Load baseline score results from JSONL file.
-
-    Args:
-        results_path: Path to the score_results JSONL file.
-
-    Returns:
-        List of score result dicts.
-    """
-    if not results_path.exists():
-        logger.error("Baseline results not found: %s", results_path)
-        return []
-
-    results = []
-    with open(results_path, encoding="utf-8") as f:
-        for line in f:
-            results.append(json.loads(line))
-
-    logger.info("Loaded %d baseline results", len(results))
-    return results
-
-
->>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
 def should_augment(
     baseline: dict,
     mode: Literal["all", "low_confidence"],
@@ -163,30 +118,6 @@ def should_augment(
     return confidence < confidence_threshold
 
 
-<<<<<<< HEAD
-=======
-def load_ocr_results(ocr_path: Path) -> dict[str, dict]:
-    """Load OCR results into a dict keyed by form_id.
-
-    Args:
-        ocr_path: Path to the ocr_results JSONL file.
-
-    Returns:
-        Dict mapping form_id to OCR result.
-    """
-    if not ocr_path.exists():
-        return {}
-
-    results = {}
-    with open(ocr_path, encoding="utf-8") as f:
-        for line in f:
-            record = json.loads(line)
-            results[record["form_id"]] = record
-
-    return results
-
-
->>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
 def augment_and_score(
     baseline: dict,
     llm_response: LLMResponse,
@@ -245,7 +176,6 @@ def augment_and_score(
     )
 
 
-<<<<<<< HEAD
 def print_summary(results_path: Path, summary_path: Path, run_id: str, baseline_run_id: str) -> None:
     """Generate, save, and print summary of augmented results.
 
@@ -264,71 +194,6 @@ def print_summary(results_path: Path, summary_path: Path, run_id: str, baseline_
 
     # Print to console
     print_augmented_summary(summary)
-=======
-def write_augmented_result(result: AugmentedScoreResult, output_path: Path) -> None:
-    """Append augmented result to JSONL file.
-
-    Args:
-        result: AugmentedScoreResult to write.
-        output_path: Path to output JSONL file.
-    """
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(output_path, "a", encoding="utf-8") as f:
-        json.dump(asdict(result), f, ensure_ascii=False)
-        f.write("\n")
-
-
-def print_summary(results_path: Path) -> None:
-    """Print summary of augmented results.
-
-    Args:
-        results_path: Path to augmented results JSONL file.
-        summary_path: Path to save summary JSON.
-        run_id: Augmented run identifier.
-        baseline_run_id: Baseline run identifier.
-    """
-    summary = generate_augmented_summary(results_path, run_id, baseline_run_id)
-    if summary is None:
-        return
-
-    # Save summary JSON
-    save_summary(summary, summary_path)
-
-    # Count improvements
-    improved_wer = len([r for r in augmented if r["wer_improvement"] > 0])
-    worse_wer = len([r for r in augmented if r["wer_improvement"] < 0])
-    unchanged_wer = len([r for r in augmented if r["wer_improvement"] == 0])
-
-    logger.info("=" * 70)
-    logger.info("LLM AUGMENTATION SUMMARY")
-    logger.info("=" * 70)
-    logger.info(
-        "Model: %s | Prompt: %s | Mode: %s",
-        results[0]["llm_model"],
-        results[0]["prompt_version"],
-        results[0]["augmentation_mode"],
-    )
-    logger.info(
-        "Total forms: %d | Augmented: %d | Skipped: %d", len(results), len(augmented), len(results) - len(augmented)
-    )
-    logger.info("-" * 70)
-    logger.info("WER (Word Error Rate):")
-    logger.info("  Baseline Mean:  %.2f%%", mean_baseline_wer * 100)
-    logger.info("  Augmented Mean: %.2f%%", mean_augmented_wer * 100)
-    logger.info("  Improvement:    %.2f%% (positive = better)", mean_wer_improvement * 100)
-    logger.info("  Improved: %d | Worse: %d | Unchanged: %d", improved_wer, worse_wer, unchanged_wer)
-    logger.info("-" * 70)
-    logger.info("CER (Character Error Rate):")
-    logger.info("  Baseline Mean:  %.2f%%", mean_baseline_cer * 100)
-    logger.info("  Augmented Mean: %.2f%%", mean_augmented_cer * 100)
-    logger.info("  Improvement:    %.2f%% (positive = better)", mean_cer_improvement * 100)
-    logger.info("-" * 70)
-    logger.info("Token Usage:")
-    logger.info("  Input:  %d tokens", total_input_tokens)
-    logger.info("  Output: %d tokens", total_output_tokens)
-    logger.info("=" * 70)
->>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
 
 
 def main() -> None:
@@ -352,7 +217,6 @@ def main() -> None:
             "nova-micro",
             "nova-lite",
             "nova-pro",
-<<<<<<< HEAD
             # Llama (typically auto-enabled)
             "llama-3-8b",
             "llama-3-70b",
@@ -362,8 +226,6 @@ def main() -> None:
             "mistral-7b",
             "mixtral-8x7b",
             "mistral-large",
-=======
->>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
             # Claude (requires Bedrock model access)
             "claude-3-haiku",
             "claude-3-5-haiku",
@@ -395,7 +257,6 @@ def main() -> None:
         action="store_true",
         help="Only print summary of existing augmented results",
     )
-<<<<<<< HEAD
     parser.add_argument(
         "--prompt",
         choices=list(PROMPTS.keys()),
@@ -413,8 +274,8 @@ def main() -> None:
     # Use default if not specified
     prompt_version = args.prompt or DEFAULT_PROMPT_VERSION
 
-    # Paths - adjust based on dataset type
-    data_dir = Path(__file__).parent.parent.parent / "data"
+    # Paths - use centralized DATA_DIR
+    data_dir = DATA_DIR
     if args.dataset == "custom":
         batch_runs_dir = data_dir / "custom_batch_runs"
     else:
@@ -445,72 +306,18 @@ def main() -> None:
 
     # Load OCR results for confidence checking
     ocr_results = load_jsonl_as_dict(baseline_ocr_path)
-=======
-    args = parser.parse_args()
-
-    # Use default if not specified
-    prompt_version = args.prompt or DEFAULT_PROMPT_VERSION
-
-    # Paths - adjust based on dataset type
-    data_dir = Path(__file__).parent.parent.parent / "data"
-    if args.dataset == "custom":
-        batch_runs_dir = data_dir / "custom_batch_runs"
-    else:
-        batch_runs_dir = data_dir / "batch_runs"
-
-    # Get baseline paths from hierarchical structure
-    baseline_paths = get_baseline_paths(batch_runs_dir, args.baseline_run)
-    baseline_scores_path = baseline_paths["scores"]
-    baseline_ocr_path = baseline_paths["ocr"]
-
-    # Get augmented paths
-    model_name = args.model
-    augmented_run_id = f"{model_name}_{prompt_version}_{args.mode}"
-    augmented_paths = get_augmented_paths(batch_runs_dir, args.baseline_run, model_name, prompt_version, args.mode)
-    augmented_paths["dir"].mkdir(parents=True, exist_ok=True)
-    output_path = augmented_paths["results"]
-    summary_path = augmented_paths["summary"]
-
-    if args.summary_only:
-        print_summary(output_path, summary_path, augmented_run_id, args.baseline_run)
-        return
-
-    # Load baseline results
-    baseline_results = load_jsonl(baseline_scores_path)
-    if not baseline_results:
-        logger.error("Baseline results not found: %s", baseline_scores_path)
-        return
-
-    # Load OCR results for confidence checking
-    ocr_results = load_ocr_results(baseline_ocr_path)
->>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
 
     # Apply limit
     if args.limit:
         baseline_results = baseline_results[: args.limit]
         logger.info("Limited to %d forms", len(baseline_results))
 
-<<<<<<< HEAD
     # Initialize LLM client with prompt version
     llm_client = get_llm_client(model=args.model, prompt_version=prompt_version)
     logger.info("Using LLM: %s with prompt: %s", llm_client.model_name, prompt_version)
 
     # Check for already processed forms
     processed_forms = get_completed_ids(output_path)
-=======
-    # Initialize LLM client
-    llm_client = get_llm_client(model=args.model)
-    logger.info("Using LLM: %s", llm_client.model_name)
-
-    # Check for already processed forms
-    processed_forms: set[str] = set()
-    if output_path.exists():
-        with open(output_path, encoding="utf-8") as f:
-            for line in f:
-                record = json.loads(line)
-                processed_forms.add(record["form_id"])
-        logger.info("Found %d already processed forms", len(processed_forms))
->>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
 
     # Process forms
     for i, baseline in enumerate(baseline_results, 1):
@@ -535,11 +342,7 @@ def main() -> None:
                     original_text=baseline["ocr_handwriting_text"],
                     corrected_text=baseline["ocr_handwriting_text"],
                     model=llm_client.model_name,
-<<<<<<< HEAD
                     prompt_version=llm_client.get_prompt_hash(),
-=======
-                    prompt_version=get_prompt_hash(),
->>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
                     input_tokens=0,
                     output_tokens=0,
                     diff_summary="(skipped)",
@@ -553,11 +356,7 @@ def main() -> None:
                 mode=args.mode,
                 was_augmented=should,
             )
-<<<<<<< HEAD
             append_jsonl(result, output_path)
-=======
-            write_augmented_result(result, output_path)
->>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
 
             if should:
                 logger.info(
@@ -575,13 +374,8 @@ def main() -> None:
         except Exception:
             logger.exception("[%d/%d] Failed: %s", i, len(baseline_results), form_id)
 
-<<<<<<< HEAD
     # Print and save summary
     print_summary(output_path, summary_path, augmented_run_id, args.baseline_run)
-=======
-    # Print summary
-    print_summary(output_path)
->>>>>>> 919a38c (feat(CICADS-579): add IAM handwriting OCR accuracy testing module)
 
 
 if __name__ == "__main__":

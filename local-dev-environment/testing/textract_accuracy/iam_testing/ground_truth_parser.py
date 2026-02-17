@@ -30,6 +30,8 @@ import xml.etree.ElementTree as ET
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from . import DATA_DIR
+
 logger = logging.getLogger(__name__)
 
 
@@ -156,7 +158,7 @@ def main() -> None:
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
-    data_dir = Path(__file__).parent.parent / "data"
+    data_dir = DATA_DIR
     xml_dir = data_dir / "ground_truth"
     output_file = data_dir / "ground_truth.jsonl"
 

@@ -25,6 +25,7 @@ import logging
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from .. import TEXTRACT_ACCURACY_ROOT
 from ..config import settings
 from ..iam_filters import normalize_text
 from ..schemas import OCRResult
@@ -155,8 +156,7 @@ def run_single(page_id: str, gt_records: dict[str, CustomGroundTruth], output_pa
         # Try relative to current working directory first
         if not image_path.exists():
             # Try relative to textract_accuracy directory
-            base_dir = Path(__file__).parent.parent.parent
-            image_path = base_dir / gt.image_path
+            image_path = TEXTRACT_ACCURACY_ROOT / gt.image_path
 
     if not image_path.exists():
         logger.error("Image not found: %s", image_path)
@@ -212,9 +212,8 @@ def run_batch(gt_records: dict[str, CustomGroundTruth], output_dir: Path, show_a
         # Resolve image path
         image_path = Path(gt.image_path)
         if not image_path.is_absolute():
-            base_dir = Path(__file__).parent.parent.parent
             if not image_path.exists():
-                image_path = base_dir / gt.image_path
+                image_path = TEXTRACT_ACCURACY_ROOT / gt.image_path
 
         if not image_path.exists():
             logger.warning("Image not found, skipping: %s", image_path)

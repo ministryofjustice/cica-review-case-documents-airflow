@@ -8,14 +8,22 @@ import sys
 from pathlib import Path
 
 
+def _find_repo_root() -> Path:
+    """Find repository root by looking for .git directory."""
+    path = Path(__file__).resolve()
+    for parent in path.parents:
+        if (parent / ".git").exists():
+            return parent
+    raise RuntimeError("Could not find repository root (.git not found)")
+
+
 def _add_src_to_path() -> None:
     """Add the src directory to sys.path if not already present.
 
     This allows importing from ingestion_pipeline without installing it.
     """
-    # Navigate from iam_testing/ -> textract_accuracy/ -> testing/ -> local-dev-environment/ -> repo root -> src/
-    src_path = Path(__file__).parent.parent.parent.parent.parent / "src"
-    src_str = str(src_path.resolve())
+    src_path = _find_repo_root() / "src"
+    src_str = str(src_path)
 
     if src_str not in sys.path:
         sys.path.insert(0, src_str)
