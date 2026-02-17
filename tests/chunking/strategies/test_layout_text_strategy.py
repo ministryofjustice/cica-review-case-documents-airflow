@@ -15,6 +15,12 @@ def default_config():
     return ChunkingConfig(maximum_chunk_size=600)
 
 
+# Set this DEBUG param to an empty set to disable debug logging during tests
+@pytest.fixture(autouse=True)
+def set_local_dev_mode_false(monkeypatch):
+    monkeypatch.setattr("ingestion_pipeline.chunking.verbose_page_debug_logger.DEBUG_PAGE_NUMBERS", set())
+
+
 @pytest.fixture
 def mock_dependencies(mocker):
     """Mocks the external dependencies of the LayoutTextChunkingStrategy class.

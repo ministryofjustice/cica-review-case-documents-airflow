@@ -92,10 +92,11 @@ def test_index_documents_with_bulk_indexer_success(mock_helpers_bulk, mock_opens
     mock_helpers_bulk.return_value = (len(sample_documents), [])
 
     indexer = OpenSearchIndexer(index_name="test_index", proxy_url="http://test_host:9200")
-    # Set the mock client on the indexer instance
+
     indexer.client = mock_opensearch_client
-    # Set the return value for delete_by_query on the instance, not the class
     indexer.client.delete_by_query.return_value = {"deleted": 0}
+    indexer.client.indices = MagicMock()
+    indexer.client.indices.exists.return_value = True
 
     success_count, errors = indexer.index_documents(sample_documents)
 
@@ -125,6 +126,8 @@ def test_index_documents_with_partial_failures(mock_helpers_bulk, mock_opensearc
     indexer = OpenSearchIndexer(index_name="test_index", proxy_url="http://test_host:9200")
     indexer.client = mock_opensearch_client
     indexer.client.delete_by_query.return_value = {"deleted": 0}
+    indexer.client.indices = MagicMock()
+    indexer.client.indices.exists.return_value = True
 
     import re
 
@@ -149,7 +152,8 @@ def test_index_documents_raises_on_bulk_exception(mock_helpers_bulk, mock_opense
     indexer = OpenSearchIndexer(index_name="test_index", proxy_url="http://test_host:9200")
     indexer.client = mock_opensearch_client
     indexer.client.delete_by_query.return_value = {"deleted": 0}
-
+    indexer.client.indices = MagicMock()
+    indexer.client.indices.exists.return_value = True
     with pytest.raises(IndexingError, match="Failed to index documents due to bulk errors:"):
         indexer.index_documents(sample_documents)
 
@@ -298,6 +302,42 @@ def test_index_documents_with_document_page(mock_helpers_bulk, mock_opensearch_c
     indexer = OpenSearchIndexer(index_name="page_metadata", proxy_url="http://test_host:9200")
     indexer.client = mock_opensearch_client
     indexer.client.delete_by_query.return_value = {"deleted": 0}
+
+    indexer.client.indices = MagicMock()
+    indexer.client.indices.exists.return_value = True
+
     success_count, errors = indexer.index_documents(sample_pages, id_field="page_id")
     assert success_count == len(sample_pages)
     assert errors == []
+
+
+def test_index_documents_deletes_by_source_doc_id_if_index_exists(
+    mock_helpers_bulk, mock_opensearch_client, sample_documents, mocker
+):
+    """Ensures delete_documents_by_source_doc_id is called if the index exists."""
+    indexer = OpenSearchIndexer(index_name="test_index", proxy_url="http://test_host:9200")
+    indexer.client = mock_opensearch_client
+    indexer.client.indices = MagicMock()
+    indexer.client.indices.exists.return_value = True
+    delete_mock = mocker.patch.object(indexer, "delete_documents_by_source_doc_id")
+    mock_helpers_bulk.return_value = (len(sample_documents), [])
+    indexer.client.delete_by_query.return_value = {"deleted": 0}
+
+    indexer.index_documents(sample_documents)
+    delete_mock.assert_called_once_with(sample_documents[0].source_doc_id)
+
+
+def test_index_documents_does_not_delete_if_index_does_not_exist(
+    mock_helpers_bulk, mock_opensearch_client, sample_documents, mocker
+):
+    """Ensures delete_documents_by_source_doc_id is not called if the index does not exist."""
+    indexer = OpenSearchIndexer(index_name="test_index", proxy_url="http://test_host:9200")
+    indexer.client = mock_opensearch_client
+    indexer.client.indices = MagicMock()
+    indexer.client.indices.exists.return_value = False
+    delete_mock = mocker.patch.object(indexer, "delete_documents_by_source_doc_id")
+    mock_helpers_bulk.return_value = (len(sample_documents), [])
+    indexer.client.delete_by_query.return_value = {"deleted": 0}
+
+    indexer.index_documents(sample_documents)
+    delete_mock.assert_not_called()

@@ -1,0 +1,4 @@
+# wheel CVE-2026-24049 - Added 2026-02-12
+# Build-time only dependency from base image
+# Review when base image updates or Q3 2026
+CVE-2026-24049 # Package Name:wheel, Installed Version:0.45.1,Fixed Version:0.46.2,More Info:https://avd.aquasec.com/nvd/cve-2026-24049

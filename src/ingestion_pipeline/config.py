@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Order of priority for pydantic-settings:
@@ -27,7 +28,17 @@ ENV_FILE_PATH = PROJECT_ROOT / ".env"
 
 
 class Settings(BaseSettings):  # type: ignore
-    """Configuration settings for the ingestion pipeline."""
+    """Configuration settings for the ingestion pipeline.
+
+    Loads settings from environment variables and .env file (if present in local development).
+    Priority order: CLI args > Environment variables > .env file > Default values.
+
+    Attributes:
+        OPENSEARCH_PROXY_URL: OpenSearch endpoint URL for document indexing.
+        AWS_REGION: AWS region for all AWS service clients.
+        DEBUG_PAGE_NUMBERS: Set of page numbers to enable detailed debug logging for.
+        LOCAL_DEVELOPMENT_MODE: Flag to enable local development features (LocalStack, URI remapping).
+    """
 
     model_config = SettingsConfigDict(
         # Only load .env if it exists (local dev)
@@ -61,8 +72,9 @@ class Settings(BaseSettings):  # type: ignore
     AWS_CICA_AWS_SESSION_TOKEN: str = "test"
 
     # -- SOURCE DOCUMENT BUCKET --
-    AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET: str = "dev-kta-documents-bucket"
-    AWS_LOCALSTACK_S3_SOURCE_DOCUMENT_ROOT_BUCKET: str = "local-kta-documents-bucket"
+    AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET: str = "local-kta-documents-bucket"
+
+    AWS_LOCAL_DEV_TEXTRACT_S3_ROOT_BUCKET: str = "mod-platfform-sandbox-kta-documents-bucket"
 
     # review these values when we have a working system
     MAXIMUM_CHUNK_SIZE: int = 80  # maximum chunk size
@@ -90,6 +102,112 @@ class Settings(BaseSettings):  # type: ignore
     LOCAL_DEVELOPMENT_MODE: bool = False
 
     LOG_LEVEL: str = "INFO"
+
+    DEBUG_PAGE_NUMBERS: set[int] = {1}
+
+    @field_validator("DEBUG_PAGE_NUMBERS")
+    @classmethod
+    def validate_debug_page_numbers(cls, v: set[int]) -> set[int]:
+        """Ensure all debug page numbers are positive integers (>= 1).
+
+        Args:
+            v (set[int]): The set of page numbers to validate.
+
+        Returns:
+            set[int]: The validated set of page numbers.
+
+        Raises:
+            ValueError: If any page number is less than 1.
+        """
+        if any(page < 1 for page in v):
+            raise ValueError("All page numbers in DEBUG_PAGE_NUMBERS must be >= 1")
+        return v
+
+    @field_validator("MAXIMUM_CHUNK_SIZE", "LINE_CHUNK_CHAR_LIMIT")
+    @classmethod
+    def validate_positive_int(cls, v: int) -> int:
+        """Ensure chunk size values are positive integers.
+
+        Args:
+            v (int): The value to validate.
+
+        Returns:
+            int: The validated value.
+
+        Raises:
+            ValueError: If the value is not positive.
+        """
+        if v <= 0:
+            raise ValueError("Chunk size must be a positive integer")
+        return v
+
+    @field_validator("Y_TOLERANCE_RATIO")
+    @classmethod
+    def validate_ratio(cls, v: float) -> float:
+        """Ensure ratio is between 0.0 and 1.0.
+
+        Args:
+            v (float): The ratio value to validate.
+
+        Returns:
+            float: The validated ratio.
+
+        Raises:
+            ValueError: If the ratio is not between 0.0 and 1.0.
+        """
+        if not 0.0 <= v <= 1.0:
+            raise ValueError("Y_TOLERANCE_RATIO must be between 0.0 and 1.0")
+        return v
+
+    @field_validator("MAX_VERTICAL_GAP")
+    @classmethod
+    def validate_positive_float(cls, v: float) -> float:
+        """Ensure gap value is positive.
+
+        Args:
+            v (float): The gap value to validate.
+
+        Returns:
+            float: The validated gap value.
+
+        Raises:
+            ValueError: If the value is not positive.
+        """
+        if v <= 0.0:
+            raise ValueError("MAX_VERTICAL_GAP must be a positive number")
+        return v
+
+    @field_validator("TEXTRACT_API_POLL_INTERVAL_SECONDS")
+    @classmethod
+    def validate_poll_interval(cls, v: int) -> int:
+        """Ensure poll interval is positive.
+
+        Args:
+            v (int): The poll interval to validate.
+
+        Returns:
+            int: The validated poll interval.
+
+        Raises:
+            ValueError: If the value is not positive.
+        """
+        if v <= 0:
+            raise ValueError("TEXTRACT_API_POLL_INTERVAL_SECONDS must be a positive integer")
+        return v
+
+    @model_validator(mode="after")
+    def validate_timeout_greater_than_poll(self) -> "Settings":
+        """Ensure timeout is greater than poll interval.
+
+        Returns:
+            Settings: The validated settings object.
+
+        Raises:
+            ValueError: If timeout is not greater than poll interval.
+        """
+        if self.TEXTRACT_API_JOB_TIMEOUT_SECONDS <= self.TEXTRACT_API_POLL_INTERVAL_SECONDS:
+            raise ValueError("TEXTRACT_API_JOB_TIMEOUT_SECONDS must be greater than TEXTRACT_API_POLL_INTERVAL_SECONDS")
+        return self
 
 
 settings = Settings()
