@@ -122,9 +122,9 @@ class BaseLLMClient(ABC):
         self._client = boto3.client(
             "bedrock-runtime",
             region_name=self._region,
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            aws_session_token=settings.AWS_SESSION_TOKEN,
+            aws_access_key_id=settings.AWS_MOD_PLATFORM_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_MOD_PLATFORM_SECRET_ACCESS_KEY,
+            aws_session_token=settings.AWS_MOD_PLATFORM_SESSION_TOKEN,
         )
         logger.info(
             "Initialized %s client: %s in %s (prompt: %s)",

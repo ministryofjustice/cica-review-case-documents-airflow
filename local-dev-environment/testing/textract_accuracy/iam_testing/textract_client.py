@@ -27,9 +27,9 @@ def get_textract_client() -> "TextractClient":
     return boto3.client(
         "textract",
         region_name=settings.AWS_REGION,
-        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-        aws_session_token=settings.AWS_SESSION_TOKEN,
+        aws_access_key_id=settings.AWS_MOD_PLATFORM_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_MOD_PLATFORM_SECRET_ACCESS_KEY,
+        aws_session_token=settings.AWS_MOD_PLATFORM_SESSION_TOKEN,
     )
 
 

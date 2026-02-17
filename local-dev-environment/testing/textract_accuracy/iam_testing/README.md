@@ -51,8 +51,8 @@ def normalize_text(text: str) -> str:
 
 2. **AWS Credentials** with Textract and Bedrock access:
    ```bash
-   export AWS_ACCESS_KEY_ID="..."
-   export AWS_SECRET_ACCESS_KEY="..."
+   export AWS_MOD_PLATFORM_ACCESS_KEY_ID="..."
+   export AWS_MOD_PLATFORM_SECRET_ACCESS_KEY="..."
    export AWS_REGION="us-east-1"
    ```
    Or add to `.env` file in project root.

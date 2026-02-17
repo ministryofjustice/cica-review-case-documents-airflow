@@ -46,9 +46,9 @@ class Settings(BaseSettings):  # type: ignore
     OPENSEARCH_PAGE_METADATA_INDEX_NAME: str = "page_metadata"
 
     # -- AWS --
-    AWS_ACCESS_KEY_ID: str = "aws_access_key_id"
-    AWS_SECRET_ACCESS_KEY: str = "aws_secret_access_key"
-    AWS_SESSION_TOKEN: str = "aws_session_token"
+    AWS_MOD_PLATFORM_ACCESS_KEY_ID: str = "aws_mod_platform_access_key_id"
+    AWS_MOD_PLATFORM_SECRET_ACCESS_KEY: str = "aws_mod_platform_secret_access_key"
+    AWS_MOD_PLATFORM_SESSION_TOKEN: str = "aws_mod_platform_session_token"
     AWS_REGION: str = "aws_region"
 
     # review these values when we have a working system
@@ -71,11 +71,6 @@ class Settings(BaseSettings):  # type: ignore
     # S3_PREFIX: str = "textract-test"
 
     BEDROCK_EMBEDDING_MODEL_ID: str = "amazon.titan-embed-text-v2:0"
-
-    # -- IAM Handwriting Testing --
-    # Default prompt version for LLM-augmented OCR correction
-    # Options: v1 (detailed), v2 (concise - best performing), v3 (context-aware), v4 (few-shot)
-    IAM_DEFAULT_PROMPT_VERSION: str = "v2"
 
     LOG_LEVEL: str = "INFO"
 
