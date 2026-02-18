@@ -1,8 +1,12 @@
 # Local dev environment dependencies
-# Generated from pyproject.toml
 
 opensearch-py>=3.0.0,<4.0.0
 xlsxwriter>=3.2.0
 boto3>=1.40.0,<2.0.0
 numpy>=2.0.0
 pydantic-settings>=2.10.1,<3.0.0
+
+# Testing dependencies (isolated from main project)
+pandas>=2.0.0
+snowballstemmer>=2.2.0 # To mirror production environment's stemming behaviour for evaluation
+rapidfuzz>=3.0.0 # To mirror production environment's fuzzy matching behavior for evaluation

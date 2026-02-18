@@ -5,9 +5,11 @@ Supports a single proxy/base URL which may include the path (url prefix).
 
 import logging
 from typing import Any, List
+from typing import Any, List
 from urllib.parse import urlparse
 
 from opensearchpy import OpenSearch, helpers
+from opensearchpy.exceptions import ConflictError
 from opensearchpy.exceptions import ConflictError
 
 logger = logging.getLogger(__name__)
