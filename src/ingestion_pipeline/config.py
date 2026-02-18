@@ -56,6 +56,11 @@ class Settings(BaseSettings):  # type: ignore
     OPENSEARCH_CHUNK_INDEX_NAME: str = "page_chunks"
     OPENSEARCH_PAGE_METADATA_INDEX_NAME: str = "page_metadata"
 
+    # -- AWS --
+    AWS_MOD_PLATFORM_ACCESS_KEY_ID: str = "aws_mod_platform_access_key_id"
+    AWS_MOD_PLATFORM_SECRET_ACCESS_KEY: str = "aws_mod_platform_secret_access_key"
+    AWS_MOD_PLATFORM_SESSION_TOKEN: str = "aws_mod_platform_session_token"
+    AWS_REGION: str = "aws_region"
     # -- GLOBAL AWS CONFIGURATION --
     AWS_REGION: str = "eu-west-2"
 
@@ -100,6 +105,11 @@ class Settings(BaseSettings):  # type: ignore
     # -- Local Development Mode --
     # Confgure via .env or environment variable
     LOCAL_DEVELOPMENT_MODE: bool = False
+
+    # -- IAM Handwriting Testing --
+    # Default prompt version for LLM-augmented OCR correction
+    # Options: v1 (detailed), v2 (concise - best performing), v3 (context-aware), v4 (few-shot)
+    IAM_DEFAULT_PROMPT_VERSION: str = "v2"
 
     LOG_LEVEL: str = "INFO"
 
