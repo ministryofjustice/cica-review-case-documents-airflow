@@ -16,7 +16,7 @@ from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkin
 from ingestion_pipeline.chunking.strategies.table import LayoutTableChunkingStrategy
 from ingestion_pipeline.chunking.textract_document_chunker import (
     DocumentChunk,
-    DocumentChunker,
+    TextractLayoutDocumentChunker,
 )
 
 TEXTRACT_JSON_PATH = Path(__file__).parent / "data" / "single_text_layout_textract_response.json"
@@ -76,20 +76,18 @@ def document_chunker_factory():
         DocumentChunker: The created DocumentChunker object.
     """
 
-    def _factory(config: Optional[ChunkingConfig] = None) -> DocumentChunker:
+    def _factory(config: Optional[ChunkingConfig] = None) -> TextractLayoutDocumentChunker:
         # If no config is provided by the test, use the default one.
         if config is None:
             config = ChunkingConfig()
 
         layout_text_strategy = LayoutTextChunkingStrategy(config)
         layout_table_strategy = LayoutTableChunkingStrategy(config)
-
         strategy_handlers = {
             "LAYOUT_TEXT": layout_text_strategy,
             "LAYOUT_TABLE": layout_table_strategy,
         }
-
-        return DocumentChunker(
+        return TextractLayoutDocumentChunker(
             strategy_handlers=strategy_handlers,
             config=config,
         )
