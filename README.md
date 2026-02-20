@@ -29,6 +29,8 @@ The repository comes with the following preset files:
 
 See [CICA specific Windows WSL setup and confguration instructions](#windows-wsl-setup-instructions) instructions if developing on Windows
 
+See [MOJ specific MacOS setup and confguration instructions](#mac-setup-instructions) instructions if developing on a Mac
+
 If using VSCode install the Microsoft Python extensions, Python Debugger, Python, Pylance, Python Environments
 
 ### Environment/package management
@@ -168,6 +170,15 @@ A corresponding GitHub Action (`regenerate-requirements.yml`) runs on every pull
 Microsoft recommends developing Pyhon Apps using WSL.
 [CICA specific Windows WSL setup and configuration instructions](https://dsdmoj.atlassian.net/wiki/spaces/CICA/pages/5882806404/Set+up+instructions+for+WSL+for+windows)
 
+### Mac set up instructions
+
+pdf2image library requires poppler package installed on Mac.
+
+Required [Homebrew](https://brew.sh/) installation.
+
+```brew install poppler```
+
+Homebrew will update packages when doing this which may take some time.
 
 ## Running the project
 
