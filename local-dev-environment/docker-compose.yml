@@ -28,7 +28,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s # Give it time to initialize
+      start_period: 3600s # Give it time to initialize (long time for Max)
 
   localstack:
     container_name: "${LOCALSTACK_DOCKER_NAME:-localstack-main}"
@@ -45,7 +45,7 @@ services:
       - AWS_DEFAULT_REGION=eu-west-2
       - OPENSEARCH_CUSTOM_BACKEND=http://opensearch:9200
       - OPENSEARCH_ENDPOINT_STRATEGY=path
-      - DEBUG=${DEBUG:-0} #  Set to 1 for debugging LocalStack issues.
+      - DEBUG=${DEBUG:-1} #  Set to 1 for debugging LocalStack issues.
       - SKIP_SSL_CERT_DOWNLOAD=1
     volumes:
       - ./init-scripts:/etc/localstack/init/ready.d
