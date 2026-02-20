@@ -58,8 +58,9 @@ def main():
         logger.critical("OpenSearch health check failed. Exiting pipeline runner.")
         return
 
+    # Move to .env
     S3_DOCUMENT_URI = (
-        f"s3://{settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET}/26-711111/Case1_TC19_50_pages_brain_injury.pdf"
+        f"s3://{settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET}/26-711113/Case1_TC19_50_pages_brain_injury.pdf"
     )
 
     case_ref = extract_case_ref(S3_DOCUMENT_URI)

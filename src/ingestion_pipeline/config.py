@@ -82,6 +82,13 @@ class Settings(BaseSettings):  # type: ignore
     MAX_VERTICAL_GAP: float = 0.5
     LINE_CHUNK_CHAR_LIMIT: int = 300
 
+    # -- Line-by-Line Sentence Chunker Configuration --
+    # Word-based limits (not character-based)
+    SENTENCE_CHUNKER_MIN_WORDS: int = 80
+    SENTENCE_CHUNKER_MAX_WORDS: int = 100
+    # Vertical gap threshold (relative to page height, 0.0-1.0)
+    SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO: float = 0.05
+
     # Create a unique namespace for your application
     # This is a fixed UUID defined once for the system.
     # TODO This should be a UUID that is generated, is stored as a secret? and is kept constant
@@ -98,8 +105,14 @@ class Settings(BaseSettings):  # type: ignore
     BEDROCK_EMBEDDING_MODEL_ID: str = "amazon.titan-embed-text-v2:0"
 
     # -- Local Development Mode --
-    # Confgure via .env or environment variable
+    # Confgure via .env
     LOCAL_DEVELOPMENT_MODE: bool = False
+
+    # -- Temp Development setting until MOD_PLATFORM is fully integrated --
+    # That is MOD PLAT Textract can talk to CICA AWS resources
+    # and we can point the Textract S3 output to the same bucket as the source documents
+    # Confgure via .env
+    USE_MOD_PLATFORM_MODE: bool = False
 
     LOG_LEVEL: str = "INFO"
 
@@ -123,7 +136,7 @@ class Settings(BaseSettings):  # type: ignore
             raise ValueError("All page numbers in DEBUG_PAGE_NUMBERS must be >= 1")
         return v
 
-    @field_validator("MAXIMUM_CHUNK_SIZE", "LINE_CHUNK_CHAR_LIMIT")
+    @field_validator("MAXIMUM_CHUNK_SIZE", "LINE_CHUNK_CHAR_LIMIT", "SENTENCE_CHUNKER_MIN_WORDS", "SENTENCE_CHUNKER_MAX_WORDS")
     @classmethod
     def validate_positive_int(cls, v: int) -> int:
         """Ensure chunk size values are positive integers.
@@ -141,7 +154,7 @@ class Settings(BaseSettings):  # type: ignore
             raise ValueError("Chunk size must be a positive integer")
         return v
 
-    @field_validator("Y_TOLERANCE_RATIO")
+    @field_validator("Y_TOLERANCE_RATIO", "SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO")
     @classmethod
     def validate_ratio(cls, v: float) -> float:
         """Ensure ratio is between 0.0 and 1.0.
@@ -207,6 +220,23 @@ class Settings(BaseSettings):  # type: ignore
         """
         if self.TEXTRACT_API_JOB_TIMEOUT_SECONDS <= self.TEXTRACT_API_POLL_INTERVAL_SECONDS:
             raise ValueError("TEXTRACT_API_JOB_TIMEOUT_SECONDS must be greater than TEXTRACT_API_POLL_INTERVAL_SECONDS")
+        return self
+
+    @model_validator(mode="after")
+    def validate_sentence_chunker_word_limits(self) -> "Settings":
+        """Ensure min_words < max_words for sentence chunker.
+
+        Returns:
+            Settings: The validated settings object.
+
+        Raises:
+            ValueError: If min_words >= max_words.
+        """
+        if self.SENTENCE_CHUNKER_MIN_WORDS >= self.SENTENCE_CHUNKER_MAX_WORDS:
+            raise ValueError(
+                f"SENTENCE_CHUNKER_MIN_WORDS ({self.SENTENCE_CHUNKER_MIN_WORDS}) must be less than "
+                f"SENTENCE_CHUNKER_MAX_WORDS ({self.SENTENCE_CHUNKER_MAX_WORDS})"
+            )
         return self
 
 

@@ -78,34 +78,32 @@ fi
 
 # --- Copy sample document from AWS S3 to LocalStack S3 ---
 
+
+# Support comma-separated list of keys in SRC_S3_KEY
 SRC_BUCKET_NAME="${SRC_S3_BUCKET}"
-SRC_KEY_PATH="${SRC_S3_KEY}"
 DEST_BUCKET_NAME="${S3_KTA_DOCUMENTS_BUCKET_NAME}"
-DEST_KEY_PATH="${SRC_S3_KEY}"
-TMP_FILE="/tmp/$(basename "${SRC_S3_KEY}")"
 
-echo "Downloading sample document from AWS S3..."
-echo "Source S3 URI: s3://${SRC_BUCKET_NAME}/${SRC_KEY_PATH}"
-if ! aws s3 cp "s3://${SRC_BUCKET_NAME}/${SRC_KEY_PATH}" "${TMP_FILE}"; then
-  echo "ERROR: Failed to download sample document from AWS S3. Check your AWS credentials and network access.
-  You may need to update your local-dev-environment/.env file with correct AWS credentials." >&2
-  exit 1
-fi
-
-echo "Uploading sample document to LocalStack S3..."
-echo "Destination S3 URI: s3://${DEST_BUCKET_NAME}/${DEST_KEY_PATH}"
-if ! awslocal s3 cp "${TMP_FILE}" "s3://${DEST_BUCKET_NAME}/${DEST_KEY_PATH}"; then
-  echo "ERROR: Failed to upload sample document to LocalStack S3." >&2
-  exit 1
-fi
-
-echo "Listing contents of s3://${DEST_BUCKET_NAME}/$(dirname "${SRC_KEY_PATH}")/ in LocalStack S3:"
-awslocal s3 ls "s3://${DEST_BUCKET_NAME}/$(dirname "${SRC_KEY_PATH}")/"
-
-# Clean up temp file
-rm -f "${TMP_FILE}"
-
-echo "Sample document copied to LocalStack S3 at s3://${DEST_BUCKET_NAME}/${DEST_KEY_PATH}"
+IFS=',' read -ra KEY_ARRAY <<< "${SRC_S3_KEY}"
+for SRC_KEY_PATH in "${KEY_ARRAY[@]}"; do
+  TMP_FILE="/tmp/$(basename "${SRC_KEY_PATH}")"
+  echo "Downloading sample document from AWS S3..."
+  echo "Source S3 URI: s3://${SRC_BUCKET_NAME}/${SRC_KEY_PATH}"
+  if aws s3 cp "s3://${SRC_BUCKET_NAME}/${SRC_KEY_PATH}" "${TMP_FILE}"; then
+    echo "Uploading sample document to LocalStack S3..."
+    echo "Destination S3 URI: s3://${DEST_BUCKET_NAME}/${SRC_KEY_PATH}"
+    if awslocal s3 cp "${TMP_FILE}" "s3://${DEST_BUCKET_NAME}/${SRC_KEY_PATH}"; then
+      echo "Sample document copied to LocalStack S3 at s3://${DEST_BUCKET_NAME}/${SRC_KEY_PATH}"
+      echo "Listing contents of s3://${DEST_BUCKET_NAME}/$(dirname "${SRC_KEY_PATH}")/ in LocalStack S3:"
+      awslocal s3 ls "s3://${DEST_BUCKET_NAME}/$(dirname "${SRC_KEY_PATH}")/"
+    else
+      echo "ERROR: Failed to upload sample document to LocalStack S3: ${SRC_KEY_PATH}" >&2
+    fi
+  else
+    echo "WARNING: Could not download s3://${SRC_BUCKET_NAME}/${SRC_KEY_PATH}. Skipping this key." >&2
+  fi
+  # Clean up temp file
+  rm -f "${TMP_FILE}"
+done
 
 # --- Final Message ---
 echo "All LocalStack AWS resources checked/created successfully."
