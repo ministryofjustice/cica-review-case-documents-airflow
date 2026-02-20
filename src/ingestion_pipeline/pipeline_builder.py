@@ -7,12 +7,7 @@ from ingestion_pipeline.aws_client.clients import (
     get_textract_client,
     get_textractor_instance,
 )
-from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
-from ingestion_pipeline.chunking.strategies.key_value.layout_key_value import KeyValueChunker
-from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkingStrategy
-from ingestion_pipeline.chunking.strategies.list.list_chunker import LayoutListChunkingStrategy
-from ingestion_pipeline.chunking.strategies.table.layout_table import LayoutTableChunkingStrategy
-from ingestion_pipeline.chunking.textract_document_chunker import DocumentChunker
+from ingestion_pipeline.chunking.chunker_factory import get_document_chunker
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.custom_logging.log_context import setup_logging
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingGenerator
@@ -27,11 +22,19 @@ from ingestion_pipeline.textract.textract_processor import TextractProcessor
 setup_logging()
 logger = logging.getLogger(__name__)
 
+# Define the chunker type to use in the pipeline (e.g., "line" or "layout")
+# Leaving both implemented chunkers available, but defaulting to "line" for now.
+# Can be made configurable via settings or environment variable in the future.
+# We are still experimenting with both approaches and want to keep the option open
+# to easily switch between them for testing and iteration.
+# ALLOWED_CHUNKER_TYPES = {"layout", "line"}
+CHUNKER_TYPE = "line"
+
 
 def build_pipeline() -> Pipeline:
     """Constructs the pipeline with all its dependencies.
 
-    This acts as the composition root for the application.
+    This acts as the composition root for the ingestion pipeline.
 
     Returns:
         Pipeline: A fully configured instance of the ingestion pipeline.
@@ -43,29 +46,7 @@ def build_pipeline() -> Pipeline:
         textract_client=get_textract_client(),
     )
 
-    # --- Chunking Strategies ---
-    chunking_config = ChunkingConfig()
-    layout_text_strategy = LayoutTextChunkingStrategy(chunking_config)
-    layout_table_strategy = LayoutTableChunkingStrategy(chunking_config)
-    layout_key_value_strategy = KeyValueChunker(chunking_config)
-    layout_list_strategy = LayoutListChunkingStrategy(chunking_config)
-
-    strategy_handlers = {
-        "LAYOUT_TEXT": layout_text_strategy,
-        "LAYOUT_HEADER": layout_text_strategy,
-        "LAYOUT_TITLE": layout_text_strategy,
-        "LAYOUT_TABLE": layout_table_strategy,
-        "LAYOUT_SECTION_HEADER": layout_text_strategy,
-        "LAYOUT_FOOTER": layout_text_strategy,
-        "LAYOUT_FIGURE": layout_table_strategy,
-        "LAYOUT_KEY_VALUE": layout_key_value_strategy,
-        "LAYOUT_LIST": layout_list_strategy,
-    }
-
-    chunker = DocumentChunker(
-        strategy_handlers=strategy_handlers,
-        config=chunking_config,
-    )
+    chunker = get_document_chunker(CHUNKER_TYPE)
 
     embedding_generator = EmbeddingGenerator(model_id=settings.BEDROCK_EMBEDDING_MODEL_ID)
     chunk_indexer = OpenSearchIndexer(

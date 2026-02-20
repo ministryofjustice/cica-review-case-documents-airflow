@@ -1,10 +1,15 @@
-"""Module for chunking Textractor documents into structured chunks."""
+"""Module for Textract LAYOUT-based chunking of documents.
+
+This chunker processes Textract LAYOUT blocks (LAYOUT_TEXT, LAYOUT_TABLE, etc.)
+using specialized strategy handlers for each block type.
+"""
 
 import logging
 from typing import List, Mapping, Optional
 
 from textractor.entities.document import Document
 
+from ingestion_pipeline.chunking.base_document_chunker import ChunkError, DocumentChunker
 from ingestion_pipeline.chunking.exceptions import ChunkException
 from ingestion_pipeline.chunking.strategies.merge.chunk_merger import ChunkMerger
 from ingestion_pipeline.chunking.verbose_page_debug_logger import is_verbose_page_debug, log_verbose_page_debug
@@ -16,19 +21,20 @@ from .strategies.base import ChunkingStrategyHandler
 logger = logging.getLogger(__name__)
 
 
-class ChunkError(Exception):
-    """Custom exception for chunking failures."""
+class TextractLayoutDocumentChunker(DocumentChunker):
+    """Handles extraction of chunks from Textractor documents using LAYOUT blocks.
 
-
-class DocumentChunker:
-    """Handles extraction of chunks from Textractor documents."""
+    This chunker processes different Textract LAYOUT block types (LAYOUT_TEXT,
+    LAYOUT_TABLE, LAYOUT_KEY_VALUE, etc.) with specialized strategy handlers.
+    Requires strategy_handlers mapping for each layout type to process.
+    """
 
     def __init__(
         self,
         strategy_handlers: Mapping[str, ChunkingStrategyHandler],
         config: Optional[ChunkingConfig] = None,
     ):
-        """Initializes the DocumentChunker.
+        """Initializes the TextractLayoutDocumentChunker.
 
         Args:
             strategy_handlers (Mapping[str, ChunkingStrategyHandler]):
