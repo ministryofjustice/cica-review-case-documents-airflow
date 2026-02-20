@@ -24,7 +24,9 @@ POLL_INTERVAL_SECONDS = settings.TEXTRACT_API_POLL_INTERVAL_SECONDS
 JOB_TIMEOUT_SECONDS = settings.TEXTRACT_API_JOB_TIMEOUT_SECONDS
 
 # Local development mode flag (can be set via environment variable)
-LOCAL_DEVELOPMENT_MODE = settings.LOCAL_DEVELOPMENT_MODE
+# This will switch the S3 URI to point to a mod platform bucket for AWS Textract integration.
+# This will be removed when AWS Textract has been configured to use CICA AWS S3 buckets directly.
+USE_MOD_PLATFORM_MODE = settings.USE_MOD_PLATFORM_MODE
 
 
 class TextractProcessingError(Exception):
@@ -132,7 +134,7 @@ class TextractProcessor:
             TextractProcessingError: If the Textract job fails or if document processing encounters an error.
         """
         logger.info(f"Processing s3 file: {s3_document_uri}")
-        if LOCAL_DEVELOPMENT_MODE:
+        if USE_MOD_PLATFORM_MODE:
             parsed = urlparse(s3_document_uri)
             s3_case_bucket_and_file = parsed.path.lstrip("/")
             s3_document_uri = f"s3://{settings.AWS_LOCAL_DEV_TEXTRACT_S3_ROOT_BUCKET}/{s3_case_bucket_and_file}"
