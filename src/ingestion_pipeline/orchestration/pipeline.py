@@ -2,8 +2,8 @@
 
 import logging
 
+from ingestion_pipeline.chunking.base_document_chunker import ChunkError, DocumentChunker
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
-from ingestion_pipeline.chunking.textract_document_chunker import ChunkError, DocumentChunker
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingError, EmbeddingGenerator
 from ingestion_pipeline.indexing.indexer import IndexingError, OpenSearchIndexer

@@ -15,12 +15,7 @@ def patch_external_dependencies():
         patch("ingestion_pipeline.pipeline_builder.get_textractor_instance") as mock_get_textractor_instance,
         patch("ingestion_pipeline.pipeline_builder.settings") as mock_settings,
         patch("ingestion_pipeline.pipeline_builder.TextractProcessor") as mock_textract_processor,
-        patch("ingestion_pipeline.pipeline_builder.ChunkingConfig") as mock_chunking_config,
-        patch("ingestion_pipeline.pipeline_builder.LayoutTextChunkingStrategy") as mock_text_strategy,
-        patch("ingestion_pipeline.pipeline_builder.LayoutTableChunkingStrategy") as mock_table_strategy,
-        patch("ingestion_pipeline.pipeline_builder.KeyValueChunker") as mock_kv_strategy,
-        patch("ingestion_pipeline.pipeline_builder.LayoutListChunkingStrategy") as mock_list_strategy,
-        patch("ingestion_pipeline.pipeline_builder.DocumentChunker") as mock_document_chunker,
+        patch("ingestion_pipeline.pipeline_builder.get_document_chunker") as mock_get_document_chunker,
         patch("ingestion_pipeline.pipeline_builder.EmbeddingGenerator") as mock_embedding_generator,
         patch("ingestion_pipeline.pipeline_builder.OpenSearchIndexer") as mock_indexer,
         patch("ingestion_pipeline.pipeline_builder.Pipeline") as mock_pipeline,
@@ -43,12 +38,7 @@ def patch_external_dependencies():
             "get_textractor_instance": mock_get_textractor_instance,
             "settings": mock_settings,
             "TextractProcessor": mock_textract_processor,
-            "ChunkingConfig": mock_chunking_config,
-            "LayoutTextChunkingStrategy": mock_text_strategy,
-            "LayoutTableChunkingStrategy": mock_table_strategy,
-            "KeyValueChunker": mock_kv_strategy,
-            "LayoutListChunkingStrategy": mock_list_strategy,
-            "DocumentChunker": mock_document_chunker,
+            "get_document_chunker": mock_get_document_chunker,
             "EmbeddingGenerator": mock_embedding_generator,
             "OpenSearchIndexer": mock_indexer,
             "Pipeline": mock_pipeline,
@@ -65,6 +55,8 @@ def test_build_pipeline_wires_up_pipeline_correctly(patch_external_dependencies)
     pipeline_mock = patch_external_dependencies["Pipeline"]
     assert result == pipeline_mock.return_value
     pipeline_mock.assert_called_once()
+    # Check that get_document_chunker was called with the default type
+    patch_external_dependencies["get_document_chunker"].assert_called_once_with("line")
     # Check that PageProcessor and other key components were instantiated
     patch_external_dependencies["PageProcessor"].assert_called_once()
     patch_external_dependencies["S3DocumentService"].assert_called_once()
