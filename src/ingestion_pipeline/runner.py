@@ -41,7 +41,7 @@ def validate_s3_uri(s3_uri: str, expected_bucket: str) -> bool:
         bool: True if the S3 URI matches the expected bucket and path pattern, False otherwise.
     Pattern:
         The S3 URI must start with 's3://{expected_bucket}/', followed by a directory in the format 'NN-NNNNNN/',
-        where 'NN' is any two digits, and 'NNNNNN' starts with either 7 or 8.
+        where 'NN' is any two digits representing the year, and 'NNNNNN' starts with either 7 or 8.
     """
     pattern = rf"^s3://{re.escape(expected_bucket)}/\d{{2}}-[78]\d{{5}}/"
     return re.match(pattern, s3_uri) is not None
@@ -58,8 +58,11 @@ def main():
         logger.critical("OpenSearch health check failed. Exiting pipeline runner.")
         return
 
+    # Move to .env
     S3_DOCUMENT_URI = (
-        f"s3://{settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET}/26-711111/Case1_TC19_50_pages_brain_injury.pdf"
+        f"s3://{settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET}"
+        f"/{settings.AWS_CICA_S3_SOURCE_DOCUMENT_CASE_PREFIX}"
+        f"/{settings.AWS_CICA_S3_SOURCE_DOCUMENT_FILENAME}"
     )
 
     case_ref = extract_case_ref(S3_DOCUMENT_URI)

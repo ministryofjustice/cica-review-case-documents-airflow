@@ -7,8 +7,9 @@ with a mock embedding vector for testing purposes. It is not intended for produc
 import logging
 import sys
 
-from examples import embedding_example_1024  # Import the example embedding vector
 from opensearchpy import OpenSearch
+
+from examples import embedding_example_1024  # Import the example embedding vector
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
