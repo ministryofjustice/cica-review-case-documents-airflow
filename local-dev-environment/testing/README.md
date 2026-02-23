@@ -9,10 +9,10 @@ cd local-dev-environment
 source .venv/bin/activate
 
 # Run a single evaluation
-python -m testing.run_evaluation
+python -m testing.search_evaluation.run_evaluation
 
 # Run parameter optimization (100 trials)
-python -m testing.optimize_search
+python -m testing.search_evaluation.optimize_search
 ```
 
 **Prerequisites:**
@@ -54,7 +54,7 @@ search_terms.csv → search_looper → OpenSearch → term_matching → chunk_me
 ### Usage
 
 ```bash
-python -m testing.run_evaluation
+python -m testing.search_evaluation.run_evaluation
 ```
 
 ### Output
@@ -74,7 +74,7 @@ All settings are in `evaluation_settings.py`.
 
 Set to `0` to disable, or `>0` to enable and weight.
 
-| Setting | Description | Default |
+| Setting | Description | Example |
 |---------|-------------|---------|
 | `KEYWORD_BOOST` | Exact keyword matching | 1.0 |
 | `ANALYSER_BOOST` | English analyzer (stemming, stopwords) | 0.0 |
@@ -84,7 +84,7 @@ Set to `0` to disable, or `>0` to enable and weight.
 
 ### Search Parameters
 
-| Setting | Description | Default |
+| Setting | Description | Example |
 |---------|-------------|---------|
 | `K_QUERIES` | Results per search | 60 |
 | `SCORE_FILTER` | Minimum score threshold | 0.56 |
@@ -97,7 +97,7 @@ Set to `0` to disable, or `>0` to enable and weight.
 Override settings at runtime without editing files:
 
 ```python
-from testing.run_evaluation import main
+from testing.search_evaluation.run_evaluation import main
 
 result = main(settings_overrides={"KEYWORD_BOOST": 2.0, "SEMANTIC_BOOST": 0.5})
 ```
@@ -111,7 +111,7 @@ Perform individual ad-hoc searches and export results to Excel. Useful for inves
 ### Usage
 
 ```bash
-python -m testing.search_client
+python -m testing.search_evaluation.search_client
 ```
 
 ### Configuration
@@ -133,7 +133,7 @@ Auto-generates expected chunk IDs in `search_terms.csv` based on current OpenSea
 ### Usage
 
 ```bash
-python -m testing.generate_expected_chunks
+python -m testing.search_evaluation.generate_expected_chunks
 ```
 
 ### Search Logic
@@ -171,7 +171,7 @@ optimization_score = avg_chunks_returned × (acceptable_term_precision)²
 ### Usage
 
 ```bash
-python -m testing.optimize_search
+python -m testing.search_evaluation.optimize_search
 ```
 
 Default: 100 trials. Modify `main(n_trials=X)` to change.
@@ -190,7 +190,7 @@ output/optimization/
 
 1. Review best parameters in `summary.json`
 2. Update `evaluation_settings.py` with optimal values
-3. Confirm: `python -m testing.run_evaluation`
+3. Confirm: `python -m testing.search_evaluation.run_evaluation`
 
 ---
 

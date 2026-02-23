@@ -1,6 +1,6 @@
 """Unit tests for term_matching module."""
 
-from testing.term_matching import (
+from testing.search_evaluation.term_matching import (
     check_terms_in_chunks,
     exact_match,
     fuzzy_match,

@@ -5,41 +5,15 @@ them as a lookup dictionary for the relevance scoring process.
 """
 
 import logging
-import os
-import sys
-from pathlib import Path
 
-# Add the project 'src' directory to sys.path
-sys.path.append(str(Path(__file__).resolve().parent.parent.parent / "src"))
-
-from opensearchpy import OpenSearch
-from opensearchpy.exceptions import ConnectionError as OpenSearchConnectionError
-
-from ingestion_pipeline.config import settings
-
-os.environ["AWS_ACCESS_KEY_ID"] = settings.AWS_ACCESS_KEY_ID
-os.environ["AWS_SECRET_ACCESS_KEY"] = settings.AWS_SECRET_ACCESS_KEY
-os.environ["AWS_SESSION_TOKEN"] = settings.AWS_SESSION_TOKEN
-os.environ["AWS_REGION"] = settings.AWS_REGION
-
-# OpenSearch connection settings
-USER = "admin"
-PASSWORD = "really-secure-passwordAa!1"
-CHUNK_INDEX_NAME = settings.OPENSEARCH_CHUNK_INDEX_NAME
+from testing.search_evaluation.opensearch_client import (
+    CHUNK_INDEX_NAME,
+    OpenSearchConnectionError,
+    get_opensearch_client,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("chunks_loader")
-
-
-def get_opensearch_client() -> OpenSearch:
-    """Create and return an OpenSearch client."""
-    return OpenSearch(
-        hosts=[settings.OPENSEARCH_PROXY_URL],
-        http_auth=(USER, PASSWORD),
-        use_ssl=False,
-        verify_certs=False,
-        ssl_assert_hostname=False,
-    )
 
 
 def load_all_chunks_from_opensearch() -> dict[str, str]:

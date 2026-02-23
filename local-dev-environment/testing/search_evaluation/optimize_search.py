@@ -6,7 +6,7 @@ that maximizes the optimization score from the evaluation framework.
 
 Usage (from local-dev-environment directory):
     source .venv/bin/activate
-    python -m testing.optimize_search
+    python -m testing.search_evaluation.optimize_search
 
 Requirements:
     pip install optuna
@@ -28,7 +28,7 @@ from pathlib import Path
 import optuna
 from optuna.samplers import TPESampler
 
-from testing.run_evaluation import main as run_evaluation
+from testing.search_evaluation.run_evaluation import main as run_evaluation
 
 # Configure logging
 logging.basicConfig(
