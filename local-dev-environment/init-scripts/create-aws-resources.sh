@@ -23,7 +23,7 @@ echo "Starting LocalStack AWS resource creation..."
 
 # Load environment variables from LocalStack .env file if it exists
 if [ -f /etc/localstack/.env ]; then
-  export $(grep -v '^#' /etc/localstack/.env | xargs)
+  export $(grep -v '^#' /etc/localstack/.env | grep -v '^$' | sed 's/#.*//' | xargs)
 fi
 
 # Map MOD_PLATFORM_SANDBOX variables to standard AWS variables
