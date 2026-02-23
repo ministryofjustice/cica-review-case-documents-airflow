@@ -12,13 +12,13 @@ from pathlib import Path
 import pandas as pd
 
 # Import module to access settings dynamically (supports runtime overrides)
-from testing import evaluation_settings as settings
-from testing.search_client import count_term_occurrences, local_search_client
+from testing.search_evaluation import evaluation_settings as settings
+from testing.search_evaluation.search_client import count_term_occurrences, local_search_client
 
 # --- Configuration ---
 SCRIPT_DIR = Path(__file__).resolve().parent
 INPUT_FILE_NAME = "search_terms.csv"  # Change this to use a different input file
-INPUT_FILE = SCRIPT_DIR / "testing_docs" / INPUT_FILE_NAME
+INPUT_FILE = SCRIPT_DIR.parent / "testing_docs" / INPUT_FILE_NAME
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("search_looper")

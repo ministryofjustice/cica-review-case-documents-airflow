@@ -5,29 +5,29 @@ This is the main entry point for running the relevance scoring evaluation.
 It orchestrates the search loop, evaluation, and output generation.
 
 Usage (run from local-dev-environment directory):
-    python -m testing.run_evaluation
+    python -m testing.search_evaluation.run_evaluation
 
 For programmatic use with settings overrides:
-    from testing.run_evaluation import main
+    from testing.search_evaluation.run_evaluation import main
     result = main(settings_overrides={"KEYWORD_BOOST": 2.0, "K_QUERIES": 100})
 """
 
 import logging
 from typing import Any
 
-from testing.evaluation_config import (
+from testing.search_evaluation.evaluation_config import (
     get_active_search_type,
     get_date_folder,
     get_search_config,
     get_timestamp,
 )
-from testing.evaluation_settings import apply_overrides, reset_settings
-from testing.relevance_scoring import (
+from testing.search_evaluation.evaluation_settings import apply_overrides, reset_settings
+from testing.search_evaluation.relevance_scoring import (
     append_to_evaluation_log,
     evaluate_relevance,
     write_results_csv,
 )
-from testing.search_looper import run_search_loop
+from testing.search_evaluation.search_looper import run_search_loop
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("run_evaluation")

@@ -20,10 +20,10 @@ For programmatic override (e.g., optimization), use:
 # Higher boost = more weight in the combined search score.
 
 KEYWORD_BOOST = 1.2  # Exact keyword matching
-ANALYSER_BOOST = 3.9  # English analyzer (stemming, stopwords)
-SEMANTIC_BOOST = 0.9  # Vector/embedding similarity search
-FUZZY_BOOST = 3.9  # Fuzzy matching (typo tolerance)
-WILDCARD_BOOST = 3.9  # Wildcard pattern matching
+ANALYSER_BOOST = 0  # English analyzer (stemming, stopwords)
+SEMANTIC_BOOST = 0  # Vector/embedding similarity search
+FUZZY_BOOST = 0  # Fuzzy matching (typo tolerance)
+WILDCARD_BOOST = 0  # Wildcard pattern matching
 
 # =============================================================================
 # SEARCH PARAMETERS
@@ -95,7 +95,7 @@ def apply_overrides(overrides: dict) -> None:
     Example:
         apply_overrides({"KEYWORD_BOOST": 2.0, "SEMANTIC_BOOST": 0.5})
     """
-    import testing.evaluation_settings as module
+    import testing.search_evaluation.evaluation_settings as module
 
     for key, value in overrides.items():
         if key in _DEFAULTS:
@@ -106,7 +106,7 @@ def apply_overrides(overrides: dict) -> None:
 
 def reset_settings() -> None:
     """Reset all settings to their default values."""
-    import testing.evaluation_settings as module
+    import testing.search_evaluation.evaluation_settings as module
 
     for key, value in _DEFAULTS.items():
         setattr(module, key, value)
@@ -114,6 +114,6 @@ def reset_settings() -> None:
 
 def get_current_settings() -> dict:
     """Get all current settings as a dictionary."""
-    import testing.evaluation_settings as module
+    import testing.search_evaluation.evaluation_settings as module
 
     return {key: getattr(module, key) for key in _DEFAULTS}
