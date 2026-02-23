@@ -6,7 +6,6 @@ import pytest
 from opensearchpy.helpers import BulkIndexError
 
 from ingestion_pipeline.chunking.schemas import DocumentBoundingBox, DocumentChunk, DocumentPage
-from ingestion_pipeline.chunking.schemas import DocumentBoundingBox, DocumentChunk, DocumentPage
 from ingestion_pipeline.indexing.indexer import IndexingError, OpenSearchIndexer
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
