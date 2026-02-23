@@ -8,50 +8,28 @@ For single-word terms: uses a simple keyword match
 For multi-word terms: uses match_phrase for exact phrase matching
 
 Run from local-dev-environment directory:
-    python -m testing.generate_expected_chunks
+    python -m testing.search_evaluation.generate_expected_chunks
 """
 
 import csv
 import logging
-import os
-import sys
 from pathlib import Path
-
-# Add the project 'src' directory to sys.path
-sys.path.append(str(Path(__file__).resolve().parent.parent.parent / "src"))
 
 from opensearchpy import OpenSearch
 
-from ingestion_pipeline.config import settings
-from testing.date_formats import extract_dates_for_search, is_date_search
-
-os.environ["AWS_ACCESS_KEY_ID"] = settings.AWS_ACCESS_KEY_ID
-os.environ["AWS_SECRET_ACCESS_KEY"] = settings.AWS_SECRET_ACCESS_KEY
-os.environ["AWS_SESSION_TOKEN"] = settings.AWS_SESSION_TOKEN
-os.environ["AWS_REGION"] = settings.AWS_REGION
-
-# OpenSearch connection settings
-USER = "admin"
-PASSWORD = "really-secure-passwordAa!1"  # noqa: S105
-CHUNK_INDEX_NAME = settings.OPENSEARCH_CHUNK_INDEX_NAME
+from testing.search_evaluation.date_formats import extract_dates_for_search, is_date_search
+from testing.search_evaluation.opensearch_client import (
+    CHUNK_INDEX_NAME,
+    get_opensearch_client,
+)
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-INPUT_FILE = SCRIPT_DIR / "testing_docs" / "search_terms.csv"
+TESTING_DIR = SCRIPT_DIR.parent  # Parent is the testing package directory
+INPUT_FILE = TESTING_DIR / "testing_docs" / "search_terms.csv"
 OUTPUT_FILE = INPUT_FILE  # Overwrite the same file
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("generate_expected_chunks")
-
-
-def get_opensearch_client() -> OpenSearch:
-    """Create and return an OpenSearch client."""
-    return OpenSearch(
-        hosts=[settings.OPENSEARCH_PROXY_URL],
-        http_auth=(USER, PASSWORD),
-        use_ssl=False,
-        verify_certs=False,
-        ssl_assert_hostname=False,
-    )
 
 
 def search_for_term(client: OpenSearch, search_term: str, max_results: int = 200) -> list[dict]:

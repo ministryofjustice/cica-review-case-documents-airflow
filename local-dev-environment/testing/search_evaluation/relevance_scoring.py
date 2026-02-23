@@ -10,14 +10,14 @@ from pathlib import Path
 
 import pandas as pd
 
-from testing.chunk_metrics import calculate_chunk_match, safe_int
-from testing.chunks_loader import load_all_chunks_from_opensearch
-from testing.evaluation_config import (
+from testing.search_evaluation.chunk_metrics import calculate_chunk_match, safe_int
+from testing.search_evaluation.chunks_loader import load_all_chunks_from_opensearch
+from testing.search_evaluation.evaluation_config import (
     EVALUATION_LOG_FILE,
     get_active_search_type,
     get_active_search_types,
 )
-from testing.term_matching import check_terms_by_expected_chunks, check_terms_in_chunks
+from testing.search_evaluation.term_matching import check_terms_by_expected_chunks, check_terms_in_chunks
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("relevance_scoring")
