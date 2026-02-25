@@ -23,14 +23,14 @@ updates:
       all-docker:
         patterns:
           - "*"
-  - package-ecosystem: "pip"
+  - package-ecosystem: "uv"
     directory: "/"
     schedule:
       interval: "daily"
     commit-message:
-      prefix: ":dependabot: pip"
+      prefix: ":dependabot: uv"
       include: "scope"
     groups:
-      all-pip:
+      all-uv:
         patterns:
           - "*"
