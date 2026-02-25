@@ -2,56 +2,56 @@
 
 import pytest
 from iam_testing.schemas import OCRResult
-from iam_testing.scoring import ScoreResult, _calculate_wer_cer, score_ocr_result
+from iam_testing.scoring import ScoreResult, calculate_wer_cer, score_ocr_result
 
 
 class TestCalculateWerCer:
-    """Tests for the _calculate_wer_cer helper function."""
+    """Tests for the calculate_wer_cer helper function."""
 
     def test_perfect_match(self):
-        wer_score, cer_score = _calculate_wer_cer("hello world", "hello world", "test", "handwriting")
+        wer_score, cer_score = calculate_wer_cer("hello world", "hello world", "test", "handwriting")
         assert wer_score == 0.0
         assert cer_score == 0.0
 
     def test_complete_mismatch(self):
-        wer_score, cer_score = _calculate_wer_cer("hello world", "goodbye earth", "test", "handwriting")
+        wer_score, cer_score = calculate_wer_cer("hello world", "goodbye earth", "test", "handwriting")
         assert wer_score == 1.0  # All words wrong
         assert cer_score > 0.5  # Most characters wrong
 
     def test_partial_match(self):
-        wer_score, cer_score = _calculate_wer_cer("hello world", "hello there", "test", "handwriting")
+        wer_score, cer_score = calculate_wer_cer("hello world", "hello there", "test", "handwriting")
         assert wer_score == 0.5  # 1 of 2 words wrong
         assert 0 < cer_score < 1  # Some characters wrong
 
     def test_empty_gt_with_empty_ocr(self):
-        wer_score, cer_score = _calculate_wer_cer("", "", "test", "handwriting")
+        wer_score, cer_score = calculate_wer_cer("", "", "test", "handwriting")
         assert wer_score == 0.0
         assert cer_score == 0.0
 
     def test_empty_gt_with_ocr_text(self):
-        wer_score, cer_score = _calculate_wer_cer("", "some text", "test", "handwriting")
+        wer_score, cer_score = calculate_wer_cer("", "some text", "test", "handwriting")
         assert wer_score == 1.0
         assert cer_score == 1.0
 
     def test_empty_ocr_with_gt_text(self):
-        wer_score, cer_score = _calculate_wer_cer("some text", "", "test", "handwriting")
+        wer_score, cer_score = calculate_wer_cer("some text", "", "test", "handwriting")
         assert wer_score == 1.0
         assert cer_score == 1.0
 
     def test_whitespace_only_treated_as_empty(self):
-        wer_score, cer_score = _calculate_wer_cer("   ", "", "test", "handwriting")
+        wer_score, cer_score = calculate_wer_cer("   ", "", "test", "handwriting")
         assert wer_score == 0.0
         assert cer_score == 0.0
 
     def test_insertion_error(self):
         """OCR has extra words."""
-        wer_score, cer_score = _calculate_wer_cer("hello world", "hello big world", "test", "handwriting")
+        wer_score, cer_score = calculate_wer_cer("hello world", "hello big world", "test", "handwriting")
         assert wer_score == 0.5  # 1 insertion out of 2 reference words
         assert cer_score > 0  # Extra characters
 
     def test_deletion_error(self):
         """OCR is missing words."""
-        wer_score, cer_score = _calculate_wer_cer("hello big world", "hello world", "test", "handwriting")
+        wer_score, cer_score = calculate_wer_cer("hello big world", "hello world", "test", "handwriting")
         assert wer_score == pytest.approx(1 / 3)  # 1 deletion out of 3 reference words
 
 

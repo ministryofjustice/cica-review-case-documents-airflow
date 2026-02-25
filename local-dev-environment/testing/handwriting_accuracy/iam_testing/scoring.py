@@ -68,20 +68,26 @@ def load_all_ground_truth(gt_path: Path) -> dict[str, dict]:
     return records
 
 
-def _calculate_wer_cer(gt_text: str, ocr_text: str, form_id: str, text_type: str) -> tuple[float, float]:
+def calculate_wer_cer(
+    gt_text: str,
+    ocr_text: str,
+    form_id: str | None = None,
+    text_type: str | None = None,
+) -> tuple[float, float]:
     """Calculate WER and CER for a text pair.
 
     Args:
-        gt_text: Ground truth text (normalized).
-        ocr_text: OCR output text.
-        form_id: Form ID for logging.
-        text_type: 'handwriting' or 'print' for logging.
+        gt_text: Ground truth text (should be normalized).
+        ocr_text: OCR/predicted output text.
+        form_id: Optional form ID for logging.
+        text_type: Optional text type ('handwriting'/'print') for logging.
 
     Returns:
         Tuple of (wer, cer).
     """
     if not gt_text.strip():
-        logger.warning("Empty %s ground truth for form %s", text_type, form_id)
+        if form_id and text_type:
+            logger.warning("Empty %s ground truth for form %s", text_type, form_id)
         return (1.0, 1.0) if ocr_text.strip() else (0.0, 0.0)
     if not ocr_text.strip():
         return (1.0, 1.0)
@@ -106,12 +112,12 @@ def score_ocr_result(result: OCRResult, gt: dict) -> ScoreResult:
     # Handwriting scoring
     gt_hw_text = normalize_text(gt.get("gt_handwriting_text", ""))
     ocr_hw_text = normalize_text(result.ocr_handwriting_text)
-    wer_hw, cer_hw = _calculate_wer_cer(gt_hw_text, ocr_hw_text, result.form_id, "handwriting")
+    wer_hw, cer_hw = calculate_wer_cer(gt_hw_text, ocr_hw_text, result.form_id, "handwriting")
 
     # Print scoring (uses filtered OCR output)
     gt_print_text = normalize_text(gt.get("gt_print_text", ""))
     ocr_print_text = normalize_text(result.ocr_print_text)
-    wer_print, cer_print = _calculate_wer_cer(gt_print_text, ocr_print_text, result.form_id, "print")
+    wer_print, cer_print = calculate_wer_cer(gt_print_text, ocr_print_text, result.form_id, "print")
 
     return ScoreResult(
         form_id=result.form_id,
