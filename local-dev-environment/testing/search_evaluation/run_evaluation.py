@@ -22,6 +22,7 @@ from testing.search_evaluation.evaluation_config import (
     get_timestamp,
 )
 from testing.search_evaluation.evaluation_settings import apply_overrides, reset_settings
+from testing.search_evaluation.opensearch_client import check_opensearch_health
 from testing.search_evaluation.relevance_scoring import (
     append_to_evaluation_log,
     evaluate_relevance,
@@ -50,6 +51,10 @@ def main(
     Returns:
         Tuple of (evaluated DataFrame, summary dict), or None if no results.
     """
+    # Pre-flight: verify OpenSearch is reachable before doing any work.
+    # A clear exception here is far better than silently producing zero-metric results.
+    check_opensearch_health()
+
     # Apply any settings overrides
     if settings_overrides:
         apply_overrides(settings_overrides)

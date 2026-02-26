@@ -81,14 +81,14 @@ def load_all_chunks_from_opensearch() -> dict[str, str]:
         logger.info(f"Loaded {len(chunk_lookup)} chunks from OpenSearch")
         return chunk_lookup
 
-    except OpenSearchConnectionError as ce:
-        logger.error("Could not connect to OpenSearch. Is the OpenSearch DB running locally?")
-        logger.error(f"OpenSearch ConnectionError details: {ce}")
-        return {}
+    except OpenSearchConnectionError:
+        # Healthcheck in run_evaluation.main() should have caught this before we got here.
+        # If we reach this point, OpenSearch went away mid-run — propagate so the caller fails loudly.
+        raise
 
     except Exception as e:
         logger.error(f"Failed to load chunks from OpenSearch: {e}")
-        return {}
+        raise
 
 
 def get_chunk_details_from_opensearch() -> list[dict]:
@@ -144,11 +144,11 @@ def get_chunk_details_from_opensearch() -> list[dict]:
         logger.info(f"Loaded {len(chunks)} chunk details from OpenSearch")
         return chunks
 
-    except OpenSearchConnectionError as ce:
-        logger.error("Could not connect to OpenSearch. Is the OpenSearch DB running locally?")
-        logger.error(f"OpenSearch ConnectionError details: {ce}")
-        return []
+    except OpenSearchConnectionError:
+        # Healthcheck in run_evaluation.main() should have caught this before we got here.
+        # If we reach this point, OpenSearch went away mid-run — propagate so the caller fails loudly.
+        raise
 
     except Exception as e:
         logger.error(f"Failed to load chunk details from OpenSearch: {e}")
-        return []
+        raise

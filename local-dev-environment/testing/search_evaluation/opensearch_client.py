@@ -42,8 +42,28 @@ def get_opensearch_client() -> OpenSearch:
     )
 
 
+def check_opensearch_health() -> None:
+    """Verify OpenSearch is reachable before starting an evaluation run.
+
+    Raises:
+        ConnectionError: If OpenSearch cannot be reached, with a clear
+            message indicating the endpoint and remediation steps.
+    """
+    try:
+        client = get_opensearch_client()
+        client.cluster.health()
+        logger.info(f"OpenSearch healthcheck passed: {settings.OPENSEARCH_PROXY_URL}")
+    except OpenSearchConnectionError as e:
+        raise ConnectionError(
+            f"OpenSearch is not reachable at {settings.OPENSEARCH_PROXY_URL}. "
+            "Is the local environment running? Try: docker compose up -d\n"
+            f"Details: {e}"
+        ) from e
+
+
 __all__ = [
     "get_opensearch_client",
+    "check_opensearch_health",
     "OpenSearchConnectionError",
     "CHUNK_INDEX_NAME",
     "USER",
