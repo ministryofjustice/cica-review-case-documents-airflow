@@ -108,6 +108,7 @@ def main():
             exc_info=True,
         )
         # Optionally: raise or exit(1)
+        # This will be handled going forward by retries or alerts.
     finally:
         logger.info("Cleaning up context for document")
         source_doc_id_context.set(None)
