@@ -128,7 +128,7 @@ output/single-search-results/<date>/<timestamp>_<term>_search_results.xlsx
 
 ## 4. Expected Chunks Generator
 
-Auto-generates expected chunk IDs in `search_terms.csv` based on current OpenSearch results.
+Auto-generates expected chunk IDs in `search_terms.csv` based on local keyword matching against all indexed chunks. Uses `chunks_loader` to fetch chunks, separating the process from OpenSearch query logic.
 
 ### Usage
 
@@ -136,13 +136,20 @@ Auto-generates expected chunk IDs in `search_terms.csv` based on current OpenSea
 python -m testing.search_evaluation.generate_expected_chunks
 ```
 
-### Search Logic
+### Matching Logic
 
-| Term Type | Query Method |
-|-----------|--------------|
-| Single word (`brain`) | `match` query |
-| Multi-word (`mental health`) | `match_phrase` query |
-| Date (`28/01/2018`) | `match_phrase` with format variants |
+| Term Type | Matching Method |
+|-----------|-----------------|
+| Single word (`brain`) | Keyword match (case-insensitive), optionally stemmed |
+| Multi-word (`mental health`) | Any word appearing in chunk is a match (case-insensitive), optionally stemmed |
+| Date (`28/01/2018`) | Format variants or phrase match (see below) |
+
+### Configuration
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `DATE_FORMAT_VARIANTS` | When `True`, dates match any format variant (e.g., 28/01/2018, 2018-01-28). When `False`, dates are searched as exact phrase matches. | `False` |
+| `USE_STEMMING` | When `True`, words are stemmed before matching (e.g., "injuries" matches "injury"). When `False`, exact word matching is used. | `False` |
 
 ### When to Run
 
