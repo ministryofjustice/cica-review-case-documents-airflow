@@ -95,7 +95,7 @@ def apply_overrides(overrides: dict) -> None:
     Example:
         apply_overrides({"KEYWORD_BOOST": 2.0, "SEMANTIC_BOOST": 0.5})
     """
-    import testing.search_evaluation.evaluation_settings as module
+    import evaluation_suite.search_evaluation.evaluation_settings as module
 
     for key, value in overrides.items():
         if key in _DEFAULTS:
@@ -106,7 +106,7 @@ def apply_overrides(overrides: dict) -> None:
 
 def reset_settings() -> None:
     """Reset all settings to their default values."""
-    import testing.search_evaluation.evaluation_settings as module
+    import evaluation_suite.search_evaluation.evaluation_settings as module
 
     for key, value in _DEFAULTS.items():
         setattr(module, key, value)
@@ -114,6 +114,6 @@ def reset_settings() -> None:
 
 def get_current_settings() -> dict:
     """Get all current settings as a dictionary."""
-    import testing.search_evaluation.evaluation_settings as module
+    import evaluation_suite.search_evaluation.evaluation_settings as module
 
     return {key: getattr(module, key) for key in _DEFAULTS}

@@ -10,14 +10,14 @@ from pathlib import Path
 
 import pandas as pd
 
-from testing.search_evaluation.chunk_metrics import calculate_chunk_match, safe_int
-from testing.search_evaluation.chunks_loader import load_all_chunks_from_opensearch
-from testing.search_evaluation.evaluation_config import (
+from evaluation_suite.search_evaluation.chunk_metrics import calculate_chunk_match, safe_int
+from evaluation_suite.search_evaluation.chunks_loader import load_all_chunks_from_opensearch
+from evaluation_suite.search_evaluation.evaluation_config import (
     EVALUATION_LOG_FILE,
     get_active_search_type,
     get_active_search_types,
 )
-from testing.search_evaluation.term_matching import check_terms_by_expected_chunks, check_terms_in_chunks
+from evaluation_suite.search_evaluation.term_matching import check_terms_by_expected_chunks, check_terms_in_chunks
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("relevance_scoring")
@@ -162,15 +162,15 @@ def evaluate_relevance(results_df: pd.DataFrame) -> tuple[pd.DataFrame, Evaluati
 
     # Calculate percentage of returned chunks containing terms
     df["term_based_precision"] = df.apply(
-        lambda row: round(row["chunks_with_search_term"] / row["total_results"] * 100, 2)
-        if row["total_results"] > 0
-        else None,
+        lambda row: (
+            round(row["chunks_with_search_term"] / row["total_results"] * 100, 2) if row["total_results"] > 0 else None
+        ),
         axis=1,
     )
     df["acceptable_term_based_precision"] = df.apply(
-        lambda row: round(row["chunks_with_any_term"] / row["total_results"] * 100, 2)
-        if row["total_results"] > 0
-        else None,
+        lambda row: (
+            round(row["chunks_with_any_term"] / row["total_results"] * 100, 2) if row["total_results"] > 0 else None
+        ),
         axis=1,
     )
 

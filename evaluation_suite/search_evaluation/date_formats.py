@@ -112,7 +112,7 @@ def generate_date_variants(date_str: str) -> list[str]:
     Uses dateparser to parse the date string and generates multiple format variants
     including numeric (slashes/hyphens) and text (full/abbreviated month names).
     """
-    parsed = dateparser.parse(date_str, settings=_DATEPARSER_SETTINGS)
+    parsed = dateparser.parse(date_str, settings=_DATEPARSER_SETTINGS)  # type: ignore
     if not parsed:
         return [date_str]
 

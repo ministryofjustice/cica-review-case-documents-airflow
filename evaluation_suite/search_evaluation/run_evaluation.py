@@ -15,20 +15,20 @@ For programmatic use with settings overrides:
 import logging
 from typing import Any
 
-from testing.search_evaluation.evaluation_config import (
+from evaluation_suite.search_evaluation.evaluation_config import (
     get_active_search_type,
     get_date_folder,
     get_search_config,
     get_timestamp,
 )
-from testing.search_evaluation.evaluation_settings import apply_overrides, reset_settings
-from testing.search_evaluation.opensearch_client import check_opensearch_health
-from testing.search_evaluation.relevance_scoring import (
+from evaluation_suite.search_evaluation.evaluation_settings import apply_overrides, reset_settings
+from evaluation_suite.search_evaluation.opensearch_client import check_opensearch_health
+from evaluation_suite.search_evaluation.relevance_scoring import (
     append_to_evaluation_log,
     evaluate_relevance,
     write_results_csv,
 )
-from testing.search_evaluation.search_looper import run_search_loop
+from evaluation_suite.search_evaluation.search_looper import run_search_loop
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("run_evaluation")

@@ -10,16 +10,16 @@ from pathlib import Path
 
 import xlsxwriter
 
-from ingestion_pipeline.config import settings
-from ingestion_pipeline.embedding.embedding_generator import EmbeddingGenerator
-from testing.search_evaluation import evaluation_settings as eval_settings
-from testing.search_evaluation.date_formats import extract_dates_for_search
-from testing.search_evaluation.evaluation_config import get_active_search_type
-from testing.search_evaluation.opensearch_client import (
+from evaluation_suite.search_evaluation import evaluation_settings as eval_settings
+from evaluation_suite.search_evaluation.date_formats import extract_dates_for_search
+from evaluation_suite.search_evaluation.evaluation_config import get_active_search_type
+from evaluation_suite.search_evaluation.opensearch_client import (
     CHUNK_INDEX_NAME,
     OpenSearchConnectionError,
     get_opensearch_client,
 )
+from ingestion_pipeline.config import settings
+from ingestion_pipeline.embedding.embedding_generator import EmbeddingGenerator
 
 # --- 1. CONFIGURE YOUR RUNNING LOCALSTACK OPENSEARCH CONNECTION ---
 # These values should match your LocalStack setup (managed by opensearch_client module)

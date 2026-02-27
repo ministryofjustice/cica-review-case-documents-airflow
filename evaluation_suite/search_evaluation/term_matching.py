@@ -15,7 +15,7 @@ import snowballstemmer
 from rapidfuzz import fuzz
 
 # Import module to access settings dynamically (supports runtime overrides)
-from testing.search_evaluation import evaluation_settings as settings
+from evaluation_suite.search_evaluation import evaluation_settings as settings
 
 # Initialize stemmer for English (matches OpenSearch's English analyzer)
 _stemmer = snowballstemmer.stemmer("english")

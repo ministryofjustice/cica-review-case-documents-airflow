@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 
 # Import module to access settings dynamically (supports runtime overrides)
-from testing.search_evaluation import evaluation_settings as settings
+from evaluation_suite.search_evaluation import evaluation_settings as settings
 
 # Base directory for relative paths
 SCRIPT_DIR = Path(__file__).resolve().parent

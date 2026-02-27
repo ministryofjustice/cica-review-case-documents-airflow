@@ -12,8 +12,8 @@ from pathlib import Path
 import pandas as pd
 
 # Import module to access settings dynamically (supports runtime overrides)
-from testing.search_evaluation import evaluation_settings as settings
-from testing.search_evaluation.search_client import count_term_occurrences, local_search_client
+from evaluation_suite.search_evaluation import evaluation_settings as settings
+from evaluation_suite.search_evaluation.search_client import count_term_occurrences, local_search_client
 
 # --- Configuration ---
 SCRIPT_DIR = Path(__file__).resolve().parent

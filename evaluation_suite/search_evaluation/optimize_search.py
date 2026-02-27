@@ -24,11 +24,12 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
+from typing import Callable
 
 import optuna
 from optuna.samplers import TPESampler
 
-from testing.search_evaluation.run_evaluation import main as run_evaluation
+from evaluation_suite.search_evaluation.run_evaluation import main as run_evaluation
 
 # Configure logging
 logging.basicConfig(
@@ -45,7 +46,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = SCRIPT_DIR / "output" / "optimization"
 
 
-def create_objective(step: float = 0.1) -> callable:
+def create_objective(step: float = 0.1) -> Callable[[object], float]:
     """Create an objective function with the specified step size.
 
     Args:

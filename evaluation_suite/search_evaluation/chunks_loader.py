@@ -6,7 +6,7 @@ them as a lookup dictionary for the relevance scoring process.
 
 import logging
 
-from testing.search_evaluation.opensearch_client import (
+from evaluation_suite.search_evaluation.opensearch_client import (
     CHUNK_INDEX_NAME,
     OpenSearchConnectionError,
     get_opensearch_client,

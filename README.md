@@ -6,6 +6,25 @@ Note: This project has been built from the Analytical Platform Airflow Python Te
 
 Note: The project is under active private beta development, all features are still in development.
 
+## Project Structure
+
+This repository contains two distinct parts:
+
+### `src/ingestion_pipeline`
+The production pipeline code responsible for ingesting CICA case documents, performing OCR, and storing embedded text in a vector database. These dependencies are declared in `[project.dependencies]` in `pyproject.toml` and are bundled into the Docker image.
+
+### `evaluation_suite`
+Independent tooling for evaluating and optimising the OpenSearch search configuration. This code is **not** part of the production pipeline and is **not** bundled into the Docker image.
+
+Evaluation-specific dependencies (e.g. `pandas`, `optuna`, `snowballstemmer`) are declared separately under `[project.optional-dependencies.evaluation]` in `pyproject.toml` to keep them out of the production environment.
+
+To install evaluation dependencies locally:
+```
+uv sync --extra evaluation
+```
+
+> **Note:** `deptry` (the dependency checker used in pre-commit) does not enforce unused package detection (`DEP002`) for `[project.optional-dependencies]`. Unused evaluation dependencies must be reviewed manually.
+
 ## Description
 
 The aim of this project is to ingest CICA case documents, perform OCR to extract text and to store the extracted embedded text and text metadata within a vector database. The stored data will then be used to perform hybrid search and document highlighting.   

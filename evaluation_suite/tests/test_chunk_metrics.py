@@ -5,7 +5,7 @@ Tests calculate_chunk_match() for various edge cases in precision/recall calcula
 
 import pandas as pd
 
-from testing.search_evaluation.chunk_metrics import calculate_chunk_match, safe_int
+from evaluation_suite.search_evaluation.chunk_metrics import calculate_chunk_match, safe_int
 
 
 class TestCalculateChunkMatch:
