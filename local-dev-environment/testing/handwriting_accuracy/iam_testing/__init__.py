@@ -12,33 +12,35 @@ Modules:
     textract_ocr: Main OCR processing logic
     ground_truth_parser: Parse IAM XML files to JSONL
 
-Usage:
+Run from local-dev-environment:
+    source .venv/bin/activate
+
     # Single form test
-    python -m iam_testing.runners.single --form-id r06-121
+    PYTHONPATH=testing/handwriting_accuracy python -m iam_testing.runners.single --form-id <FORM_ID>
 
     # Batch baseline (Textract only)
-    python -m iam_testing.runners.batch --limit 10
+    PYTHONPATH=testing/handwriting_accuracy python -m iam_testing.runners.batch --limit 10
 
     # LLM augmentation
-    python -m iam_testing.runners.augment --baseline-run 20260126_140000
+    PYTHONPATH=testing/handwriting_accuracy python -m iam_testing.runners.augment --baseline-run <RUN_ID>
 """
 
-from .iam_filters import filter_iam_header_footer, filter_iam_signature, normalize_text
-from .llm import LLMResponse, get_llm_client
-from .paths import DATA_DIR, PACKAGE_ROOT, TEXTRACT_ACCURACY_ROOT, get_repo_root
-from .schemas import OCRResult, WordBlock
-from .scoring import (
+from iam_testing.iam_filters import filter_iam_header_footer, filter_iam_signature, normalize_text
+from iam_testing.llm import LLMResponse, get_llm_client
+from iam_testing.paths import DATA_DIR, PACKAGE_ROOT, TEXTRACT_ACCURACY_ROOT, get_repo_root
+from iam_testing.schemas import OCRResult, WordBlock
+from iam_testing.scoring import (
     ScoreResult,
     load_all_ground_truth,
     score_ocr_result,
     write_score_result,
 )
-from .textract_client import (
+from iam_testing.textract_client import (
     analyze_image_sync,
     extract_word_blocks,
     get_textract_client,
 )
-from .textract_ocr import process_single_image, write_ocr_result
+from iam_testing.textract_ocr import process_single_image, write_ocr_result
 
 __all__ = [
     # Path constants

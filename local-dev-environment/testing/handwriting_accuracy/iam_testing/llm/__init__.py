@@ -27,15 +27,15 @@ Available models:
 
 import logging
 
-from .base import BaseLLMClient
-from .clients import (
+from iam_testing.llm.base import BaseLLMClient
+from iam_testing.llm.clients import (
     BedrockClaudeClient,
     BedrockLlamaClient,
     BedrockMistralClient,
     BedrockNovaClient,
 )
-from .prompt import DEFAULT_PROMPT
-from .response import LLMResponse
+from iam_testing.llm.prompt import DEFAULT_PROMPT
+from iam_testing.llm.response import LLMResponse
 
 logger = logging.getLogger(__name__)
 

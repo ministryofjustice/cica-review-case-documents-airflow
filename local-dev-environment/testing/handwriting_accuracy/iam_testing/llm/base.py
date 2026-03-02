@@ -9,9 +9,9 @@ from typing import Any, Callable
 
 from botocore.exceptions import ClientError
 
-from .diff import generate_diff
-from .prompt import DEFAULT_PROMPT, get_prompt_hash, get_system_prompt, validate_prompt_version
-from .response import LLMResponse
+from iam_testing.llm.diff import generate_diff
+from iam_testing.llm.prompt import DEFAULT_PROMPT, get_prompt_hash, get_system_prompt, validate_prompt_version
+from iam_testing.llm.response import LLMResponse
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +112,7 @@ class BaseLLMClient(ABC):
         """
         import boto3
 
-        from ..config import settings
+        from iam_testing.config import settings
 
         self._prompt_version = validate_prompt_version(prompt_version)
         self._model = model

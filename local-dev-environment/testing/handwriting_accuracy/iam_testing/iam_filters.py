@@ -8,7 +8,7 @@ import html
 import logging
 import re
 
-from .schemas import WordBlock
+from iam_testing.schemas import WordBlock
 
 logger = logging.getLogger(__name__)
 

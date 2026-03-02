@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING
 
 import boto3
 
-from .config import settings
-from .schemas import WordBlock
+from iam_testing.config import settings
+from iam_testing.schemas import WordBlock
 
 if TYPE_CHECKING:
     from mypy_boto3_textract import TextractClient

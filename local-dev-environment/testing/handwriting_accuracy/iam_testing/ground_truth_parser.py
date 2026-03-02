@@ -30,7 +30,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from . import DATA_DIR
+from iam_testing import DATA_DIR
 
 logger = logging.getLogger(__name__)
 

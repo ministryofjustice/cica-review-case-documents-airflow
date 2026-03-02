@@ -8,15 +8,18 @@ Ground Truth Format (JSONL):
     {"page_id": "page1", "image_path": "data/custom/page1.png", "gt_handwriting_text": "..."}
     {"page_id": "page2", "image_path": "data/custom/page2.png", "gt_handwriting_text": "..."}
 
-Usage:
+Run from local-dev-environment:
+    source .venv/bin/activate
+
     # Single page test
-    python -m iam_testing.runners.custom --mode single --page-id page1
+    PYTHONPATH=testing/handwriting_accuracy python -m iam_testing.runners.custom --mode single --page-id page1
 
     # Batch test all pages in ground truth
-    python -m iam_testing.runners.custom --mode batch
+    PYTHONPATH=testing/handwriting_accuracy python -m iam_testing.runners.custom --mode batch
 
     # With custom ground truth file
-    python -m iam_testing.runners.custom --mode batch --ground-truth data/my_gt.jsonl
+    PYTHONPATH=testing/handwriting_accuracy python -m iam_testing.runners.custom \
+        --mode batch --ground-truth data/my_gt.jsonl
 """
 
 import argparse
@@ -25,14 +28,14 @@ import logging
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from .. import TEXTRACT_ACCURACY_ROOT
-from ..config import settings
-from ..iam_filters import normalize_text
-from ..schemas import OCRResult
-from ..scoring import ScoreResult
-from ..textract_client import get_textract_client
-from ..textract_ocr import process_single_image
-from .utils import generate_run_id, write_jsonl
+from iam_testing import TEXTRACT_ACCURACY_ROOT
+from iam_testing.config import settings
+from iam_testing.iam_filters import normalize_text
+from iam_testing.runners.utils import generate_run_id, write_jsonl
+from iam_testing.schemas import OCRResult
+from iam_testing.scoring import ScoreResult
+from iam_testing.textract_client import get_textract_client
+from iam_testing.textract_ocr import process_single_image
 
 logging.basicConfig(
     level=logging.INFO,

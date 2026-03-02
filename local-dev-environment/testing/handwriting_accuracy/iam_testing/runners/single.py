@@ -3,9 +3,10 @@
 This script processes one form through Textract and calculates accuracy metrics.
 Use this to validate the pipeline before batch processing.
 
-Usage:
-    python -m iam_testing.runners.single
-    python -m iam_testing.runners.single --form-id r06-121
+Run from local-dev-environment:
+    source .venv/bin/activate
+    PYTHONPATH=testing/handwriting_accuracy python -m iam_testing.runners.single
+    PYTHONPATH=testing/handwriting_accuracy python -m iam_testing.runners.single --form-id <FORM_ID>
 """
 
 import argparse
@@ -13,11 +14,11 @@ import json
 import logging
 from dataclasses import asdict
 
-from .. import DATA_DIR
-from ..config import settings
-from ..scoring import load_all_ground_truth, score_ocr_result
-from ..textract_client import get_textract_client
-from ..textract_ocr import process_single_image
+from iam_testing import DATA_DIR
+from iam_testing.config import settings
+from iam_testing.scoring import load_all_ground_truth, score_ocr_result
+from iam_testing.textract_client import get_textract_client
+from iam_testing.textract_ocr import process_single_image
 
 logging.basicConfig(
     level=logging.INFO,

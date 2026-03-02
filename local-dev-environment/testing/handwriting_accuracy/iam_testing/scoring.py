@@ -16,8 +16,8 @@ from pathlib import Path
 
 from jiwer import cer, wer
 
-from .iam_filters import normalize_text
-from .schemas import OCRResult
+from iam_testing.iam_filters import normalize_text
+from iam_testing.schemas import OCRResult
 
 logger = logging.getLogger(__name__)
 

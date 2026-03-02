@@ -9,14 +9,20 @@ Modes:
     - all: Augment all handwriting text
     - low_confidence: Only augment pages below confidence threshold
 
-Usage:
+Run from local-dev-environment:
+    source .venv/bin/activate
+
     # IAM dataset
-    python -m iam_testing.runners.augment --baseline-run 20260126_140000
-    python -m iam_testing.runners.augment --baseline-run 20260126_140000 --mode low_confidence
-    python -m iam_testing.runners.augment --baseline-run 20260126_140000 --model nova-pro
+    PYTHONPATH=testing/handwriting_accuracy python -m iam_testing.runners.augment \
+        --baseline-run <RUN_ID>
+    PYTHONPATH=testing/handwriting_accuracy python -m iam_testing.runners.augment \
+        --baseline-run <RUN_ID> --mode low_confidence
+    PYTHONPATH=testing/handwriting_accuracy python -m iam_testing.runners.augment \
+        --baseline-run <RUN_ID> --model <MODEL>
 
     # Custom documents
-    python -m iam_testing.runners.augment --baseline-run 20260126_140000 --dataset custom
+    PYTHONPATH=testing/handwriting_accuracy python -m iam_testing.runners.augment \
+        --baseline-run <RUN_ID> --dataset custom
 """
 
 import argparse
@@ -27,22 +33,22 @@ from typing import Literal
 
 from jiwer import cer, wer
 
-from .. import DATA_DIR
-from ..iam_filters import normalize_text
-from ..llm import LLMResponse, get_llm_client
-from ..llm.prompt import PROMPTS
-from ..summary_stats import (
-    generate_augmented_summary,
-    print_augmented_summary,
-    save_summary,
-)
-from .utils import (
+from iam_testing import DATA_DIR
+from iam_testing.iam_filters import normalize_text
+from iam_testing.llm import LLMResponse, get_llm_client
+from iam_testing.llm.prompt import PROMPTS
+from iam_testing.runners.utils import (
     append_jsonl,
     get_augmented_paths,
     get_baseline_paths,
     get_completed_ids,
     load_jsonl,
     load_jsonl_as_dict,
+)
+from iam_testing.summary_stats import (
+    generate_augmented_summary,
+    print_augmented_summary,
+    save_summary,
 )
 
 logger = logging.getLogger(__name__)

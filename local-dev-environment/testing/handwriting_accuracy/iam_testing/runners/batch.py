@@ -3,10 +3,11 @@
 Processes all IAM forms through Textract and calculates baseline WER/CER scores.
 Supports checkpointing to resume interrupted runs.
 
-Usage:
-    python -m iam_testing.runners.batch
-    python -m iam_testing.runners.batch --limit 10
-    python -m iam_testing.runners.batch --resume
+Run from local-dev-environment:
+    source .venv/bin/activate
+    PYTHONPATH=testing/handwriting_accuracy python -m iam_testing.runners.batch
+    PYTHONPATH=testing/handwriting_accuracy python -m iam_testing.runners.batch --limit 10
+    PYTHONPATH=testing/handwriting_accuracy python -m iam_testing.runners.batch --resume
 """
 
 import argparse
@@ -14,17 +15,23 @@ import logging
 import time
 from pathlib import Path
 
-from .. import DATA_DIR
-from ..config import settings
-from ..scoring import load_all_ground_truth, score_ocr_result
-from ..summary_stats import (
+from iam_testing import DATA_DIR
+from iam_testing.config import settings
+from iam_testing.runners.utils import (
+    append_jsonl,
+    generate_run_id,
+    get_baseline_paths,
+    get_completed_ids,
+    list_baseline_runs,
+)
+from iam_testing.scoring import load_all_ground_truth, score_ocr_result
+from iam_testing.summary_stats import (
     generate_baseline_summary,
     print_baseline_summary,
     save_summary,
 )
-from ..textract_client import get_textract_client
-from ..textract_ocr import process_single_image
-from .utils import append_jsonl, generate_run_id, get_baseline_paths, get_completed_ids, list_baseline_runs
+from iam_testing.textract_client import get_textract_client
+from iam_testing.textract_ocr import process_single_image
 
 logger = logging.getLogger(__name__)
 

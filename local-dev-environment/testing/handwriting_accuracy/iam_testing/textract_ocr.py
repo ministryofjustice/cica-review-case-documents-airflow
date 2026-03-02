@@ -20,14 +20,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from statistics import mean
 
-from . import DATA_DIR
-from .config import settings
-from .iam_filters import (
+from iam_testing import DATA_DIR
+from iam_testing.config import settings
+from iam_testing.iam_filters import (
     filter_iam_header_footer,
     filter_iam_signature,
 )
-from .schemas import OCRResult
-from .textract_client import (
+from iam_testing.schemas import OCRResult
+from iam_testing.textract_client import (
     analyze_image_sync,
     extract_word_blocks,
     get_textract_client,

@@ -8,7 +8,7 @@ To add a new model:
 4. Update SUPPORTED_MODELS and get_llm_client() in __init__.py
 """
 
-from .base import BaseLLMClient
+from iam_testing.llm.base import BaseLLMClient
 
 # User prompt template - shared across all models
 USER_PROMPT = "Correct any OCR errors in this handwritten text:\n\n{ocr_text}"
