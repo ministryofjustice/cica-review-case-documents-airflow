@@ -8,7 +8,8 @@ Modules:
     evaluation_settings: Configuration constants
     evaluation_config: Path and config management
     opensearch_client: Shared OpenSearch client factory
-    search_client: OpenSearch query builder
+    search_client: OpenSearch query execution and Excel export
+    search_query_builder: OpenSearch query construction and score filtering
     search_looper: Batch search execution
     chunks_loader: Load chunks from OpenSearch
     relevance_scoring: Precision/recall calculation

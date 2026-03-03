@@ -4,12 +4,12 @@
 This is the main entry point for running the relevance scoring evaluation.
 It orchestrates the search loop, evaluation, and output generation.
 
-Usage (run from local-dev-environment directory):
-    python -m testing.search_evaluation.run_evaluation
+Usage:
+    python -m evaluation_suite.search_evaluation.run_evaluation
 
 For programmatic use with settings overrides:
-    from testing.search_evaluation.run_evaluation import main
-    result = main(settings_overrides={"KEYWORD_BOOST": 2.0, "K_QUERIES": 100})
+    from evaluation_suite.search_evaluation.run_evaluation import run_evaluation
+    result = run_evaluation(settings_overrides={"KEYWORD_BOOST": 2.0, "K_QUERIES": 100})
 """
 
 import logging
@@ -34,11 +34,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("run_evaluation")
 
 
-def main(
+def run_evaluation(
     settings_overrides: dict[str, Any] | None = None,
     log_to_file: bool = True,
 ) -> tuple | None:
-    """Main entry point for relevance scoring evaluation.
+    """Run the relevance scoring evaluation.
 
     Args:
         settings_overrides: Optional dict of evaluation_settings to override.
@@ -101,5 +101,10 @@ def main(
             logger.info("Reset settings to defaults")
 
 
+def cli_main() -> None:
+    """Command-line interface entry point."""
+    run_evaluation()
+
+
 if __name__ == "__main__":
-    main()
+    cli_main()

@@ -4,12 +4,8 @@
 This script uses Optuna to find the optimal combination of search boosts
 that maximizes the optimization score from the evaluation framework.
 
-Usage (from local-dev-environment directory):
-    source .venv/bin/activate
-    python -m testing.search_evaluation.optimize_search
-
-Requirements:
-    pip install optuna
+Usage:
+    python -m evaluation_suite.search_evaluation.optimize_search
 
 The script will:
 1. Phase 1: Coarse search with step=0.3 to explore the parameter space
@@ -30,7 +26,7 @@ import optuna
 from optuna.samplers import TPESampler
 from optuna.trial import FrozenTrial
 
-from evaluation_suite.search_evaluation.run_evaluation import main as run_single_evaluation
+from evaluation_suite.search_evaluation.run_evaluation import run_evaluation
 
 # Configure logging
 logging.basicConfig(
@@ -62,17 +58,17 @@ class OptimizationObjective:
     def __init__(
         self,
         step: float = 0.1,
-        evaluation_runner: Callable[[dict[str, Any], bool], tuple | None] | None = None,
+        evaluation_runner: Callable[..., tuple | None] = run_evaluation,
     ):
         """Initialize the optimization objective.
 
         Args:
             step: Step size for parameter suggestions (0.1 for coarse, 0.05 for fine).
-            evaluation_runner: Optional custom evaluation function for dependency injection.
-                              Defaults to run_single_evaluation.
+            evaluation_runner: Evaluation function to call for each trial.
+                              Defaults to run_evaluation. Override in tests for dependency injection.
         """
         self.step = step
-        self.evaluation_runner = evaluation_runner or run_single_evaluation
+        self.evaluation_runner = evaluation_runner
 
     def __call__(self, trial: optuna.Trial) -> float:
         """Run a single optimization trial.
@@ -193,8 +189,8 @@ class OptimizationObjective:
 def create_objective(step: float = 0.1) -> Callable[[optuna.Trial], float]:
     """Create an objective function with the specified step size.
 
-    This is a factory function that creates an OptimizationObjective instance.
-    Maintained for backward compatibility with existing code.
+    This is a factory function that creates an OptimizationObjective instance,
+    passing run_evaluation explicitly as the evaluation runner.
 
     Args:
         step: Step size for parameter suggestions (0.1 for coarse, 0.05 for fine).
@@ -202,7 +198,7 @@ def create_objective(step: float = 0.1) -> Callable[[optuna.Trial], float]:
     Returns:
         Callable objective function for Optuna optimization.
     """
-    return OptimizationObjective(step=step)
+    return OptimizationObjective(step=step, evaluation_runner=run_evaluation)
 
 
 def run_optimization(

@@ -26,11 +26,11 @@ def test_round_params_rounds_floats():
     assert rounded["NON_FLOAT"] == "test"
 
 
-@patch("evaluation_suite.search_evaluation.optimize_search.run_single_evaluation")
-def test_objective_returns_score(mock_run_single_evaluation):
+@patch("evaluation_suite.search_evaluation.optimize_search.run_evaluation")
+def test_objective_returns_score(mock_run_evaluation):
     """Test that the objective function returns the optimization score."""
     mock_summary = {"optimization_score": 42.0}
-    mock_run_single_evaluation.return_value = (None, mock_summary)
+    mock_run_evaluation.return_value = (None, mock_summary)
     objective = optimize_search.create_objective(step=0.1)
     trial = MagicMock()
     trial.suggest_float = lambda name, low, high, step: 1.0
@@ -39,10 +39,10 @@ def test_objective_returns_score(mock_run_single_evaluation):
     assert score == 42.0
 
 
-@patch("evaluation_suite.search_evaluation.optimize_search.run_single_evaluation")
-def test_objective_handles_none_result(mock_run_single_evaluation):
-    """Test that the objective function returns -1000.0 if run_single_evaluation returns None."""
-    mock_run_single_evaluation.return_value = None
+@patch("evaluation_suite.search_evaluation.optimize_search.run_evaluation")
+def test_objective_handles_none_result(mock_run_evaluation):
+    """Test that the objective function returns -1000.0 if run_evaluation returns None."""
+    mock_run_evaluation.return_value = None
     objective = optimize_search.create_objective(step=0.1)
     trial = MagicMock()
     trial.suggest_float = lambda name, low, high, step: 1.0
@@ -51,10 +51,10 @@ def test_objective_handles_none_result(mock_run_single_evaluation):
     assert score == -1000.0
 
 
-@patch("evaluation_suite.search_evaluation.optimize_search.run_single_evaluation")
-def test_objective_handles_exception(mock_run_single_evaluation):
+@patch("evaluation_suite.search_evaluation.optimize_search.run_evaluation")
+def test_objective_handles_exception(mock_run_evaluation):
     """Test that the objective function returns -1000.0 if an exception occurs."""
-    mock_run_single_evaluation.side_effect = Exception("Test error")
+    mock_run_evaluation.side_effect = Exception("Test error")
     objective = optimize_search.create_objective(step=0.1)
     trial = MagicMock()
     trial.suggest_float = lambda name, low, high, step: 1.0

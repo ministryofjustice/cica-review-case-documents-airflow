@@ -43,7 +43,7 @@ def test_main_returns_tuple_on_success(
     summary = MagicMock()
     mock_evaluate_relevance.return_value = (results_df, summary)
 
-    result = run_evaluation.main()
+    result = run_evaluation.run_evaluation()
 
     assert result is not None
     output_df, result_summary = result
@@ -70,7 +70,7 @@ def test_main_returns_none_when_no_results(
     mock_get_search_config.return_value = {"search_type": "exact"}
     mock_run_search_loop.return_value = pd.DataFrame()
 
-    result = run_evaluation.main()
+    result = run_evaluation.run_evaluation()
 
     assert result is None
 
@@ -81,7 +81,7 @@ def test_main_raises_when_opensearch_unavailable(mock_check_opensearch_health):
     mock_check_opensearch_health.side_effect = ConnectionError("OpenSearch unavailable")
 
     with pytest.raises(ConnectionError, match="OpenSearch unavailable"):
-        run_evaluation.main()
+        run_evaluation.run_evaluation()
 
 
 @patch("evaluation_suite.search_evaluation.run_evaluation.reset_settings")
@@ -119,7 +119,7 @@ def test_main_applies_and_resets_overrides(
     mock_evaluate_relevance.return_value = (results_df, MagicMock())
     overrides = {"KEYWORD_BOOST": 2.0}
 
-    run_evaluation.main(settings_overrides=overrides)
+    run_evaluation.run_evaluation(settings_overrides=overrides)
 
     mock_apply_overrides.assert_called_once_with(overrides)
     mock_reset_settings.assert_called_once()
@@ -159,7 +159,7 @@ def test_main_skips_csv_when_log_to_file_false(
     mock_run_search_loop.return_value = results_df
     mock_evaluate_relevance.return_value = (results_df, MagicMock())
 
-    run_evaluation.main(log_to_file=False)
+    run_evaluation.run_evaluation(log_to_file=False)
 
     mock_write_results_csv.assert_not_called()
 
@@ -199,7 +199,7 @@ def test_main_always_appends_to_evaluation_log(
     summary = MagicMock()
     mock_evaluate_relevance.return_value = (results_df, summary)
 
-    run_evaluation.main(log_to_file=False)
+    run_evaluation.run_evaluation(log_to_file=False)
 
     mock_append_to_evaluation_log.assert_called_once()
 
@@ -231,6 +231,6 @@ def test_main_resets_settings_even_on_exception(
     overrides = {"KEYWORD_BOOST": 2.0}
 
     with pytest.raises(RuntimeError, match="Evaluation failed"):
-        run_evaluation.main(settings_overrides=overrides)
+        run_evaluation.run_evaluation(settings_overrides=overrides)
 
     mock_reset_settings.assert_called_once()

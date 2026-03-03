@@ -1,7 +1,10 @@
-"""Hybrid search client for querying a local OpenSearch instance and exporting results to Excel.
+"""Search client for executing hybrid searches against OpenSearch.
 
-This module provides functions to perform hybrid (keyword and semantic) searches using OpenSearch,
-filter results, and write them to an Excel file for analysis.
+This module provides the search execution layer used by the evaluation pipeline.
+Query building logic lives in search_query_builder.py.
+
+For ad-hoc exploration, run this module directly:
+    python -m evaluation_suite.search_evaluation.search_client
 """
 
 import logging
@@ -11,138 +14,30 @@ from pathlib import Path
 import xlsxwriter
 
 from evaluation_suite.search_evaluation import evaluation_settings as eval_settings
-from evaluation_suite.search_evaluation.date_formats import extract_dates_for_search
 from evaluation_suite.search_evaluation.evaluation_config import get_active_search_type
 from evaluation_suite.search_evaluation.opensearch_client import (
     CHUNK_INDEX_NAME,
     OpenSearchConnectionError,
     get_opensearch_client,
 )
+from evaluation_suite.search_evaluation.search_query_builder import apply_adaptive_score_filter, create_hybrid_query
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingGenerator
 
-# --- 1. CONFIGURE YOUR RUNNING LOCALSTACK OPENSEARCH CONNECTION ---
-# These values should match your LocalStack setup (managed by opensearch_client module)
-
-# --- 2. Choose your search term and output name and location---
-
-SEARCH_TERM = "gaba"  # Change this to use a different search term
-
-# Edit the output directory and path if needed
-# Use path relative to testing folder (parent of this file)
 SCRIPT_DIR = Path(__file__).resolve().parent
-OUTPUT_DIRECTORY = SCRIPT_DIR / "output" / "single-search-results" / datetime.now().strftime("%Y-%m-%d")
-SAFE_SEARCH_TERM = str(SEARCH_TERM).replace("/", "_").replace(" ", "_")
-TIMESTAMP_STR = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-OUTPUT_PATH = OUTPUT_DIRECTORY / f"{TIMESTAMP_STR}_{SAFE_SEARCH_TERM}_search_results.xlsx"
 
-# --- 3. DEFINE K-NN SEARCH QUERY ---
+logger = logging.getLogger("search_client")
 
 
-def _build_hybrid_clauses(query_text: str, query_vector: list[float], k: int) -> list[dict]:
-    """Build the standard hybrid search clauses based on evaluation settings.
-
-    Returns a list of should clauses for keyword, analyzer, fuzzy, wildcard, and semantic search.
-    """
-    clauses = []
-
-    # Add keyword match if boost > 0
-    if eval_settings.KEYWORD_BOOST > 0:
-        clauses.append({"match": {"chunk_text": {"query": query_text, "boost": eval_settings.KEYWORD_BOOST}}})
-
-    # Add English analyzer match if boost > 0
-    if eval_settings.ANALYSER_BOOST > 0:
-        clauses.append(
-            {
-                "match": {
-                    "chunk_text.english": {
-                        "query": query_text,
-                        "boost": eval_settings.ANALYSER_BOOST,
-                    }
-                }
-            }
-        )
-
-    # Add fuzzy match if boost > 0
-    if eval_settings.FUZZY_BOOST > 0:
-        clauses.append(
-            {
-                "fuzzy": {
-                    "chunk_text": {
-                        "value": query_text,
-                        "fuzziness": eval_settings.FUZZINESS,
-                        "max_expansions": eval_settings.MAX_EXPANSIONS,
-                        "prefix_length": eval_settings.PREFIX_LENGTH,
-                        "boost": eval_settings.FUZZY_BOOST,
-                    }
-                }
-            }
-        )
-
-    # Add wildcard match if boost > 0
-    if eval_settings.WILDCARD_BOOST > 0:
-        clauses.append(
-            {
-                "wildcard": {
-                    "chunk_text": {
-                        "value": f"*{query_text}*",
-                        "boost": eval_settings.WILDCARD_BOOST,
-                    }
-                }
-            }
-        )
-
-    # Add semantic/knn search if boost > 0
-    if eval_settings.SEMANTIC_BOOST > 0:
-        clauses.append({"knn": {"embedding": {"vector": query_vector, "k": k, "boost": eval_settings.SEMANTIC_BOOST}}})
-
-    return clauses
-
-
-def create_hybrid_query(query_text: str, query_vector: list[float], k: int = 5) -> dict:
-    """Create a hybrid search query combining keyword, fuzzy, and semantic vector search.
-
-    Each search type is only included if its boost value is greater than 0.
-    For queries containing dates (when DATE_FORMAT_DETECTION is enabled), uses ONLY
-    match_phrase for date variants (no fuzzy/semantic).
-    """
-    should_clauses = []
-
-    # Extract dates and generate format variants (if date detection is enabled)
-    date_variants = extract_dates_for_search(query_text) if eval_settings.DATE_FORMAT_DETECTION else []
-
-    # If dates are found, use ONLY match_phrase for dates (keyword matching only)
-    if date_variants:
-        for date in date_variants:
-            should_clauses.append({"match_phrase": {"chunk_text": {"query": date, "boost": 2}}})
-
-        # Date-only search: no hybrid clauses, just exact phrase matching
-        # minimum_should_match=1 ensures at least one date variant must match
-        return {
-            "size": k,
-            "_source": ["document_id", "page_number", "chunk_text", "case_ref"],
-            "query": {"bool": {"should": should_clauses, "minimum_should_match": 1}},
-        }
-
-    # No dates found - use standard hybrid search
-    should_clauses = _build_hybrid_clauses(query_text, query_vector, k)
-
-    return {
-        "size": k,
-        "_source": ["document_id", "page_number", "chunk_text", "case_ref"],
-        "query": {"bool": {"should": should_clauses}},
-    }
-
-
-# --- 4. Execute results and write to Excel ---
-def local_search_client(search_term: str = SEARCH_TERM) -> list[dict]:
+def local_search_client(search_term: str) -> list[dict]:
     """Execute a hybrid search on the local OpenSearch instance and return the hits.
 
-    :param search_term: The search term to query. Defaults to SEARCH_TERM constant.
-    :return: List of search hits.
+    Args:
+        search_term: The search term to query.
+
+    Returns:
+        List of search hits from OpenSearch.
     """
-    logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger("embedding_search_client")
     try:
         embedding_generator = EmbeddingGenerator(settings.BEDROCK_EMBEDDING_MODEL_ID)
         embedding = embedding_generator.generate_embedding(search_term)
@@ -175,56 +70,30 @@ def count_term_occurrences(text: str, search_term: str) -> int:
     return text.lower().count(search_term.lower())
 
 
-def apply_adaptive_score_filter(hits: list[dict], score_filter: float) -> tuple[list[dict], float, int]:
-    """Apply additive semantic fallback filtering based on evaluation settings.
-
-    Prioritizes keyword results (high score threshold). If fewer than
-    MIN_RESULTS_BEFORE_FALLBACK keyword results exist, supplements with
-    semantic results (lower score threshold) up to MAX_SEMANTIC_RESULTS.
-
-    Args:
-        hits: List of search hits from OpenSearch.
-        score_filter: Primary score threshold for keyword results.
-
-    Returns:
-        Tuple of (filtered_hits, effective_score_filter, semantic_results_added).
-    """
-    # First pass: get high-scoring keyword results
-    keyword_hits = [hit for hit in hits if hit["_score"] >= score_filter]
-
-    # Check if we need to supplement with semantic results
-    if eval_settings.ADAPTIVE_SCORE_FILTER and len(keyword_hits) < eval_settings.MIN_RESULTS_BEFORE_FALLBACK:
-        # Get IDs of keyword hits to avoid duplicates
-        keyword_ids = {hit["_id"] for hit in keyword_hits}
-
-        # Get semantic results (between semantic threshold and keyword threshold)
-        semantic_hits = [
-            hit
-            for hit in hits
-            if eval_settings.SEMANTIC_SCORE_FILTER <= hit["_score"] < score_filter and hit["_id"] not in keyword_ids
-        ]
-
-        # Limit semantic results and combine
-        semantic_to_add = semantic_hits[: eval_settings.MAX_SEMANTIC_RESULTS]
-        combined_hits = keyword_hits + semantic_to_add
-
-        return combined_hits, score_filter, len(semantic_to_add)
-
-    return keyword_hits, score_filter, 0
-
-
 def write_hits_to_xlsx(
     hits: list[dict],
+    search_term: str,
     score_filter: float = eval_settings.SCORE_FILTER,
-    search_term: str = SEARCH_TERM,
+    output_dir: Path | None = None,
 ) -> None:
     """Write the search hits to an Excel file, with additive semantic fallback.
 
     Uses adaptive filtering if enabled: if too few keyword results pass the
     primary score_filter, supplements with semantic results.
+
+    Args:
+        hits: List of raw OpenSearch hits.
+        search_term: The search term used (written into the spreadsheet header).
+        score_filter: Score threshold to apply. Defaults to SCORE_FILTER setting.
+        output_dir: Directory to write the Excel file. Defaults to output/single-search-results/<date>/.
     """
-    OUTPUT_DIRECTORY.mkdir(parents=True, exist_ok=True)
-    workbook = xlsxwriter.Workbook(str(OUTPUT_PATH))
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    safe_term = search_term.replace("/", "_").replace(" ", "_")
+    resolved_output_dir = output_dir or (SCRIPT_DIR / "output" / "single-search-results" / date_str)
+    resolved_output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = resolved_output_dir / f"{timestamp}_{safe_term}_search_results.xlsx"
+    workbook = xlsxwriter.Workbook(str(output_path))
     worksheet = workbook.add_worksheet()
 
     # Apply additive semantic fallback filtering
@@ -284,9 +153,10 @@ def write_hits_to_xlsx(
         worksheet.write(row + 3, 5, source.get("page_number", "N/A"))
         worksheet.write(row + 3, 6, text_snippet)
     workbook.close()
-    logging.info(f"Results written to {OUTPUT_PATH.resolve()}({len(filtered_hits)} results)")
+    logger.info(f"Results written to {output_path.resolve()} ({len(filtered_hits)} results)")
 
 
 if __name__ == "__main__":
-    hits = local_search_client()
-    write_hits_to_xlsx(hits, search_term=SEARCH_TERM)
+    _search_term = "gaba"  # Change this to explore a different term
+    _hits = local_search_client(_search_term)
+    write_hits_to_xlsx(_hits, search_term=_search_term)

@@ -99,7 +99,7 @@ def run_search_loop(input_file: Path | None = None) -> pd.DataFrame:
         if not search_term:
             continue
 
-        logger.info(f"Searching for: '{search_term}'")
+        logger.debug(f"Searching for: '{search_term}'")
 
         try:
             hits = local_search_client(search_term=search_term)
