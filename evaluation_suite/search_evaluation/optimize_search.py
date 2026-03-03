@@ -24,12 +24,13 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
 import optuna
 from optuna.samplers import TPESampler
+from optuna.trial import FrozenTrial
 
-from evaluation_suite.search_evaluation.run_evaluation import main as run_evaluation
+from evaluation_suite.search_evaluation.run_evaluation import main as run_single_evaluation
 
 # Configure logging
 logging.basicConfig(
@@ -45,22 +46,36 @@ optuna.logging.set_verbosity(optuna.logging.WARNING)
 SCRIPT_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = SCRIPT_DIR / "output" / "optimization"
 
+# Constants for optimization
+PENALTY_SCORE = -1000.0
+BOOST_RANGE = (0.0, 5.0)
+PRECISION = 4  # Decimal places for rounding
 
-def create_objective(step: float = 0.1) -> Callable[[object], float]:
-    """Create an objective function with the specified step size.
 
-    Args:
-        step: Step size for parameter suggestions (0.1 for coarse, 0.05 for fine).
+class OptimizationObjective:
+    """Callable class for Optuna optimization objective.
 
-    Returns:
-        Objective function for Optuna optimization.
+    This class encapsulates the objective function logic, making it easier to test
+    and allowing for dependency injection of the evaluation runner.
     """
 
-    def objective(trial: optuna.Trial) -> float:
-        """Objective function for Optuna optimization.
+    def __init__(
+        self,
+        step: float = 0.1,
+        evaluation_runner: Callable[[dict[str, Any], bool], tuple | None] | None = None,
+    ):
+        """Initialize the optimization objective.
 
-        Suggests parameter values, runs evaluation, and returns optimization score.
-        SCORE_FILTER is held constant (uses default from evaluation_settings).
+        Args:
+            step: Step size for parameter suggestions (0.1 for coarse, 0.05 for fine).
+            evaluation_runner: Optional custom evaluation function for dependency injection.
+                              Defaults to run_single_evaluation.
+        """
+        self.step = step
+        self.evaluation_runner = evaluation_runner or run_single_evaluation
+
+    def __call__(self, trial: optuna.Trial) -> float:
+        """Run a single optimization trial.
 
         Args:
             trial: Optuna trial object for suggesting parameters.
@@ -68,60 +83,126 @@ def create_objective(step: float = 0.1) -> Callable[[object], float]:
         Returns:
             Optimization score (higher is better).
         """
-        # Suggest boost parameters (0.0 to 3.0 range)
-        keyword_boost = trial.suggest_float("KEYWORD_BOOST", 0.0, 5.0, step=step)
-        analyser_boost = trial.suggest_float("ANALYSER_BOOST", 0.0, 5.0, step=step)
-        semantic_boost = trial.suggest_float("SEMANTIC_BOOST", 0.0, 5.0, step=step)
-        fuzzy_boost = trial.suggest_float("FUZZY_BOOST", 0.0, 5.0, step=step)
-        wildcard_boost = trial.suggest_float("WILDCARD_BOOST", 0.0, 5.0, step=step)
+        # Suggest boost parameters
+        params = self._suggest_parameters(trial)
 
-        # Ensure at least one search type is active
-        total_boost = keyword_boost + analyser_boost + semantic_boost + fuzzy_boost + wildcard_boost
-        if total_boost == 0:
-            # If all boosts are 0, return a very low score
-            logger.warning("All boosts are 0, skipping trial")
-            return -1000.0
+        # Validate parameters
+        if not self._validate_parameters(params):
+            return PENALTY_SCORE
 
-        # Build settings overrides (round to 4 decimal places to avoid floating point noise)
-        # Note: SCORE_FILTER is not optimized - it uses the default from evaluation_settings
-        settings_overrides = {
-            "KEYWORD_BOOST": round(keyword_boost, 4),
-            "ANALYSER_BOOST": round(analyser_boost, 4),
-            "SEMANTIC_BOOST": round(semantic_boost, 4),
-            "FUZZY_BOOST": round(fuzzy_boost, 4),
-            "WILDCARD_BOOST": round(wildcard_boost, 4),
-        }
-
+        # Build settings overrides
+        settings_overrides = self._build_settings_overrides(params)
         logger.info(f"Trial {trial.number}: {settings_overrides}")
 
+        # Run evaluation and extract score
         try:
-            # Run evaluation with overrides
-            # log_to_file=False skips per-run CSV, but evaluation_log.csv is always updated
-            result = run_evaluation(settings_overrides=settings_overrides, log_to_file=False)
-
-            if result is None:
-                logger.warning("Evaluation returned None (no results)")
-                return -1000.0
-
-            _, summary = result
-            # Handle both EvaluationSummary dataclass and dict
-            if hasattr(summary, "optimization_score"):
-                optimization_score = summary.optimization_score
-            else:
-                optimization_score = summary.get("optimization_score", -1000.0)
-
-            # Handle numpy types
-            if hasattr(optimization_score, "item"):
-                optimization_score = optimization_score.item()
-
-            logger.info(f"Trial {trial.number} score: {optimization_score:.4f}")
-            return optimization_score
-
+            score = self._run_trial_evaluation(trial, settings_overrides)
+            logger.info(f"Trial {trial.number} score: {score:.4f}")
+            return score
         except Exception as e:
             logger.error(f"Trial {trial.number} failed: {e}")
-            return -1000.0
+            return PENALTY_SCORE
 
-    return objective
+    def _suggest_parameters(self, trial: optuna.Trial) -> dict[str, float]:
+        """Suggest parameter values for this trial.
+
+        Args:
+            trial: Optuna trial object.
+
+        Returns:
+            Dictionary of suggested parameter values.
+        """
+        return {
+            "KEYWORD_BOOST": trial.suggest_float("KEYWORD_BOOST", *BOOST_RANGE, step=self.step),
+            "ANALYSER_BOOST": trial.suggest_float("ANALYSER_BOOST", *BOOST_RANGE, step=self.step),
+            "SEMANTIC_BOOST": trial.suggest_float("SEMANTIC_BOOST", *BOOST_RANGE, step=self.step),
+            "FUZZY_BOOST": trial.suggest_float("FUZZY_BOOST", *BOOST_RANGE, step=self.step),
+            "WILDCARD_BOOST": trial.suggest_float("WILDCARD_BOOST", *BOOST_RANGE, step=self.step),
+        }
+
+    def _validate_parameters(self, params: dict[str, float]) -> bool:
+        """Validate that at least one boost parameter is non-zero.
+
+        Args:
+            params: Dictionary of parameter values.
+
+        Returns:
+            True if parameters are valid, False otherwise.
+        """
+        total_boost = sum(params.values())
+        if total_boost == 0:
+            logger.warning("All boosts are 0, skipping trial")
+            return False
+        return True
+
+    def _build_settings_overrides(self, params: dict[str, float]) -> dict[str, float]:
+        """Build settings overrides with rounded values.
+
+        Args:
+            params: Dictionary of parameter values.
+
+        Returns:
+            Dictionary of settings overrides.
+        """
+        return {k: round(v, PRECISION) for k, v in params.items()}
+
+    def _run_trial_evaluation(self, trial: optuna.Trial, settings_overrides: dict[str, float]) -> float:
+        """Run evaluation and extract optimization score.
+
+        Args:
+            trial: Optuna trial object.
+            settings_overrides: Dictionary of settings to override.
+
+        Returns:
+            Optimization score.
+        """
+        result = self.evaluation_runner(
+            settings_overrides=settings_overrides,
+            log_to_file=False,
+        )
+
+        if result is None:
+            logger.warning("Evaluation returned None (no results)")
+            return PENALTY_SCORE
+
+        _, summary = result
+        return self._extract_optimization_score(summary)
+
+    def _extract_optimization_score(self, summary: Any) -> float:
+        """Extract optimization score from summary object or dict.
+
+        Args:
+            summary: Evaluation summary (dict or object with optimization_score attribute).
+
+        Returns:
+            Optimization score as a float.
+        """
+        # Handle both EvaluationSummary dataclass and dict
+        if hasattr(summary, "optimization_score"):
+            score = summary.optimization_score
+        else:
+            score = summary.get("optimization_score", PENALTY_SCORE)
+
+        # Handle numpy types
+        if hasattr(score, "item"):
+            score = score.item()
+
+        return float(score)
+
+
+def create_objective(step: float = 0.1) -> Callable[[optuna.Trial], float]:
+    """Create an objective function with the specified step size.
+
+    This is a factory function that creates an OptimizationObjective instance.
+    Maintained for backward compatibility with existing code.
+
+    Args:
+        step: Step size for parameter suggestions (0.1 for coarse, 0.05 for fine).
+
+    Returns:
+        Callable objective function for Optuna optimization.
+    """
+    return OptimizationObjective(step=step)
 
 
 def run_optimization(
@@ -159,7 +240,8 @@ def run_optimization(
     )
 
     # Progress callback to show fraction instead of progress bar
-    def progress_callback(study: optuna.Study, trial: optuna.trial.FrozenTrial) -> None:
+    def progress_callback(study: optuna.Study, trial: FrozenTrial) -> None:
+        """Log progress after each trial completion."""
         current = len(study.trials)
         logger.info(f"Progress: {current}/{n_trials} trials completed")
 
@@ -196,8 +278,15 @@ def run_optimization(
     return study
 
 
-def _round_params(params: dict) -> dict:
-    """Round all numeric parameter values to 4 decimal places."""
+def _round_params(params: dict[str, Any]) -> dict[str, Any]:
+    """Round all numeric parameter values to 4 decimal places.
+
+    Args:
+        params: Dictionary of parameter names to values.
+
+    Returns:
+        Dictionary with float values rounded to 4 decimal places.
+    """
     return {k: round(v, 4) if isinstance(v, float) else v for k, v in params.items()}
 
 
@@ -302,12 +391,17 @@ def print_summary(study: optuna.Study) -> None:
         logger.info(f"     Params: {_round_params(trial.params)}")
 
 
-def main(n_trials: int = 30, two_phase: bool = True) -> None:
-    """Main entry point for optimization.
+def run_optimization_workflow(n_trials: int = 30, two_phase: bool = True) -> optuna.Study:
+    """Run the complete optimization workflow.
+
+    This is the main business logic function that orchestrates the optimization process.
 
     Args:
         n_trials: Total number of optimization trials to run.
-        two_phase: If True, use coarse step (0.1) for first half, fine step (0.05) for second.
+        two_phase: If True, use coarse step (0.3) for first half, fine step (0.05) for second.
+
+    Returns:
+        Completed Optuna study with all trial results.
     """
     logger.info("=" * 60)
     logger.info("SEARCH PARAMETER OPTIMIZATION")
@@ -330,13 +424,46 @@ def main(n_trials: int = 30, two_phase: bool = True) -> None:
     logger.info("")
     logger.info("Next steps:")
     logger.info("1. Review the best parameters above")
-    logger.info("2. Update testing/evaluation_settings.py with the best values")
-    logger.info("3. Run a full evaluation to confirm: python -m testing.run_evaluation")
+    logger.info("2. Update evaluation_settings.py with the best values")
+    logger.info("3. Run a full evaluation to confirm: python -m evaluation_suite.search_evaluation.run_evaluation")
     logger.info(f"4. Results saved in: {OUTPUT_DIR / 'latest'}")
 
+    return study
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Optimize search configuration parameters")
+
+def main(n_trials: int = 30, two_phase: bool = True) -> optuna.Study:
+    """Main entry point for optimization (legacy compatibility).
+
+    This function exists for backward compatibility with existing code and tests.
+    New code should use run_optimization_workflow() directly.
+
+    Args:
+        n_trials: Total number of optimization trials to run.
+        two_phase: If True, use coarse step (0.3) for first half, fine step (0.05) for second.
+
+    Returns:
+        Completed Optuna study with all trial results.
+    """
+    return run_optimization_workflow(n_trials=n_trials, two_phase=two_phase)
+
+
+def cli_main() -> None:
+    """Command-line interface entry point."""
+    parser = argparse.ArgumentParser(
+        description="Optimize search configuration parameters using Bayesian optimization",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Run 30 trials with two-phase optimization (default)
+  python -m evaluation_suite.search_evaluation.optimize_search
+
+  # Run 50 trials
+  python -m evaluation_suite.search_evaluation.optimize_search --n-trials 50
+
+  # Run single-phase optimization
+  python -m evaluation_suite.search_evaluation.optimize_search --single-phase
+        """,
+    )
     parser.add_argument(
         "--n-trials",
         type=int,
@@ -349,4 +476,9 @@ if __name__ == "__main__":
         help="Run single phase optimization instead of two-phase",
     )
     args = parser.parse_args()
-    main(n_trials=args.n_trials, two_phase=not args.single_phase)
+
+    run_optimization_workflow(n_trials=args.n_trials, two_phase=not args.single_phase)
+
+
+if __name__ == "__main__":
+    cli_main()
