@@ -99,7 +99,9 @@ def create_hybrid_query(query_text: str, query_vector: list[float], k: int = 5) 
 
     if date_variants:
         for date in date_variants:
-            should_clauses.append({"match_phrase": {"chunk_text": {"query": date, "boost": 2}}})
+            should_clauses.append(
+                {"match_phrase": {"chunk_text": {"query": date, "boost": eval_settings.DATE_QUERY_BOOST}}}
+            )
 
         query_body = {
             "size": k,

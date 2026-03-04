@@ -21,15 +21,18 @@ OUTPUT_DIR = _SCRIPT_DIR / "output" / "optimization"
 
 
 def _round_params(params: dict[str, Any]) -> dict[str, Any]:
-    """Round all numeric parameter values to 4 decimal places.
+    """Round all numeric parameter values to the configured precision.
 
     Args:
         params: Dictionary of parameter names to values.
 
     Returns:
-        Dictionary with float values rounded to 4 decimal places.
+        Dictionary with float values rounded to OPTIMIZATION_PRECISION decimal places.
     """
-    return {k: round(v, 4) if isinstance(v, float) else v for k, v in params.items()}
+    from evaluation_suite.search_evaluation import evaluation_settings as eval_settings
+
+    precision = eval_settings.OPTIMIZATION_PRECISION
+    return {k: round(v, precision) if isinstance(v, float) else v for k, v in params.items()}
 
 
 def _update_latest_symlink(run_dir: Path) -> None:

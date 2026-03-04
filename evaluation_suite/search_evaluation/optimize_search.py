@@ -25,6 +25,7 @@ import optuna
 from optuna.samplers import TPESampler
 from optuna.trial import FrozenTrial
 
+from evaluation_suite.search_evaluation import evaluation_settings as eval_settings
 from evaluation_suite.search_evaluation.opensearch_client import check_opensearch_health
 from evaluation_suite.search_evaluation.optimization_results import OUTPUT_DIR, print_summary, save_results
 from evaluation_suite.search_evaluation.run_evaluation import run_evaluation
@@ -50,10 +51,10 @@ logging.getLogger("optuna").setLevel(logging.CRITICAL)  # Suppress all Optuna tr
 # Reduce optuna verbosity to maximum
 optuna.logging.set_verbosity(optuna.logging.CRITICAL)
 
-# Constants for optimization
-PENALTY_SCORE = -1000.0
-BOOST_RANGE = (0.0, 5.0)
-PRECISION = 4  # Decimal places for rounding
+# Use optimization settings from evaluation_settings
+PENALTY_SCORE = eval_settings.OPTIMIZATION_PENALTY_SCORE
+BOOST_RANGE = (eval_settings.OPTIMIZATION_BOOST_RANGE_MIN, eval_settings.OPTIMIZATION_BOOST_RANGE_MAX)
+PRECISION = eval_settings.OPTIMIZATION_PRECISION
 
 
 class OptimizationObjective:
@@ -212,7 +213,7 @@ def create_objective(step: float = 0.1) -> Callable[[optuna.Trial], float]:
 
 
 def run_optimization(
-    n_trials: int = 3,
+    n_trials: int | None = None,
     study_name: str | None = None,
     two_phase: bool = True,
 ) -> optuna.Study:
@@ -228,6 +229,10 @@ def run_optimization(
     """
     # Create output directory
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Use default n_trials if not specified
+    if n_trials is None:
+        n_trials = eval_settings.OPTIMIZATION_DEFAULT_N_TRIALS
 
     # Generate study name if not provided
     if study_name is None:
@@ -256,10 +261,10 @@ def run_optimization(
         phase1_trials = n_trials // 2
         phase2_trials = n_trials - phase1_trials
 
-        logger.info(f"Phase 1: Coarse search ({phase1_trials} trials, step=0.3)")
+        logger.info(f"Phase 1: Coarse search ({phase1_trials} trials, step={eval_settings.OPTIMIZATION_PHASE1_STEP})")
         try:
             study.optimize(
-                create_objective(step=0.3),
+                create_objective(step=eval_settings.OPTIMIZATION_PHASE1_STEP),
                 n_trials=phase1_trials,
                 show_progress_bar=False,
                 callbacks=[progress_callback],
@@ -268,10 +273,10 @@ def run_optimization(
             raise SystemExit(1)
 
         logger.info(f"Phase 1 complete. Best score so far: {study.best_value:.4f}")
-        logger.info(f"Phase 2: Fine-tuning ({phase2_trials} trials, step=0.05)")
+        logger.info(f"Phase 2: Fine-tuning ({phase2_trials} trials, step={eval_settings.OPTIMIZATION_PHASE2_STEP})")
         try:
             study.optimize(
-                create_objective(step=0.05),
+                create_objective(step=eval_settings.OPTIMIZATION_PHASE2_STEP),
                 n_trials=phase2_trials,
                 show_progress_bar=False,
                 callbacks=[progress_callback],
@@ -282,7 +287,7 @@ def run_optimization(
         # Single phase with default step
         try:
             study.optimize(
-                create_objective(step=0.1),
+                create_objective(step=eval_settings.OPTIMIZATION_SINGLE_PHASE_STEP),
                 n_trials=n_trials,
                 show_progress_bar=False,
                 callbacks=[progress_callback],
@@ -293,18 +298,22 @@ def run_optimization(
     return study
 
 
-def run_optimization_workflow(n_trials: int = 30, two_phase: bool = True) -> optuna.Study:
+def run_optimization_workflow(n_trials: int | None = None, two_phase: bool = True) -> optuna.Study:
     """Run the complete optimization workflow.
 
     This is the main business logic function that orchestrates the optimization process.
 
     Args:
-        n_trials: Total number of optimization trials to run.
-        two_phase: If True, use coarse step (0.3) for first half, fine step (0.05) for second.
+        n_trials: Total number of optimization trials to run. If None, uses OPTIMIZATION_DEFAULT_N_TRIALS.
+        two_phase: If True, use coarse step for first half, fine step for second.
 
     Returns:
         Completed Optuna study with all trial results.
     """
+    # Use default n_trials if not specified
+    if n_trials is None:
+        n_trials = eval_settings.OPTIMIZATION_DEFAULT_N_TRIALS
+
     # Pre-flight check: verify OpenSearch is reachable before starting optimization
     try:
         check_opensearch_health()
@@ -318,7 +327,7 @@ def run_optimization_workflow(n_trials: int = 30, two_phase: bool = True) -> opt
     if two_phase:
         logger.info("Mode: Two-phase (coarse then fine-tuning)")
     else:
-        logger.info("Mode: Single-phase (step=0.1)")
+        logger.info(f"Mode: Single-phase (step={eval_settings.OPTIMIZATION_SINGLE_PHASE_STEP})")
 
     # Run optimization
     study = run_optimization(n_trials=n_trials, two_phase=two_phase)
@@ -340,15 +349,15 @@ def run_optimization_workflow(n_trials: int = 30, two_phase: bool = True) -> opt
     return study
 
 
-def main(n_trials: int = 30, two_phase: bool = True) -> optuna.Study:
+def main(n_trials: int | None = None, two_phase: bool = True) -> optuna.Study:
     """Main entry point for optimization (legacy compatibility).
 
     This function exists for backward compatibility with existing code and tests.
     New code should use run_optimization_workflow() directly.
 
     Args:
-        n_trials: Total number of optimization trials to run.
-        two_phase: If True, use coarse step (0.3) for first half, fine step (0.05) for second.
+        n_trials: Total number of optimization trials to run. If None, uses OPTIMIZATION_DEFAULT_N_TRIALS.
+        two_phase: If True, use coarse step for first half, fine step for second.
 
     Returns:
         Completed Optuna study with all trial results.
@@ -376,8 +385,8 @@ Examples:
     parser.add_argument(
         "--n-trials",
         type=int,
-        default=30,
-        help="Total number of optimization trials to run (default: 30)",
+        default=eval_settings.OPTIMIZATION_DEFAULT_N_TRIALS,
+        help=f"Total number of optimization trials to run (default: {eval_settings.OPTIMIZATION_DEFAULT_N_TRIALS})",
     )
     parser.add_argument(
         "--single-phase",

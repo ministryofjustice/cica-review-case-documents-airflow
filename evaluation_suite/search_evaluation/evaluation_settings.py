@@ -61,6 +61,15 @@ FUZZY_MATCH_THRESHOLD = 85  # Similarity threshold for fuzzy term matching (0-10
 DATE_FORMAT_DETECTION = True  # Enable/disable date format detection
 
 # =============================================================================
+# OPENSEARCH CONFIGURATION
+# =============================================================================
+# Settings for OpenSearch query execution and data retrieval
+
+OPENSEARCH_SCROLL_TIMEOUT = "2m"  # Timeout for scroll API cursor (e.g., "2m", "5m")
+OPENSEARCH_BATCH_SIZE = 1000  # Number of documents per scroll batch
+DATE_QUERY_BOOST = 2.0  # Boost multiplier for exact date phrase queries
+
+# =============================================================================
 # CASE FILTERING
 # =============================================================================
 # Case reference to evaluate. This is required and cannot be None.
@@ -68,6 +77,19 @@ DATE_FORMAT_DETECTION = True  # Enable/disable date format detection
 
 CASE_FILTER = "26-711111"  # Required: specify the case reference to evaluate
 
+# =============================================================================
+# OPTIMIZATION SETTINGS
+# =============================================================================
+# Configuration for Bayesian optimization of search parameters
+
+OPTIMIZATION_DEFAULT_N_TRIALS = 30  # Default number of trials to run
+OPTIMIZATION_PHASE1_STEP = 0.3  # Step size for phase 1 (coarse search)
+OPTIMIZATION_PHASE2_STEP = 0.05  # Step size for phase 2 (fine-tuning)
+OPTIMIZATION_SINGLE_PHASE_STEP = 0.1  # Step size for single-phase optimization
+OPTIMIZATION_BOOST_RANGE_MIN = 0.0  # Minimum boost value
+OPTIMIZATION_BOOST_RANGE_MAX = 5.0  # Maximum boost value
+OPTIMIZATION_PRECISION = 4  # Decimal places for rounding boost values
+OPTIMIZATION_PENALTY_SCORE = -1000.0  # Penalty score for failed trials
 
 # =============================================================================
 # RUNTIME OVERRIDE SUPPORT
@@ -91,6 +113,17 @@ _DEFAULTS = {
     "FUZZY_MATCH_THRESHOLD": FUZZY_MATCH_THRESHOLD,
     "DATE_FORMAT_DETECTION": DATE_FORMAT_DETECTION,
     "CASE_FILTER": CASE_FILTER,
+    "OPTIMIZATION_DEFAULT_N_TRIALS": OPTIMIZATION_DEFAULT_N_TRIALS,
+    "OPTIMIZATION_PHASE1_STEP": OPTIMIZATION_PHASE1_STEP,
+    "OPTIMIZATION_PHASE2_STEP": OPTIMIZATION_PHASE2_STEP,
+    "OPTIMIZATION_SINGLE_PHASE_STEP": OPTIMIZATION_SINGLE_PHASE_STEP,
+    "OPTIMIZATION_BOOST_RANGE_MIN": OPTIMIZATION_BOOST_RANGE_MIN,
+    "OPTIMIZATION_BOOST_RANGE_MAX": OPTIMIZATION_BOOST_RANGE_MAX,
+    "OPTIMIZATION_PRECISION": OPTIMIZATION_PRECISION,
+    "OPTIMIZATION_PENALTY_SCORE": OPTIMIZATION_PENALTY_SCORE,
+    "OPENSEARCH_SCROLL_TIMEOUT": OPENSEARCH_SCROLL_TIMEOUT,
+    "OPENSEARCH_BATCH_SIZE": OPENSEARCH_BATCH_SIZE,
+    "DATE_QUERY_BOOST": DATE_QUERY_BOOST,
 }
 
 

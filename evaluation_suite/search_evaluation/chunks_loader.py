@@ -44,8 +44,8 @@ def load_all_chunks_from_opensearch() -> dict[str, str]:
 
         # Use scroll API for efficient retrieval of all documents
         chunk_lookup: dict[str, str] = {}
-        scroll_timeout = "2m"
-        batch_size = 1000
+        scroll_timeout = eval_settings.OPENSEARCH_SCROLL_TIMEOUT
+        batch_size = eval_settings.OPENSEARCH_BATCH_SIZE
 
         # Initial search request
         response = client.search(
