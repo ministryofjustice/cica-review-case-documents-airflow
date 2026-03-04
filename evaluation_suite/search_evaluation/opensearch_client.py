@@ -26,12 +26,20 @@ CHUNK_INDEX_NAME = settings.OPENSEARCH_CHUNK_INDEX_NAME
 
 logger = logging.getLogger(__name__)
 
+# Suppress per-request INFO logs from the opensearch-py HTTP transport
+logging.getLogger("opensearch").setLevel(logging.WARNING)
+# Suppress urllib3 retry noise (connection errors are re-raised explicitly)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+
 
 def get_opensearch_client() -> OpenSearch:
     """Create and return an OpenSearch client.
 
     Returns:
         Configured OpenSearch client for the local development environment.
+
+    Note:
+        Timeout is set to 30 seconds to accommodate port-forwarded remote connections.
     """
     return OpenSearch(
         hosts=[settings.OPENSEARCH_PROXY_URL],
@@ -39,6 +47,7 @@ def get_opensearch_client() -> OpenSearch:
         use_ssl=False,
         verify_certs=False,
         ssl_assert_hostname=False,
+        timeout=30,  # 30 second timeout for remote connections via port forwarding
     )
 
 
@@ -54,11 +63,13 @@ def check_opensearch_health() -> None:
         client.cluster.health()
         logger.info(f"OpenSearch healthcheck passed: {settings.OPENSEARCH_PROXY_URL}")
     except OpenSearchConnectionError as e:
+        # Log the original error for debugging without creating verbose tracebacks
+        logger.debug(f"OpenSearch connection failed: {e}")
+        # Raise without exception chain to avoid printing the full opensearchpy traceback
         raise ConnectionError(
             f"OpenSearch is not reachable at {settings.OPENSEARCH_PROXY_URL}. "
-            "Is the local environment running? Try: docker compose up -d\n"
-            f"Details: {e}"
-        ) from e
+            "Is the local environment running? Try: docker compose up -d"
+        ) from None
 
 
 __all__ = [

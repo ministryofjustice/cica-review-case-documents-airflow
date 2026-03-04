@@ -22,6 +22,7 @@ def test_get_opensearch_client_returns_client(mock_settings, mock_OpenSearch):
         use_ssl=False,
         verify_certs=False,
         ssl_assert_hostname=False,
+        timeout=30,
     )
     assert result == client
 

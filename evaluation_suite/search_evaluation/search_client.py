@@ -41,12 +41,12 @@ def local_search_client(search_term: str) -> list[dict]:
     try:
         embedding_generator = EmbeddingGenerator(settings.BEDROCK_EMBEDDING_MODEL_ID)
         embedding = embedding_generator.generate_embedding(search_term)
-        logger.info(f"Generated embedding for search term: '{search_term}'")
+        logger.debug(f"Generated embedding for search term: '{search_term}'")
 
         client = get_opensearch_client()
 
         search_query = create_hybrid_query(search_term, embedding, k=eval_settings.K_QUERIES)
-        logger.info(f"Performing hybrid search for {eval_settings.K_QUERIES} neighbors in '{CHUNK_INDEX_NAME}'...")
+        logger.debug(f"Hybrid search: '{search_term}', k={eval_settings.K_QUERIES}, index='{CHUNK_INDEX_NAME}'")
         response = client.search(index=CHUNK_INDEX_NAME, body=search_query)
 
         hits = response["hits"]["hits"]

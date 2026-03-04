@@ -83,6 +83,8 @@ def create_hybrid_query(query_text: str, query_vector: list[float], k: int = 5) 
     For queries containing dates (when DATE_FORMAT_DETECTION is enabled), uses ONLY
     match_phrase for date variants (no fuzzy/semantic).
 
+    Restricts results to the case specified in CASE_FILTER.
+
     Args:
         query_text: The text query to search for.
         query_vector: The embedding vector for semantic search.
@@ -99,19 +101,34 @@ def create_hybrid_query(query_text: str, query_vector: list[float], k: int = 5) 
         for date in date_variants:
             should_clauses.append({"match_phrase": {"chunk_text": {"query": date, "boost": 2}}})
 
-        return {
+        query_body = {
             "size": k,
             "_source": ["document_id", "page_number", "chunk_text", "case_ref"],
-            "query": {"bool": {"should": should_clauses, "minimum_should_match": 1}},
+            "query": {
+                "bool": {
+                    "should": should_clauses,
+                    "minimum_should_match": 1,
+                    "filter": {"term": {"case_ref": eval_settings.CASE_FILTER}},
+                }
+            },
         }
+
+        return query_body
 
     should_clauses = _build_hybrid_clauses(query_text, query_vector, k)
 
-    return {
+    query_body = {
         "size": k,
         "_source": ["document_id", "page_number", "chunk_text", "case_ref"],
-        "query": {"bool": {"should": should_clauses}},
+        "query": {
+            "bool": {
+                "should": should_clauses,
+                "filter": {"term": {"case_ref": eval_settings.CASE_FILTER}},
+            }
+        },
     }
+
+    return query_body
 
 
 def apply_adaptive_score_filter(hits: list[dict], score_filter: float) -> tuple[list[dict], float, int]:

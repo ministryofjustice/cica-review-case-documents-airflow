@@ -60,6 +60,14 @@ FUZZY_MATCH_THRESHOLD = 85  # Similarity threshold for fuzzy term matching (0-10
 
 DATE_FORMAT_DETECTION = True  # Enable/disable date format detection
 
+# =============================================================================
+# CASE FILTERING
+# =============================================================================
+# Case reference to evaluate. This is required and cannot be None.
+# Change this value to evaluate a different case.
+
+CASE_FILTER = "26-711111"  # Required: specify the case reference to evaluate
+
 
 # =============================================================================
 # RUNTIME OVERRIDE SUPPORT
@@ -82,6 +90,7 @@ _DEFAULTS = {
     "PREFIX_LENGTH": PREFIX_LENGTH,
     "FUZZY_MATCH_THRESHOLD": FUZZY_MATCH_THRESHOLD,
     "DATE_FORMAT_DETECTION": DATE_FORMAT_DETECTION,
+    "CASE_FILTER": CASE_FILTER,
 }
 
 

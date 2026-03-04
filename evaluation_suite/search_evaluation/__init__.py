@@ -20,4 +20,5 @@ Modules:
     date_formats: Date parsing utilities
     generate_expected_chunks: Auto-populate expected chunks
     optimize_search: Bayesian parameter optimization
+    optimization_results: Save and display optimization results
 """

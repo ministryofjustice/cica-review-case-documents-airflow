@@ -6,6 +6,7 @@ them as a lookup dictionary for the relevance scoring process.
 
 import logging
 
+from evaluation_suite.search_evaluation import evaluation_settings as eval_settings
 from evaluation_suite.search_evaluation.opensearch_client import (
     CHUNK_INDEX_NAME,
     OpenSearchConnectionError,
@@ -20,6 +21,7 @@ def load_all_chunks_from_opensearch() -> dict[str, str]:
     """Fetch all chunks from OpenSearch and return as a lookup dictionary.
 
     Uses scroll API to handle large result sets efficiently.
+    Restricts results to the case specified in CASE_FILTER.
 
     Returns:
         Dictionary mapping chunk_id to chunk_text.
@@ -27,10 +29,14 @@ def load_all_chunks_from_opensearch() -> dict[str, str]:
     try:
         client = get_opensearch_client()
 
+        # Build query with case filter (always required)
+        query_body = {"bool": {"must": {"match_all": {}}, "filter": {"term": {"case_ref": eval_settings.CASE_FILTER}}}}
+
         # First, get the total count
-        count_response = client.count(index=CHUNK_INDEX_NAME)
+        count_response = client.count(index=CHUNK_INDEX_NAME, body={"query": query_body})
         total_chunks = count_response["count"]
-        logger.info(f"Found {total_chunks} chunks in index '{CHUNK_INDEX_NAME}'")
+
+        logger.info(f"Found {total_chunks} chunks for case '{eval_settings.CASE_FILTER}' in index '{CHUNK_INDEX_NAME}'")
 
         if total_chunks == 0:
             logger.warning("No chunks found in OpenSearch index")
@@ -45,9 +51,9 @@ def load_all_chunks_from_opensearch() -> dict[str, str]:
         response = client.search(
             index=CHUNK_INDEX_NAME,
             body={
-                "query": {"match_all": {}},
+                "query": query_body,
                 "size": batch_size,
-                "_source": ["chunk_text", "page_number", "case_reference"],
+                "_source": ["chunk_text", "page_number", "case_ref"],
             },
             scroll=scroll_timeout,
         )
@@ -94,11 +100,16 @@ def load_all_chunks_from_opensearch() -> dict[str, str]:
 def get_chunk_details_from_opensearch() -> list[dict]:
     """Fetch all chunks with full details from OpenSearch.
 
+    Restricts results to the case specified in CASE_FILTER.
+
     Returns:
-        List of dictionaries with chunk_id, chunk_text, page_number, case_reference.
+        List of dictionaries with chunk_id, chunk_text, page_number, case_ref.
     """
     try:
         client = get_opensearch_client()
+
+        # Build query with case filter (always required)
+        query_body = {"bool": {"must": {"match_all": {}}, "filter": {"term": {"case_ref": eval_settings.CASE_FILTER}}}}
 
         chunks: list[dict] = []
         scroll_timeout = "2m"
@@ -107,9 +118,9 @@ def get_chunk_details_from_opensearch() -> list[dict]:
         response = client.search(
             index=CHUNK_INDEX_NAME,
             body={
-                "query": {"match_all": {}},
+                "query": query_body,
                 "size": batch_size,
-                "_source": ["chunk_text", "page_number", "case_reference"],
+                "_source": ["chunk_text", "page_number", "case_ref"],
             },
             scroll=scroll_timeout,
         )
@@ -124,7 +135,7 @@ def get_chunk_details_from_opensearch() -> list[dict]:
                         "chunk_id": hit["_id"],
                         "chunk_text": hit["_source"].get("chunk_text", ""),
                         "page_number": hit["_source"].get("page_number", ""),
-                        "case_reference": hit["_source"].get("case_reference", ""),
+                        "case_ref": hit["_source"].get("case_ref", ""),
                     }
                 )
 

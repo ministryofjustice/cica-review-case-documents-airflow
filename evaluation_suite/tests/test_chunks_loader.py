@@ -76,8 +76,8 @@ def test_get_chunk_details_success(mock_get_client):
         "_scroll_id": "scroll123",
         "hits": {
             "hits": [
-                {"_id": "chunk1", "_source": {"chunk_text": "text1", "page_number": 1, "case_reference": "ref1"}},
-                {"_id": "chunk2", "_source": {"chunk_text": "text2", "page_number": 2, "case_reference": "ref2"}},
+                {"_id": "chunk1", "_source": {"chunk_text": "text1", "page_number": 1, "case_ref": "ref1"}},
+                {"_id": "chunk2", "_source": {"chunk_text": "text2", "page_number": 2, "case_ref": "ref2"}},
             ]
         },
     }
@@ -86,8 +86,8 @@ def test_get_chunk_details_success(mock_get_client):
 
     chunks = get_chunk_details_from_opensearch()
     assert chunks == [
-        {"chunk_id": "chunk1", "chunk_text": "text1", "page_number": 1, "case_reference": "ref1"},
-        {"chunk_id": "chunk2", "chunk_text": "text2", "page_number": 2, "case_reference": "ref2"},
+        {"chunk_id": "chunk1", "chunk_text": "text1", "page_number": 1, "case_ref": "ref1"},
+        {"chunk_id": "chunk2", "chunk_text": "text2", "page_number": 2, "case_ref": "ref2"},
     ]
 
 

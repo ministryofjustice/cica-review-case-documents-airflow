@@ -16,17 +16,25 @@ The script will:
 """
 
 import argparse
-import json
 import logging
+import warnings
 from datetime import datetime
-from pathlib import Path
 from typing import Any, Callable
 
 import optuna
 from optuna.samplers import TPESampler
 from optuna.trial import FrozenTrial
 
+from evaluation_suite.search_evaluation.opensearch_client import check_opensearch_health
+from evaluation_suite.search_evaluation.optimization_results import OUTPUT_DIR, print_summary, save_results
 from evaluation_suite.search_evaluation.run_evaluation import run_evaluation
+
+# Suppress Optuna UserWarnings about step size not dividing range evenly
+warnings.filterwarnings(
+    "ignore",
+    message="The distribution is specified by .* and step=.*, but the range is not divisible by `step`.*",
+    category=UserWarning,
+)
 
 # Configure logging
 logging.basicConfig(
@@ -35,12 +43,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger("optimize_search")
 
-# Reduce optuna verbosity
-optuna.logging.set_verbosity(optuna.logging.WARNING)
+logging.getLogger("opensearch").setLevel(logging.ERROR)
+logging.getLogger("urllib3").setLevel(logging.ERROR)
+logging.getLogger("optuna").setLevel(logging.CRITICAL)  # Suppress all Optuna trial logging
 
-# Output directory for optimization results
-SCRIPT_DIR = Path(__file__).resolve().parent
-OUTPUT_DIR = SCRIPT_DIR / "output" / "optimization"
+# Reduce optuna verbosity to maximum
+optuna.logging.set_verbosity(optuna.logging.CRITICAL)
 
 # Constants for optimization
 PENALTY_SCORE = -1000.0
@@ -95,6 +103,8 @@ class OptimizationObjective:
             score = self._run_trial_evaluation(trial, settings_overrides)
             logger.info(f"Trial {trial.number} score: {score:.4f}")
             return score
+        except ConnectionError:
+            raise
         except Exception as e:
             logger.error(f"Trial {trial.number} failed: {e}")
             return PENALTY_SCORE
@@ -202,7 +212,7 @@ def create_objective(step: float = 0.1) -> Callable[[optuna.Trial], float]:
 
 
 def run_optimization(
-    n_trials: int = 30,
+    n_trials: int = 3,
     study_name: str | None = None,
     two_phase: bool = True,
 ) -> optuna.Study:
@@ -247,144 +257,40 @@ def run_optimization(
         phase2_trials = n_trials - phase1_trials
 
         logger.info(f"Phase 1: Coarse search ({phase1_trials} trials, step=0.3)")
-        study.optimize(
-            create_objective(step=0.3),
-            n_trials=phase1_trials,
-            show_progress_bar=False,
-            callbacks=[progress_callback],
-        )
+        try:
+            study.optimize(
+                create_objective(step=0.3),
+                n_trials=phase1_trials,
+                show_progress_bar=False,
+                callbacks=[progress_callback],
+            )
+        except ConnectionError:
+            raise SystemExit(1)
 
         logger.info(f"Phase 1 complete. Best score so far: {study.best_value:.4f}")
         logger.info(f"Phase 2: Fine-tuning ({phase2_trials} trials, step=0.05)")
-        study.optimize(
-            create_objective(step=0.05),
-            n_trials=phase2_trials,
-            show_progress_bar=False,
-            callbacks=[progress_callback],
-        )
+        try:
+            study.optimize(
+                create_objective(step=0.05),
+                n_trials=phase2_trials,
+                show_progress_bar=False,
+                callbacks=[progress_callback],
+            )
+        except ConnectionError:
+            raise SystemExit(1)
     else:
         # Single phase with default step
-        study.optimize(
-            create_objective(step=0.1),
-            n_trials=n_trials,
-            show_progress_bar=False,
-            callbacks=[progress_callback],
-        )
+        try:
+            study.optimize(
+                create_objective(step=0.1),
+                n_trials=n_trials,
+                show_progress_bar=False,
+                callbacks=[progress_callback],
+            )
+        except ConnectionError:
+            raise SystemExit(1)
 
     return study
-
-
-def _round_params(params: dict[str, Any]) -> dict[str, Any]:
-    """Round all numeric parameter values to 4 decimal places.
-
-    Args:
-        params: Dictionary of parameter names to values.
-
-    Returns:
-        Dictionary with float values rounded to 4 decimal places.
-    """
-    return {k: round(v, 4) if isinstance(v, float) else v for k, v in params.items()}
-
-
-def _update_latest_symlink(run_dir: Path) -> None:
-    """Update the 'latest' symlink to point to the most recent run.
-
-    Args:
-        run_dir: Path to the current run directory.
-    """
-    latest_link = OUTPUT_DIR / "latest"
-
-    # Remove existing symlink if it exists
-    if latest_link.is_symlink():
-        latest_link.unlink()
-    elif latest_link.exists():
-        # If it's a regular file/dir (shouldn't happen), skip
-        logger.warning(f"'latest' exists but is not a symlink: {latest_link}")
-        return
-
-    # Create relative symlink (works better across different machines)
-    latest_link.symlink_to(run_dir.name)
-    logger.info(f"Updated 'latest' symlink -> {run_dir.name}")
-
-
-def save_results(study: optuna.Study) -> None:
-    """Save optimization results to a dedicated run directory.
-
-    Creates a directory structure:
-        output/optimization/
-            2025-12-31_11-49-13/
-                summary.json      (best params + metadata)
-                trial_history.json
-            latest -> 2025-12-31_11-49-13/  (symlink to most recent)
-
-    Args:
-        study: Completed Optuna study.
-    """
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-
-    # Create run-specific directory
-    run_dir = OUTPUT_DIR / timestamp
-    run_dir.mkdir(parents=True, exist_ok=True)
-
-    # Save summary (best params + metadata) as JSON
-    summary_file = run_dir / "summary.json"
-    summary = {
-        "study_name": study.study_name,
-        "timestamp": timestamp,
-        "n_trials": len(study.trials),
-        "best_trial_number": study.best_trial.number,
-        "best_score": round(study.best_value, 4),
-        "best_params": _round_params(study.best_params),
-    }
-    with open(summary_file, "w") as f:
-        json.dump(summary, f, indent=2)
-    logger.info(f"Summary saved to: {summary_file}")
-
-    # Save trial history as JSON (rounded to 4 decimal places)
-    history_file = run_dir / "trial_history.json"
-    trial_history = []
-    for trial in study.trials:
-        trial_history.append(
-            {
-                "number": trial.number,
-                "value": round(trial.value, 4) if trial.value else None,
-                "params": _round_params(trial.params),
-                "state": trial.state.name,
-            }
-        )
-    with open(history_file, "w") as f:
-        json.dump(trial_history, f, indent=2)
-    logger.info(f"Trial history saved to: {history_file}")
-
-    # Update 'latest' symlink
-    _update_latest_symlink(run_dir)
-
-
-def print_summary(study: optuna.Study) -> None:
-    """Print a summary of the optimization results.
-
-    Args:
-        study: Completed Optuna study.
-    """
-    logger.info("")
-    logger.info("=" * 60)
-    logger.info("OPTIMIZATION COMPLETE")
-    logger.info("=" * 60)
-    logger.info(f"Study: {study.study_name}")
-    logger.info(f"Total trials: {len(study.trials)}")
-    logger.info(f"Best trial: #{study.best_trial.number}")
-    logger.info(f"Best optimization score: {study.best_value:.4f}")
-    logger.info("Best parameters:")
-    for param, value in study.best_params.items():
-        logger.info(f"  {param}: {round(value, 4)}")
-    logger.info("=" * 60)
-
-    # Show top 5 trials
-    logger.info("Top 5 trials:")
-    sorted_trials = sorted(study.trials, key=lambda t: t.value if t.value else -1000, reverse=True)
-    for i, trial in enumerate(sorted_trials[:5]):
-        logger.info(f"  {i + 1}. Trial #{trial.number}: score={trial.value:.4f}")
-        logger.info(f"     Params: {_round_params(trial.params)}")
 
 
 def run_optimization_workflow(n_trials: int = 30, two_phase: bool = True) -> optuna.Study:
@@ -399,6 +305,13 @@ def run_optimization_workflow(n_trials: int = 30, two_phase: bool = True) -> opt
     Returns:
         Completed Optuna study with all trial results.
     """
+    # Pre-flight check: verify OpenSearch is reachable before starting optimization
+    try:
+        check_opensearch_health()
+    except ConnectionError as e:
+        logger.error(str(e))
+        raise SystemExit(1) from e
+
     logger.info("=" * 60)
     logger.info("SEARCH PARAMETER OPTIMIZATION")
     logger.info("=" * 60)
@@ -463,7 +376,7 @@ Examples:
     parser.add_argument(
         "--n-trials",
         type=int,
-        default=3,
+        default=30,
         help="Total number of optimization trials to run (default: 30)",
     )
     parser.add_argument(

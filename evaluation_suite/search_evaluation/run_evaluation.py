@@ -15,6 +15,7 @@ For programmatic use with settings overrides:
 import logging
 from typing import Any
 
+from evaluation_suite.search_evaluation import evaluation_settings as eval_settings
 from evaluation_suite.search_evaluation.evaluation_config import (
     get_active_search_type,
     get_date_folder,
@@ -32,6 +33,10 @@ from evaluation_suite.search_evaluation.search_looper import run_search_loop
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("run_evaluation")
+
+logging.getLogger("opensearch").setLevel(logging.ERROR)
+logging.getLogger("urllib3").setLevel(logging.ERROR)
+logging.getLogger("optuna").setLevel(logging.ERROR)
 
 
 def run_evaluation(
@@ -67,6 +72,9 @@ def run_evaluation(
         # Capture search configuration
         config = get_search_config(timestamp)
         logger.info(f"Search config: {config}")
+
+        # Log which case is being evaluated
+        logger.info(f"Evaluating case: {eval_settings.CASE_FILTER}")
 
         # Run search loop
         logger.info("Running search loop...")
