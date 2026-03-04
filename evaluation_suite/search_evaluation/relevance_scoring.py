@@ -5,56 +5,20 @@ expected pages and chunk IDs against actual search results.
 """
 
 import logging
-from dataclasses import dataclass
-from pathlib import Path
 
 import pandas as pd
 
 from evaluation_suite.search_evaluation.chunk_metrics import calculate_chunk_match, safe_int
 from evaluation_suite.search_evaluation.chunks_loader import load_all_chunks_from_opensearch
 from evaluation_suite.search_evaluation.evaluation_config import (
-    EVALUATION_LOG_FILE,
     get_active_search_type,
     get_active_search_types,
 )
+from evaluation_suite.search_evaluation.evaluation_models import EvaluationSummary
 from evaluation_suite.search_evaluation.term_matching import check_terms_by_expected_chunks, check_terms_in_chunks
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("relevance_scoring")
-
-
-@dataclass(frozen=True)
-class EvaluationSummary:
-    """Summary statistics from relevance evaluation.
-
-    Immutable dataclass containing aggregated metrics across all search queries.
-    """
-
-    total_queries: int
-    queries_with_results: int
-    result_rate: float
-    avg_chunks_returned: float
-    queries_with_expected_chunk: int
-    avg_precision: float
-    avg_recall: float
-    avg_f1_score: float
-    avg_acceptable_term_based_precision: float
-    optimization_score: float
-
-    def to_dict(self) -> dict:
-        """Convert to dictionary for serialization."""
-        return {
-            "total_queries": self.total_queries,
-            "queries_with_results": self.queries_with_results,
-            "result_rate": self.result_rate,
-            "avg_chunks_returned": self.avg_chunks_returned,
-            "queries_with_expected_chunk": self.queries_with_expected_chunk,
-            "avg_precision": self.avg_precision,
-            "avg_recall": self.avg_recall,
-            "avg_f1_score": self.avg_f1_score,
-            "avg_acceptable_term_based_precision": self.avg_acceptable_term_based_precision,
-            "optimization_score": self.optimization_score,
-        }
 
 
 def load_chunk_lookup() -> dict[str, str]:
@@ -257,86 +221,3 @@ def _calculate_summary_stats(df: pd.DataFrame) -> EvaluationSummary:
         avg_acceptable_term_based_precision=round(avg_acceptable_term_based_precision, 2),
         optimization_score=round(optimization_score, 4),
     )
-
-
-def write_results_csv(
-    df: pd.DataFrame,
-    output_file: Path,
-    config: dict,
-    summary: EvaluationSummary | dict,
-) -> None:
-    """Write evaluation results DataFrame to a CSV file with config header.
-
-    Args:
-        df: DataFrame with evaluation results.
-        output_file: Path to write the CSV file.
-        config: Search configuration dictionary to write at top of file.
-        summary: EvaluationSummary or dict with summary statistics.
-    """
-    output_file.parent.mkdir(parents=True, exist_ok=True)
-
-    # Convert EvaluationSummary to dict if needed
-    summary_dict = summary.to_dict() if isinstance(summary, EvaluationSummary) else summary
-
-    with open(output_file, "w", encoding="utf-8") as f:
-        # Write config section as row (keys then values)
-        config_keys = ",".join(str(key) for key in config.keys())
-        config_values = ",".join(str(value) for value in config.values())
-        f.write("Search Configuration\n")
-        f.write(f"{config_keys}\n")
-        f.write(f"{config_values}\n")
-        f.write("\n")
-
-        # Write summary section as row (keys then values)
-        summary_keys = ",".join(str(key) for key in summary_dict.keys())
-        summary_values = ",".join(str(value) for value in summary_dict.values())
-        f.write("Summary Statistics\n")
-        f.write(f"{summary_keys}\n")
-        f.write(f"{summary_values}\n")
-        f.write("\n")
-
-        # Write the DataFrame
-        df.to_csv(f, index=False)
-
-    logger.info(f"Results CSV written to {output_file.resolve()}")
-
-
-def append_to_evaluation_log(config: dict, summary: EvaluationSummary | dict) -> None:
-    """Append evaluation summary to the cumulative log file.
-
-    Creates the log file with headers if it doesn't exist.
-
-    Args:
-        config: Search configuration dictionary.
-        summary: EvaluationSummary or dict with summary statistics.
-    """
-    EVALUATION_LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
-
-    # Convert EvaluationSummary to dict if needed
-    summary_dict = summary.to_dict() if isinstance(summary, EvaluationSummary) else summary
-
-    # Combine config and summary into a single row
-    log_entry = {**config, **summary_dict}
-
-    # Remove columns we don't want in the log
-    for key in ["fuzziness", "max_expansions", "queries_with_expected_chunk"]:
-        log_entry.pop(key, None)
-
-    # Reorder to put timestamp first, then search_type
-    reordered = {}
-    if "timestamp" in log_entry:
-        reordered["timestamp"] = log_entry.pop("timestamp")
-    if "search_type" in log_entry:
-        reordered["search_type"] = log_entry.pop("search_type")
-    log_entry = {**reordered, **log_entry}
-
-    # Check if file exists to determine if we need headers
-    write_header = not EVALUATION_LOG_FILE.exists()
-
-    # Convert to DataFrame for easy CSV append
-    log_df = pd.DataFrame([log_entry])
-
-    with open(EVALUATION_LOG_FILE, "a", encoding="utf-8") as f:
-        log_df.to_csv(f, header=write_header, index=False)
-
-    logger.info(f"Appended evaluation summary to {EVALUATION_LOG_FILE.resolve()}")

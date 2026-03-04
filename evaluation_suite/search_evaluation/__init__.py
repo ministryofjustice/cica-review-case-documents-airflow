@@ -12,6 +12,8 @@ Modules:
     search_query_builder: OpenSearch query construction and score filtering
     search_looper: Batch search execution
     chunks_loader: Load chunks from OpenSearch
+    evaluation_models: EvaluationSummary dataclass
+    evaluation_reporting: CSV and log file I/O
     relevance_scoring: Precision/recall calculation
     chunk_metrics: Per-chunk match metrics
     term_matching: Term verification strategies

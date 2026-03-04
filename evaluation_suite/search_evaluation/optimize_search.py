@@ -463,7 +463,7 @@ Examples:
     parser.add_argument(
         "--n-trials",
         type=int,
-        default=30,
+        default=3,
         help="Total number of optimization trials to run (default: 30)",
     )
     parser.add_argument(

@@ -21,13 +21,13 @@ from evaluation_suite.search_evaluation.evaluation_config import (
     get_search_config,
     get_timestamp,
 )
-from evaluation_suite.search_evaluation.evaluation_settings import apply_overrides, reset_settings
-from evaluation_suite.search_evaluation.opensearch_client import check_opensearch_health
-from evaluation_suite.search_evaluation.relevance_scoring import (
+from evaluation_suite.search_evaluation.evaluation_reporting import (
     append_to_evaluation_log,
-    evaluate_relevance,
     write_results_csv,
 )
+from evaluation_suite.search_evaluation.evaluation_settings import apply_overrides, reset_settings
+from evaluation_suite.search_evaluation.opensearch_client import check_opensearch_health
+from evaluation_suite.search_evaluation.relevance_scoring import evaluate_relevance
 from evaluation_suite.search_evaluation.search_looper import run_search_loop
 
 logging.basicConfig(level=logging.INFO)
