@@ -11,6 +11,7 @@ import os
 from opensearchpy import OpenSearch
 from opensearchpy.exceptions import ConnectionError as OpenSearchConnectionError
 
+from evaluation_suite.search_evaluation import evaluation_settings
 from ingestion_pipeline.config import settings
 
 # Set AWS environment variables from settings (MOD_PLATFORM variants)
@@ -33,13 +34,15 @@ logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 
 def get_opensearch_client() -> OpenSearch:
-    """Create and return an OpenSearch client.
+    """Create and return an OpenSearch client with retry configuration.
 
     Returns:
-        Configured OpenSearch client for the local development environment.
+        Configured OpenSearch client with exponential backoff retry logic
+        for transient failures (timeouts, connection errors, 5xx responses).
 
     Note:
-        Timeout is set to 30 seconds to accommodate port-forwarded remote connections.
+        - Timeout is set to 30 seconds to accommodate port-forwarded remote connections.
+        - Retries are configured for transient failures with exponential backoff.
     """
     return OpenSearch(
         hosts=[settings.OPENSEARCH_PROXY_URL],
@@ -47,7 +50,9 @@ def get_opensearch_client() -> OpenSearch:
         use_ssl=False,
         verify_certs=False,
         ssl_assert_hostname=False,
-        timeout=30,  # 30 second timeout for remote connections via port forwarding
+        timeout=evaluation_settings.OPENSEARCH_TIMEOUT,
+        retry_on_timeout=True,  # Enable retry on timeout
+        max_retries=evaluation_settings.OPENSEARCH_MAX_RETRIES,  # Retry count for transient failures
     )
 
 

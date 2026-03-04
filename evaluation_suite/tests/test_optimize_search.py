@@ -27,6 +27,7 @@ def test_main_two_phase(monkeypatch):
 
         return DummyStudy()
 
+    monkeypatch.setattr(optimize_search, "check_opensearch_health", lambda: None)
     monkeypatch.setattr(optimize_search, "run_optimization", fake_run_optimization)
     monkeypatch.setattr(optimize_search, "save_results", lambda study: called.setdefault("saved", True))
     monkeypatch.setattr(optimize_search, "print_summary", lambda study: called.setdefault("printed", True))
@@ -54,6 +55,7 @@ def test_main_single_phase(monkeypatch):
 
         return DummyStudy()
 
+    monkeypatch.setattr(optimize_search, "check_opensearch_health", lambda: None)
     monkeypatch.setattr(optimize_search, "run_optimization", fake_run_optimization)
     monkeypatch.setattr(optimize_search, "save_results", lambda study: called.setdefault("saved", True))
     monkeypatch.setattr(optimize_search, "print_summary", lambda study: called.setdefault("printed", True))

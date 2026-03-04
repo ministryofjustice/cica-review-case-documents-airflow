@@ -7,11 +7,14 @@ import pytest
 from evaluation_suite.search_evaluation import opensearch_client
 
 
+@patch("evaluation_suite.search_evaluation.opensearch_client.evaluation_settings")
 @patch("evaluation_suite.search_evaluation.opensearch_client.OpenSearch")
 @patch("evaluation_suite.search_evaluation.opensearch_client.settings")
-def test_get_opensearch_client_returns_client(mock_settings, mock_OpenSearch):
-    """Test that get_opensearch_client returns an OpenSearch client with the correct parameters."""
+def test_get_opensearch_client_returns_client(mock_settings, mock_OpenSearch, mock_eval_settings):
+    """Test that get_opensearch_client returns an OpenSearch client with retry configuration."""
     mock_settings.OPENSEARCH_PROXY_URL = "http://localhost:9200"
+    mock_eval_settings.OPENSEARCH_TIMEOUT = 30
+    mock_eval_settings.OPENSEARCH_MAX_RETRIES = 3
     client = MagicMock()
     mock_OpenSearch.return_value = client
 
@@ -23,6 +26,8 @@ def test_get_opensearch_client_returns_client(mock_settings, mock_OpenSearch):
         verify_certs=False,
         ssl_assert_hostname=False,
         timeout=30,
+        retry_on_timeout=True,
+        max_retries=3,
     )
     assert result == client
 

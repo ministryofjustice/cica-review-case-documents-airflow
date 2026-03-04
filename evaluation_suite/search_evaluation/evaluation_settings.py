@@ -67,6 +67,9 @@ DATE_FORMAT_DETECTION = True  # Enable/disable date format detection
 
 OPENSEARCH_SCROLL_TIMEOUT = "2m"  # Timeout for scroll API cursor (e.g., "2m", "5m")
 OPENSEARCH_BATCH_SIZE = 1000  # Number of documents per scroll batch
+OPENSEARCH_TIMEOUT = 30  # Client request timeout in seconds
+OPENSEARCH_MAX_RETRIES = 3  # Maximum number of retries for transient failures
+OPENSEARCH_RETRY_BACKOFF_FACTOR = 0.1  # Exponential backoff factor for retries
 DATE_QUERY_BOOST = 2.0  # Boost multiplier for exact date phrase queries
 
 # =============================================================================
@@ -123,6 +126,9 @@ _DEFAULTS = {
     "OPTIMIZATION_PENALTY_SCORE": OPTIMIZATION_PENALTY_SCORE,
     "OPENSEARCH_SCROLL_TIMEOUT": OPENSEARCH_SCROLL_TIMEOUT,
     "OPENSEARCH_BATCH_SIZE": OPENSEARCH_BATCH_SIZE,
+    "OPENSEARCH_TIMEOUT": OPENSEARCH_TIMEOUT,
+    "OPENSEARCH_MAX_RETRIES": OPENSEARCH_MAX_RETRIES,
+    "OPENSEARCH_RETRY_BACKOFF_FACTOR": OPENSEARCH_RETRY_BACKOFF_FACTOR,
     "DATE_QUERY_BOOST": DATE_QUERY_BOOST,
 }
 
