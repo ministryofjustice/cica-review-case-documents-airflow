@@ -1,128 +1,13 @@
-"""Unit tests for optimize_search.py."""
+"""Unit tests for optimize_search orchestration and CLI.
 
-from unittest.mock import MagicMock, patch
+Tests the run_optimization_workflow, main, and cli_main entry points.
+"""
+
+from unittest.mock import MagicMock
 
 import pytest
 
 import evaluation_suite.search_evaluation.optimize_search as optimize_search
-
-
-@patch("evaluation_suite.search_evaluation.optimize_search.run_evaluation")
-def test_objective_returns_score(mock_run_evaluation):
-    """Test that the objective function returns the optimization score."""
-    mock_summary = {"optimization_score": 42.0}
-    mock_run_evaluation.return_value = (None, mock_summary)
-    objective = optimize_search.create_objective(step=0.1)
-    trial = MagicMock()
-    trial.suggest_float = lambda name, low, high, step: 1.0
-    trial.number = 1
-    score = objective(trial)
-    assert score == 42.0
-
-
-@patch("evaluation_suite.search_evaluation.optimize_search.run_evaluation")
-def test_objective_handles_none_result(mock_run_evaluation):
-    """Test that the objective function returns -1000.0 if run_evaluation returns None."""
-    mock_run_evaluation.return_value = None
-    objective = optimize_search.create_objective(step=0.1)
-    trial = MagicMock()
-    trial.suggest_float = lambda name, low, high, step: 1.0
-    trial.number = 2
-    score = objective(trial)
-    assert score == -1000.0
-
-
-@patch("evaluation_suite.search_evaluation.optimize_search.run_evaluation")
-def test_objective_handles_exception(mock_run_evaluation):
-    """Test that the objective function returns -1000.0 if an exception occurs."""
-    mock_run_evaluation.side_effect = Exception("Test error")
-    objective = optimize_search.create_objective(step=0.1)
-    trial = MagicMock()
-    trial.suggest_float = lambda name, low, high, step: 1.0
-    trial.number = 3
-    score = objective(trial)
-    assert score == -1000.0
-
-
-@patch("evaluation_suite.search_evaluation.optimize_search.run_evaluation")
-def test_objective_reraises_connection_error(mock_run_evaluation):
-    """Test that ConnectionError from check_opensearch_health propagates (stops optimization)."""
-    mock_run_evaluation.side_effect = ConnectionError("OpenSearch is not reachable")
-    objective = optimize_search.create_objective(step=0.1)
-    trial = MagicMock()
-    trial.suggest_float = lambda name, low, high, step: 1.0
-    trial.number = 5
-
-    with pytest.raises(ConnectionError, match="OpenSearch is not reachable"):
-        objective(trial)
-
-
-def test_objective_all_boosts_zero():
-    """Test that the objective function returns -1000.0 if all boosts are zero."""
-    objective = optimize_search.create_objective(step=0.1)
-    trial = MagicMock()
-    trial.suggest_float = lambda name, low, high, step: 0.0
-    trial.number = 4
-    score = objective(trial)
-    assert score == -1000.0
-
-
-@patch("evaluation_suite.search_evaluation.optimize_search.optuna.create_study")
-def test_run_optimization_creates_study(mock_create_study):
-    """Test that run_optimization creates a study and runs optimization."""
-    mock_study = MagicMock()
-    mock_create_study.return_value = mock_study
-    mock_study.trials = []
-    mock_study.best_value = 10.0
-    mock_study.best_params = {"KEYWORD_BOOST": 1.0}
-    mock_study.best_trial = MagicMock(number=0)
-    mock_study.study_name = "test_study"
-    mock_study.optimize = MagicMock()
-    study = optimize_search.run_optimization(n_trials=2, study_name="test_study", two_phase=False)
-    assert study == mock_study
-    mock_study.optimize.assert_called()
-
-
-def test_run_optimization_two_phase_calls_both_phases(monkeypatch):
-    """Test run_optimization runs both phases when two_phase=True."""
-    called = []
-
-    class DummyStudy:
-        def __init__(self):
-            self.trials = []
-            self.best_value = 1.0
-            self.best_params = {"KEYWORD_BOOST": 1.0}
-            self.best_trial = MagicMock(number=0)
-            self.study_name = "dummy"
-
-        def optimize(self, *a, **kw):
-            called.append(kw.get("n_trials"))
-
-    monkeypatch.setattr(optimize_search, "TPESampler", lambda seed: None)
-    monkeypatch.setattr(optimize_search.optuna, "create_study", lambda **kwargs: DummyStudy())
-    optimize_search.run_optimization(n_trials=4, study_name="dummy", two_phase=True)
-    assert called == [2, 2]
-
-
-def test_run_optimization_single_phase(monkeypatch):
-    """Test run_optimization runs single phase when two_phase=False."""
-    called = []
-
-    class DummyStudy:
-        def __init__(self):
-            self.trials = []
-            self.best_value = 1.0
-            self.best_params = {"KEYWORD_BOOST": 1.0}
-            self.best_trial = MagicMock(number=0)
-            self.study_name = "dummy"
-
-        def optimize(self, *a, **kw):
-            called.append(kw.get("n_trials"))
-
-    monkeypatch.setattr(optimize_search, "TPESampler", lambda seed: None)
-    monkeypatch.setattr(optimize_search.optuna, "create_study", lambda **kwargs: DummyStudy())
-    optimize_search.run_optimization(n_trials=3, study_name="dummy", two_phase=False)
-    assert called == [3]
 
 
 def test_main_two_phase(monkeypatch):
@@ -177,3 +62,110 @@ def test_main_single_phase(monkeypatch):
     assert called["two_phase"] is False
     assert called["saved"]
     assert called["printed"]
+
+
+def test_main_calls_check_opensearch_health(monkeypatch):
+    """Test that main performs OpenSearch health check before optimization."""
+    health_checked = {}
+
+    def fake_check_opensearch_health():
+        health_checked["called"] = True
+
+    def fake_run_optimization(n_trials, two_phase):
+        class DummyStudy:
+            study_name = "study"
+            trials = []
+            best_trial = MagicMock(number=0)
+            best_value = 1.0
+            best_params = {"A": 1}
+
+        return DummyStudy()
+
+    monkeypatch.setattr(optimize_search, "check_opensearch_health", fake_check_opensearch_health)
+    monkeypatch.setattr(optimize_search, "run_optimization", fake_run_optimization)
+    monkeypatch.setattr(optimize_search, "save_results", lambda study: None)
+    monkeypatch.setattr(optimize_search, "print_summary", lambda study: None)
+
+    optimize_search.main(n_trials=1, two_phase=False)
+    assert health_checked.get("called") is True
+
+
+def test_main_exits_on_connection_error(monkeypatch):
+    """Test that main exits if OpenSearch health check fails."""
+
+    def fake_check_opensearch_health():
+        raise ConnectionError("OpenSearch is down")
+
+    monkeypatch.setattr(optimize_search, "check_opensearch_health", fake_check_opensearch_health)
+
+    with pytest.raises(SystemExit):
+        optimize_search.main(n_trials=1, two_phase=False)
+
+
+def test_cli_main_default_args(monkeypatch):
+    """Test cli_main with default arguments."""
+    called = {}
+
+    def fake_run_optimization_workflow(n_trials, two_phase):
+        called["n_trials"] = n_trials
+        called["two_phase"] = two_phase
+
+    monkeypatch.setattr(optimize_search, "run_optimization_workflow", fake_run_optimization_workflow)
+    monkeypatch.setattr("sys.argv", ["optimize_search.py"])
+
+    optimize_search.cli_main()
+
+    # Should use defaults: 30 trials, two_phase=True
+    assert called["n_trials"] == 30
+    assert called["two_phase"] is True
+
+
+def test_cli_main_with_n_trials(monkeypatch):
+    """Test cli_main with custom n_trials argument."""
+    called = {}
+
+    def fake_run_optimization_workflow(n_trials, two_phase):
+        called["n_trials"] = n_trials
+        called["two_phase"] = two_phase
+
+    monkeypatch.setattr(optimize_search, "run_optimization_workflow", fake_run_optimization_workflow)
+    monkeypatch.setattr("sys.argv", ["optimize_search.py", "--n-trials", "50"])
+
+    optimize_search.cli_main()
+
+    assert called["n_trials"] == 50
+    assert called["two_phase"] is True
+
+
+def test_cli_main_single_phase(monkeypatch):
+    """Test cli_main with --single-phase flag."""
+    called = {}
+
+    def fake_run_optimization_workflow(n_trials, two_phase):
+        called["n_trials"] = n_trials
+        called["two_phase"] = two_phase
+
+    monkeypatch.setattr(optimize_search, "run_optimization_workflow", fake_run_optimization_workflow)
+    monkeypatch.setattr("sys.argv", ["optimize_search.py", "--single-phase"])
+
+    optimize_search.cli_main()
+
+    assert called["n_trials"] == 30  # Default
+    assert called["two_phase"] is False
+
+
+def test_cli_main_both_args(monkeypatch):
+    """Test cli_main with both --n-trials and --single-phase."""
+    called = {}
+
+    def fake_run_optimization_workflow(n_trials, two_phase):
+        called["n_trials"] = n_trials
+        called["two_phase"] = two_phase
+
+    monkeypatch.setattr(optimize_search, "run_optimization_workflow", fake_run_optimization_workflow)
+    monkeypatch.setattr("sys.argv", ["optimize_search.py", "--n-trials", "75", "--single-phase"])
+
+    optimize_search.cli_main()
+
+    assert called["n_trials"] == 75
+    assert called["two_phase"] is False
