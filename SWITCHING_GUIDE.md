@@ -153,7 +153,7 @@ def compare_chunkers(doc, metadata):
 ```python
 # Make sure imports are added:
 from ingestion_pipeline.chunking.line_based_document_chunker import LineBasedDocumentChunker
-from ingestion_pipeline.chunking.strategies.line_sentence_chunker import LineSentenceChunkingConfig
+from ingestion_pipeline.chunking.layout_handler.strategies.line_sentence_chunker import LineSentenceChunkingConfig
 ```
 
 ### Issue: page.lines is None

@@ -8,9 +8,9 @@ from textractor.entities.table import Table
 
 from ingestion_pipeline.chunking.exceptions import ChunkException
 from ingestion_pipeline.chunking.layout_handler.layout_chunking_config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.layout_handler.strategies.base import ChunkingStrategyHandler
+from ingestion_pipeline.chunking.layout_handler.strategies.table.base import BaseTableChunker
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
-from ingestion_pipeline.chunking.strategies.base import ChunkingStrategyHandler
-from ingestion_pipeline.chunking.strategies.table.base import BaseTableChunker
 
 from .cell_chunker import CellTableChunker
 from .line_chunker import LineTableChunker

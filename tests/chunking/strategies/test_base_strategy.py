@@ -3,7 +3,7 @@
 import pytest
 
 from ingestion_pipeline.chunking.layout_handler.layout_chunking_config import LayoutChunkingConfig
-from ingestion_pipeline.chunking.strategies.base import ChunkingStrategyHandler
+from ingestion_pipeline.chunking.layout_handler.strategies.base import ChunkingStrategyHandler
 
 
 def test_cannot_instantiate_abstract_class():
