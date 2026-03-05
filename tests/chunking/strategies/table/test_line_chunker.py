@@ -6,10 +6,10 @@ from unittest.mock import MagicMock
 import pytest
 
 # Application modules that we will be patching
-import ingestion_pipeline.chunking.layout_handler.strategies.table.base as base_module
-import ingestion_pipeline.chunking.layout_handler.strategies.table.line_chunker as line_chunker_module
+import ingestion_pipeline.chunking.layout_handler.types.table.base as base_module
+import ingestion_pipeline.chunking.layout_handler.types.table.line_chunker as line_chunker_module
 from ingestion_pipeline.chunking.layout_handler.layout_chunking_config import LayoutChunkingConfig
-from ingestion_pipeline.chunking.layout_handler.strategies.table.line_chunker import LineTableChunker
+from ingestion_pipeline.chunking.layout_handler.types.table.line_chunker import LineTableChunker
 
 
 # --- Mock Objects ---
