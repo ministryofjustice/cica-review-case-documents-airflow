@@ -5,9 +5,7 @@ from typing import List, Tuple
 
 from textractor.entities.bbox import BoundingBox
 
-from ingestion_pipeline.chunking.layout_handler.strategies.line_sentence_chunker.config import (
-    LineSentenceChunkingConfig,
-)
+from ingestion_pipeline.chunking.line_sentence_chunker.config import LineSentenceChunkingConfig
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes
 
