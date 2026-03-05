@@ -10,7 +10,7 @@ from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkin
 from ingestion_pipeline.chunking.strategies.line_sentence_chunker import LineSentenceChunkingConfig
 from ingestion_pipeline.chunking.strategies.list.list_chunker import LayoutListChunkingStrategy
 from ingestion_pipeline.chunking.strategies.table.layout_table import LayoutTableChunkingStrategy
-from ingestion_pipeline.chunking.textract_document_chunker import TextractLayoutDocumentChunker
+from ingestion_pipeline.chunking.textract_layout_chunker import TextractLayoutDocumentChunker
 from ingestion_pipeline.config import settings
 
 ALLOWED_CHUNKER_TYPES = {"layout", "linear-sentence-splitter"}
