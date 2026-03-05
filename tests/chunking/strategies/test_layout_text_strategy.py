@@ -4,9 +4,9 @@ from unittest.mock import MagicMock, call
 
 import pytest
 
-import ingestion_pipeline.chunking.strategies.layout_text as layout_text_module
+import ingestion_pipeline.chunking.layout_handler.strategies.layout_text as layout_text_module
 from ingestion_pipeline.chunking.layout_handler.layout_chunking_config import LayoutChunkingConfig
-from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkingStrategy
+from ingestion_pipeline.chunking.layout_handler.strategies.layout_text import LayoutTextChunkingStrategy
 
 
 @pytest.fixture

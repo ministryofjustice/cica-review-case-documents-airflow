@@ -278,7 +278,7 @@ def test_chunk_raises_error_on_strategy_handler_not_implemented(document_metadat
     """Verifies `chunk` wraps NotImplementedError from a strategy handler."""
     from ingestion_pipeline.chunking.base_document_chunker import ChunkError
     from ingestion_pipeline.chunking.layout_handler.layout_chunking_config import LayoutChunkingConfig
-    from ingestion_pipeline.chunking.strategies.base import ChunkingStrategyHandler
+    from ingestion_pipeline.chunking.layout_handler.strategies.base import ChunkingStrategyHandler
     from ingestion_pipeline.chunking.textract_layout_chunker import TextractLayoutDocumentChunker
 
     class DummyHandler(ChunkingStrategyHandler):

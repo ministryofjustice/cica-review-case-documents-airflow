@@ -8,8 +8,8 @@ from textractor.entities.key_value import KeyValue
 from textractor.entities.layout import Layout
 from textractor.entities.line import Line
 
+from ingestion_pipeline.chunking.layout_handler.strategies.base import ChunkingStrategyHandler
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
-from ingestion_pipeline.chunking.strategies.base import ChunkingStrategyHandler
 from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes
 
 logger = logging.getLogger(__name__)
