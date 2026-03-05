@@ -3,7 +3,7 @@
 This module handles search configuration and determines the appropriate
 term checking method based on active search types.
 
-Run from local-dev-environment directory: python -m testing.run_evaluation
+Run python -m evaluation_suite.search_evaluation.run_evaluation
 """
 
 from dataclasses import dataclass

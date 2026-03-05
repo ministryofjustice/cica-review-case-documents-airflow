@@ -3,7 +3,7 @@
 This script reads search terms from a CSV file, runs each through the local search client,
 and returns results as a pandas DataFrame to be used for relevance scoring.
 
-Run from local-dev-environment directory: python -m testing.run_evaluation
+Run python -m evaluation_suite.search_evaluation.run_evaluation
 """
 
 import logging

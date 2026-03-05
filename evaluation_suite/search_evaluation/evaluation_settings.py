@@ -4,10 +4,10 @@ This is the single location to configure all search evaluation parameters.
 Modify the values below to test different search configurations.
 
 Run evaluation from local-dev-environment directory:
-    python -m testing.run_evaluation
+    python -m evaluation_suite.search_evaluation.run_evaluation
 
 For programmatic override (e.g., optimization), use:
-    from testing.evaluation_settings import apply_overrides, reset_settings
+    from evaluation_suite.search_evaluation.evaluation_settings import apply_overrides, reset_settings
     apply_overrides({"KEYWORD_BOOST": 2.0, "K_QUERIES": 100})
     # ... run evaluation ...
     reset_settings()  # restore defaults

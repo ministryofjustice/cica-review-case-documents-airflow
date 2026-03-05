@@ -6,7 +6,7 @@ echo "Starting OpenSearch index setup..."
 # With OPENSEARCH_ENDPOINT_STRATEGY=path, LocalStack provides a direct proxy.
 # This script now interacts directly with the OpenSearch container, bypassing
 # the need to create a LocalStack-managed AWS OpenSearch domain. It is set up
-# to allow searchers requring and analyzer and text directly from the chunks.
+# to allow searches requiring an analyzer and keyword searches from the chunks.
 DIRECT_OPENSEARCH_ENDPOINT="http://opensearch:9200"
 
 # --- Step 1: Wait for the OpenSearch container to be ready ---

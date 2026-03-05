@@ -4,15 +4,11 @@ A framework for evaluating and optimizing OpenSearch configurations for the CICA
 
 ## Quick Start
 
-```bash
-cd local-dev-environment
-source .venv/bin/activate
-
 # Run a single evaluation
-python -m testing.search_evaluation.run_evaluation
+python -m evaluation_suite.search_evaluation.run_evaluation
 
-# Run parameter optimization (100 trials)
-python -m testing.search_evaluation.optimize_search
+# Run parameter optimization (30 trials)
+python -m evaluation_suite.search_evaluation.optimize_search
 ```
 
 **Prerequisites:**
@@ -54,7 +50,7 @@ search_terms.csv → search_looper → OpenSearch → term_matching → chunk_me
 ### Usage
 
 ```bash
-python -m testing.search_evaluation.run_evaluation
+python -m evaluation_suite.search_evaluation.run_evaluation
 ```
 
 ### Output
@@ -97,7 +93,7 @@ Set to `0` to disable, or `>0` to enable and weight.
 Override settings at runtime without editing files:
 
 ```python
-from testing.search_evaluation.run_evaluation import main
+from evaluation_suite.search_evaluation.run_evaluation import main
 
 result = main(settings_overrides={"KEYWORD_BOOST": 2.0, "SEMANTIC_BOOST": 0.5})
 ```
@@ -111,7 +107,7 @@ Perform individual ad-hoc searches and export results to Excel. Useful for inves
 ### Usage
 
 ```bash
-python -m testing.search_evaluation.search_client
+python -m evaluation_suite.search_evaluation.search_client
 ```
 
 ### Configuration
@@ -133,7 +129,7 @@ Auto-generates expected chunk IDs in `search_terms.csv` based on local keyword m
 ### Usage
 
 ```bash
-python -m testing.search_evaluation.generate_expected_chunks
+python -m evaluation_suite.search_evaluation.generate_expected_chunks
 ```
 
 ### Matching Logic
@@ -167,7 +163,7 @@ Uses Bayesian optimization (Optuna) to find optimal boost parameters.
 
 The optimizer uses a Tree-structured Parzen Estimator (TPE):
 
-1. **Phase 1 (Coarse)** — 50 trials, step=0.2, broad exploration
+1. **Phase 1 (Coarse)** — 50 trials, step=0.3, broad exploration
 2. **Phase 2 (Fine)** — 50 trials, step=0.05, refine promising regions
 
 **Objective:** Maximize `optimization_score`:
@@ -178,7 +174,7 @@ optimization_score = avg_chunks_returned × (acceptable_term_precision)²
 ### Usage
 
 ```bash
-python -m testing.search_evaluation.optimize_search
+python -m evaluation_suite.search_evaluation.optimize_search
 ```
 
 Default: 100 trials. Modify `main(n_trials=X)` to change.
@@ -197,7 +193,7 @@ output/optimization/
 
 1. Review best parameters in `summary.json`
 2. Update `evaluation_settings.py` with optimal values
-3. Confirm: `python -m testing.search_evaluation.run_evaluation`
+3. Confirm: `python -m evaluation_suite.search_evaluation.run_evaluation`
 
 ---
 
