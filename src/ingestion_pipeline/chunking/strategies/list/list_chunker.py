@@ -3,7 +3,7 @@
 import logging
 from typing import List, Optional
 
-from ingestion_pipeline.chunking.layout_chunking_config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.layout_handler.layout_chunking_config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 from ingestion_pipeline.chunking.strategies.base import ChunkingStrategyHandler
 from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes

@@ -7,7 +7,7 @@ from textractor.entities.layout import Layout, Line
 from textractor.entities.table import Table
 
 from ingestion_pipeline.chunking.exceptions import ChunkException
-from ingestion_pipeline.chunking.layout_chunking_config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.layout_handler.layout_chunking_config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.strategies.table import LayoutTableChunkingStrategy
 from ingestion_pipeline.chunking.strategies.table.cell_chunker import CellTableChunker
 from ingestion_pipeline.chunking.strategies.table.line_chunker import LineTableChunker

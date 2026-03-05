@@ -7,7 +7,7 @@ from typing import List, Optional
 from textractor.entities.bbox import BoundingBox
 from textractor.entities.layout import Layout
 
-from ingestion_pipeline.chunking.layout_chunking_config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.layout_handler.layout_chunking_config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 
 logger = logging.getLogger(__name__)
