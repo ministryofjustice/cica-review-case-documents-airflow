@@ -14,7 +14,7 @@ from ingestion_pipeline.chunking.layout_chunking_config import LayoutChunkingCon
 from ingestion_pipeline.chunking.schemas import DocumentBoundingBox, DocumentMetadata
 from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkingStrategy
 from ingestion_pipeline.chunking.strategies.table import LayoutTableChunkingStrategy
-from ingestion_pipeline.chunking.textract_document_chunker import (
+from ingestion_pipeline.chunking.textract_layout_chunker import (
     DocumentChunk,
     TextractLayoutDocumentChunker,
 )

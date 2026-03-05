@@ -2,7 +2,7 @@ import pytest
 
 from ingestion_pipeline.chunking.document_chunker_factory import get_document_chunker
 from ingestion_pipeline.chunking.line_sentence_splitter import LineBasedDocumentChunker
-from ingestion_pipeline.chunking.textract_document_chunker import TextractLayoutDocumentChunker
+from ingestion_pipeline.chunking.textract_layout_chunker import TextractLayoutDocumentChunker
 
 
 def test_factory_returns_line_chunker():
