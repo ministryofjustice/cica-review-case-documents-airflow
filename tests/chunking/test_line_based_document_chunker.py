@@ -8,12 +8,12 @@ import pytest
 from textractor.entities.bbox import BoundingBox
 from textractor.entities.document import Document
 
+from ingestion_pipeline.chunking.layout_handler.strategies.line_sentence_chunker import LineSentenceChunkingConfig
 from ingestion_pipeline.chunking.line_sentence_splitter import (
     ChunkError,
     LineBasedDocumentChunker,
 )
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
-from ingestion_pipeline.chunking.strategies.line_sentence_chunker import LineSentenceChunkingConfig
 
 
 @pytest.fixture
