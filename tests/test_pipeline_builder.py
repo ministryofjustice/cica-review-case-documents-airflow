@@ -56,7 +56,7 @@ def test_build_pipeline_wires_up_pipeline_correctly(patch_external_dependencies)
     assert result == pipeline_mock.return_value
     pipeline_mock.assert_called_once()
     # Check that get_document_chunker was called with the default type
-    patch_external_dependencies["get_document_chunker"].assert_called_once_with("line")
+    patch_external_dependencies["get_document_chunker"].assert_called_once_with("linear-sentence-splitter")
     # Check that PageProcessor and other key components were instantiated
     patch_external_dependencies["PageProcessor"].assert_called_once()
     patch_external_dependencies["S3DocumentService"].assert_called_once()

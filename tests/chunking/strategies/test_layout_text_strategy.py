@@ -105,28 +105,31 @@ def test_chunk_splits_text_into_multiple_chunks(mock_dependencies, default_confi
 
     expected_calls = [
         call(
-            block=fake_layout_block,
             page_number=3,
             metadata=fake_metadata,
             chunk_index=5,
             chunk_text="This is the first chunk.",
             combined_bbox=mock_combine_bboxes.return_value,
+            layout_type=fake_layout_block.layout_type,
+            confidence=fake_layout_block.confidence,
         ),
         call(
-            block=fake_layout_block,
             page_number=3,
             metadata=fake_metadata,
             chunk_index=6,
             chunk_text="This line starts a new one.",
             combined_bbox=mock_combine_bboxes.return_value,
+            layout_type=fake_layout_block.layout_type,
+            confidence=fake_layout_block.confidence,
         ),
         call(
-            block=fake_layout_block,
             page_number=3,
             metadata=fake_metadata,
             chunk_index=7,
             chunk_text="And so does this.",
             combined_bbox=mock_combine_bboxes.return_value,
+            layout_type=fake_layout_block.layout_type,
+            confidence=fake_layout_block.confidence,
         ),
     ]
     mock_opensearch_chunk.from_textractor_layout.assert_has_calls(expected_calls)
@@ -199,22 +202,32 @@ def test_chunk_handles_single_line_exceeding_max_size(mock_dependencies, default
     # We expect two chunks: one for the oversized line, and one for the next line.
     assert len(result_chunks) == 2
 
+    #     layout_type=layout_block.layout_type,
+    # confidence=layout_block.confidence,
+    # page_number=page_number,
+    # metadata=metadata,
+    # chunk_index=chunk_index,
+    # chunk_text=chunk_text,
+    # combined_bbox=combined_bbox,
+
     expected_calls = [
         call(
-            block=fake_layout_block,
             page_number=1,
             metadata=fake_metadata,
             chunk_index=0,
             chunk_text=long_line,
             combined_bbox=mock_combine_bboxes.return_value,
+            layout_type=fake_layout_block.layout_type,
+            confidence=fake_layout_block.confidence,
         ),
         call(
-            block=fake_layout_block,
             page_number=1,
             metadata=fake_metadata,
             chunk_index=1,
             chunk_text=short_line,
             combined_bbox=mock_combine_bboxes.return_value,
+            layout_type=fake_layout_block.layout_type,
+            confidence=fake_layout_block.confidence,
         ),
     ]
     mock_opensearch_chunk.from_textractor_layout.assert_has_calls(expected_calls)

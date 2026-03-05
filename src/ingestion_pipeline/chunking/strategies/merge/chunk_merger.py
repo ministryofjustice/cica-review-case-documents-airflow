@@ -3,8 +3,6 @@
 import logging
 from typing import List
 
-from textractor.entities.layout import Layout
-
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes
 from ingestion_pipeline.chunking.verbose_page_debug_logger import is_verbose_page_debug, log_verbose_page_debug
@@ -184,17 +182,9 @@ class ChunkMerger:
             correspondence_type=first_chunk.correspondence_type if first_chunk.correspondence_type is not None else "",
         )
 
-        # Use the first chunk's layout type and confidence as a placeholder
-        dummy_layout = Layout(
-            label=first_chunk.chunk_type,
-            confidence=first_chunk.confidence,
-            bbox=merged_bbox,
-            entity_id=f"merged_chunk_{chunk_index}",
-            reading_order=0,
-        )
-
         return DocumentChunk.from_textractor_layout(
-            block=dummy_layout,
+            layout_type=first_chunk.chunk_type,
+            confidence=first_chunk.confidence,
             page_number=page_number,
             metadata=metadata,
             chunk_index=chunk_index,
