@@ -4,8 +4,8 @@ import datetime
 
 import pytest
 
-from ingestion_pipeline.chunking.layout.types.merge.chunk_merger import ChunkMerger
 from ingestion_pipeline.chunking.schemas import DocumentBoundingBox, DocumentChunk, DocumentMetadata
+from ingestion_pipeline.chunking.strategies.layout.types.merge.chunk_merger import ChunkMerger
 
 
 # Helper function to create mock atomic chunks for tests
