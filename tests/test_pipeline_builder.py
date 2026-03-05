@@ -32,6 +32,7 @@ def patch_external_dependencies():
         mock_settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET = "test-source-bucket"
         mock_settings.AWS_CICA_S3_PAGE_BUCKET = "test-page-bucket"
         mock_settings.LOCAL_DEVELOPMENT_MODE = False
+        mock_settings.DOCUMENT_CHUNKING_STRATEGY = "linear-sentence-splitter"
         yield {
             "get_s3_client": mock_get_s3_client,
             "get_textract_client": mock_get_textract_client,

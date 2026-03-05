@@ -8,7 +8,7 @@ import pytest
 from textractor.entities.bbox import BoundingBox
 
 import ingestion_pipeline.chunking.strategies.layout_text as layout_text_module
-from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+from ingestion_pipeline.chunking.layout_chunking_config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkingStrategy
 from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes
@@ -51,7 +51,7 @@ def document_metadata_factory():
 @pytest.fixture
 def mock_config():
     """Provides a mock ChunkingConfig for the strategy."""
-    config = MagicMock(spec=ChunkingConfig)
+    config = MagicMock(spec=LayoutChunkingConfig)
     config.maximum_chunk_size = 50
     return config
 

@@ -7,7 +7,7 @@ from typing import List, Optional
 from textractor.entities.bbox import BoundingBox
 from textractor.entities.layout import Layout
 
-from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+from ingestion_pipeline.chunking.layout_chunking_config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ class BaseTableChunker(ABC):
         ABC: An instance of a table chunker.
     """
 
-    def __init__(self, config: ChunkingConfig):
+    def __init__(self, config: LayoutChunkingConfig):
         """Initializes the base table chunker.
 
         Args:

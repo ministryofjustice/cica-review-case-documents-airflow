@@ -6,8 +6,8 @@ from typing import List, Optional
 from textractor.entities.layout import Layout, Line
 from textractor.entities.table import Table
 
-from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
 from ingestion_pipeline.chunking.exceptions import ChunkException
+from ingestion_pipeline.chunking.layout_chunking_config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 from ingestion_pipeline.chunking.strategies.base import ChunkingStrategyHandler
 from ingestion_pipeline.chunking.strategies.table.base import BaseTableChunker
@@ -28,7 +28,7 @@ class LayoutTableChunkingStrategy(ChunkingStrategyHandler):
         LayoutTableChunkingStrategy: An instance of the layout table chunking strategy.
     """
 
-    def __init__(self, config: ChunkingConfig):
+    def __init__(self, config: LayoutChunkingConfig):
         """Initialize the layout table chunking strategy.
 
         Args:

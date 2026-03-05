@@ -10,7 +10,7 @@ from textractor.entities.layout import Layout
 from textractor.entities.line import Line
 from textractor.entities.word import Word
 
-from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+from ingestion_pipeline.chunking.layout_chunking_config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 from ingestion_pipeline.chunking.strategies.key_value.layout_key_value import KeyValueChunker
 
@@ -53,7 +53,7 @@ def mock_line_factory():
 @pytest.fixture
 def default_config():
     """Provides a default chunking configuration."""
-    return ChunkingConfig(maximum_chunk_size=500)
+    return LayoutChunkingConfig(maximum_chunk_size=500)
 
 
 @pytest.fixture
