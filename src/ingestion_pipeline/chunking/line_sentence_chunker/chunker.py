@@ -12,13 +12,9 @@ from typing import List, Optional, Tuple
 from textractor.entities.bbox import BoundingBox
 from textractor.entities.line import Line
 
-from ingestion_pipeline.chunking.layout_handler.strategies.line_sentence_chunker.chunk_builder import ChunkBuilder
-from ingestion_pipeline.chunking.layout_handler.strategies.line_sentence_chunker.config import (
-    LineSentenceChunkingConfig,
-)
-from ingestion_pipeline.chunking.layout_handler.strategies.line_sentence_chunker.sentence_detector import (
-    SentenceDetector,
-)
+from ingestion_pipeline.chunking.line_sentence_chunker.chunk_builder import ChunkBuilder
+from ingestion_pipeline.chunking.line_sentence_chunker.config import LineSentenceChunkingConfig
+from ingestion_pipeline.chunking.line_sentence_chunker.sentence_detector import SentenceDetector
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 
 logger = logging.getLogger(__name__)
