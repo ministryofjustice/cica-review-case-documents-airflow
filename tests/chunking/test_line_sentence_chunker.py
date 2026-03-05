@@ -4,10 +4,8 @@ import pytest
 from textractor.entities.bbox import BoundingBox
 from textractor.entities.line import Line
 
-from ingestion_pipeline.chunking.layout_handler.strategies.line_sentence_chunker import (
-    LineSentenceChunker,
-    LineSentenceChunkingConfig,
-)
+from ingestion_pipeline.chunking.line_sentence_chunker.chunker import LineSentenceChunker
+from ingestion_pipeline.chunking.line_sentence_chunker.config import LineSentenceChunkingConfig
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
 
 
