@@ -7,7 +7,7 @@ import pytest
 from textractor.entities.page import Page
 
 from ingestion_pipeline.chunking.base_document_chunker import ChunkError
-from ingestion_pipeline.chunking.layout_handler.layout_chunking_config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.layout.layout_chunking_config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.schemas import DocumentBoundingBox, DocumentChunk, DocumentMetadata
 from ingestion_pipeline.chunking.textract_layout_chunker import TextractLayoutDocumentChunker
 
@@ -277,8 +277,8 @@ def test_chunk_raises_error_on_missing_raw_response(mock_strategy_handlers, mock
 def test_chunk_raises_error_on_strategy_handler_not_implemented(document_metadata):
     """Verifies `chunk` wraps NotImplementedError from a strategy handler."""
     from ingestion_pipeline.chunking.base_document_chunker import ChunkError
-    from ingestion_pipeline.chunking.layout_handler.layout_chunking_config import LayoutChunkingConfig
-    from ingestion_pipeline.chunking.layout_handler.types.base import ChunkingStrategyHandler
+    from ingestion_pipeline.chunking.layout.layout_chunking_config import LayoutChunkingConfig
+    from ingestion_pipeline.chunking.layout.types.base import ChunkingStrategyHandler
     from ingestion_pipeline.chunking.textract_layout_chunker import TextractLayoutDocumentChunker
 
     class DummyHandler(ChunkingStrategyHandler):

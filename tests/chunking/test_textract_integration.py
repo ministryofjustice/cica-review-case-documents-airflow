@@ -10,9 +10,9 @@ import pytest
 from pydantic import ValidationError
 from textractor.entities.document import Document
 
-from ingestion_pipeline.chunking.layout_handler.layout_chunking_config import LayoutChunkingConfig
-from ingestion_pipeline.chunking.layout_handler.types.layout_text import LayoutTextChunkingStrategy
-from ingestion_pipeline.chunking.layout_handler.types.table import LayoutTableChunkingStrategy
+from ingestion_pipeline.chunking.layout.layout_chunking_config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.layout.types.layout_text import LayoutTextChunkingStrategy
+from ingestion_pipeline.chunking.layout.types.table import LayoutTableChunkingStrategy
 from ingestion_pipeline.chunking.schemas import DocumentBoundingBox, DocumentMetadata
 from ingestion_pipeline.chunking.textract_layout_chunker import (
     DocumentChunk,

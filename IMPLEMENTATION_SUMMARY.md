@@ -80,7 +80,7 @@ I've successfully implemented a new deterministic line-by-line chunking algorith
 ### Basic Usage
 
 ```python
-from ingestion_pipeline.chunking.layout_handler.strategies.line_sentence_chunker import LineSentenceChunker
+from ingestion_pipeline.chunking.layout.strategies.line_sentence_chunker import LineSentenceChunker
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
 
 # Create chunker (uses settings from .env or defaults)
@@ -108,7 +108,7 @@ SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO=0.05
 ### Custom Configuration
 
 ```python
-from ingestion_pipeline.chunking.layout_handler.strategies.line_sentence_chunker import (
+from ingestion_pipeline.chunking.layout.strategies.line_sentence_chunker import (
     LineSentenceChunker,
     LineSentenceChunkingConfig,
 )
@@ -151,7 +151,7 @@ See `docs/LINE_SENTENCE_CHUNKER.md` for detailed integration examples.
 ```bash
 # Verify imports work
 cd /home/enigma/cica-review-case-documents-airflow
-PYTHONPATH=src python3 -c "from ingestion_pipeline.chunking.layout_handler.strategies.line_sentence_chunker import LineSentenceChunker; print('✓ Import successful')"
+PYTHONPATH=src python3 -c "from ingestion_pipeline.chunking.layout.strategies.line_sentence_chunker import LineSentenceChunker; print('✓ Import successful')"
 
 # Run tests (once pytest-cov is installed)
 pytest tests/chunking/test_line_sentence_chunker.py -v
