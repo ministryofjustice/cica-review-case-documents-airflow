@@ -13,8 +13,8 @@ from textractor.entities.table_cell import TableCell
 
 import ingestion_pipeline.chunking.strategies.table.base as base_module
 import ingestion_pipeline.chunking.strategies.table.cell_chunker as cell_chunker_module
-from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
 from ingestion_pipeline.chunking.exceptions import ChunkException
+from ingestion_pipeline.chunking.layout_chunking_config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
 from ingestion_pipeline.chunking.strategies.table.cell_chunker import CellTableChunker
 
@@ -26,7 +26,7 @@ def default_config():
     Returns:
         ChunkingConfig: The default chunking configuration.
     """
-    return ChunkingConfig(y_tolerance_ratio=0.5)
+    return LayoutChunkingConfig(y_tolerance_ratio=0.5)
 
 
 def create_fake_cell(text: str, row: int, col: int, y: float):
