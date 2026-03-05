@@ -30,21 +30,25 @@ This assumes you have already created the custom_ca_bundle.pem file as described
 
 Navigate into the local-dev-environment folder
 
-``cd cica-review-case-documents-airflow/local-dev-environment``
+```bash
+cd cica-review-case-documents-airflow/local-dev-environment
+```
 
 and run
 
-``docker compose up -d --force-recreate``
+```bash
+docker compose up -d --force-recreate
+```
 
 You should see
 
 ```
 :~/cica-review-case-documents-airflow/local-dev-environment$ docker compose up -d --force-recreate
 [+] Running 5/5
- ✔ Network local-dev-environment_default  Created                                         
- ✔ Volume "local-dev-environment_data01"  Created                                     
- ✔ Container opensearch                  Started                                         
- ✔ Container localstack-main             Healthy                                 
+ ✔ Network local-dev-environment_default  Created                                       
+ ✔ Volume "local-dev-environment_data01"  Created                                   
+ ✔ Container opensearch                  Started                                       
+ ✔ Container localstack-main             Healthy                               
  ✔ Container opensearch-dashboards       Started   
 ```
 
@@ -63,8 +67,8 @@ OpenSearch domain created.
 DOMAIN_ENDPOINT: case-document-search-domain.eu-west-2.opensearch.localhost.localstack.cloud:4566
 Waiting for OpenSearch to be ready...
 ```
-There may be a short delay whilst the domain spins up then you should see
 
+There may be a short delay whilst the domain spins up then you should see
 
 ```
 OpenSearch is ready! Creating index 'case-documents'...
@@ -78,8 +82,7 @@ Ready.
 
 The environment is then ready to be used. OpenSearch is accessible at `http://localhost:9200`.
 
-
-## Docker Desktop 
+## Docker Desktop
 
 If Docker Desktop has been installed you can view, pause, stop, run and view logs for the environment and the individual containers from within the Docker Desktop UI (recommended).
 
@@ -116,4 +119,4 @@ source .venv/bin/activate
 
 ## Evaluation Workflow
 
-For details on running the search evaluation workflow (measuring precision/recall of different search configurations), see the [Evaluation Suite README](/Users/max.blum/GitHub/cica-review-case-documents-airflow/evaluation_suite/EVALUATION_SUITE.md).
+For details on running the search evaluation workflow (measuring precision/recall of different search configurations), see the [Evaluation Suite README](../evaluation_suite/EVALUATION_SUITE.md).

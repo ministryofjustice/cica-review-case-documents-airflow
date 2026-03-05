@@ -51,7 +51,9 @@ def test_load_all_chunks_empty_index(mock_get_client):
 @patch("evaluation_suite.search_evaluation.chunks_loader.get_opensearch_client")
 def test_load_all_chunks_opensearch_connection_error(mock_get_client):
     """Test handling of OpenSearch connection error when loading chunks."""
-    mock_get_client.side_effect = OpenSearchConnectionError("Connection failed")
+    mock_get_client.side_effect = OpenSearchConnectionError(
+        "Connection failed", ConnectionError("Connection refused"), {}
+    )
     with pytest.raises(OpenSearchConnectionError):
         load_all_chunks_from_opensearch()
 
@@ -94,7 +96,9 @@ def test_get_chunk_details_success(mock_get_client):
 @patch("evaluation_suite.search_evaluation.chunks_loader.get_opensearch_client")
 def test_get_chunk_details_opensearch_connection_error(mock_get_client):
     """Test handling of OpenSearch connection error when retrieving chunk details."""
-    mock_get_client.side_effect = OpenSearchConnectionError("Connection failed")
+    mock_get_client.side_effect = OpenSearchConnectionError(
+        "Connection failed", ConnectionError("Connection refused"), {}
+    )
     with pytest.raises(OpenSearchConnectionError):
         get_chunk_details_from_opensearch()
 
