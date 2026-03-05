@@ -8,7 +8,7 @@ import pytest
 # Application modules that we will be patching
 import ingestion_pipeline.chunking.strategies.table.base as base_module
 import ingestion_pipeline.chunking.strategies.table.line_chunker as line_chunker_module
-from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+from ingestion_pipeline.chunking.layout_chunking_config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.strategies.table.line_chunker import LineTableChunker
 
 
@@ -130,7 +130,7 @@ def apply_patches(monkeypatch):
 @pytest.fixture
 def chunker():
     """Provides a LineTableChunker instance for tests."""
-    return LineTableChunker(config=ChunkingConfig(y_tolerance_ratio=0.5, line_chunk_char_limit=0))
+    return LineTableChunker(config=LayoutChunkingConfig(y_tolerance_ratio=0.5, line_chunk_char_limit=0))
 
 
 # --- Tests ---

@@ -1,7 +1,7 @@
 """Factory for creating DocumentChunker implementations based on config or runtime selection."""
 
 from ingestion_pipeline.chunking.base_document_chunker import DocumentChunker
-from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+from ingestion_pipeline.chunking.layout_chunking_config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.line_sentence_splitter import LineBasedDocumentChunker
 from ingestion_pipeline.chunking.strategies.key_value.layout_key_value import KeyValueChunker
 from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkingStrategy
@@ -31,7 +31,7 @@ def get_document_chunker(chunker_type: str) -> DocumentChunker:
         raise ValueError(f"Unknown chunker_type: '{chunker_type}'. Allowed values: {sorted(ALLOWED_CHUNKER_TYPES)}")
 
     if chunker_type == "layout":
-        chunking_config = ChunkingConfig()
+        chunking_config = LayoutChunkingConfig()
         layout_text_strategy = LayoutTextChunkingStrategy(chunking_config)
         layout_table_strategy = LayoutTableChunkingStrategy(chunking_config)
         layout_key_value_strategy = KeyValueChunker(chunking_config)

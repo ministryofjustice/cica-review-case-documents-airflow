@@ -7,7 +7,7 @@ import pytest
 from textractor.entities.page import Page
 
 from ingestion_pipeline.chunking.base_document_chunker import ChunkError
-from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+from ingestion_pipeline.chunking.layout_chunking_config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.schemas import DocumentBoundingBox, DocumentChunk, DocumentMetadata
 from ingestion_pipeline.chunking.textract_document_chunker import TextractLayoutDocumentChunker
 
@@ -225,7 +225,7 @@ def test_wraps_strategy_exception_in_chunkexception(document_metadata, mock_stra
 def test_init_with_default_config(mock_strategy_handlers):
     """Verifies the chunker initializes with a default config if none is provided."""
     chunker = TextractLayoutDocumentChunker(strategy_handlers=mock_strategy_handlers)
-    assert isinstance(chunker.config, ChunkingConfig)
+    assert isinstance(chunker.config, LayoutChunkingConfig)
     assert chunker.strategy_handlers is mock_strategy_handlers
 
 
@@ -277,7 +277,7 @@ def test_chunk_raises_error_on_missing_raw_response(mock_strategy_handlers, mock
 def test_chunk_raises_error_on_strategy_handler_not_implemented(document_metadata):
     """Verifies `chunk` wraps NotImplementedError from a strategy handler."""
     from ingestion_pipeline.chunking.base_document_chunker import ChunkError
-    from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+    from ingestion_pipeline.chunking.layout_chunking_config import LayoutChunkingConfig
     from ingestion_pipeline.chunking.strategies.base import ChunkingStrategyHandler
     from ingestion_pipeline.chunking.textract_document_chunker import TextractLayoutDocumentChunker
 
@@ -285,7 +285,7 @@ def test_chunk_raises_error_on_strategy_handler_not_implemented(document_metadat
         def chunk(self, *args, **kwargs):
             raise NotImplementedError("Not implemented")
 
-    strategy_handlers = {"UNIMPLEMENTED": DummyHandler(ChunkingConfig())}
+    strategy_handlers = {"UNIMPLEMENTED": DummyHandler(LayoutChunkingConfig())}
     page = MagicMock()
     page.layouts = [MagicMock(layout_type="UNIMPLEMENTED", text="Some text")]
     page.page_num = 1

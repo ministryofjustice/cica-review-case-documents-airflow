@@ -14,7 +14,7 @@ class ChunkingStrategy(Enum):
 
 
 @dataclass
-class ChunkingConfig:
+class LayoutChunkingConfig:
     """Configuration for chunking behavior."""
 
     # TODO review perhaps create individual configs for each type

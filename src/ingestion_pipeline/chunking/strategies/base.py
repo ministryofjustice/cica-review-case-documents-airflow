@@ -3,14 +3,14 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from ingestion_pipeline.chunking.chunking_config import ChunkingConfig  # ← Changed import
+from ingestion_pipeline.chunking.layout_chunking_config import LayoutChunkingConfig  # ← Changed import
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 
 
 class ChunkingStrategyHandler(ABC):
     """Abstract base class for chunking strategies."""
 
-    def __init__(self, config: ChunkingConfig):
+    def __init__(self, config: LayoutChunkingConfig):
         """Initializes the chunking strategy handler.
 
         Args:

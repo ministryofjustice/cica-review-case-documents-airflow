@@ -14,7 +14,7 @@ from ingestion_pipeline.chunking.exceptions import ChunkException
 from ingestion_pipeline.chunking.strategies.merge.chunk_merger import ChunkMerger
 from ingestion_pipeline.chunking.verbose_page_debug_logger import is_verbose_page_debug, log_verbose_page_debug
 
-from .chunking_config import ChunkingConfig
+from .layout_chunking_config import LayoutChunkingConfig
 from .schemas import DocumentChunk, DocumentMetadata, ProcessedDocument
 from .strategies.base import ChunkingStrategyHandler
 
@@ -32,7 +32,7 @@ class TextractLayoutDocumentChunker(DocumentChunker):
     def __init__(
         self,
         strategy_handlers: Mapping[str, ChunkingStrategyHandler],
-        config: Optional[ChunkingConfig] = None,
+        config: Optional[LayoutChunkingConfig] = None,
     ):
         """Initializes the TextractLayoutDocumentChunker.
 
@@ -41,7 +41,7 @@ class TextractLayoutDocumentChunker(DocumentChunker):
                 Mapping of layout block types to their corresponding chunking strategy handlers.
             config (Optional[ChunkingConfig], optional): Configuration settings for chunking. Defaults to None.
         """
-        self.config = config or ChunkingConfig()
+        self.config = config or LayoutChunkingConfig()
         self.strategy_handlers = strategy_handlers
 
     def chunk(self, doc: Document, metadata: DocumentMetadata) -> ProcessedDocument:

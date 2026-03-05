@@ -9,7 +9,7 @@ import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
 
-from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+from ingestion_pipeline.chunking.layout_chunking_config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
 from ingestion_pipeline.chunking.strategies.list.list_chunker import LayoutListChunkingStrategy
 
@@ -27,9 +27,9 @@ def create_mock_layout_block(layout_type: str, text: str, block_id: str = "id-12
 
 # Pytest fixtures to provide reusable setup for tests
 @pytest.fixture
-def chunking_config() -> ChunkingConfig:
+def chunking_config() -> LayoutChunkingConfig:
     """Provides a default ChunkingConfig instance."""
-    return ChunkingConfig()
+    return LayoutChunkingConfig()
 
 
 @pytest.fixture
@@ -49,7 +49,7 @@ def document_metadata() -> DocumentMetadata:
 
 
 @pytest.fixture
-def list_chunking_strategy(chunking_config: ChunkingConfig) -> LayoutListChunkingStrategy:
+def list_chunking_strategy(chunking_config: LayoutChunkingConfig) -> LayoutListChunkingStrategy:
     """Provides an instance of the class under test."""
     return LayoutListChunkingStrategy(config=chunking_config)
 

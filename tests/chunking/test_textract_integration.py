@@ -10,7 +10,7 @@ import pytest
 from pydantic import ValidationError
 from textractor.entities.document import Document
 
-from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+from ingestion_pipeline.chunking.layout_chunking_config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.schemas import DocumentBoundingBox, DocumentMetadata
 from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkingStrategy
 from ingestion_pipeline.chunking.strategies.table import LayoutTableChunkingStrategy
@@ -76,10 +76,10 @@ def document_chunker_factory():
         DocumentChunker: The created DocumentChunker object.
     """
 
-    def _factory(config: Optional[ChunkingConfig] = None) -> TextractLayoutDocumentChunker:
+    def _factory(config: Optional[LayoutChunkingConfig] = None) -> TextractLayoutDocumentChunker:
         # If no config is provided by the test, use the default one.
         if config is None:
-            config = ChunkingConfig()
+            config = LayoutChunkingConfig()
 
         layout_text_strategy = LayoutTextChunkingStrategy(config)
         layout_table_strategy = LayoutTableChunkingStrategy(config)
