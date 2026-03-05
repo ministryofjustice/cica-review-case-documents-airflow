@@ -1,4 +1,4 @@
-"""Test OCR accuracy on custom documents (non-IAM dataset).
+"""Test OCR accuracy on case documents (non-IAM dataset).
 
 This runner processes arbitrary documents with handwritten text, using a simple
 ground truth format. Unlike the IAM runner, this does not filter dataset-specific
@@ -12,13 +12,13 @@ Run from local-dev-environment:
     source .venv/bin/activate
 
     # Single page test
-    PYTHONPATH=testing/handwriting_accuracy python -m iam_testing.runners.custom --mode single --page-id page1
+    PYTHONPATH=testing/handwriting_accuracy python -m iam_testing.runners.case_documents --mode single --page-id page1
 
     # Batch test all pages in ground truth
-    PYTHONPATH=testing/handwriting_accuracy python -m iam_testing.runners.custom --mode batch
+    PYTHONPATH=testing/handwriting_accuracy python -m iam_testing.runners.case_documents --mode batch
 
     # With custom ground truth file
-    PYTHONPATH=testing/handwriting_accuracy python -m iam_testing.runners.custom \
+    PYTHONPATH=testing/handwriting_accuracy python -m iam_testing.runners.case_documents \
         --mode batch --ground-truth data/my_gt.jsonl
 """
 
@@ -340,10 +340,20 @@ def run_batch(gt_records: dict[str, CustomGroundTruth], output_dir: Path, show_a
         logger.info("-" * (130 if has_augmented else 110))
 
         # Summary statistics
+        # Simple average (unweighted)
         avg_wer = sum(s.wer_handwriting for s in score_results) / len(score_results)
         avg_cer = sum(s.cer_handwriting for s in score_results) / len(score_results)
         total_gt_words = sum(s.gt_handwriting_word_count for s in score_results)
         total_ocr_words = sum(s.ocr_handwriting_word_count for s in score_results)
+
+        # Word-count weighted average (accounts for page length variation)
+        if total_gt_words > 0:
+            weighted_wer = sum(s.wer_handwriting * s.gt_handwriting_word_count for s in score_results) / total_gt_words
+            weighted_cer = sum(s.cer_handwriting * s.gt_handwriting_word_count for s in score_results) / total_gt_words
+        else:
+            weighted_wer = avg_wer
+            weighted_cer = avg_cer
+
         conf_sum = sum(ocr_dict[s.form_id].avg_handwriting_confidence for s in score_results if s.form_id in ocr_dict)
         avg_confidence = conf_sum / len(score_results)
 
@@ -374,6 +384,9 @@ def run_batch(gt_records: dict[str, CustomGroundTruth], output_dir: Path, show_a
 
         logger.info("=" * (130 if has_augmented else 110))
         logger.info(f"\nPages processed: {len(score_results)}")
+        logger.info(f"Total ground truth words: {total_gt_words}")
+        logger.info(f"Weighted WER (by word count): {weighted_wer * 100:.2f}%")
+        logger.info(f"Weighted CER (by word count): {weighted_cer * 100:.2f}%")
 
         if has_augmented:
             improved_msg = f"Pages improved: {improved_count} | "
@@ -382,8 +395,8 @@ def run_batch(gt_records: dict[str, CustomGroundTruth], output_dir: Path, show_a
 
 
 def main() -> None:
-    """Main entry point for custom document testing."""
-    parser = argparse.ArgumentParser(description="Test OCR accuracy on custom documents (non-IAM dataset)")
+    """Main entry point for case document testing."""
+    parser = argparse.ArgumentParser(description="Test OCR accuracy on case documents (non-IAM dataset)")
     parser.add_argument(
         "--mode",
         choices=["single", "batch"],
@@ -397,8 +410,8 @@ def main() -> None:
     parser.add_argument(
         "--ground-truth",
         type=Path,
-        default=Path("data/custom_ground_truth.jsonl"),
-        help="Path to custom ground truth JSONL file (default: data/custom_ground_truth.jsonl)",
+        default=Path("data/case_documents_ground_truth.jsonl"),
+        help="Path to ground truth JSONL file (default: data/case_documents_ground_truth.jsonl)",
     )
     parser.add_argument(
         "--output",
@@ -438,7 +451,7 @@ def main() -> None:
         run_single(args.page_id, gt_records, output_path)
 
     else:  # batch mode
-        output_dir = args.output or Path("data/custom_batch_runs")
+        output_dir = args.output or Path("data/case_documents_batch_runs")
         run_batch(gt_records, output_dir, args.show_augmented)
 
 

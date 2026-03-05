@@ -10,7 +10,7 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-from .. import DATA_DIR, VISION_TESTING_ROOT
+from .. import DATA_DIR
 from ..llm import SUPPORTED_VISION_MODELS, get_vision_client
 from ..llm.prompt import DEFAULT_VISION_PROMPT, VISION_PROMPTS
 from ..scoring import (
@@ -85,38 +85,22 @@ def load_ground_truth(gt_path: Path) -> dict[str, GroundTruth]:
 
 
 def resolve_image_path(image_path_str: str, gt_path: Path) -> Path:
-    """Resolve image path from ground truth, handling relative paths.
+    """Resolve image path relative to ground truth file location.
 
     Args:
         image_path_str: Image path string from ground truth.
-        gt_path: Path to the ground truth file (for relative resolution).
+        gt_path: Path to the ground truth file.
 
     Returns:
         Resolved absolute Path to the image.
     """
     image_path = Path(image_path_str)
 
-    # If absolute and exists, use it
-    if image_path.is_absolute() and image_path.exists():
+    if image_path.is_absolute():
         return image_path
 
-    # Try relative to ground truth file directory
-    relative_to_gt = gt_path.parent / image_path_str
-    if relative_to_gt.exists():
-        return relative_to_gt.resolve()
-
-    # Try relative to DATA_DIR
-    relative_to_data = DATA_DIR / image_path_str
-    if relative_to_data.exists():
-        return relative_to_data.resolve()
-
-    # Try relative to handwriting_accuracy root
-    relative_to_root = VISION_TESTING_ROOT.parent / image_path_str
-    if relative_to_root.exists():
-        return relative_to_root.resolve()
-
-    # Return as-is (will fail later with clear error)
-    return image_path
+    # Resolve relative to ground truth file directory
+    return (gt_path.parent / image_path_str).resolve()
 
 
 def run_single(

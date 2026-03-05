@@ -20,9 +20,9 @@ Run from local-dev-environment:
     PYTHONPATH=testing/handwriting_accuracy python -m iam_testing.runners.augment \
         --baseline-run <RUN_ID> --model <MODEL>
 
-    # Custom documents
+    # Case documents
     PYTHONPATH=testing/handwriting_accuracy python -m iam_testing.runners.augment \
-        --baseline-run <RUN_ID> --dataset custom
+        --baseline-run <RUN_ID> --dataset case_documents
 """
 
 import argparse
@@ -271,9 +271,9 @@ def main() -> None:
     )
     parser.add_argument(
         "--dataset",
-        choices=["iam", "custom"],
+        choices=["iam", "case_documents"],
         default="iam",
-        help="Dataset type: 'iam' for IAM database or 'custom' for custom documents (default: iam)",
+        help="Dataset type: 'iam' for IAM database or 'case_documents' for case documents (default: iam)",
     )
     args = parser.parse_args()
 
@@ -282,8 +282,8 @@ def main() -> None:
 
     # Paths - use centralized DATA_DIR
     data_dir = DATA_DIR
-    if args.dataset == "custom":
-        batch_runs_dir = data_dir / "custom_batch_runs"
+    if args.dataset == "case_documents":
+        batch_runs_dir = data_dir / "case_documents_batch_runs"
     else:
         batch_runs_dir = data_dir / "batch_runs"
 

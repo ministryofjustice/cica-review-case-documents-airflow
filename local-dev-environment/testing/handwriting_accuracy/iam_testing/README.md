@@ -54,21 +54,35 @@ python -m iam_testing.runners.augment --baseline-run 20260126_140000
 python -m iam_testing.runners.augment --baseline-run 20260126_140000 --model nova-pro
 ```
 
-## Custom Documents
+## Case Documents
 
-For non-IAM documents:
+Two evaluation approaches for real case documents with varying readability:
 
-1. Create `data/custom_ground_truth.jsonl`:
-   ```json
-   {"page_id": "page1", "image_path": "data/custom/page1.png", "gt_handwriting_text": "your ground truth"}
-   ```
+### 1. Full Transcription (Readable Pages)
 
-2. Run tests:
-   ```bash
-   python -m iam_testing.runners.custom --mode single --page-id page1
-   python -m iam_testing.runners.custom --mode batch
-   python -m iam_testing.runners.augment --baseline-run <RUN_ID> --dataset custom
-   ```
+For pages where ground truth can be transcribed, uses WER/CER with word-count weighting.
+
+**Ground truth file:** `data/case_documents_ground_truth.jsonl`
+```json
+{"page_id": "page1", "image_path": "data/custom/page1.png", "gt_handwriting_text": "full transcription"}
+```
+
+**Run tests:**
+```bash
+python -m iam_testing.runners.case_documents --mode batch
+python -m iam_testing.runners.augment --baseline-run <RUN_ID> --dataset case_documents
+```
+
+### 2. Keyword Recall (Difficult Pages)
+
+For degraded/illegible pages, uses keyword matching: what percentage of identifiable words were found.
+
+**Ground truth file:** `data/case_documents_keywords.jsonl`
+```json
+{"page_id": "case3page8", "image_path": "data/custom/case3page8.png", "keywords": ["NHS", "2020", "assessment"]}
+```
+
+**Scoring:** `keyword_recall = found_keywords / total_keywords`
 
 ## LLM Models & Prompts
 
