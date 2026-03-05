@@ -78,6 +78,14 @@ class Settings(BaseSettings):  # type: ignore
 
     AWS_LOCAL_DEV_TEXTRACT_S3_ROOT_BUCKET: str = "mod-platfform-sandbox-kta-documents-bucket"
 
+    # -- Chunking Configuration --
+    # The original strategy was "layout" based chunking, which uses Textract layout analysis to group text into chunks.
+    # The new strategy is a "linear-sentence-splitter" which ignores layout
+    # and simply splits text into chunks based on sentence boundaries and word counts.
+    # This is still a work in progress and we are experimenting with both approaches,
+    # but defaulting to the new "linear-sentence-splitter" for now.
+    DOCUMENT_CHUNKING_STRATEGY: str = "linear-sentence-splitter"  # or "layout"
+
     # review these values when we have a working system
     MAXIMUM_CHUNK_SIZE: int = 80  # maximum chunk size
     Y_TOLERANCE_RATIO: float = 0.5

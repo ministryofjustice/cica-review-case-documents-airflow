@@ -1,24 +1,27 @@
 import pytest
 
-from ingestion_pipeline.chunking.chunker_factory import get_document_chunker
-from ingestion_pipeline.chunking.line_based_document_chunker import LineBasedDocumentChunker
+from ingestion_pipeline.chunking.document_chunker_factory import get_document_chunker
+from ingestion_pipeline.chunking.line_sentence_splitter import LineBasedDocumentChunker
 from ingestion_pipeline.chunking.textract_document_chunker import TextractLayoutDocumentChunker
 
 
 def test_factory_returns_line_chunker():
-    chunker = get_document_chunker("line")
+    chunker = get_document_chunker("linear-sentence-splitter")
     assert isinstance(chunker, LineBasedDocumentChunker)
+
 
 def test_factory_returns_layout_chunker():
     chunker = get_document_chunker("layout")
     assert isinstance(chunker, TextractLayoutDocumentChunker)
 
+
 def test_factory_explicit_type_line_normalization():
-    chunker = get_document_chunker("line")
+    chunker = get_document_chunker("linear-sentence-splitter")
     assert isinstance(chunker, LineBasedDocumentChunker)
     # Test normalization
-    chunker2 = get_document_chunker("  LINE  ")
+    chunker2 = get_document_chunker("  LINEAR-sentence-splitter  ")
     assert isinstance(chunker2, LineBasedDocumentChunker)
+
 
 def test_factory_explicit_type_layout_normalization():
     chunker = get_document_chunker("layout")
@@ -26,6 +29,7 @@ def test_factory_explicit_type_layout_normalization():
     # Test normalization
     chunker2 = get_document_chunker("  LaYoUt  ")
     assert isinstance(chunker2, TextractLayoutDocumentChunker)
+
 
 def test_factory_invalid_type():
     with pytest.raises(ValueError) as excinfo:

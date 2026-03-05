@@ -1,9 +1,8 @@
 """Factory for creating DocumentChunker implementations based on config or runtime selection."""
 
-
 from ingestion_pipeline.chunking.base_document_chunker import DocumentChunker
 from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
-from ingestion_pipeline.chunking.line_based_document_chunker import LineBasedDocumentChunker
+from ingestion_pipeline.chunking.line_sentence_splitter import LineBasedDocumentChunker
 from ingestion_pipeline.chunking.strategies.key_value.layout_key_value import KeyValueChunker
 from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkingStrategy
 from ingestion_pipeline.chunking.strategies.line_sentence_chunker import LineSentenceChunkingConfig
@@ -12,13 +11,14 @@ from ingestion_pipeline.chunking.strategies.table.layout_table import LayoutTabl
 from ingestion_pipeline.chunking.textract_document_chunker import TextractLayoutDocumentChunker
 from ingestion_pipeline.config import settings
 
-ALLOWED_CHUNKER_TYPES = {"layout", "line"}
+ALLOWED_CHUNKER_TYPES = {"layout", "linear-sentence-splitter"}
+
 
 def get_document_chunker(chunker_type: str) -> DocumentChunker:
     """Factory function to return the desired DocumentChunker implementation.
 
     Args:
-        chunker_type (str): Which chunker to use. Allowed: "layout", "line".
+        chunker_type (str): Which chunker to use. Allowed: "layout", "linear-sentence-splitter".
 
     Returns:
         DocumentChunker: The selected chunker implementation.
@@ -48,12 +48,12 @@ def get_document_chunker(chunker_type: str) -> DocumentChunker:
             "LAYOUT_LIST": layout_list_strategy,
         }
         return TextractLayoutDocumentChunker(strategy_handlers=strategy_handlers, config=chunking_config)
-    elif chunker_type == "line":
+    elif chunker_type == "linear-sentence-splitter":
         line_chunking_config = LineSentenceChunkingConfig(
             min_words=settings.SENTENCE_CHUNKER_MIN_WORDS,
             max_words=settings.SENTENCE_CHUNKER_MAX_WORDS,
             max_vertical_gap_ratio=settings.SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO,
-            debug=False,
+            debug=True,  # TODO add to settings or make configurable via parameter in the future
         )
         return LineBasedDocumentChunker(config=line_chunking_config)
     else:

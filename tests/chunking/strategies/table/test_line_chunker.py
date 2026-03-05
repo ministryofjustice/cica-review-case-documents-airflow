@@ -77,6 +77,7 @@ class MockLayout:
     bbox: MockBoundingBox
     children: List[MockLine]
     layout_type: str = "LAYOUT_TABLE"
+    confidence: float = 0.95
 
 
 @dataclass

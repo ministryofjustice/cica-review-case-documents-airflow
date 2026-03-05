@@ -71,12 +71,13 @@ class LayoutListChunkingStrategy(ChunkingStrategyHandler):
 
             combined_bbox = combine_bounding_boxes([line_bbox])
             chunk = DocumentChunk.from_textractor_layout(
-                block=layout_block,
+                layout_type=child_block.layout_type,
                 page_number=page_number,
                 metadata=metadata,
                 chunk_index=chunk_index,
                 chunk_text=line_text,
                 combined_bbox=combined_bbox,
+                confidence=child_block.confidence,
             )
             chunks.append(chunk)
             chunk_index += 1
