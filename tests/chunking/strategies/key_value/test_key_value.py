@@ -10,9 +10,9 @@ from textractor.entities.layout import Layout
 from textractor.entities.line import Line
 from textractor.entities.word import Word
 
-from ingestion_pipeline.chunking.layout.layout_chunking_config import LayoutChunkingConfig
-from ingestion_pipeline.chunking.layout.types.key_value.layout_key_value import KeyValueChunker
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
+from ingestion_pipeline.chunking.strategies.layout.layout_chunking_config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.strategies.layout.types.key_value.layout_key_value import KeyValueChunker
 
 
 @pytest.fixture
@@ -183,7 +183,7 @@ def test_skips_unsupported_child_types_and_logs_warning(mocker, default_config, 
     are skipped and a warning is logged.
     """
     mock_logger_warning = mocker.patch(
-        "ingestion_pipeline.chunking.layout.types.key_value.layout_key_value.logger.warning"
+        "ingestion_pipeline.chunking.strategies.layout.types.key_value.layout_key_value.logger.warning"
     )
     mock_os_doc_from_layout = mocker.patch.object(DocumentChunk, "from_textractor_layout")
 

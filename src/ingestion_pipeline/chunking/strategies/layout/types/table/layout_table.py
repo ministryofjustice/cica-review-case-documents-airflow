@@ -7,10 +7,10 @@ from textractor.entities.layout import Layout, Line
 from textractor.entities.table import Table
 
 from ingestion_pipeline.chunking.exceptions import ChunkException
-from ingestion_pipeline.chunking.layout.layout_chunking_config import LayoutChunkingConfig
-from ingestion_pipeline.chunking.layout.types.base import ChunkingStrategyHandler
-from ingestion_pipeline.chunking.layout.types.table.base import BaseTableChunker
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
+from ingestion_pipeline.chunking.strategies.layout.layout_chunking_config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.strategies.layout.types.base import ChunkingStrategyHandler
+from ingestion_pipeline.chunking.strategies.layout.types.table.base import BaseTableChunker
 
 from .cell_chunker import CellTableChunker
 from .line_chunker import LineTableChunker

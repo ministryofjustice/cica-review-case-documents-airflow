@@ -10,14 +10,14 @@ import pytest
 from pydantic import ValidationError
 from textractor.entities.document import Document
 
-from ingestion_pipeline.chunking.layout.layout_chunking_config import LayoutChunkingConfig
-from ingestion_pipeline.chunking.layout.types.layout_text import LayoutTextChunkingStrategy
-from ingestion_pipeline.chunking.layout.types.table import LayoutTableChunkingStrategy
 from ingestion_pipeline.chunking.schemas import DocumentBoundingBox, DocumentMetadata
-from ingestion_pipeline.chunking.textract_layout_chunker import (
+from ingestion_pipeline.chunking.strategies.layout.layout_chunking_config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.strategies.layout.textract_layout_chunker import (
     DocumentChunk,
     TextractLayoutDocumentChunker,
 )
+from ingestion_pipeline.chunking.strategies.layout.types.layout_text import LayoutTextChunkingStrategy
+from ingestion_pipeline.chunking.strategies.layout.types.table import LayoutTableChunkingStrategy
 
 TEXTRACT_JSON_PATH = Path(__file__).parent / "data" / "single_text_layout_textract_response.json"
 
