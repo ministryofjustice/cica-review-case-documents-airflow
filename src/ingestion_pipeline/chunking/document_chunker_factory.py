@@ -1,5 +1,7 @@
 """Factory for creating DocumentChunker implementations based on config or runtime selection."""
 
+import logging
+
 from ingestion_pipeline.chunking.base_document_chunker import DocumentChunker
 from ingestion_pipeline.chunking.layout_chunking_config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.line_sentence_splitter import LineBasedDocumentChunker
@@ -12,6 +14,7 @@ from ingestion_pipeline.chunking.textract_document_chunker import TextractLayout
 from ingestion_pipeline.config import settings
 
 ALLOWED_CHUNKER_TYPES = {"layout", "linear-sentence-splitter"}
+logger = logging.getLogger(__name__)
 
 
 def get_document_chunker(chunker_type: str) -> DocumentChunker:
@@ -29,6 +32,8 @@ def get_document_chunker(chunker_type: str) -> DocumentChunker:
     chunker_type = str(chunker_type).strip().lower()
     if chunker_type not in ALLOWED_CHUNKER_TYPES:
         raise ValueError(f"Unknown chunker_type: '{chunker_type}'. Allowed values: {sorted(ALLOWED_CHUNKER_TYPES)}")
+
+    logger.info(f"Initialising DocumentChunker of type: {chunker_type}")
 
     if chunker_type == "layout":
         chunking_config = LayoutChunkingConfig()
