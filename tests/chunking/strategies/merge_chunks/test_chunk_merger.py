@@ -4,7 +4,7 @@ import datetime
 
 import pytest
 
-from ingestion_pipeline.chunking.layout_handler.strategies.merge.chunk_merger import ChunkMerger
+from ingestion_pipeline.chunking.layout_handler.types.merge.chunk_merger import ChunkMerger
 from ingestion_pipeline.chunking.schemas import DocumentBoundingBox, DocumentChunk, DocumentMetadata
 
 

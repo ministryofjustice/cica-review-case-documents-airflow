@@ -10,7 +10,7 @@ import pytest
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
 
 from ingestion_pipeline.chunking.layout_handler.layout_chunking_config import LayoutChunkingConfig
-from ingestion_pipeline.chunking.layout_handler.strategies.list.list_chunker import LayoutListChunkingStrategy
+from ingestion_pipeline.chunking.layout_handler.types.list.list_chunker import LayoutListChunkingStrategy
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
 
 
