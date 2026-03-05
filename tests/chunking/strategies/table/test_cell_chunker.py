@@ -11,11 +11,11 @@ from textractor.entities.line import Line
 from textractor.entities.table import Table
 from textractor.entities.table_cell import TableCell
 
-import ingestion_pipeline.chunking.layout_handler.strategies.table.base as base_module
-import ingestion_pipeline.chunking.layout_handler.strategies.table.cell_chunker as cell_chunker_module
+import ingestion_pipeline.chunking.layout_handler.types.table.base as base_module
+import ingestion_pipeline.chunking.layout_handler.types.table.cell_chunker as cell_chunker_module
 from ingestion_pipeline.chunking.exceptions import ChunkException
 from ingestion_pipeline.chunking.layout_handler.layout_chunking_config import LayoutChunkingConfig
-from ingestion_pipeline.chunking.layout_handler.strategies.table.cell_chunker import CellTableChunker
+from ingestion_pipeline.chunking.layout_handler.types.table.cell_chunker import CellTableChunker
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
 
 

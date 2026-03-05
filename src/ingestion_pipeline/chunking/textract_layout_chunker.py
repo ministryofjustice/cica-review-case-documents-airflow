@@ -11,11 +11,11 @@ from textractor.entities.document import Document
 
 from ingestion_pipeline.chunking.base_document_chunker import ChunkError, DocumentChunker
 from ingestion_pipeline.chunking.exceptions import ChunkException
-from ingestion_pipeline.chunking.layout_handler.strategies.merge.chunk_merger import ChunkMerger
+from ingestion_pipeline.chunking.layout_handler.types.merge.chunk_merger import ChunkMerger
 from ingestion_pipeline.chunking.verbose_page_debug_logger import is_verbose_page_debug, log_verbose_page_debug
 
 from .layout_handler.layout_chunking_config import LayoutChunkingConfig
-from .layout_handler.strategies.base import ChunkingStrategyHandler
+from .layout_handler.types.base import ChunkingStrategyHandler
 from .schemas import DocumentChunk, DocumentMetadata, ProcessedDocument
 
 logger = logging.getLogger(__name__)
