@@ -2,7 +2,7 @@
 
 This file makes the primary classes available for easier import from other modules.
 For example, other modules can now use:
-`from ingestion_pipeline.chunking.layout_handler.strategies.table import LayoutTableChunkingStrategy`
+`from ingestion_pipeline.chunking.layout.strategies.table import LayoutTableChunkingStrategy`
 """
 
 from .layout_key_value import KeyValueChunker

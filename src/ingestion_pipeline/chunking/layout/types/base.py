@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from ingestion_pipeline.chunking.layout_handler.layout_chunking_config import LayoutChunkingConfig  # ← Changed import
+from ingestion_pipeline.chunking.layout.layout_chunking_config import LayoutChunkingConfig  # ← Changed import
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 
 

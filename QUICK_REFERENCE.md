@@ -3,7 +3,7 @@
 ## 🚀 Quick Start
 
 ```python
-from ingestion_pipeline.chunking.layout_handler.strategies.line_sentence_chunker import LineSentenceChunker
+from ingestion_pipeline.chunking.layout.strategies.line_sentence_chunker import LineSentenceChunker
 
 # 1. Create chunker
 chunker = LineSentenceChunker()
@@ -34,7 +34,7 @@ SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO=0.05
 
 ### Programmatic
 ```python
-from ingestion_pipeline.chunking.layout_handler.strategies.line_sentence_chunker import (
+from ingestion_pipeline.chunking.layout.strategies.line_sentence_chunker import (
     LineSentenceChunkingConfig
 )
 
@@ -102,7 +102,7 @@ chunk.confidence              # Average confidence (default: 95.0)
 
 ```bash
 # Verify installation
-PYTHONPATH=src python3 -c "from ingestion_pipeline.chunking.layout_handler.strategies.line_sentence_chunker import LineSentenceChunker; print('OK')"
+PYTHONPATH=src python3 -c "from ingestion_pipeline.chunking.layout.strategies.line_sentence_chunker import LineSentenceChunker; print('OK')"
 
 # Run tests
 pytest tests/chunking/test_line_sentence_chunker.py -v
@@ -161,7 +161,7 @@ export PYTHONPATH=src
 ```python
 def process_document(doc, metadata):
     """Process entire document with line-based chunking."""
-    from ingestion_pipeline.chunking.layout_handler.strategies.line_sentence_chunker import LineSentenceChunker
+    from ingestion_pipeline.chunking.layout.strategies.line_sentence_chunker import LineSentenceChunker
     
     chunker = LineSentenceChunker()
     all_chunks = []

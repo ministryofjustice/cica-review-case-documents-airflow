@@ -74,7 +74,7 @@ SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO=0.05
 ### Programmatic Configuration
 
 ```python
-from ingestion_pipeline.chunking.layout_handler.strategies.line_sentence_chunker import (
+from ingestion_pipeline.chunking.layout.strategies.line_sentence_chunker import (
     LineSentenceChunker,
     LineSentenceChunkingConfig,
 )
@@ -99,7 +99,7 @@ chunker = LineSentenceChunker(config=config)
 ```python
 from textractor.entities.document import Document
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
-from ingestion_pipeline.chunking.layout_handler.strategies.line_sentence_chunker import LineSentenceChunker
+from ingestion_pipeline.chunking.layout.strategies.line_sentence_chunker import LineSentenceChunker
 
 # Initialize chunker
 chunker = LineSentenceChunker()
@@ -267,7 +267,7 @@ pytest tests/chunking/test_line_sentence_chunker.py -v
 pytest tests/chunking/test_line_sentence_chunker.py::TestLineSentenceChunker::test_sentence_boundary_closes_chunk
 
 # Run with coverage
-pytest tests/chunking/test_line_sentence_chunker.py --cov=ingestion_pipeline.chunking.layout_handler.strategies.line_sentence_chunker
+pytest tests/chunking/test_line_sentence_chunker.py --cov=ingestion_pipeline.chunking.layout.strategies.line_sentence_chunker
 ```
 
 ### Test Coverage
