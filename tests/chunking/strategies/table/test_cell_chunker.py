@@ -14,7 +14,7 @@ from textractor.entities.table_cell import TableCell
 import ingestion_pipeline.chunking.strategies.table.base as base_module
 import ingestion_pipeline.chunking.strategies.table.cell_chunker as cell_chunker_module
 from ingestion_pipeline.chunking.exceptions import ChunkException
-from ingestion_pipeline.chunking.layout_chunking_config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.layout_handler.layout_chunking_config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
 from ingestion_pipeline.chunking.strategies.table.cell_chunker import CellTableChunker
 

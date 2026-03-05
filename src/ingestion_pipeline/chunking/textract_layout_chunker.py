@@ -14,7 +14,7 @@ from ingestion_pipeline.chunking.exceptions import ChunkException
 from ingestion_pipeline.chunking.strategies.merge.chunk_merger import ChunkMerger
 from ingestion_pipeline.chunking.verbose_page_debug_logger import is_verbose_page_debug, log_verbose_page_debug
 
-from .layout_chunking_config import LayoutChunkingConfig
+from .layout_handler.layout_chunking_config import LayoutChunkingConfig
 from .schemas import DocumentChunk, DocumentMetadata, ProcessedDocument
 from .strategies.base import ChunkingStrategyHandler
 

@@ -2,7 +2,7 @@
 
 import pytest
 
-from ingestion_pipeline.chunking.layout_chunking_config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.layout_handler.layout_chunking_config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.strategies.base import ChunkingStrategyHandler
 
 

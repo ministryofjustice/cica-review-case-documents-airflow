@@ -10,7 +10,7 @@ from textractor.entities.layout import Layout
 from textractor.entities.line import Line
 from textractor.entities.word import Word
 
-from ingestion_pipeline.chunking.layout_chunking_config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.layout_handler.layout_chunking_config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 from ingestion_pipeline.chunking.strategies.key_value.layout_key_value import KeyValueChunker
 

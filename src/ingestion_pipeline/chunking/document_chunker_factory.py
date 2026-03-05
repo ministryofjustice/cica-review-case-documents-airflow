@@ -3,7 +3,7 @@
 import logging
 
 from ingestion_pipeline.chunking.base_document_chunker import DocumentChunker
-from ingestion_pipeline.chunking.layout_chunking_config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.layout_handler.layout_chunking_config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.line_sentence_splitter import LineBasedDocumentChunker
 from ingestion_pipeline.chunking.strategies.key_value.layout_key_value import KeyValueChunker
 from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkingStrategy

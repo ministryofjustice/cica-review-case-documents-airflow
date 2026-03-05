@@ -8,7 +8,7 @@ import pytest
 from textractor.entities.bbox import BoundingBox
 
 import ingestion_pipeline.chunking.strategies.layout_text as layout_text_module
-from ingestion_pipeline.chunking.layout_chunking_config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.layout_handler.layout_chunking_config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkingStrategy
 from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes
