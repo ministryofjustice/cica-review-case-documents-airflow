@@ -96,21 +96,23 @@ def test_chunks_mixed_key_value_and_line_children(
     assert mock_os_doc_from_layout.call_count == 2
 
     expected_kv_call = call(
-        block=layout_block,
         page_number=1,
         metadata=chunk_args["metadata"],
         chunk_index=0,
         chunk_text="Name: John Doe",
         combined_bbox=kv_child.bbox,
+        layout_type=layout_block.layout_type,
+        confidence=layout_block.confidence,
     )
 
     expected_line_call = call(
-        block=layout_block,
         page_number=1,
         metadata=chunk_args["metadata"],
         chunk_index=1,
         chunk_text="This is a standalone line.",
         combined_bbox=line_child.bbox,
+        layout_type=layout_block.layout_type,
+        confidence=layout_block.confidence,
     )
 
     mock_os_doc_from_layout.assert_has_calls([expected_kv_call, expected_line_call], any_order=False)
@@ -165,12 +167,13 @@ def test_skips_empty_or_whitespace_only_lines(mocker, default_config, chunk_args
     mock_os_doc_from_layout.assert_called_once()
 
     mock_os_doc_from_layout.assert_called_with(
-        block=layout_block,
         page_number=1,
         metadata=chunk_args["metadata"],
         chunk_index=0,
         chunk_text="Valid text",
         combined_bbox=valid_line.bbox,
+        layout_type=layout_block.layout_type,
+        confidence=layout_block.confidence,
     )
 
 
@@ -203,10 +206,11 @@ def test_skips_unsupported_child_types_and_logs_warning(mocker, default_config, 
 
     mock_os_doc_from_layout.assert_called_once()
     mock_os_doc_from_layout.assert_called_with(
-        block=layout_block,
         page_number=1,
         metadata=chunk_args["metadata"],
         chunk_index=0,
         chunk_text="This should be processed",
         combined_bbox=valid_line.bbox,
+        layout_type=layout_block.layout_type,
+        confidence=layout_block.confidence,
     )

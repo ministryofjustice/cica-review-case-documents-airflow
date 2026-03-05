@@ -176,7 +176,8 @@ class LayoutTextChunkingStrategy(ChunkingStrategyHandler):
 
         # logger.info(f"[layout_text] Layout {layout_block.layout_type} chunk : {chunk_text}")
         return DocumentChunk.from_textractor_layout(
-            block=layout_block,
+            layout_type=layout_block.layout_type,
+            confidence=layout_block.confidence,
             page_number=page_number,
             metadata=metadata,
             chunk_index=chunk_index,

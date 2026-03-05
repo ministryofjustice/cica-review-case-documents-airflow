@@ -122,10 +122,11 @@ class KeyValueChunker(ChunkingStrategyHandler):
         logger.debug(f"Layout {layout_block.layout_type} chunk : {chunk_text}")
 
         return DocumentChunk.from_textractor_layout(
-            block=layout_block,
             page_number=page_number,
             metadata=metadata,
             chunk_index=chunk_index,
             chunk_text=chunk_text.strip(),
             combined_bbox=combined_bbox,
+            layout_type=layout_block.layout_type,
+            confidence=layout_block.confidence,
         )

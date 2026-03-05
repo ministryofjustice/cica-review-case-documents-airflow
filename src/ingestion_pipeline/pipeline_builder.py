@@ -7,7 +7,7 @@ from ingestion_pipeline.aws_client.clients import (
     get_textract_client,
     get_textractor_instance,
 )
-from ingestion_pipeline.chunking.chunker_factory import get_document_chunker
+from ingestion_pipeline.chunking.document_chunker_factory import get_document_chunker
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.custom_logging.log_context import setup_logging
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingGenerator
@@ -28,7 +28,8 @@ logger = logging.getLogger(__name__)
 # We are still experimenting with both approaches and want to keep the option open
 # to easily switch between them for testing and iteration.
 # ALLOWED_CHUNKER_TYPES = {"layout", "line"}
-CHUNKER_TYPE = "line"
+# e.g., "layout" or "linear-sentence-splitter"
+DOCUMENT_CHUNKING_STRATEGY = settings.DOCUMENT_CHUNKING_STRATEGY.strip().lower()
 
 
 def build_pipeline() -> Pipeline:
@@ -46,7 +47,7 @@ def build_pipeline() -> Pipeline:
         textract_client=get_textract_client(),
     )
 
-    chunker = get_document_chunker(CHUNKER_TYPE)
+    chunker = get_document_chunker(DOCUMENT_CHUNKING_STRATEGY)
 
     embedding_generator = EmbeddingGenerator(model_id=settings.BEDROCK_EMBEDDING_MODEL_ID)
     chunk_indexer = OpenSearchIndexer(

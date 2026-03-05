@@ -217,6 +217,8 @@ class MockLayout:
 
     id: str
     bbox: MockBoundingBox
+    layout_type: str = "TABLE"
+    confidence: float = 0.95
 
 
 @dataclass
@@ -283,7 +285,7 @@ def test_create_chunk_with_multiple_bboxes(chunker, monkeypatch):
 
     expected_bbox = MockBoundingBox(x=0.1, y=0.2, width=0.8, height=0.1)
 
-    mock_layout = MockLayout(id="layout1", bbox=MockBoundingBox(0, 0, 1, 1))
+    mock_layout = MockLayout(id="layout1", bbox=MockBoundingBox(0, 0, 1, 1), layout_type="TABLE", confidence=0.95)
     mock_metadata = MockDocumentMetadata(source_doc_id="doc1")
 
     # Act
@@ -324,7 +326,7 @@ def test_create_chunk_with_no_bboxes(chunker, monkeypatch):
 
     # This is the bbox we expect to be used as the fallback
     layout_bbox = MockBoundingBox(x=0.05, y=0.05, width=0.9, height=0.9)
-    mock_layout = MockLayout(id="layout1", bbox=layout_bbox)
+    mock_layout = MockLayout(id="layout1", bbox=layout_bbox, layout_type="TABLE", confidence=0.95)
     mock_metadata = MockDocumentMetadata(source_doc_id="doc1")
 
     # Act
