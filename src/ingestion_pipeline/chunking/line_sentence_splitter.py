@@ -12,9 +12,9 @@ from textractor.entities.document import Document
 
 from ingestion_pipeline.chunking.base_document_chunker import ChunkError, DocumentChunker
 from ingestion_pipeline.chunking.exceptions import ChunkException
-from ingestion_pipeline.chunking.line_sentence_chunker.chunker import LineSentenceChunker
-from ingestion_pipeline.chunking.line_sentence_chunker.config import LineSentenceChunkingConfig
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata, ProcessedDocument
+from ingestion_pipeline.chunking.strategies.line_sentence_chunker.chunker import LineSentenceChunker
+from ingestion_pipeline.chunking.strategies.line_sentence_chunker.config import LineSentenceChunkingConfig
 from ingestion_pipeline.config import settings
 
 logger = logging.getLogger(__name__)
