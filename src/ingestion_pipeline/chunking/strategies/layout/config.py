@@ -1,15 +1,6 @@
 """Configuration for chunking behavior in the ingestion pipeline."""
 
 from dataclasses import dataclass
-from enum import Enum
-
-
-# TODO review is this Enum used?
-class ChunkingStrategy(Enum):
-    """Enumeration of available chunking strategies."""
-
-    LAYOUT_TEXT = "LAYOUT_TEXT"
-    LAYOUT_TABLE = "LAYOUT_TABLE"
 
 
 @dataclass
@@ -25,6 +16,3 @@ class LayoutChunkingConfig:
     y_tolerance_ratio: float
     max_vertical_gap: float
     line_chunk_char_limit: int
-
-    # TODO is this necessary?
-    strategy: ChunkingStrategy = ChunkingStrategy.LAYOUT_TEXT
