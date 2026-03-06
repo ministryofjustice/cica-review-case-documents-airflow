@@ -130,7 +130,11 @@ def apply_patches(monkeypatch):
 @pytest.fixture
 def chunker():
     """Provides a LineTableChunker instance for tests."""
-    return LineTableChunker(config=LayoutChunkingConfig(y_tolerance_ratio=0.5, line_chunk_char_limit=0))
+    return LineTableChunker(
+        config=LayoutChunkingConfig(
+            y_tolerance_ratio=0.5, line_chunk_char_limit=0, maximum_chunk_size=100, max_vertical_gap=0.05
+        )
+    )
 
 
 # --- Tests ---

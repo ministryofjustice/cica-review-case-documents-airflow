@@ -53,7 +53,12 @@ def mock_line_factory():
 @pytest.fixture
 def default_config():
     """Provides a default chunking configuration."""
-    return LayoutChunkingConfig(maximum_chunk_size=500)
+    return LayoutChunkingConfig(
+        maximum_chunk_size=500,
+        y_tolerance_ratio=0.1,
+        max_vertical_gap=10,
+        line_chunk_char_limit=100,
+    )
 
 
 @pytest.fixture

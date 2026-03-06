@@ -29,7 +29,12 @@ def create_mock_layout_block(layout_type: str, text: str, block_id: str = "id-12
 @pytest.fixture
 def chunking_config() -> LayoutChunkingConfig:
     """Provides a default ChunkingConfig instance."""
-    return LayoutChunkingConfig()
+    return LayoutChunkingConfig(
+        maximum_chunk_size=500,
+        y_tolerance_ratio=0.1,
+        max_vertical_gap=10,
+        line_chunk_char_limit=100,
+    )
 
 
 @pytest.fixture

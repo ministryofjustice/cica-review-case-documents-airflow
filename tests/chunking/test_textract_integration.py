@@ -79,8 +79,12 @@ def document_chunker_factory():
     def _factory(config: Optional[LayoutChunkingConfig] = None) -> TextractLayoutDocumentChunker:
         # If no config is provided by the test, use the default one.
         if config is None:
-            config = LayoutChunkingConfig()
-
+            config = LayoutChunkingConfig(
+                maximum_chunk_size=500,
+                y_tolerance_ratio=0.1,
+                max_vertical_gap=10,
+                line_chunk_char_limit=100,
+            )
         layout_text_strategy = LayoutTextChunkingStrategy(config)
         layout_table_strategy = LayoutTableChunkingStrategy(config)
         strategy_handlers = {

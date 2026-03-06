@@ -26,7 +26,12 @@ def default_config():
     Returns:
         ChunkingConfig: The default chunking configuration.
     """
-    return LayoutChunkingConfig(y_tolerance_ratio=0.5)
+    return LayoutChunkingConfig(
+        maximum_chunk_size=500,
+        y_tolerance_ratio=0.5,
+        max_vertical_gap=10,
+        line_chunk_char_limit=100,
+    )
 
 
 def create_fake_cell(text: str, row: int, col: int, y: float):

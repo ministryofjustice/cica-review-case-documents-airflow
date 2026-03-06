@@ -12,7 +12,12 @@ from ingestion_pipeline.chunking.strategies.layout.types.text.layout_text import
 @pytest.fixture
 def default_config():
     """Provides a default ChunkingConfig for tests."""
-    return LayoutChunkingConfig(maximum_chunk_size=600)
+    return LayoutChunkingConfig(
+        maximum_chunk_size=600,
+        y_tolerance_ratio=0.1,
+        max_vertical_gap=10,
+        line_chunk_char_limit=100,
+    )
 
 
 # Set this DEBUG param to an empty set to disable debug logging during tests
@@ -85,7 +90,9 @@ def test_chunk_creates_a_single_chunk_for_short_text(mock_dependencies, default_
 def test_chunk_splits_text_into_multiple_chunks(mock_dependencies, default_config):
     """Tests that text larger than the maximum size is split into multiple chunks."""
     mock_opensearch_chunk, mock_combine_bboxes = mock_dependencies
-    chunking_config = LayoutChunkingConfig(maximum_chunk_size=30)
+    chunking_config = LayoutChunkingConfig(
+        maximum_chunk_size=30, y_tolerance_ratio=0.1, max_vertical_gap=10, line_chunk_char_limit=100
+    )
     handler = LayoutTextChunkingStrategy(chunking_config)
 
     fake_lines = [
@@ -173,7 +180,12 @@ def test_simple_strategy_handles_empty_block(default_config):
 )
 def test_would_exceed_size_limit(current_text, new_line, expected):
     """Tests the helper method directly with various inputs."""
-    chunking_config = LayoutChunkingConfig(maximum_chunk_size=20)
+    chunking_config = LayoutChunkingConfig(
+        maximum_chunk_size=20,
+        y_tolerance_ratio=0.1,
+        max_vertical_gap=10,
+        line_chunk_char_limit=100,
+    )
     handler = LayoutTextChunkingStrategy(chunking_config)
     assert handler._would_exceed_size_limit(current_text, new_line) is expected
 
@@ -181,7 +193,12 @@ def test_would_exceed_size_limit(current_text, new_line, expected):
 def test_chunk_handles_single_line_exceeding_max_size(mock_dependencies, default_config):
     """Tests that a single line longer than the maximum chunk size becomes its own chunk."""
     mock_opensearch_chunk, mock_combine_bboxes = mock_dependencies
-    chunking_config = LayoutChunkingConfig(maximum_chunk_size=20)
+    chunking_config = chunking_config = LayoutChunkingConfig(
+        maximum_chunk_size=20,
+        y_tolerance_ratio=0.1,
+        max_vertical_gap=10,
+        line_chunk_char_limit=100,
+    )
     handler = LayoutTextChunkingStrategy(chunking_config)
 
     long_line = "This single line is far too long for the chunk size."  # len > 20
