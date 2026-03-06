@@ -316,7 +316,7 @@ class TestCompatibilityWithDocumentChunker:
 
     def test_has_same_interface_as_document_chunker(self):
         """Test that LineBasedDocumentChunker has the same public interface."""
-        from ingestion_pipeline.chunking.strategies.layout.textract_layout_chunker import TextractLayoutDocumentChunker
+        from ingestion_pipeline.chunking.strategies.layout.layout_chunk_handler import TextractLayoutDocumentChunker
 
         line_chunker = LineBasedDocumentChunker()
         layout_chunker = TextractLayoutDocumentChunker(strategy_handlers={})

@@ -29,7 +29,6 @@ logger = logging.getLogger(__name__)
 # to easily switch between them for testing and iteration.
 # ALLOWED_CHUNKER_TYPES = {"layout", "line"}
 # e.g., "layout" or "linear-sentence-splitter"
-DOCUMENT_CHUNKING_STRATEGY = settings.DOCUMENT_CHUNKING_STRATEGY.strip().lower()
 
 
 def build_pipeline() -> Pipeline:
@@ -47,7 +46,8 @@ def build_pipeline() -> Pipeline:
         textract_client=get_textract_client(),
     )
 
-    chunker = get_document_chunker(DOCUMENT_CHUNKING_STRATEGY)
+    chunking_strategy = settings.DOCUMENT_CHUNKING_STRATEGY.strip().lower()
+    chunker = get_document_chunker(chunking_strategy)
 
     embedding_generator = EmbeddingGenerator(model_id=settings.BEDROCK_EMBEDDING_MODEL_ID)
     chunk_indexer = OpenSearchIndexer(
