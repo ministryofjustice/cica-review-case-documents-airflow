@@ -14,7 +14,3 @@ class LineSentenceChunkingConfig:
     # Vertical spacing threshold for forcing chunk breaks
     # This is relative to page height (0.0 to 1.0)
     max_vertical_gap_ratio: float
-
-    # Whether to enable verbose debug logging
-    # TODO change this to use when Loger.DEBUG is on
-    debug: bool = False

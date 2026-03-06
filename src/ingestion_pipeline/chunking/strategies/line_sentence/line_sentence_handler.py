@@ -41,7 +41,6 @@ class LineBasedDocumentChunker(ChunkStrategy):
                 min_words=settings.SENTENCE_CHUNKER_MIN_WORDS,
                 max_words=settings.SENTENCE_CHUNKER_MAX_WORDS,
                 max_vertical_gap_ratio=settings.SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO,
-                debug=False,  # Can be enabled via config parameter
             )
 
         self.config = config
