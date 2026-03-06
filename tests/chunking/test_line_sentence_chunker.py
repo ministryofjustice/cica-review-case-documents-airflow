@@ -305,13 +305,13 @@ class TestLineSentenceChunker:
 
     def test_ends_with_sentence_terminator(self, chunker):
         """Test sentence terminator detection."""
-        assert chunker._ends_with_sentence_terminator("This is a sentence.") is True
-        assert chunker._ends_with_sentence_terminator("Is this a question?") is True
-        assert chunker._ends_with_sentence_terminator("What an exclamation!") is True
-        assert chunker._ends_with_sentence_terminator("No terminator here") is False
-        assert chunker._ends_with_sentence_terminator("Comma,") is False
-        assert chunker._ends_with_sentence_terminator("") is False
-        assert chunker._ends_with_sentence_terminator("   ") is False
+        assert chunker.sentence_detector.ends_with_sentence_terminator("This is a sentence.") is True
+        assert chunker.sentence_detector.ends_with_sentence_terminator("Is this a question?") is True
+        assert chunker.sentence_detector.ends_with_sentence_terminator("What an exclamation!") is True
+        assert chunker.sentence_detector.ends_with_sentence_terminator("No terminator here") is False
+        assert chunker.sentence_detector.ends_with_sentence_terminator("Comma,") is False
+        assert chunker.sentence_detector.ends_with_sentence_terminator("") is False
+        assert chunker.sentence_detector.ends_with_sentence_terminator("   ") is False
 
     def test_chunk_metadata_preserved(self, chunker, sample_metadata):
         """Test that document metadata is preserved in chunks."""
