@@ -19,7 +19,7 @@ I've successfully implemented a new deterministic line-by-line chunking algorith
 - **Updated `src/ingestion_pipeline/config.py`**
   - Added `SENTENCE_CHUNKER_MIN_WORDS` (default: 80)
   - Added `SENTENCE_CHUNKER_MAX_WORDS` (default: 100)
-  - Added `SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO` (default: 0.05)
+  - Added `SENTENCE_CHUNKER_LAYOUT_CHUNKING_MAX_VERTICAL_GAP_RATIO` (default: 0.05)
   - Validators for all new parameters
 
 ### 3. Tests
@@ -102,7 +102,7 @@ for page in doc.pages:
 # Add to your .env file
 SENTENCE_CHUNKER_MIN_WORDS=80
 SENTENCE_CHUNKER_MAX_WORDS=100
-SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO=0.05
+SENTENCE_CHUNKER_LAYOUT_CHUNKING_MAX_VERTICAL_GAP_RATIO=0.05
 ```
 
 ### Custom Configuration
@@ -116,7 +116,7 @@ from ingestion_pipeline.chunking.strategies.layout.strategies.line_sentence_chun
 config = LineSentenceChunkingConfig(
     min_words=50,
     max_words=75,
-    max_vertical_gap_ratio=0.03,
+    LAYOUT_CHUNKING_MAX_VERTICAL_GAP_ratio=0.03,
     debug=True,
 )
 chunker = LineSentenceChunker(config=config)
@@ -204,7 +204,7 @@ The implementation uses **simple rectangles** as you noted:
 2. **Testing**: Run on your actual documents
 3. **Tuning**: Adjust parameters based on results:
    - If chunks too large: decrease `max_words`
-   - If breaking mid-paragraph: increase `max_vertical_gap_ratio`
+   - If breaking mid-paragraph: increase `LAYOUT_CHUNKING_MAX_VERTICAL_GAP_ratio`
    - If too many tiny chunks: increase `min_words`
 
 4. **Enhancement Opportunities**:
@@ -232,7 +232,7 @@ The implementation has been verified to:
 SUCCESS: Chunker created with config - min_words=80, max_words=100
 Settings loaded: SENTENCE_CHUNKER_MIN_WORDS=80
 Settings loaded: SENTENCE_CHUNKER_MAX_WORDS=100
-Settings loaded: SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO=0.05
+Settings loaded: SENTENCE_CHUNKER_LAYOUT_CHUNKING_MAX_VERTICAL_GAP_RATIO=0.05
 ```
 
 ---
