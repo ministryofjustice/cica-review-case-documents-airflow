@@ -175,7 +175,7 @@ class LayoutTextChunkingStrategy(LayoutType):
             )
 
         # logger.info(f"[layout_text] Layout {layout_block.layout_type} chunk : {chunk_text}")
-        return DocumentChunk.from_textractor_layout(
+        return DocumentChunk.create_chunk(
             layout_type=layout_block.layout_type,
             confidence=layout_block.confidence,
             page_number=page_number,

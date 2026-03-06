@@ -213,7 +213,7 @@ def test_chunk_method_integration(chunker, monkeypatch):
             self.kwargs = kwargs
 
         @classmethod
-        def from_textractor_layout(cls, **kwargs):
+        def create_chunk(cls, **kwargs):
             return cls(**kwargs)
 
     monkeypatch.setattr(base_module, "DocumentChunk", MockDocumentChunk)
@@ -447,7 +447,7 @@ def test_chunk_method_resilience_with_mixed_quality_data(chunker, monkeypatch):
             self.kwargs = kwargs
 
         @classmethod
-        def from_textractor_layout(cls, **kwargs):
+        def create_chunk(cls, **kwargs):
             return cls(**kwargs)
 
     monkeypatch.setattr(base_module, "DocumentChunk", MockDocumentChunk)
@@ -539,7 +539,7 @@ def test_chunk_method_single_chunk_under_limit(chunker, monkeypatch):
             self.kwargs = kwargs
 
         @classmethod
-        def from_textractor_layout(cls, **kwargs):
+        def create_chunk(cls, **kwargs):
             # In the actual implementation, this would be called on the class
             # For the mock, we just instantiate it to capture the args
             return cls(**kwargs)

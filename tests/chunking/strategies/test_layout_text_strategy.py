@@ -79,9 +79,9 @@ def test_chunk_creates_a_single_chunk_for_short_text(mock_dependencies, default_
     result_chunks = handler.chunk(fake_layout_block, page_number, fake_metadata, chunk_index_start)
     assert len(result_chunks) == 1
 
-    mock_opensearch_chunk.from_textractor_layout.assert_called_once()
+    mock_opensearch_chunk.create_chunk.assert_called_once()
 
-    call_args = mock_opensearch_chunk.from_textractor_layout.call_args
+    call_args = mock_opensearch_chunk.create_chunk.call_args
     assert call_args.kwargs["chunk_text"] == "This is the first line. This is the second line."
     assert call_args.kwargs["page_number"] == 1
     assert call_args.kwargs["chunk_index"] == 0
@@ -139,7 +139,7 @@ def test_chunk_splits_text_into_multiple_chunks(mock_dependencies, default_confi
             confidence=fake_layout_block.confidence,
         ),
     ]
-    mock_opensearch_chunk.from_textractor_layout.assert_has_calls(expected_calls)
+    mock_opensearch_chunk.create_chunk.assert_has_calls(expected_calls)
 
 
 def test_simple_strategy_handles_empty_block(default_config):
@@ -247,4 +247,4 @@ def test_chunk_handles_single_line_exceeding_max_size(mock_dependencies, default
             confidence=fake_layout_block.confidence,
         ),
     ]
-    mock_opensearch_chunk.from_textractor_layout.assert_has_calls(expected_calls)
+    mock_opensearch_chunk.create_chunk.assert_has_calls(expected_calls)

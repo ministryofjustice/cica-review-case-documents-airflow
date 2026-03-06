@@ -182,7 +182,7 @@ class ChunkMerger:
             correspondence_type=first_chunk.correspondence_type if first_chunk.correspondence_type is not None else "",
         )
 
-        return DocumentChunk.from_textractor_layout(
+        return DocumentChunk.create_chunk(
             layout_type=first_chunk.chunk_type,
             confidence=first_chunk.confidence,
             page_number=page_number,

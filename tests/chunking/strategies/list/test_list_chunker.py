@@ -66,7 +66,7 @@ def test_chunk_with_valid_list_items(list_chunking_strategy, document_metadata):
     layout_list_block = create_mock_layout_block("LAYOUT_LIST", "Unused parent text")
     layout_list_block.children = [list_item_1, list_item_2]
 
-    with patch("ingestion_pipeline.chunking.schemas.DocumentChunk.from_textractor_layout") as mock_from_layout:
+    with patch("ingestion_pipeline.chunking.schemas.DocumentChunk.create_chunk") as mock_from_layout:
         mock_from_layout.side_effect = lambda **kwargs: MagicMock(text=kwargs["chunk_text"])
 
         chunks = list_chunking_strategy.chunk(
