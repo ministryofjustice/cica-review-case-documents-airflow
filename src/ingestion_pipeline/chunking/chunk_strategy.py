@@ -18,9 +18,9 @@ class ChunkError(Exception):
 class ChunkStrategy(ABC):
     """Abstract base class for chunk strategies.
 
-    All chunk strategy implementations must inherit from this class and implement
-    the chunk() method. This ensures a consistent interface across different
-    chunking strategies (layout-based, line-based, etc.).
+    Contract:
+    - For each page, chunk indices must start at zero and increment per chunk.
+    - Downstream consumers can rely on chunk_index being unique per page, not globally across the document.
     """
 
     @abstractmethod

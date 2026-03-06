@@ -81,10 +81,11 @@ class LineBasedDocumentChunker(ChunkStrategy):
             for page in doc.pages:
                 logger.debug(f"Chunking page {page.page_num} of {len(doc.pages)} using line-based approach")
 
+                # Always start chunk_index at zero for each page
                 page_chunks = self._process_page(
                     page=page,
                     metadata=metadata,
-                    chunk_index_start=chunk_index_counter,
+                    chunk_index_start=0,
                 )
 
                 all_chunks.extend(page_chunks)
