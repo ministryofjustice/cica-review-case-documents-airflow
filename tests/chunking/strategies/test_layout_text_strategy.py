@@ -219,14 +219,6 @@ def test_chunk_handles_single_line_exceeding_max_size(mock_dependencies, default
     # We expect two chunks: one for the oversized line, and one for the next line.
     assert len(result_chunks) == 2
 
-    #     layout_type=layout_block.layout_type,
-    # confidence=layout_block.confidence,
-    # page_number=page_number,
-    # metadata=metadata,
-    # chunk_index=chunk_index,
-    # chunk_text=chunk_text,
-    # combined_bbox=combined_bbox,
-
     expected_calls = [
         call(
             page_number=1,

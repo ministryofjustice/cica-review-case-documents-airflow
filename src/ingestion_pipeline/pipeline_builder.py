@@ -22,14 +22,6 @@ from ingestion_pipeline.textract.textract_processor import TextractProcessor
 setup_logging()
 logger = logging.getLogger(__name__)
 
-# Define the chunker type to use in the pipeline (e.g., "line" or "layout")
-# Leaving both implemented chunkers available, but defaulting to "line" for now.
-# Can be made configurable via settings or environment variable in the future.
-# We are still experimenting with both approaches and want to keep the option open
-# to easily switch between them for testing and iteration.
-# ALLOWED_CHUNKER_TYPES = {"layout", "line"}
-# e.g., "layout" or "linear-sentence-splitter"
-
 
 def build_pipeline() -> Pipeline:
     """Constructs the pipeline with all its dependencies.
