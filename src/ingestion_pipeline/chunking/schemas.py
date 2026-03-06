@@ -130,7 +130,7 @@ class DocumentChunk(BaseModel):
         return chunk_uuid
 
     @classmethod
-    def from_textractor_layout(
+    def create_chunk(
         cls,
         page_number: int,
         metadata: DocumentMetadata,
