@@ -9,8 +9,8 @@ from textractor.entities.bbox import BoundingBox
 from textractor.entities.document import Document
 
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
-from ingestion_pipeline.chunking.strategies.line_sentence_chunker.config import LineSentenceChunkingConfig
-from ingestion_pipeline.chunking.strategies.line_sentence_chunker.line_sentence_handler import (
+from ingestion_pipeline.chunking.strategies.line_sentence.config import LineSentenceChunkingConfig
+from ingestion_pipeline.chunking.strategies.line_sentence.line_sentence_handler import (
     ChunkError,
     LineBasedDocumentChunker,
 )
@@ -72,7 +72,7 @@ class TestLineBasedDocumentChunker:
     def test_initialization_with_default_config(self):
         """Test that chunker initializes with default configuration."""
         with patch(
-            "ingestion_pipeline.chunking.strategies.line_sentence_chunker.line_sentence_handler.settings"
+            "ingestion_pipeline.chunking.strategies.line_sentence.line_sentence_handler.settings"
         ) as mock_settings:
             mock_settings.SENTENCE_CHUNKER_MIN_WORDS = 80
             mock_settings.SENTENCE_CHUNKER_MAX_WORDS = 100
