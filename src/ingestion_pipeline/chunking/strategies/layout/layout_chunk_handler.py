@@ -13,7 +13,7 @@ from ingestion_pipeline.chunking.base_document_chunker import ChunkError, Docume
 from ingestion_pipeline.chunking.exceptions import ChunkException
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata, ProcessedDocument
 from ingestion_pipeline.chunking.strategies.layout.layout_chunking_config import LayoutChunkingConfig
-from ingestion_pipeline.chunking.strategies.layout.types.base import ChunkingStrategyHandler
+from ingestion_pipeline.chunking.strategies.layout.types.base import LayoutType
 from ingestion_pipeline.chunking.strategies.layout.types.merge.chunk_merger import ChunkMerger
 from ingestion_pipeline.chunking.verbose_page_debug_logger import is_verbose_page_debug, log_verbose_page_debug
 
@@ -30,13 +30,13 @@ class TextractLayoutDocumentChunker(DocumentChunker):
 
     def __init__(
         self,
-        strategy_handlers: Mapping[str, ChunkingStrategyHandler],
+        strategy_handlers: Mapping[str, LayoutType],
         config: Optional[LayoutChunkingConfig] = None,
     ):
         """Initializes the TextractLayoutDocumentChunker.
 
         Args:
-            strategy_handlers (Mapping[str, ChunkingStrategyHandler]):
+            strategy_handlers (Mapping[str, LayoutType]):
                 Mapping of layout block types to their corresponding chunking strategy handlers.
             config (Optional[ChunkingConfig], optional): Configuration settings for chunking. Defaults to None.
         """
@@ -154,7 +154,7 @@ class TextractLayoutDocumentChunker(DocumentChunker):
 
         return grouped_chunks
 
-    def _should_process_block(self, layout_block, layout_types: Mapping[str, ChunkingStrategyHandler]) -> bool:
+    def _should_process_block(self, layout_block, layout_types: Mapping[str, LayoutType]) -> bool:
         """Determines if a layout block should be processed.
 
         A block is processed if it has a recognized layout type, contains non-empty text,
@@ -162,7 +162,7 @@ class TextractLayoutDocumentChunker(DocumentChunker):
 
         Args:
             layout_block (LayoutBlock): The layout block to evaluate.
-            layout_types (Mapping[str, ChunkingStrategyHandler]): Mapping of layout types
+            layout_types (Mapping[str, LayoutType]): Mapping of layout types
                 to their corresponding strategy handlers.
 
         Returns:

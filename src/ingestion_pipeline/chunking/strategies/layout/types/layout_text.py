@@ -7,14 +7,14 @@ from textractor.entities.bbox import BoundingBox
 
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 from ingestion_pipeline.chunking.strategies.layout.layout_chunking_config import LayoutChunkingConfig
-from ingestion_pipeline.chunking.strategies.layout.types.base import ChunkingStrategyHandler
+from ingestion_pipeline.chunking.strategies.layout.types.base import LayoutType
 from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes
 from ingestion_pipeline.chunking.verbose_page_debug_logger import is_verbose_page_debug, log_verbose_page_debug
 
 logger = logging.getLogger(__name__)
 
 
-class LayoutTextChunkingStrategy(ChunkingStrategyHandler):
+class LayoutTextChunkingStrategy(LayoutType):
     """Implements the line-based chunking strategy."""
 
     def __init__(self, config: LayoutChunkingConfig):

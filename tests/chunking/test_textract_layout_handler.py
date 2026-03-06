@@ -264,9 +264,9 @@ def test_chunk_raises_error_on_strategy_handler_not_implemented(document_metadat
     from ingestion_pipeline.chunking.base_document_chunker import ChunkError
     from ingestion_pipeline.chunking.strategies.layout.layout_chunk_handler import TextractLayoutDocumentChunker
     from ingestion_pipeline.chunking.strategies.layout.layout_chunking_config import LayoutChunkingConfig
-    from ingestion_pipeline.chunking.strategies.layout.types.base import ChunkingStrategyHandler
+    from ingestion_pipeline.chunking.strategies.layout.types.base import LayoutType
 
-    class DummyHandler(ChunkingStrategyHandler):
+    class DummyHandler(LayoutType):
         def chunk(self, *args, **kwargs):
             raise NotImplementedError("Not implemented")
 
