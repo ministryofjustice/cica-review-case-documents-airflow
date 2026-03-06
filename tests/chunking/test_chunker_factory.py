@@ -35,4 +35,4 @@ def test_factory_invalid_type():
     with pytest.raises(ValueError) as excinfo:
         get_chunk_strategy("invalid_type")
     assert "Unknown chunker_type" in str(excinfo.value)
-    assert "layout" in str(excinfo.value) and "line" in str(excinfo.value)
+    assert "layout" in str(excinfo.value) and "linear-sentence-splitter" in str(excinfo.value)
