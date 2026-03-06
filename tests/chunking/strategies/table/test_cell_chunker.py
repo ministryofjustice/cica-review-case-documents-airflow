@@ -15,7 +15,7 @@ import ingestion_pipeline.chunking.strategies.layout.types.table.base as base_mo
 import ingestion_pipeline.chunking.strategies.layout.types.table.cell_chunker as cell_chunker_module
 from ingestion_pipeline.chunking.exceptions import ChunkException
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
-from ingestion_pipeline.chunking.strategies.layout.layout_chunking_config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.strategies.layout.config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.strategies.layout.types.table.cell_chunker import CellTableChunker
 
 
