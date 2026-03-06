@@ -17,7 +17,7 @@ ALLOWED_CHUNKER_TYPES = {"layout", "linear-sentence-splitter"}
 logger = logging.getLogger(__name__)
 
 
-def get_document_chunker(chunker_type: str) -> ChunkStrategy:
+def get_chunk_strategy(chunker_type: str) -> ChunkStrategy:
     """Factory function to return the desired ChunkStrategy implementation.
 
     Args:

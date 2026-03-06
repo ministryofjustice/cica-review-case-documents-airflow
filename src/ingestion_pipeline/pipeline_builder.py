@@ -7,7 +7,7 @@ from ingestion_pipeline.aws_client.clients import (
     get_textract_client,
     get_textractor_instance,
 )
-from ingestion_pipeline.chunking.document_chunker_factory import get_document_chunker
+from ingestion_pipeline.chunking.chunk_strategy_factory import get_chunk_strategy
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.custom_logging.log_context import setup_logging
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingGenerator
@@ -47,7 +47,7 @@ def build_pipeline() -> Pipeline:
     )
 
     chunking_strategy = settings.DOCUMENT_CHUNKING_STRATEGY.strip().lower()
-    chunker = get_document_chunker(chunking_strategy)
+    chunker = get_chunk_strategy(chunking_strategy)
 
     embedding_generator = EmbeddingGenerator(model_id=settings.BEDROCK_EMBEDDING_MODEL_ID)
     chunk_indexer = OpenSearchIndexer(
