@@ -35,7 +35,12 @@ def mock_chunkers(mocker):
 @pytest.fixture
 def default_config():
     """Fixture providing a default chunking configuration for tests."""
-    return LayoutChunkingConfig(maximum_chunk_size=500)
+    return LayoutChunkingConfig(
+        maximum_chunk_size=500,
+        y_tolerance_ratio=0.1,
+        max_vertical_gap=10,
+        line_chunk_char_limit=100,
+    )
 
 
 # Dummy arguments to pass into the chunk method for all tests

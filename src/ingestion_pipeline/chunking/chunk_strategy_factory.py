@@ -36,7 +36,28 @@ def get_chunk_strategy(chunker_type: str) -> ChunkStrategy:
     logger.info(f"Initialising ChunkStrategy of type: {chunker_type}")
 
     if chunker_type == "layout":
-        chunking_config = LayoutChunkingConfig()
+        chunking_config = LayoutChunkingConfig(
+            maximum_chunk_size=settings.LAYOUT_CHUNKING_MAXIMUM_CHUNK_SIZE,
+            y_tolerance_ratio=settings.LAYOUT_CHUNKING_Y_TOLERANCE_RATIO,
+            max_vertical_gap=settings.LAYOUT_CHUNKING_MAX_VERTICAL_GAP,
+            line_chunk_char_limit=settings.LAYOUT_CHUNKING_LINE_CHUNK_CHAR_LIMIT,
+        )
+
+        # TODO review perhaps create individual configs for each type
+        # # and a strategy to select the correct one?
+        # maximum_chunk_size: int = settings.LAYOUT_CHUNKING_MAXIMUM_CHUNK_SIZE
+        # strategy: ChunkingStrategy = ChunkingStrategy.LAYOUT_TEXT
+
+        # # Specific to table chunking strategies
+        # # is this statement true, review at a later date
+        # y_tolerance_ratio: float = settings.LAYOUT_CHUNKING_Y_TOLERANCE_RATIO
+        # max_vertical_gap: float = (
+        #     settings.LAYOUT_CHUNKING_MAX_VERTICAL_GAP
+        # )  # Specific to grouping and merge chunking strategies
+        # line_chunk_char_limit: int = (
+        #     settings.LAYOUT_CHUNKING_LINE_CHUNK_CHAR_LIMIT
+        # )  # Specific to table line chunking strategies
+
         layout_text_strategy = LayoutTextChunkingStrategy(chunking_config)
         layout_table_strategy = LayoutTableChunkingStrategy(chunking_config)
         layout_key_value_strategy = KeyValueChunker(chunking_config)
