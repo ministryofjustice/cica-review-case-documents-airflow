@@ -185,7 +185,7 @@ class LineSentenceChunker:
         reason: Optional[str],
     ) -> int:
         """Create and append a chunk, log the reason, and return the next chunk_index."""
-        logger.info(
+        logger.debug(
             f"Creating chunk at page {page_number}, chunk_index={chunk_index}, "
             f"lines={len(lines)}, words={sum(len(t.split()) for t, _ in lines)}, reason={reason}"
         )
