@@ -30,27 +30,27 @@ def test_debug_page_numbers_validation(pages):
 def test_maximum_chunk_size_validation(value):
     if value <= 0:
         with pytest.raises(ValueError):
-            Settings(MAXIMUM_CHUNK_SIZE=value)
+            Settings(LAYOUT_CHUNKING_MAXIMUM_CHUNK_SIZE=value)
     else:
-        Settings(MAXIMUM_CHUNK_SIZE=value)
+        Settings(LAYOUT_CHUNKING_MAXIMUM_CHUNK_SIZE=value)
 
 
 @pytest.mark.parametrize("ratio", [-0.1, 0.5, 1.1])
 def test_y_tolerance_ratio_validation(ratio):
     if not 0.0 <= ratio <= 1.0:
         with pytest.raises(ValueError):
-            Settings(Y_TOLERANCE_RATIO=ratio)
+            Settings(LAYOUT_CHUNKING_Y_TOLERANCE_RATIO=ratio)
     else:
-        Settings(Y_TOLERANCE_RATIO=ratio)
+        Settings(LAYOUT_CHUNKING_Y_TOLERANCE_RATIO=ratio)
 
 
 @pytest.mark.parametrize("gap", [-0.5, 0.0, 0.1])
 def test_max_vertical_gap_validation(gap):
     if gap <= 0.0:
         with pytest.raises(ValueError):
-            Settings(MAX_VERTICAL_GAP=gap)
+            Settings(LAYOUT_CHUNKING_MAX_VERTICAL_GAP=gap)
     else:
-        Settings(MAX_VERTICAL_GAP=gap)
+        Settings(LAYOUT_CHUNKING_MAX_VERTICAL_GAP=gap)
 
 
 @pytest.mark.parametrize("poll,timeout", [(5, 4), (5, 5), (5, 10)])
