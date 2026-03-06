@@ -9,7 +9,7 @@ from typing import List, Mapping, Optional
 
 from textractor.entities.document import Document
 
-from ingestion_pipeline.chunking.document_chunk_strategy import ChunkError, ChunkStrategy
+from ingestion_pipeline.chunking.chunk_strategy import ChunkError, ChunkStrategy
 from ingestion_pipeline.chunking.exceptions import ChunkException
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata, ProcessedDocument
 from ingestion_pipeline.chunking.strategies.layout.layout_chunking_config import LayoutChunkingConfig

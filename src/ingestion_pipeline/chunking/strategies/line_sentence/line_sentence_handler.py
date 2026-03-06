@@ -1,7 +1,7 @@
 """Line-based document chunker using sentence-aware chunking strategy.
 
 This chunker processes pages using LINE blocks directly, bypassing layout detection.
-It inherits from the base DocumentChunker class and uses the LineSentenceChunker
+It inherits from the base ChunkStrategy class and uses the LineSentenceChunker
 internally for deterministic, sentence-aware chunking.
 """
 
@@ -10,7 +10,7 @@ from typing import List, Optional
 
 from textractor.entities.document import Document
 
-from ingestion_pipeline.chunking.document_chunk_strategy import ChunkError, ChunkStrategy
+from ingestion_pipeline.chunking.chunk_strategy import ChunkError, ChunkStrategy
 from ingestion_pipeline.chunking.exceptions import ChunkException
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata, ProcessedDocument
 from ingestion_pipeline.chunking.strategies.line_sentence.chunker import LineSentenceChunker
@@ -24,7 +24,7 @@ class LineBasedDocumentChunker(ChunkStrategy):
     """Handles extraction of chunks from Textractor documents using line-based approach.
 
     This chunker processes documents page-by-page using LINE blocks directly,
-    applying sentence-aware chunking logic. It inherits from DocumentChunker base
+    applying sentence-aware chunking logic. It inherits from ChunkStrategy base
     class to ensure interface compatibility.
     """
 
