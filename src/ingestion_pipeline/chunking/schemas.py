@@ -88,7 +88,7 @@ class DocumentChunk(BaseModel):
     chunk_index: int
     source_file_s3_uri: str
     chunk_type: str
-    confidence: float
+    confidence: float | None
     bounding_box: DocumentBoundingBox
     embedding: Optional[List[float]] = None
     case_ref: str
@@ -138,7 +138,7 @@ class DocumentChunk(BaseModel):
         chunk_text: str,
         combined_bbox: BoundingBox,
         layout_type: str,
-        confidence: float,
+        confidence: float | None,
     ) -> "DocumentChunk":
         """Creates a DocumentChunk from layout_type and confidence, not a Layout block.
 
