@@ -9,8 +9,8 @@ from ingestion_pipeline.chunking.strategies.layout.types.key_value.layout_key_va
 from ingestion_pipeline.chunking.strategies.layout.types.layout_text import LayoutTextChunkingStrategy
 from ingestion_pipeline.chunking.strategies.layout.types.list.list_chunker import LayoutListChunkingStrategy
 from ingestion_pipeline.chunking.strategies.layout.types.table.layout_table import LayoutTableChunkingStrategy
-from ingestion_pipeline.chunking.strategies.line_sentence_chunker.config import LineSentenceChunkingConfig
-from ingestion_pipeline.chunking.strategies.line_sentence_chunker.line_sentence_handler import LineBasedDocumentChunker
+from ingestion_pipeline.chunking.strategies.line_sentence.config import LineSentenceChunkingConfig
+from ingestion_pipeline.chunking.strategies.line_sentence.line_sentence_handler import LineBasedDocumentChunker
 from ingestion_pipeline.config import settings
 
 ALLOWED_CHUNKER_TYPES = {"layout", "linear-sentence-splitter"}
