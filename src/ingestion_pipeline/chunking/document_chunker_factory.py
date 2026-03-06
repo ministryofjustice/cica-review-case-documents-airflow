@@ -4,8 +4,8 @@ import logging
 
 from ingestion_pipeline.chunking.base_document_chunker import DocumentChunker
 from ingestion_pipeline.chunking.line_sentence_splitter import LineBasedDocumentChunker
+from ingestion_pipeline.chunking.strategies.layout.layout_chunk_handler import TextractLayoutDocumentChunker
 from ingestion_pipeline.chunking.strategies.layout.layout_chunking_config import LayoutChunkingConfig
-from ingestion_pipeline.chunking.strategies.layout.textract_layout_chunker import TextractLayoutDocumentChunker
 from ingestion_pipeline.chunking.strategies.layout.types.key_value.layout_key_value import KeyValueChunker
 from ingestion_pipeline.chunking.strategies.layout.types.layout_text import LayoutTextChunkingStrategy
 from ingestion_pipeline.chunking.strategies.layout.types.list.list_chunker import LayoutListChunkingStrategy

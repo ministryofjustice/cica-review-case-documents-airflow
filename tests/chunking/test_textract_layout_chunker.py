@@ -8,8 +8,8 @@ from textractor.entities.page import Page
 
 from ingestion_pipeline.chunking.base_document_chunker import ChunkError
 from ingestion_pipeline.chunking.schemas import DocumentBoundingBox, DocumentChunk, DocumentMetadata
+from ingestion_pipeline.chunking.strategies.layout.layout_chunk_handler import TextractLayoutDocumentChunker
 from ingestion_pipeline.chunking.strategies.layout.layout_chunking_config import LayoutChunkingConfig
-from ingestion_pipeline.chunking.strategies.layout.textract_layout_chunker import TextractLayoutDocumentChunker
 
 
 def create_mock_layout(block_type="LAYOUT_TEXT", text="some valid text", block_id="id-1"):
@@ -108,7 +108,7 @@ def test_selects_correct_strategy_and_increments_index(document_metadata):
     chunker = TextractLayoutDocumentChunker(strategy_handlers)
 
     with patch(
-        "ingestion_pipeline.chunking.strategies.layout.textract_layout_chunker.ChunkMerger", autospec=True
+        "ingestion_pipeline.chunking.strategies.layout.layout_chunk_handler.ChunkMerger", autospec=True
     ) as mock_merger:
         mock_merger.return_value.group_and_merge_atomic_chunks.side_effect = lambda chunks: chunks
         processed_doc = chunker.chunk(doc, document_metadata)
@@ -140,7 +140,7 @@ def test_skips_blocks_without_strategy_or_text(document_metadata, mock_strategy_
     chunker = TextractLayoutDocumentChunker(strategy_handlers)
 
     with patch(
-        "ingestion_pipeline.chunking.strategies.layout.textract_layout_chunker.ChunkMerger", autospec=True
+        "ingestion_pipeline.chunking.strategies.layout.layout_chunk_handler.ChunkMerger", autospec=True
     ) as mock_merger:
         mock_merger.return_value.group_and_merge_atomic_chunks.side_effect = lambda chunks: chunks
         processed_doc = chunker.chunk(doc, document_metadata)
@@ -160,7 +160,7 @@ def test_calls_merger_once_per_page(document_metadata, mock_strategy_handler):
     chunker = TextractLayoutDocumentChunker(strategy_handlers)
 
     with patch(
-        "ingestion_pipeline.chunking.strategies.layout.textract_layout_chunker.ChunkMerger", autospec=True
+        "ingestion_pipeline.chunking.strategies.layout.layout_chunk_handler.ChunkMerger", autospec=True
     ) as mock_merger:
         chunker.chunk(doc, document_metadata)
 
@@ -201,7 +201,7 @@ def test_creates_pagedocument_with_correct_data(document_metadata, mock_strategy
     chunker = TextractLayoutDocumentChunker(strategy_handlers)
 
     with patch(
-        "ingestion_pipeline.chunking.strategies.layout.textract_layout_chunker.ChunkMerger", autospec=True
+        "ingestion_pipeline.chunking.strategies.layout.layout_chunk_handler.ChunkMerger", autospec=True
     ) as mock_merger:
         mock_merger.return_value.group_and_merge_atomic_chunks.side_effect = lambda chunks: chunks
         processed_doc = chunker.chunk(doc, document_metadata)
@@ -259,34 +259,11 @@ def test_chunk_raises_error_on_missing_raw_response(mock_strategy_handlers, mock
         chunker.chunk(mock_document, document_metadata)
 
 
-# def test_chunk_raises_error_on_missing_strategy_handler(document_metadata):
-#     """Verifies `chunk` raises ChunkException if a strategy handler is not found."""
-#     from ingestion_pipeline.chunking.base_document_chunker import ChunkError
-#     from ingestion_pipeline.chunking.textract_layout_chunker import TextractLayoutDocumentChunker
-
-#     # No handler for "UNIMPLEMENTED" type
-#     strategy_handlers = {}  # type: ignore[arg-type]
-#     page = MagicMock()
-#     page.layouts = [MagicMock(layout_type="UNIMPLEMENTED", text="Some text")]
-#     page.page_num = 1
-#     page.width = 800
-#     page.height = 600
-
-#     doc = MagicMock()
-#     doc.pages = [page]
-#     doc.response = {"some": "data"}
-
-#     chunker = TextractLayoutDocumentChunker(strategy_handlers=strategy_handlers)
-
-#     with pytest.raises(ChunkError, match="has no associated strategy handler"):
-#         chunker.chunk(doc, document_metadata)
-
-
 def test_chunk_raises_error_on_strategy_handler_not_implemented(document_metadata):
     """Verifies `chunk` wraps NotImplementedError from a strategy handler."""
     from ingestion_pipeline.chunking.base_document_chunker import ChunkError
+    from ingestion_pipeline.chunking.strategies.layout.layout_chunk_handler import TextractLayoutDocumentChunker
     from ingestion_pipeline.chunking.strategies.layout.layout_chunking_config import LayoutChunkingConfig
-    from ingestion_pipeline.chunking.strategies.layout.textract_layout_chunker import TextractLayoutDocumentChunker
     from ingestion_pipeline.chunking.strategies.layout.types.base import ChunkingStrategyHandler
 
     class DummyHandler(ChunkingStrategyHandler):
@@ -342,7 +319,7 @@ def test_process_page_handles_empty_layouts(document_metadata):
     assert result == []
 
 
-@patch("ingestion_pipeline.chunking.strategies.layout.textract_layout_chunker.logger")
+@patch("ingestion_pipeline.chunking.strategies.layout.layout_chunk_handler.logger")
 def test_chunk_general_exception_handling(mock_logger, mock_strategy_handlers, document_metadata):
     """Verifies that a general exception during chunking is caught and re-raised as ChunkError."""
     chunker = TextractLayoutDocumentChunker(strategy_handlers=mock_strategy_handlers)
