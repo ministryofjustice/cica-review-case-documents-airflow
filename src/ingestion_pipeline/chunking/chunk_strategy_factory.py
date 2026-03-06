@@ -66,5 +66,5 @@ def get_chunk_strategy(chunker_type: str) -> ChunkStrategy:
             max_vertical_gap_ratio=settings.SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO,
         )
         return LineBasedDocumentChunker(config=line_chunking_config)
-    else:
-        raise ValueError(f"Unknown chunker_type: '{chunker_type}'. Allowed values: {sorted(ALLOWED_CHUNKER_TYPES)}")
+
+    raise RuntimeError("Unreachable code: chunker_type guard should prevent this path.")
