@@ -1,8 +1,8 @@
-"""Factory for creating DocumentChunker implementations based on config or runtime selection."""
+"""Factory for creating ChunkStrategy implementations based on config or runtime selection."""
 
 import logging
 
-from ingestion_pipeline.chunking.document_chunk_strategy import ChunkStrategy
+from ingestion_pipeline.chunking.chunk_strategy import ChunkStrategy
 from ingestion_pipeline.chunking.strategies.layout.layout_chunk_handler import TextractLayoutDocumentChunker
 from ingestion_pipeline.chunking.strategies.layout.layout_chunking_config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.strategies.layout.types.key_value.layout_key_value import KeyValueChunker
@@ -18,13 +18,13 @@ logger = logging.getLogger(__name__)
 
 
 def get_document_chunker(chunker_type: str) -> ChunkStrategy:
-    """Factory function to return the desired DocumentChunker implementation.
+    """Factory function to return the desired ChunkStrategy implementation.
 
     Args:
         chunker_type (str): Which chunker to use. Allowed: "layout", "linear-sentence-splitter".
 
     Returns:
-        DocumentChunker: The selected chunker implementation.
+        ChunkStrategy: The selected chunker implementation.
 
     Raises:
         ValueError: If chunker_type is not recognized.
@@ -33,7 +33,7 @@ def get_document_chunker(chunker_type: str) -> ChunkStrategy:
     if chunker_type not in ALLOWED_CHUNKER_TYPES:
         raise ValueError(f"Unknown chunker_type: '{chunker_type}'. Allowed values: {sorted(ALLOWED_CHUNKER_TYPES)}")
 
-    logger.info(f"Initialising DocumentChunker of type: {chunker_type}")
+    logger.info(f"Initialising ChunkStrategy of type: {chunker_type}")
 
     if chunker_type == "layout":
         chunking_config = LayoutChunkingConfig()
