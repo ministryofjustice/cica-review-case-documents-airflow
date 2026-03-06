@@ -58,7 +58,7 @@ class ChunkBuilder:
         # Create chunk with layout type and confidence
         # The original confidence value represents a Textract Layout Block
         # confidence score, it has no meaning in this context.
-        # It is not used anywat
+        # It is not used anyway
         # TODO review and potentially remove
         return DocumentChunk.create_chunk(
             layout_type="LINE_SENTENCE_CHUNK",

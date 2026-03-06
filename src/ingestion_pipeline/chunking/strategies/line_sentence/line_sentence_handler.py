@@ -70,7 +70,6 @@ class LineBasedDocumentChunker(ChunkStrategy):
             self._validate_textract_document(doc)
 
             all_chunks = []
-            chunk_index_counter = 0
 
             # Verify raw response exists (needed for compatibility checks)
             if not doc.response:
@@ -88,7 +87,6 @@ class LineBasedDocumentChunker(ChunkStrategy):
                 )
 
                 all_chunks.extend(page_chunks)
-                chunk_index_counter += len(page_chunks)
 
                 logger.debug(
                     f"Extracted {len(page_chunks)} chunks from page {page.page_num} "
