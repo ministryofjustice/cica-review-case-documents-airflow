@@ -1,5 +1,6 @@
 """Tests for LineBasedDocumentChunker."""
 
+from collections import defaultdict
 from datetime import datetime
 from typing import Any, cast
 from unittest.mock import MagicMock, patch
@@ -187,10 +188,17 @@ class TestLineBasedDocumentChunker:
         mock_doc = create_mock_document(pages)
 
         result = chunker.chunk(mock_doc, sample_metadata)
+        chunks_by_page = defaultdict(list)
+        for chunk in result.chunks:
+            chunks_by_page[chunk.page_number].append(chunk)
 
-        # Check indices are sequential
-        indices = [chunk.chunk_index for chunk in result.chunks]
-        assert indices == list(range(len(indices)))
+        # Assert chunk indices start at zero for each page
+        for page_chunks in chunks_by_page.values():
+            indices = [chunk.chunk_index for chunk in page_chunks]
+            assert indices == list(range(len(indices)))  # Each page: 0, 1, ...
+
+        # Optionally, check total chunk count
+        assert len(result.chunks) == 2
 
     def test_page_without_lines_skipped(self, chunker, sample_metadata):
         """Test that pages without lines are skipped."""
