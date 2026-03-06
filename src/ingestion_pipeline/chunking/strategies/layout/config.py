@@ -6,6 +6,7 @@ from enum import Enum
 from ingestion_pipeline.config import settings
 
 
+# TODO review is this Enum used?
 class ChunkingStrategy(Enum):
     """Enumeration of available chunking strategies."""
 
@@ -19,9 +20,15 @@ class LayoutChunkingConfig:
 
     # TODO review perhaps create individual configs for each type
     # and a strategy to select the correct one?
-    maximum_chunk_size: int = settings.MAXIMUM_CHUNK_SIZE
+    maximum_chunk_size: int = settings.LAYOUT_CHUNKING_MAXIMUM_CHUNK_SIZE
     strategy: ChunkingStrategy = ChunkingStrategy.LAYOUT_TEXT
 
-    y_tolerance_ratio: float = settings.Y_TOLERANCE_RATIO  # Specific to table chunking strategies
-    max_vertical_gap: float = settings.MAX_VERTICAL_GAP  # Specific to grouping and merge chunking strategies
-    line_chunk_char_limit: int = settings.LINE_CHUNK_CHAR_LIMIT  # Specific to table line chunking strategies
+    # Specific to table chunking strategies
+    # is this statement true, review at a later date
+    y_tolerance_ratio: float = settings.LAYOUT_CHUNKING_Y_TOLERANCE_RATIO
+    max_vertical_gap: float = (
+        settings.LAYOUT_CHUNKING_MAX_VERTICAL_GAP
+    )  # Specific to grouping and merge chunking strategies
+    line_chunk_char_limit: int = (
+        settings.LAYOUT_CHUNKING_LINE_CHUNK_CHAR_LIMIT
+    )  # Specific to table line chunking strategies

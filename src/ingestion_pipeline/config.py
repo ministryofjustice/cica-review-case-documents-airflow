@@ -87,10 +87,10 @@ class Settings(BaseSettings):  # type: ignore
     DOCUMENT_CHUNKING_STRATEGY: str = "linear-sentence-splitter"  # or "layout"
 
     # review these values when we have a working system
-    MAXIMUM_CHUNK_SIZE: int = 80  # maximum chunk size
-    Y_TOLERANCE_RATIO: float = 0.5
-    MAX_VERTICAL_GAP: float = 0.5
-    LINE_CHUNK_CHAR_LIMIT: int = 300
+    LAYOUT_CHUNKING_MAXIMUM_CHUNK_SIZE: int = 80  # maximum chunk size
+    LAYOUT_CHUNKING_Y_TOLERANCE_RATIO: float = 0.5
+    LAYOUT_CHUNKING_MAX_VERTICAL_GAP: float = 0.5
+    LAYOUT_CHUNKING_LINE_CHUNK_CHAR_LIMIT: int = 300
 
     # -- Line-by-Line Sentence Chunker Configuration --
     # Word-based limits (not character-based)
@@ -147,7 +147,10 @@ class Settings(BaseSettings):  # type: ignore
         return v
 
     @field_validator(
-        "MAXIMUM_CHUNK_SIZE", "LINE_CHUNK_CHAR_LIMIT", "SENTENCE_CHUNKER_MIN_WORDS", "SENTENCE_CHUNKER_MAX_WORDS"
+        "LAYOUT_CHUNKING_MAXIMUM_CHUNK_SIZE",
+        "LAYOUT_CHUNKING_LINE_CHUNK_CHAR_LIMIT",
+        "SENTENCE_CHUNKER_MIN_WORDS",
+        "SENTENCE_CHUNKER_MAX_WORDS",
     )
     @classmethod
     def validate_positive_int(cls, v: int) -> int:
@@ -166,7 +169,7 @@ class Settings(BaseSettings):  # type: ignore
             raise ValueError("Chunk size must be a positive integer")
         return v
 
-    @field_validator("Y_TOLERANCE_RATIO", "SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO")
+    @field_validator("LAYOUT_CHUNKING_Y_TOLERANCE_RATIO", "SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO")
     @classmethod
     def validate_ratio(cls, v: float) -> float:
         """Ensure ratio is between 0.0 and 1.0.
@@ -184,7 +187,7 @@ class Settings(BaseSettings):  # type: ignore
             raise ValueError("Y_TOLERANCE_RATIO must be between 0.0 and 1.0")
         return v
 
-    @field_validator("MAX_VERTICAL_GAP")
+    @field_validator("LAYOUT_CHUNKING_MAX_VERTICAL_GAP")
     @classmethod
     def validate_positive_float(cls, v: float) -> float:
         """Ensure gap value is positive.
@@ -199,7 +202,7 @@ class Settings(BaseSettings):  # type: ignore
             ValueError: If the value is not positive.
         """
         if v <= 0.0:
-            raise ValueError("MAX_VERTICAL_GAP must be a positive number")
+            raise ValueError("LAYOUT_CHUNKING_MAX_VERTICAL_GAP must be a positive number")
         return v
 
     @field_validator("TEXTRACT_API_POLL_INTERVAL_SECONDS")
