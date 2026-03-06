@@ -70,7 +70,7 @@ class LayoutListChunkingStrategy(LayoutType):
                 continue
 
             combined_bbox = combine_bounding_boxes([line_bbox])
-            chunk = DocumentChunk.from_textractor_layout(
+            chunk = DocumentChunk.create_chunk(
                 layout_type=child_block.layout_type,
                 page_number=page_number,
                 metadata=metadata,

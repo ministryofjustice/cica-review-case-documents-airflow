@@ -60,7 +60,7 @@ class ChunkBuilder:
         # confidence score, it has no meaning in this context.
         # It is not used anywat
         # TODO review and potentially remove
-        return DocumentChunk.from_textractor_layout(
+        return DocumentChunk.create_chunk(
             layout_type="LINE_SENTENCE_CHUNK",
             confidence=None,  # see the comment
             page_number=page_number,

@@ -121,7 +121,7 @@ class KeyValueChunker(LayoutType):
 
         logger.debug(f"Layout {layout_block.layout_type} chunk : {chunk_text}")
 
-        return DocumentChunk.from_textractor_layout(
+        return DocumentChunk.create_chunk(
             page_number=page_number,
             metadata=metadata,
             chunk_index=chunk_index,

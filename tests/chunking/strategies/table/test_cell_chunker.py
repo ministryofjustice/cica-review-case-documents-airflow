@@ -278,7 +278,7 @@ def test_create_chunk_with_multiple_bboxes(chunker, monkeypatch):
             self.kwargs = kwargs
 
         @classmethod
-        def from_textractor_layout(cls, **kwargs):
+        def create_chunk(cls, **kwargs):
             return cls(**kwargs)
 
     monkeypatch.setattr(base_module, "DocumentChunk", MockDocumentChunk)
@@ -324,7 +324,7 @@ def test_create_chunk_with_no_bboxes(chunker, monkeypatch):
             self.kwargs = kwargs
 
         @classmethod
-        def from_textractor_layout(cls, **kwargs):
+        def create_chunk(cls, **kwargs):
             return cls(**kwargs)
 
     monkeypatch.setattr(base_module, "DocumentChunk", MockDocumentChunk)

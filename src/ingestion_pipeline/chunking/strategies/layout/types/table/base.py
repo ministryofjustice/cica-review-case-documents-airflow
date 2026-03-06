@@ -81,7 +81,7 @@ class BaseTableChunker(ABC):
 
         logger.debug(f"Table chunk : {chunk_text}")
 
-        return DocumentChunk.from_textractor_layout(
+        return DocumentChunk.create_chunk(
             page_number=page_number,
             metadata=metadata,
             chunk_index=chunk_index,
