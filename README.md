@@ -16,7 +16,7 @@ The production pipeline code responsible for ingesting CICA case documents, perf
 ### `evaluation_suite`
 Independent tooling for evaluating and optimising the OpenSearch search configuration. This code is **not** part of the production pipeline and is **not** bundled into the Docker image.
 
-Evaluation-specific dependencies (e.g. `pandas`, `optuna`, `snowballstemmer`) are declared separately under `[project.optional-dependencies.evaluation]` in `pyproject.toml` to keep them out of the production environment.
+Evaluation-specific dependencies (e.g. `pandas`, `optuna`, `snowballstemmer`) are declared separately under `[project.optional-dependencies]` as the `evaluation` extra in `pyproject.toml` to keep them out of the production environment.
 
 To install evaluation dependencies locally:
 ```

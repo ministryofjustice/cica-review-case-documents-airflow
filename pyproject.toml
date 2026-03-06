@@ -36,8 +36,6 @@ dev = ["deptry>=0.23.1,<0.25", "pre-commit>=4.2.0,<5"]
 #   uv sync --extra evaluation
 [project.optional-dependencies]
 evaluation = [
-    "opensearch-py>=3.1.0,<4.0.0",
-    "pydantic>=2.12.5,<3.0.0",
     "numpy>=2.0.0",
     "pandas>=2.0.0",
     "snowballstemmer>=2.2.0",

@@ -3,7 +3,7 @@
 This module provides the search execution layer used by the evaluation pipeline.
 Query building logic lives in search_query_builder.py.
 
-For ad-hoc exploration, run this module directly:
+For ad-hoc exploration, run this module directly editing the search term in the __main__ block.:
     python -m evaluation_suite.search_evaluation.search_client
 """
 
