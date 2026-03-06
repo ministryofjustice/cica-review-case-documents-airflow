@@ -9,7 +9,7 @@ from typing import List, Mapping, Optional
 
 from textractor.entities.document import Document
 
-from ingestion_pipeline.chunking.base_document_chunker import ChunkError, DocumentChunker
+from ingestion_pipeline.chunking.document_chunk_strategy import ChunkError, ChunkStrategy
 from ingestion_pipeline.chunking.exceptions import ChunkException
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata, ProcessedDocument
 from ingestion_pipeline.chunking.strategies.layout.layout_chunking_config import LayoutChunkingConfig
@@ -20,7 +20,7 @@ from ingestion_pipeline.chunking.verbose_page_debug_logger import is_verbose_pag
 logger = logging.getLogger(__name__)
 
 
-class TextractLayoutDocumentChunker(DocumentChunker):
+class TextractLayoutDocumentChunker(ChunkStrategy):
     """Handles extraction of chunks from Textractor documents using LAYOUT blocks.
 
     This chunker processes different Textract LAYOUT block types (LAYOUT_TEXT,

@@ -10,7 +10,7 @@ from typing import List, Optional
 
 from textractor.entities.document import Document
 
-from ingestion_pipeline.chunking.base_document_chunker import ChunkError, DocumentChunker
+from ingestion_pipeline.chunking.document_chunk_strategy import ChunkError, ChunkStrategy
 from ingestion_pipeline.chunking.exceptions import ChunkException
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata, ProcessedDocument
 from ingestion_pipeline.chunking.strategies.line_sentence.chunker import LineSentenceChunker
@@ -20,7 +20,7 @@ from ingestion_pipeline.config import settings
 logger = logging.getLogger(__name__)
 
 
-class LineBasedDocumentChunker(DocumentChunker):
+class LineBasedDocumentChunker(ChunkStrategy):
     """Handles extraction of chunks from Textractor documents using line-based approach.
 
     This chunker processes documents page-by-page using LINE blocks directly,

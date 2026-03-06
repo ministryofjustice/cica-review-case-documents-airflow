@@ -2,7 +2,7 @@
 
 import logging
 
-from ingestion_pipeline.chunking.base_document_chunker import ChunkError, DocumentChunker
+from ingestion_pipeline.chunking.document_chunk_strategy import ChunkError, ChunkStrategy
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingError, EmbeddingGenerator
@@ -30,7 +30,7 @@ class Pipeline:
     def __init__(
         self,
         textract_processor: TextractProcessor,
-        chunker: DocumentChunker,
+        chunker: ChunkStrategy,
         embedding_generator: EmbeddingGenerator,
         chunk_indexer: OpenSearchIndexer,
         page_indexer: OpenSearchIndexer,
