@@ -9,6 +9,7 @@ from textractor.entities.bbox import BoundingBox
 from textractor.entities.document import Document
 
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
+from ingestion_pipeline.chunking.strategies.layout.config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.strategies.line_sentence.config import LineSentenceChunkingConfig
 from ingestion_pipeline.chunking.strategies.line_sentence.line_sentence_handler import (
     ChunkError,
@@ -321,7 +322,12 @@ class TestCompatibilityWithDocumentChunker:
         from ingestion_pipeline.chunking.strategies.layout.layout_chunk_handler import TextractLayoutDocumentChunker
 
         line_chunker = LineBasedDocumentChunker()
-        layout_chunker = TextractLayoutDocumentChunker(strategy_handlers={})
+        layout_chunker = TextractLayoutDocumentChunker(
+            strategy_handlers={},
+            config=LayoutChunkingConfig(
+                maximum_chunk_size=1000, y_tolerance_ratio=0.1, max_vertical_gap=0.2, line_chunk_char_limit=50
+            ),
+        )
 
         # Both should have chunk method with same signature
         assert hasattr(line_chunker, "chunk")

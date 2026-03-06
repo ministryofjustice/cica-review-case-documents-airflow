@@ -105,7 +105,12 @@ def test_selects_correct_strategy_and_increments_index(document_metadata):
     page = create_mock_page(layouts=[create_mock_layout("LAYOUT_TEXT"), create_mock_layout("LAYOUT_TABLE")])
     doc = create_mock_document(pages=[page])
 
-    chunker = TextractLayoutDocumentChunker(strategy_handlers)
+    chunker = TextractLayoutDocumentChunker(
+        strategy_handlers=strategy_handlers,
+        config=LayoutChunkingConfig(
+            maximum_chunk_size=100, y_tolerance_ratio=0.1, max_vertical_gap=0.2, line_chunk_char_limit=50
+        ),
+    )
 
     with patch(
         "ingestion_pipeline.chunking.strategies.layout.layout_chunk_handler.ChunkMerger", autospec=True
@@ -137,7 +142,12 @@ def test_skips_blocks_without_strategy_or_text(document_metadata, mock_strategy_
     )
     doc = create_mock_document(pages=[page])
 
-    chunker = TextractLayoutDocumentChunker(strategy_handlers)
+    chunker = TextractLayoutDocumentChunker(
+        strategy_handlers=strategy_handlers,
+        config=LayoutChunkingConfig(
+            maximum_chunk_size=100, y_tolerance_ratio=0.1, max_vertical_gap=0.2, line_chunk_char_limit=50
+        ),
+    )
 
     with patch(
         "ingestion_pipeline.chunking.strategies.layout.layout_chunk_handler.ChunkMerger", autospec=True
@@ -157,7 +167,12 @@ def test_calls_merger_once_per_page(document_metadata, mock_strategy_handler):
         create_mock_page(layouts=[create_mock_layout()], page_num=2),
     ]
     doc = create_mock_document(pages=pages)
-    chunker = TextractLayoutDocumentChunker(strategy_handlers)
+    chunker = TextractLayoutDocumentChunker(
+        strategy_handlers=strategy_handlers,
+        config=LayoutChunkingConfig(
+            maximum_chunk_size=100, y_tolerance_ratio=0.1, max_vertical_gap=0.2, line_chunk_char_limit=50
+        ),
+    )
 
     with patch(
         "ingestion_pipeline.chunking.strategies.layout.layout_chunk_handler.ChunkMerger", autospec=True
@@ -198,7 +213,12 @@ def test_creates_pagedocument_with_correct_data(document_metadata, mock_strategy
     mock_strategy_handler.chunk.return_value = [mock_chunk]
 
     strategy_handlers = {"LAYOUT_TEXT": mock_strategy_handler}
-    chunker = TextractLayoutDocumentChunker(strategy_handlers)
+    chunker = TextractLayoutDocumentChunker(
+        strategy_handlers=strategy_handlers,
+        config=LayoutChunkingConfig(
+            maximum_chunk_size=100, y_tolerance_ratio=0.1, max_vertical_gap=0.2, line_chunk_char_limit=50
+        ),
+    )
 
     with patch(
         "ingestion_pipeline.chunking.strategies.layout.layout_chunk_handler.ChunkMerger", autospec=True
@@ -224,7 +244,12 @@ def test_wraps_strategy_exception_in_chunkexception(document_metadata, mock_stra
     strategy_handlers = {"LAYOUT_TEXT": mock_strategy_handler}
     page = create_mock_page(layouts=[create_mock_layout()])
     doc = create_mock_document(pages=[page])
-    chunker = TextractLayoutDocumentChunker(strategy_handlers)
+    chunker = TextractLayoutDocumentChunker(
+        strategy_handlers=strategy_handlers,
+        config=LayoutChunkingConfig(
+            maximum_chunk_size=100, y_tolerance_ratio=0.1, max_vertical_gap=0.2, line_chunk_char_limit=50
+        ),
+    )
 
     with pytest.raises(ChunkError, match="Error extracting chunks from document: something went very wrong!"):
         chunker.chunk(doc, document_metadata)
@@ -232,14 +257,24 @@ def test_wraps_strategy_exception_in_chunkexception(document_metadata, mock_stra
 
 def test_init_with_default_config(mock_strategy_handlers):
     """Verifies the chunker initializes with a default config if none is provided."""
-    chunker = TextractLayoutDocumentChunker(strategy_handlers=mock_strategy_handlers)
+    chunker = TextractLayoutDocumentChunker(
+        strategy_handlers=mock_strategy_handlers,
+        config=LayoutChunkingConfig(
+            maximum_chunk_size=100, y_tolerance_ratio=0.1, max_vertical_gap=0.2, line_chunk_char_limit=50
+        ),
+    )
     assert isinstance(chunker.config, LayoutChunkingConfig)
     assert chunker.strategy_handlers is mock_strategy_handlers
 
 
 def test_chunk_raises_error_on_invalid_document(mock_strategy_handlers, document_metadata):
     """Verifies `chunk` raises ValueError for invalid documents."""
-    chunker = TextractLayoutDocumentChunker(strategy_handlers=mock_strategy_handlers)
+    chunker = TextractLayoutDocumentChunker(
+        strategy_handlers=mock_strategy_handlers,
+        config=LayoutChunkingConfig(
+            maximum_chunk_size=100, y_tolerance_ratio=0.1, max_vertical_gap=0.2, line_chunk_char_limit=50
+        ),
+    )
 
     with pytest.raises(ChunkError, match="Document cannot be None and must contain pages."):
         chunker.chunk(None, document_metadata)  # type: ignore[arg-type]
@@ -253,7 +288,12 @@ def test_chunk_raises_error_on_invalid_document(mock_strategy_handlers, document
 def test_chunk_raises_error_on_missing_raw_response(mock_strategy_handlers, mock_document, document_metadata):
     """Verifies `chunk` raises ChunkException if the raw response is missing."""
     mock_document.response = None
-    chunker = TextractLayoutDocumentChunker(strategy_handlers=mock_strategy_handlers)
+    chunker = TextractLayoutDocumentChunker(
+        strategy_handlers=mock_strategy_handlers,
+        config=LayoutChunkingConfig(
+            maximum_chunk_size=100, y_tolerance_ratio=0.1, max_vertical_gap=0.2, line_chunk_char_limit=50
+        ),
+    )
 
     with pytest.raises(ChunkError, match="missing raw response from Textract"):
         chunker.chunk(mock_document, document_metadata)
@@ -290,7 +330,12 @@ def test_chunk_raises_error_on_strategy_handler_not_implemented(document_metadat
     doc.pages = [page]
     doc.response = {"some": "data"}
 
-    chunker = TextractLayoutDocumentChunker(strategy_handlers=strategy_handlers)
+    chunker = TextractLayoutDocumentChunker(
+        strategy_handlers=strategy_handlers,
+        config=LayoutChunkingConfig(
+            maximum_chunk_size=100, y_tolerance_ratio=0.1, max_vertical_gap=0.2, line_chunk_char_limit=50
+        ),
+    )
 
     with pytest.raises(ChunkError, match="Not implemented"):
         chunker.chunk(doc, document_metadata)
@@ -298,7 +343,12 @@ def test_chunk_raises_error_on_strategy_handler_not_implemented(document_metadat
 
 def test_should_process_block(mock_strategy_handlers):
     """Tests the logic for deciding whether to process a layout block."""
-    chunker = TextractLayoutDocumentChunker(strategy_handlers=mock_strategy_handlers)
+    chunker = TextractLayoutDocumentChunker(
+        strategy_handlers=mock_strategy_handlers,
+        config=LayoutChunkingConfig(
+            maximum_chunk_size=100, y_tolerance_ratio=0.1, max_vertical_gap=0.2, line_chunk_char_limit=50
+        ),
+    )
 
     # Should process: type is in handlers and text is present
     block_good = MagicMock(layout_type="TEXT", text="Valid text")
@@ -319,7 +369,12 @@ def test_should_process_block(mock_strategy_handlers):
 
 def test_process_page_handles_empty_layouts(document_metadata):
     """Verifies _process_page runs without error if a page has no layouts."""
-    chunker = TextractLayoutDocumentChunker(strategy_handlers={})
+    chunker = TextractLayoutDocumentChunker(
+        strategy_handlers={},
+        config=LayoutChunkingConfig(
+            maximum_chunk_size=100, y_tolerance_ratio=0.1, max_vertical_gap=0.2, line_chunk_char_limit=50
+        ),
+    )
     page = MagicMock(spec=Page, layouts=[])
     raw_response = {"some": "data"}
 
@@ -331,7 +386,12 @@ def test_process_page_handles_empty_layouts(document_metadata):
 @patch("ingestion_pipeline.chunking.strategies.layout.layout_chunk_handler.logger")
 def test_chunk_general_exception_handling(mock_logger, mock_strategy_handlers, document_metadata):
     """Verifies that a general exception during chunking is caught and re-raised as ChunkError."""
-    chunker = TextractLayoutDocumentChunker(strategy_handlers=mock_strategy_handlers)
+    chunker = TextractLayoutDocumentChunker(
+        strategy_handlers=mock_strategy_handlers,
+        config=LayoutChunkingConfig(
+            maximum_chunk_size=100, y_tolerance_ratio=0.1, max_vertical_gap=0.2, line_chunk_char_limit=50
+        ),
+    )
     error_message = "Something went wrong"
     # Simulate an error during validation
     with patch.object(chunker, "_validate_textract_document", side_effect=Exception(error_message)):
