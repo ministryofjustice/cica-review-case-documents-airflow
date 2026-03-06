@@ -149,7 +149,7 @@ class DocumentChunk(BaseModel):
             chunk_text (str): The text content of the chunk.
             combined_bbox (BoundingBox): The combined bounding box for the chunk.
             layout_type (str): The type of the chunk (e.g., "LINE_SENTENCE_CHUNK").
-            confidence (float): The confidence score for the chunk.
+            confidence (float | None): The confidence score for the chunk, or None if not available.
 
         Returns:
             DocumentChunk: The created DocumentChunk instance.

@@ -17,6 +17,5 @@ The `LineSentenceChunker` is a new deterministic chunking algorithm that operate
 
 - **Textract LINE Blocks**: [AWS Textract Documentation](https://docs.aws.amazon.com/textract/latest/dg/how-it-works-lines-words.html)
 - **Textractor Library**: [Textractor GitHub](https://github.com/aws-samples/amazon-textract-textractor)
-- **Current Implementation**: See `src/ingestion_pipeline/chunking/strategies/layout_text.py` for comparison
 
 
