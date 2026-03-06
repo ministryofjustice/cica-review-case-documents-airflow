@@ -2,7 +2,7 @@
 
 import logging
 
-from ingestion_pipeline.chunking.base_document_chunker import DocumentChunker
+from ingestion_pipeline.chunking.document_chunk_strategy import ChunkStrategy
 from ingestion_pipeline.chunking.strategies.layout.layout_chunk_handler import TextractLayoutDocumentChunker
 from ingestion_pipeline.chunking.strategies.layout.layout_chunking_config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.strategies.layout.types.key_value.layout_key_value import KeyValueChunker
@@ -17,7 +17,7 @@ ALLOWED_CHUNKER_TYPES = {"layout", "linear-sentence-splitter"}
 logger = logging.getLogger(__name__)
 
 
-def get_document_chunker(chunker_type: str) -> DocumentChunker:
+def get_document_chunker(chunker_type: str) -> ChunkStrategy:
     """Factory function to return the desired DocumentChunker implementation.
 
     Args:
