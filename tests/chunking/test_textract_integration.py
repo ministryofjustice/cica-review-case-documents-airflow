@@ -16,8 +16,8 @@ from ingestion_pipeline.chunking.strategies.layout.layout_chunk_handler import (
     DocumentChunk,
     TextractLayoutDocumentChunker,
 )
-from ingestion_pipeline.chunking.strategies.layout.types.layout_text import LayoutTextChunkingStrategy
 from ingestion_pipeline.chunking.strategies.layout.types.table import LayoutTableChunkingStrategy
+from ingestion_pipeline.chunking.strategies.layout.types.text.layout_text import LayoutTextChunkingStrategy
 
 TEXTRACT_JSON_PATH = Path(__file__).parent / "data" / "single_text_layout_textract_response.json"
 
