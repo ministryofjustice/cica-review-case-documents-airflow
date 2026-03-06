@@ -85,21 +85,28 @@ DEST_BUCKET_NAME="${S3_KTA_DOCUMENTS_BUCKET_NAME}"
 
 IFS=',' read -ra KEY_ARRAY <<< "${SRC_S3_KEY}"
 for SRC_KEY_PATH in "${KEY_ARRAY[@]}"; do
-  TMP_FILE="/tmp/$(basename "${SRC_KEY_PATH}")"
+   # Trim leading and trailing whitespace from the key path
+  TRIMMED_SRC_KEY_PATH="${SRC_KEY_PATH#"${SRC_KEY_PATH%%[![:space:]]*}"}"
+  TRIMMED_SRC_KEY_PATH="${TRIMMED_SRC_KEY_PATH%"${TRIMMED_SRC_KEY_PATH##*[![:space:]]}"}"
+  # Skip empty keys (e.g. from consecutive commas)
+  if [ -z "${TRIMMED_SRC_KEY_PATH}" ]; then
+    continue
+  fi
+  TMP_FILE="/tmp/$(basename "${TRIMMED_SRC_KEY_PATH}")"
   echo "Downloading sample document from AWS S3..."
-  echo "Source S3 URI: s3://${SRC_BUCKET_NAME}/${SRC_KEY_PATH}"
-  if aws s3 cp "s3://${SRC_BUCKET_NAME}/${SRC_KEY_PATH}" "${TMP_FILE}"; then
+  echo "Source S3 URI: s3://${SRC_BUCKET_NAME}/${TRIMMED_SRC_KEY_PATH}"
+  if aws s3 cp "s3://${SRC_BUCKET_NAME}/${TRIMMED_SRC_KEY_PATH}" "${TMP_FILE}"; then
     echo "Uploading sample document to LocalStack S3..."
-    echo "Destination S3 URI: s3://${DEST_BUCKET_NAME}/${SRC_KEY_PATH}"
-    if awslocal s3 cp "${TMP_FILE}" "s3://${DEST_BUCKET_NAME}/${SRC_KEY_PATH}"; then
-      echo "Sample document copied to LocalStack S3 at s3://${DEST_BUCKET_NAME}/${SRC_KEY_PATH}"
-      echo "Listing contents of s3://${DEST_BUCKET_NAME}/$(dirname "${SRC_KEY_PATH}")/ in LocalStack S3:"
-      awslocal s3 ls "s3://${DEST_BUCKET_NAME}/$(dirname "${SRC_KEY_PATH}")/"
+    echo "Destination S3 URI: s3://${DEST_BUCKET_NAME}/${TRIMMED_SRC_KEY_PATH}"
+    if awslocal s3 cp "${TMP_FILE}" "s3://${DEST_BUCKET_NAME}/${TRIMMED_SRC_KEY_PATH}"; then
+      echo "Sample document copied to LocalStack S3 at s3://${DEST_BUCKET_NAME}/${TRIMMED_SRC_KEY_PATH}"
+      echo "Listing contents of s3://${DEST_BUCKET_NAME}/$(dirname "${TRIMMED_SRC_KEY_PATH}")/ in LocalStack S3:"
+      awslocal s3 ls "s3://${DEST_BUCKET_NAME}/$(dirname "${TRIMMED_SRC_KEY_PATH}")/"
     else
-      echo "ERROR: Failed to upload sample document to LocalStack S3: ${SRC_KEY_PATH}" >&2
+      echo "ERROR: Failed to upload sample document to LocalStack S3: ${TRIMMED_SRC_KEY_PATH}" >&2
     fi
   else
-    echo "WARNING: Could not download s3://${SRC_BUCKET_NAME}/${SRC_KEY_PATH}. Skipping this key." >&2
+    echo "WARNING: Could not download s3://${SRC_BUCKET_NAME}/${TRIMMED_SRC_KEY_PATH}. Skipping this key." >&2
   fi
   # Clean up temp file
   rm -f "${TMP_FILE}"
