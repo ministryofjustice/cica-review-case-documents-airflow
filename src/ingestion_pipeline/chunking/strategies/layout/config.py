@@ -3,8 +3,6 @@
 from dataclasses import dataclass
 from enum import Enum
 
-from ingestion_pipeline.config import settings
-
 
 # TODO review is this Enum used?
 class ChunkingStrategy(Enum):
@@ -20,15 +18,13 @@ class LayoutChunkingConfig:
 
     # TODO review perhaps create individual configs for each type
     # and a strategy to select the correct one?
-    maximum_chunk_size: int = settings.LAYOUT_CHUNKING_MAXIMUM_CHUNK_SIZE
-    strategy: ChunkingStrategy = ChunkingStrategy.LAYOUT_TEXT
+    maximum_chunk_size: int
 
     # Specific to table chunking strategies
     # is this statement true, review at a later date
-    y_tolerance_ratio: float = settings.LAYOUT_CHUNKING_Y_TOLERANCE_RATIO
-    max_vertical_gap: float = (
-        settings.LAYOUT_CHUNKING_MAX_VERTICAL_GAP
-    )  # Specific to grouping and merge chunking strategies
-    line_chunk_char_limit: int = (
-        settings.LAYOUT_CHUNKING_LINE_CHUNK_CHAR_LIMIT
-    )  # Specific to table line chunking strategies
+    y_tolerance_ratio: float
+    max_vertical_gap: float
+    line_chunk_char_limit: int
+
+    # TODO is this necessary?
+    strategy: ChunkingStrategy = ChunkingStrategy.LAYOUT_TEXT

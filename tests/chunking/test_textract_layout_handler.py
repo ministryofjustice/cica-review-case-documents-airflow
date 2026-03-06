@@ -270,7 +270,16 @@ def test_chunk_raises_error_on_strategy_handler_not_implemented(document_metadat
         def chunk(self, *args, **kwargs):
             raise NotImplementedError("Not implemented")
 
-    strategy_handlers = {"UNIMPLEMENTED": DummyHandler(LayoutChunkingConfig())}
+    strategy_handlers = {
+        "UNIMPLEMENTED": DummyHandler(
+            LayoutChunkingConfig(
+                maximum_chunk_size=500,
+                y_tolerance_ratio=0.1,
+                max_vertical_gap=10,
+                line_chunk_char_limit=100,
+            )
+        )
+    }
     page = MagicMock()
     page.layouts = [MagicMock(layout_type="UNIMPLEMENTED", text="Some text")]
     page.page_num = 1
