@@ -6,7 +6,7 @@ from typing import List, Optional
 from textractor.entities.bbox import BoundingBox
 
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
-from ingestion_pipeline.chunking.strategies.layout.layout_chunking_config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.strategies.layout.config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.strategies.layout.types.base import LayoutType
 from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes
 from ingestion_pipeline.chunking.verbose_page_debug_logger import is_verbose_page_debug, log_verbose_page_debug

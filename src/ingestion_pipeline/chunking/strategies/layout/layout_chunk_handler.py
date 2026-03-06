@@ -12,7 +12,7 @@ from textractor.entities.document import Document
 from ingestion_pipeline.chunking.chunk_strategy import ChunkError, ChunkStrategy
 from ingestion_pipeline.chunking.exceptions import ChunkException
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata, ProcessedDocument
-from ingestion_pipeline.chunking.strategies.layout.layout_chunking_config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.strategies.layout.config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.strategies.layout.types.base import LayoutType
 from ingestion_pipeline.chunking.strategies.layout.types.merge.chunk_merger import ChunkMerger
 from ingestion_pipeline.chunking.verbose_page_debug_logger import is_verbose_page_debug, log_verbose_page_debug
