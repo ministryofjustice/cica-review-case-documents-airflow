@@ -64,7 +64,6 @@ def get_chunk_strategy(chunker_type: str) -> ChunkStrategy:
             min_words=settings.SENTENCE_CHUNKER_MIN_WORDS,
             max_words=settings.SENTENCE_CHUNKER_MAX_WORDS,
             max_vertical_gap_ratio=settings.SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO,
-            debug=True,  # TODO add to settings or make configurable via parameter in the future
         )
         return LineBasedDocumentChunker(config=line_chunking_config)
     else:

@@ -48,7 +48,7 @@ class ChunkBuilder:
         bboxes = [bbox for _, bbox in lines]
         combined_bbox = combine_bounding_boxes(bboxes)
 
-        if self.config.debug:
+        if logger.isEnabledFor(logging.DEBUG):
             word_count = len(chunk_text.split())
             logger.debug(
                 f"Page {page_number}, Chunk {chunk_index}: "

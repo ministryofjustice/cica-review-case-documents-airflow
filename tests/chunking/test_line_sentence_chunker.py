@@ -38,7 +38,6 @@ def custom_chunker():
         min_words=10,
         max_words=20,
         max_vertical_gap_ratio=0.05,
-        debug=True,
     )
     return LineSentenceChunker(config=config)
 
@@ -79,13 +78,11 @@ class TestLineSentenceChunker:
             min_words=50,
             max_words=75,
             max_vertical_gap_ratio=0.03,
-            debug=True,
         )
         chunker = LineSentenceChunker(config=config)
         assert chunker.config.min_words == 50
         assert chunker.config.max_words == 75
         assert chunker.config.max_vertical_gap_ratio == 0.03
-        assert chunker.config.debug is True
 
     def test_empty_lines_returns_empty_list(self, chunker, sample_metadata):
         """Test that empty lines list returns empty chunks."""
