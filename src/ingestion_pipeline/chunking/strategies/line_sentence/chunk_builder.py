@@ -6,7 +6,7 @@ from typing import List, Tuple
 from textractor.entities.bbox import BoundingBox
 
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
-from ingestion_pipeline.chunking.strategies.line_sentence_chunker.config import LineSentenceChunkingConfig
+from ingestion_pipeline.chunking.strategies.line_sentence.config import LineSentenceChunkingConfig
 from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes
 
 logger = logging.getLogger(__name__)
