@@ -56,10 +56,13 @@ class ChunkBuilder:
             )
 
         # Create chunk with layout type and confidence
-        avg_confidence = 95.0
+        # The original confidence value represents a Textract Layout Block
+        # confidence score, it has no meaning in this context.
+        # It is not used anywat
+        # TODO review and potentially remove
         return DocumentChunk.from_textractor_layout(
             layout_type="LINE_SENTENCE_CHUNK",
-            confidence=avg_confidence,
+            confidence=None,  # see the comment
             page_number=page_number,
             metadata=metadata,
             chunk_index=chunk_index,
