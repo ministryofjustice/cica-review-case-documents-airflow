@@ -39,7 +39,6 @@ def chunker():
         min_words=10,
         max_words=20,
         max_vertical_gap_ratio=0.05,
-        debug=False,
     )
     return LineBasedDocumentChunker(config=config)
 
@@ -92,14 +91,12 @@ class TestLineBasedDocumentChunker:
             min_words=50,
             max_words=75,
             max_vertical_gap_ratio=0.03,
-            debug=True,
         )
         chunker = LineBasedDocumentChunker(config=config)
 
         assert chunker.config.min_words == 50
         assert chunker.config.max_words == 75
         assert chunker.config.max_vertical_gap_ratio == 0.03
-        assert chunker.config.debug is True
 
     def test_chunk_empty_document_raises_chunk_error(self, chunker, sample_metadata):
         """Test that empty document raises ChunkError wrapping ValueError."""
