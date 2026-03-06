@@ -16,7 +16,6 @@ from ingestion_pipeline.chunking.strategies.layout.config import LayoutChunkingC
 from ingestion_pipeline.chunking.strategies.layout.types.base import LayoutType
 from ingestion_pipeline.chunking.strategies.layout.types.merge.chunk_merger import ChunkMerger
 from ingestion_pipeline.chunking.verbose_page_debug_logger import is_verbose_page_debug, log_verbose_page_debug
-from ingestion_pipeline.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -32,21 +31,16 @@ class TextractLayoutDocumentChunker(ChunkStrategy):
     def __init__(
         self,
         strategy_handlers: Mapping[str, LayoutType],
-        config: Optional[LayoutChunkingConfig] = None,
+        config: LayoutChunkingConfig,
     ):
-        """Initializes the TextractLayoutDocumentChunker.
+        """Initializes the TextractLayoutDocumentChunker with strategy handlers and configuration.
 
         Args:
-            strategy_handlers (Mapping[str, LayoutType]):
-                Mapping of layout block types to their corresponding chunking strategy handlers.
-            config (Optional[ChunkingConfig], optional): Configuration settings for chunking. Defaults to None.
+            strategy_handlers (Mapping[str, LayoutType]): Mapping of layout block types
+            to their corresponding chunking strategy handlers.
+            config (LayoutChunkingConfig): Configuration settings for chunking.
         """
-        self.config = config or LayoutChunkingConfig(
-            maximum_chunk_size=settings.LAYOUT_CHUNKING_MAXIMUM_CHUNK_SIZE,
-            y_tolerance_ratio=settings.LAYOUT_CHUNKING_Y_TOLERANCE_RATIO,
-            max_vertical_gap=settings.LAYOUT_CHUNKING_MAX_VERTICAL_GAP,
-            line_chunk_char_limit=settings.LAYOUT_CHUNKING_LINE_CHUNK_CHAR_LIMIT,
-        )
+        self.config = config
         self.strategy_handlers = strategy_handlers
 
     def chunk(self, doc: Document, metadata: DocumentMetadata) -> ProcessedDocument:
