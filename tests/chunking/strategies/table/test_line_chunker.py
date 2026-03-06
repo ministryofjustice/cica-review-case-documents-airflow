@@ -8,7 +8,7 @@ import pytest
 # Application modules that we will be patching
 import ingestion_pipeline.chunking.strategies.layout.types.table.base as base_module
 import ingestion_pipeline.chunking.strategies.layout.types.table.line_chunker as line_chunker_module
-from ingestion_pipeline.chunking.strategies.layout.layout_chunking_config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.strategies.layout.config import LayoutChunkingConfig
 from ingestion_pipeline.chunking.strategies.layout.types.table.line_chunker import LineTableChunker
 
 

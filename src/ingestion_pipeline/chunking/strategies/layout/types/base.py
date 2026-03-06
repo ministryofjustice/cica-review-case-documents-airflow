@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
-from ingestion_pipeline.chunking.strategies.layout.layout_chunking_config import (
+from ingestion_pipeline.chunking.strategies.layout.config import (
     LayoutChunkingConfig,
 )  # ← Changed import
 
