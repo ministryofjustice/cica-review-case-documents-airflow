@@ -5,17 +5,17 @@ from typing import List, Optional
 
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 from ingestion_pipeline.chunking.strategies.layout.layout_chunking_config import LayoutChunkingConfig
-from ingestion_pipeline.chunking.strategies.layout.types.base import ChunkingStrategyHandler
+from ingestion_pipeline.chunking.strategies.layout.types.base import LayoutType
 from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes
 
 logger = logging.getLogger(__name__)
 
 
-class LayoutListChunkingStrategy(ChunkingStrategyHandler):
+class LayoutListChunkingStrategy(LayoutType):
     """Chunking strategy for LAYOUT_LIST blocks.
 
     Args:
-        ChunkingStrategyHandler (ChunkingStrategyHandler): The base chunking strategy handler.
+        LayoutType (LayoutType): The base chunking strategy handler.
 
     Returns:
         LayoutListChunkingStrategy: An instance of the list chunking strategy.

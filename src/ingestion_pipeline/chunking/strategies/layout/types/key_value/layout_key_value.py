@@ -9,20 +9,20 @@ from textractor.entities.layout import Layout
 from textractor.entities.line import Line
 
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
-from ingestion_pipeline.chunking.strategies.layout.types.base import ChunkingStrategyHandler
+from ingestion_pipeline.chunking.strategies.layout.types.base import LayoutType
 from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes
 
 logger = logging.getLogger(__name__)
 
 
-class KeyValueChunker(ChunkingStrategyHandler):
+class KeyValueChunker(LayoutType):
     """Chunking strategy for LAYOUT_KEY_VALUE blocks.
 
     Handles LAYOUT_KEY_VALUE blocks, creating chunks for both KeyValue pairs
     and individual Line objects found within the block.
 
     Args:
-        ChunkingStrategyHandler (ChunkingStrategyHandler): The base chunking strategy handler.
+        LayoutType (LayoutType): The base chunking strategy handler.
 
     Returns:
     List[DocumentChunk]: DocumentChunks created from the KeyValue block.
