@@ -16,6 +16,7 @@ from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
 from ingestion_pipeline.chunking.strategies.line_sentence.chunk_builder import ChunkBuilder
 from ingestion_pipeline.chunking.strategies.line_sentence.config import LineSentenceChunkingConfig
 from ingestion_pipeline.chunking.strategies.line_sentence.sentence_detector import SentenceDetector
+from ingestion_pipeline.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,11 @@ class LineSentenceChunker:
         Args:
             config: Configuration for chunking behavior
         """
-        self.config = config or LineSentenceChunkingConfig()
+        self.config = config or LineSentenceChunkingConfig(
+            min_words=settings.SENTENCE_CHUNKER_MIN_WORDS,
+            max_words=settings.SENTENCE_CHUNKER_MAX_WORDS,
+            max_vertical_gap_ratio=settings.SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO,
+        )
         self.chunk_builder = ChunkBuilder(self.config)
         self.sentence_detector = SentenceDetector()
 
@@ -89,16 +94,15 @@ class LineSentenceChunker:
             line_bbox = line.bbox
             line_word_count = len(line_text.split())
 
-            if self.config.debug:
-                logger.debug(
-                    '"%s",%s,%s,%s,%s,%s',
-                    line_text.replace(chr(34), chr(39)),
-                    line_text.split(),
-                    line_bbox.x,
-                    line_bbox.y,
-                    line_bbox.width,
-                    line_bbox.height,
-                )
+            logger.debug(
+                '"%s",%s,%s,%s,%s,%s',
+                line_text.replace(chr(34), chr(39)),
+                line_text.split(),
+                line_bbox.x,
+                line_bbox.y,
+                line_bbox.width,
+                line_bbox.height,
+            )
 
             # Detect vertical gap before adding the line
             should_break_on_gap = False
@@ -166,8 +170,7 @@ class LineSentenceChunker:
         if current_lines:
             self._emit_chunk(chunks, current_lines, page_number, metadata, chunk_index, "final_chunk")
 
-        if self.config.debug:
-            logger.debug(f"Page {page_number}: Created {len(chunks)} chunks from {len(sorted_lines)} lines")
+        logger.debug(f"Page {page_number}: Created {len(chunks)} chunks from {len(sorted_lines)} lines")
 
         return chunks
 

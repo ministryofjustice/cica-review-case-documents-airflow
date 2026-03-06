@@ -73,14 +73,6 @@ def create_mock_line(text: str, top: float, left: float = 0.1, width: float = 0.
 class TestLineSentenceChunker:
     """Test suite for LineSentenceChunker."""
 
-    def test_initialization_with_defaults(self):
-        """Test that chunker initializes with default configuration."""
-        chunker = LineSentenceChunker()
-        assert chunker.config.min_words == 60
-        assert chunker.config.max_words == 120
-        assert chunker.config.max_vertical_gap_ratio == 0.05
-        assert chunker.config.debug is False
-
     def test_initialization_with_custom_config(self):
         """Test that chunker initializes with custom configuration."""
         config = LineSentenceChunkingConfig(
@@ -377,7 +369,7 @@ class TestEdgeCases:
 
     def test_exactly_min_words_with_sentence_boundary(self, sample_metadata):
         """Test behavior when reaching exactly min_words with sentence boundary."""
-        config = LineSentenceChunkingConfig(min_words=5, max_words=10)
+        config = LineSentenceChunkingConfig(min_words=5, max_words=10, max_vertical_gap_ratio=0.05)
         chunker = LineSentenceChunker(config=config)
 
         lines = [
@@ -392,7 +384,7 @@ class TestEdgeCases:
 
     def test_exactly_max_words(self, sample_metadata):
         """Test behavior when reaching exactly max_words."""
-        config = LineSentenceChunkingConfig(min_words=5, max_words=10)
+        config = LineSentenceChunkingConfig(min_words=5, max_words=10, max_vertical_gap_ratio=0.05)
         chunker = LineSentenceChunker(config=config)
 
         lines = [
@@ -407,7 +399,7 @@ class TestEdgeCases:
 
     def test_single_line_exceeds_max_words(self, sample_metadata):
         """Test handling when a single line exceeds max_words."""
-        config = LineSentenceChunkingConfig(min_words=5, max_words=10)
+        config = LineSentenceChunkingConfig(min_words=5, max_words=10, max_vertical_gap_ratio=0.05)
         chunker = LineSentenceChunker(config=config)
 
         # Single line with more than max_words
