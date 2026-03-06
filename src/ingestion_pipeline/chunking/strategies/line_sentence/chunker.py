@@ -266,7 +266,3 @@ class LineSentenceChunker:
                 if split_at > 0:
                     return split_at
         return None
-
-    def _ends_with_sentence_terminator(self, text: str) -> bool:
-        """Delegate to SentenceDetector (kept for test compatibility)."""
-        return self.sentence_detector.ends_with_sentence_terminator(text)
