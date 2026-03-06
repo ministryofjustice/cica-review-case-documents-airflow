@@ -9,7 +9,7 @@ from ingestion_pipeline.chunking.strategies.layout.layout_chunking_config import
 )  # ← Changed import
 
 
-class ChunkingStrategyHandler(ABC):
+class LayoutType(ABC):
     """Abstract base class for chunking strategies."""
 
     def __init__(self, config: LayoutChunkingConfig):
