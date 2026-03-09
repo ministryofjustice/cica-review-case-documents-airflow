@@ -155,16 +155,6 @@ class LineSentenceChunker:
                         chunk_index = self._emit_chunk(
                             chunks, emit_lines, page_number, metadata, chunk_index, "backward_sentence_boundary"
                         )
-
-                    # Force close if still over max_words after any split
-                    if current_word_count >= self.config.max_words:
-                        reason = f"max_words={current_word_count} >= {self.config.max_words}"
-                        chunk_index = self._emit_chunk(
-                            chunks, current_lines, page_number, metadata, chunk_index, reason
-                        )
-                        current_lines = []
-                        current_word_count = 0
-
             i += 1
 
         if current_lines:
