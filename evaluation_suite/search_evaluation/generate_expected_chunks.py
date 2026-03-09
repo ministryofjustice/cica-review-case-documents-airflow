@@ -9,14 +9,17 @@ import snowballstemmer
 
 from evaluation_suite.search_evaluation.chunks_loader import get_chunk_details_from_opensearch
 from evaluation_suite.search_evaluation.date_formats import extract_dates_for_search, is_date_search
+from evaluation_suite.search_evaluation.evaluation_settings import (
+    CHUNK_GEN_DATE_VARIANTS,
+    CHUNK_GEN_USE_STEMMING,
+)
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 TESTING_DIR = SCRIPT_DIR.parent
 INPUT_FILE = TESTING_DIR / "testing_docs" / "search_terms.csv"
 OUTPUT_FILE = INPUT_FILE
 
-DATE_FORMAT_VARIANTS = False
-USE_STEMMING = False
+CHUNKING_STRATEGY = ""  # Placeholder for chunking strategy, will be added once chunking strategy has a location
 
 _stemmer = snowballstemmer.stemmer("english")
 
@@ -83,10 +86,46 @@ def _read_csv_file(file_path: Path) -> tuple[list[str] | None, list[dict]]:
     return fieldnames, rows
 
 
-def _write_csv_file(file_path: Path, fieldnames: list[str], rows: list[dict]) -> None:
-    """Write rows to CSV file."""
+def _write_csv_file(
+    file_path: Path,
+    fieldnames: list[str],
+    rows: list[dict],
+    *,
+    use_date_variants: bool = False,
+    use_stemming: bool = False,
+    chunking_strategy: str = "",
+) -> None:
+    """Write rows to CSV file with metadata in extra columns.
+
+    Metadata columns are added/replaced in the first data row on every write.
+
+    Args:
+        file_path: Path to write the CSV file.
+        fieldnames: List of column names.
+        rows: List of data rows.
+        use_date_variants: Whether date variant matching was used for chunk generation.
+        use_stemming: Whether stemming was used for chunk generation.
+        chunking_strategy: Identifier for the chunking strategy used.
+    """
+    # Metadata columns - always add/replace
+    output_fieldnames = list(fieldnames)
+    metadata_cols = [
+        "chunks_generated_with_date_variants",
+        "chunks_generated_with_stemming",
+        "chunking_strategy",
+    ]
+    for col in metadata_cols:
+        if col not in output_fieldnames:
+            output_fieldnames.append(col)
+
+    # Always overwrite metadata in first row
+    if rows:
+        rows[0]["chunks_generated_with_date_variants"] = str(use_date_variants)
+        rows[0]["chunks_generated_with_stemming"] = str(use_stemming)
+        rows[0]["chunking_strategy"] = chunking_strategy
+
     with open(file_path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer = csv.DictWriter(f, fieldnames=output_fieldnames)
         writer.writeheader()
         writer.writerows(rows)
 
@@ -94,12 +133,17 @@ def _write_csv_file(file_path: Path, fieldnames: list[str], rows: list[dict]) ->
 def _process_search_terms(
     rows: list[dict],
     all_chunks: list[dict],
+    *,
+    use_date_variants: bool = False,
+    use_stemming: bool = False,
 ) -> list[dict]:
     """Process search terms and update rows with matching chunks.
 
     Args:
         rows: List of CSV rows with search_term column
         all_chunks: List of all chunks from OpenSearch
+        use_date_variants: Whether date variant matching was used
+        use_stemming: Whether stemming was used
 
     Returns:
         Updated rows with expected_chunk_id and expected_page_number populated
@@ -116,8 +160,8 @@ def _process_search_terms(
             matching = find_matching_chunks(
                 all_chunks,
                 search_term,
-                use_date_variants=DATE_FORMAT_VARIANTS,
-                use_stemming=USE_STEMMING,
+                use_date_variants=use_date_variants,
+                use_stemming=use_stemming,
             )
 
             chunk_ids = [chunk["chunk_id"] for chunk in matching]
@@ -159,18 +203,30 @@ def generate_expected_chunks() -> None:
 
     logger.info(f"Loaded {len(all_chunks)} chunks. Processing {len(rows)} search terms...")
 
-    # Process search terms
-    updated_rows = _process_search_terms(rows, all_chunks)
+    # Process search terms with current settings
+    updated_rows = _process_search_terms(
+        rows,
+        all_chunks,
+        use_date_variants=CHUNK_GEN_DATE_VARIANTS,
+        use_stemming=CHUNK_GEN_USE_STEMMING,
+    )
 
-    # Write updated CSV
-    _write_csv_file(OUTPUT_FILE, fieldnames, updated_rows)
+    # Write updated CSV with metadata header
+    _write_csv_file(
+        OUTPUT_FILE,
+        fieldnames,
+        updated_rows,
+        use_date_variants=CHUNK_GEN_DATE_VARIANTS,
+        use_stemming=CHUNK_GEN_USE_STEMMING,
+        chunking_strategy=CHUNKING_STRATEGY,
+    )
 
     logger.info(f"Updated {OUTPUT_FILE}")
 
 
 def main() -> None:
     """Main entry point."""
-    logger.info("Generating expected chunks from OpenSearch...")
+    logger.info("Generating expected chunk IDs...")
     generate_expected_chunks()
     logger.info("Done!")
 

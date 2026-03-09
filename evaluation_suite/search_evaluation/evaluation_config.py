@@ -100,11 +100,12 @@ def get_active_search_type() -> str:
     return methods[0] if methods else "exact"
 
 
-def get_search_config(timestamp: str | None = None) -> dict:
+def get_search_config(timestamp: str | None = None, csv_metadata: dict | None = None) -> dict:
     """Get the current search configuration as a dictionary.
 
     Args:
         timestamp: Optional timestamp string. If None, generates current timestamp.
+        csv_metadata: Optional metadata dict from search_terms.csv header.
 
     Returns:
         Dictionary containing all search configuration parameters.
@@ -112,10 +113,12 @@ def get_search_config(timestamp: str | None = None) -> dict:
     if timestamp is None:
         timestamp = get_timestamp()
 
+    csv_metadata = csv_metadata or {}
+
     return {
         "search_type": get_active_search_type(),
         "score_filter": settings.SCORE_FILTER,
-        "k_queries": settings.K_QUERIES,
+        "result_size": settings.RESULT_SIZE,
         "keyword_boost": settings.KEYWORD_BOOST,
         "analyser_boost": settings.ANALYSER_BOOST,
         "semantic_boost": settings.SEMANTIC_BOOST,
@@ -123,5 +126,8 @@ def get_search_config(timestamp: str | None = None) -> dict:
         "wildcard_boost": settings.WILDCARD_BOOST,
         "fuzziness": settings.FUZZINESS,
         "max_expansions": settings.MAX_EXPANSIONS,
+        "chunks_generated_with_date_variants": csv_metadata.get("chunks_generated_with_date_variants", False),
+        "chunks_generated_with_stemming": csv_metadata.get("chunks_generated_with_stemming", False),
+        "chunking_strategy": csv_metadata.get("chunking_strategy", ""),
         "timestamp": timestamp,
     }

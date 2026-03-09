@@ -81,7 +81,7 @@ def test_count_term_occurrences_both_empty():
 @patch("evaluation_suite.search_evaluation.search_client.eval_settings")
 def test_local_search_client_raises_on_general_exception(mock_settings, mock_embedding_gen, mock_get_client):
     """Test local_search_client raises on unexpected exceptions."""
-    mock_settings.K_QUERIES = 5
+    mock_settings.RESULT_SIZE = 5
     mock_embedding_gen.return_value.generate_embedding.side_effect = RuntimeError("Unexpected error")
 
     with pytest.raises(RuntimeError, match="Unexpected error"):
@@ -100,7 +100,7 @@ def test_local_search_client_returns_hits(mock_embedding_gen, mock_get_client):
     mock_get_client.return_value = mock_client
 
     with (
-        patch.object(eval_settings, "K_QUERIES", 5),
+        patch.object(eval_settings, "RESULT_SIZE", 5),
         patch.object(eval_settings, "KEYWORD_BOOST", 1.0),
         patch.object(eval_settings, "ANALYSER_BOOST", 0),
         patch.object(eval_settings, "FUZZY_BOOST", 0),

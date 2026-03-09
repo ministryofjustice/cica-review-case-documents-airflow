@@ -51,7 +51,7 @@ def test_build_hybrid_clauses_all_boosts_active(mock_settings):
     mock_settings.MAX_EXPANSIONS = 10
     mock_settings.PREFIX_LENGTH = 1
 
-    clauses = search_query_builder._build_hybrid_clauses("test", [0.1, 0.2], k=5)
+    clauses = search_query_builder._build_hybrid_clauses("test", [0.1, 0.2], result_size=5)
     clause_keys = [list(c.keys())[0] for c in clauses]
 
     assert "match" in clause_keys
@@ -70,7 +70,7 @@ def test_build_hybrid_clauses_all_boosts_zero(mock_settings):
     mock_settings.WILDCARD_BOOST = 0
     mock_settings.SEMANTIC_BOOST = 0
 
-    clauses = search_query_builder._build_hybrid_clauses("test", [0.1, 0.2], k=5)
+    clauses = search_query_builder._build_hybrid_clauses("test", [0.1, 0.2], result_size=5)
     assert clauses == []
 
 
@@ -83,7 +83,7 @@ def test_build_hybrid_clauses_keyword_only(mock_settings):
     mock_settings.WILDCARD_BOOST = 0
     mock_settings.SEMANTIC_BOOST = 0
 
-    clauses = search_query_builder._build_hybrid_clauses("test", [0.1, 0.2], k=5)
+    clauses = search_query_builder._build_hybrid_clauses("test", [0.1, 0.2], result_size=5)
     assert len(clauses) == 1
     assert "match" in clauses[0]
 
@@ -98,7 +98,7 @@ def test_create_hybrid_query_with_dates(mock_extract_dates, mock_settings):
     mock_settings.DATE_FORMAT_DETECTION = True
     mock_extract_dates.return_value = ["12/05/2021", "2021-05-12"]
 
-    query = search_query_builder.create_hybrid_query("12/05/2021", [0.1, 0.2], k=5)
+    query = search_query_builder.create_hybrid_query("12/05/2021", [0.1, 0.2], result_size=5)
 
     assert "bool" in query["query"]
     clauses = query["query"]["bool"]["should"]
@@ -118,7 +118,7 @@ def test_create_hybrid_query_no_dates(mock_extract_dates, mock_settings):
     mock_settings.SEMANTIC_BOOST = 0
     mock_extract_dates.return_value = []
 
-    query = search_query_builder.create_hybrid_query("fracture", [0.1, 0.2], k=5)
+    query = search_query_builder.create_hybrid_query("fracture", [0.1, 0.2], result_size=5)
 
     assert "bool" in query["query"]
     clauses = query["query"]["bool"]["should"]
@@ -137,7 +137,7 @@ def test_create_hybrid_query_date_detection_disabled(mock_extract_dates, mock_se
     mock_settings.WILDCARD_BOOST = 0
     mock_settings.SEMANTIC_BOOST = 0
 
-    search_query_builder.create_hybrid_query("12/05/2021", [0.1, 0.2], k=5)
+    search_query_builder.create_hybrid_query("12/05/2021", [0.1, 0.2], result_size=5)
 
     mock_extract_dates.assert_not_called()
 
@@ -153,7 +153,7 @@ def test_create_hybrid_query_contains_source_fields(mock_extract_dates, mock_set
     mock_settings.WILDCARD_BOOST = 0
     mock_settings.SEMANTIC_BOOST = 0
 
-    query = search_query_builder.create_hybrid_query("fracture", [0.1, 0.2], k=5)
+    query = search_query_builder.create_hybrid_query("fracture", [0.1, 0.2], result_size=5)
 
     assert "_source" in query
     assert "chunk_text" in query["_source"]

@@ -12,7 +12,7 @@ from evaluation_suite.search_evaluation import evaluation_settings as eval_setti
 from evaluation_suite.search_evaluation.date_formats import extract_dates_for_search
 
 
-def _build_hybrid_clauses(query_text: str, query_vector: list[float], k: int) -> list[dict]:
+def _build_hybrid_clauses(query_text: str, query_vector: list[float], result_size: int) -> list[dict]:
     """Build the standard hybrid search clauses based on evaluation settings.
 
     Returns a list of should clauses for keyword, analyzer, fuzzy, wildcard, and semantic search.
@@ -21,7 +21,7 @@ def _build_hybrid_clauses(query_text: str, query_vector: list[float], k: int) ->
     Args:
         query_text: The text query to search for.
         query_vector: The embedding vector for semantic search.
-        k: Number of nearest neighbours for knn search.
+        result_size: Number of nearest neighbours for knn search.
 
     Returns:
         List of OpenSearch query clause dicts.
@@ -71,12 +71,14 @@ def _build_hybrid_clauses(query_text: str, query_vector: list[float], k: int) ->
         )
 
     if eval_settings.SEMANTIC_BOOST > 0:
-        clauses.append({"knn": {"embedding": {"vector": query_vector, "k": k, "boost": eval_settings.SEMANTIC_BOOST}}})
+        clauses.append(
+            {"knn": {"embedding": {"vector": query_vector, "k": result_size, "boost": eval_settings.SEMANTIC_BOOST}}}
+        )
 
     return clauses
 
 
-def create_hybrid_query(query_text: str, query_vector: list[float], k: int = 5) -> dict:
+def create_hybrid_query(query_text: str, query_vector: list[float], result_size: int = 5) -> dict:
     """Create a hybrid search query combining keyword, fuzzy, and semantic vector search.
 
     Each search type is only included if its boost value is greater than 0.
@@ -88,7 +90,7 @@ def create_hybrid_query(query_text: str, query_vector: list[float], k: int = 5) 
     Args:
         query_text: The text query to search for.
         query_vector: The embedding vector for semantic search.
-        k: Number of results to return.
+        result_size: Number of results to return.
 
     Returns:
         OpenSearch query dict.
@@ -104,7 +106,7 @@ def create_hybrid_query(query_text: str, query_vector: list[float], k: int = 5) 
             )
 
         query_body = {
-            "size": k,
+            "size": result_size,
             "_source": ["document_id", "page_number", "chunk_text", "case_ref"],
             "query": {
                 "bool": {
@@ -117,10 +119,10 @@ def create_hybrid_query(query_text: str, query_vector: list[float], k: int = 5) 
 
         return query_body
 
-    should_clauses = _build_hybrid_clauses(query_text, query_vector, k)
+    should_clauses = _build_hybrid_clauses(query_text, query_vector, result_size)
 
     query_body = {
-        "size": k,
+        "size": result_size,
         "_source": ["document_id", "page_number", "chunk_text", "case_ref"],
         "query": {
             "bool": {

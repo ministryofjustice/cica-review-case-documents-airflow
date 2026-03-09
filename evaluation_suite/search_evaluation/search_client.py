@@ -45,8 +45,10 @@ def local_search_client(search_term: str) -> list[dict]:
 
         client = get_opensearch_client()
 
-        search_query = create_hybrid_query(search_term, embedding, k=eval_settings.K_QUERIES)
-        logger.debug(f"Hybrid search: '{search_term}', k={eval_settings.K_QUERIES}, index='{CHUNK_INDEX_NAME}'")
+        search_query = create_hybrid_query(search_term, embedding, result_size=eval_settings.RESULT_SIZE)
+        logger.debug(
+            f"Hybrid search: '{search_term}', result_size={eval_settings.RESULT_SIZE}, index='{CHUNK_INDEX_NAME}'"
+        )
         response = client.search(index=CHUNK_INDEX_NAME, body=search_query)
 
         hits = response["hits"]["hits"]
@@ -109,8 +111,8 @@ def write_hits_to_xlsx(
     worksheet.write(1, 0, search_term)
     worksheet.write(0, 1, "Search type:")
     worksheet.write(1, 1, search_type_str)
-    worksheet.write(0, 2, "K_queries:")
-    worksheet.write(1, 2, eval_settings.K_QUERIES)
+    worksheet.write(0, 2, "result_size:")
+    worksheet.write(1, 2, eval_settings.RESULT_SIZE)
     worksheet.write(0, 3, "Score filter:")
     worksheet.write(1, 3, effective_filter)
     worksheet.write(0, 4, "Keyword boost:")

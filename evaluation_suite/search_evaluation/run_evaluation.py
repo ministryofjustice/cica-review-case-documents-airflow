@@ -9,7 +9,7 @@ Usage:
 
 For programmatic use with settings overrides:
     from evaluation_suite.search_evaluation.run_evaluation import run_evaluation
-    result = run_evaluation(settings_overrides={"KEYWORD_BOOST": 2.0, "K_QUERIES": 100})
+    result = run_evaluation(settings_overrides={"KEYWORD_BOOST": 2.0, "RESULT_SIZE": 100})
 """
 
 import logging
@@ -48,7 +48,7 @@ def run_evaluation(
     Args:
         settings_overrides: Optional dict of evaluation_settings to override.
             Keys should match setting names in evaluation_settings.py
-            (e.g., KEYWORD_BOOST, K_QUERIES, SCORE_FILTER).
+            (e.g., KEYWORD_BOOST, RESULT_SIZE, SCORE_FILTER).
         log_to_file: Whether to write per-run CSV results file.
             Set to False for optimization runs. The evaluation log is always
             updated regardless of this setting.
@@ -69,20 +69,20 @@ def run_evaluation(
         # Generate timestamp for this run
         timestamp = get_timestamp()
 
-        # Capture search configuration
-        config = get_search_config(timestamp)
-        logger.info(f"Search config: {config}")
-
         # Log which case is being evaluated
         logger.info(f"Evaluating case: {eval_settings.CASE_FILTER}")
 
         # Run search loop
         logger.info("Running search loop...")
-        results_df = run_search_loop()
+        results_df, csv_metadata = run_search_loop()
 
         if results_df.empty:
             logger.error("No search results to evaluate.")
             return None
+
+        # Capture search configuration (includes CSV metadata)
+        config = get_search_config(timestamp, csv_metadata)
+        logger.info(f"Search config: {config}")
 
         # Evaluate relevance
         logger.info(f"Evaluating {len(results_df)} search results...")

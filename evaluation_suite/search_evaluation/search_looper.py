@@ -24,8 +24,15 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("search_looper")
 
 
-def load_search_terms(input_file: Path) -> pd.DataFrame:
-    """Load search terms from a CSV file."""
+def load_search_terms(input_file: Path) -> tuple[pd.DataFrame, dict]:
+    """Load search terms from a CSV file.
+
+    Args:
+        input_file: Path to CSV file with search terms.
+
+    Returns:
+        Tuple of (DataFrame with search terms, metadata dict from first row columns).
+    """
     df = pd.read_csv(input_file, dtype=str).fillna("")
     # Rename columns to standardize
     df = df.rename(
@@ -37,7 +44,26 @@ def load_search_terms(input_file: Path) -> pd.DataFrame:
     # Strip whitespace from all string columns
     for col in df.columns:
         df[col] = df[col].str.strip()
-    return df
+
+    # Extract metadata from first row if present
+    metadata = {}
+    metadata_cols = [
+        "chunks_generated_with_date_variants",
+        "chunks_generated_with_stemming",
+        "chunking_strategy",
+    ]
+    if not df.empty:
+        for col in metadata_cols:
+            if col in df.columns:
+                val = df.iloc[0].get(col, "")
+                if val.lower() == "true":
+                    metadata[col] = True
+                elif val.lower() == "false":
+                    metadata[col] = False
+                elif val:
+                    metadata[col] = val
+
+    return df, metadata
 
 
 def _process_hits(filtered_hits: list[dict], search_term: str) -> dict:
@@ -74,22 +100,22 @@ def _process_hits(filtered_hits: list[dict], search_term: str) -> dict:
     }
 
 
-def run_search_loop(input_file: Path | None = None) -> pd.DataFrame:
+def run_search_loop(input_file: Path | None = None) -> tuple[pd.DataFrame, dict]:
     """Run search loop and return results as a DataFrame.
 
     Args:
         input_file: Path to CSV file with search terms. Uses default INPUT_FILE if None.
 
     Returns:
-        DataFrame with search results including all chunk IDs, page numbers, and term frequencies.
+        Tuple of (DataFrame with search results, metadata dict from CSV header).
     """
     file_path = input_file or INPUT_FILE
 
     if not file_path.exists():
         logger.error(f"Input file not found: {file_path}")
-        return pd.DataFrame()
+        return pd.DataFrame(), {}
 
-    search_terms_df = load_search_terms(file_path)
+    search_terms_df, csv_metadata = load_search_terms(file_path)
     logger.info(f"Loaded {len(search_terms_df)} search terms from {file_path}")
 
     results = []
@@ -127,15 +153,16 @@ def run_search_loop(input_file: Path | None = None) -> pd.DataFrame:
     results_df.insert(0, "index", range(1, len(results_df) + 1))
 
     logger.info("Search loop completed.")
-    return results_df
+    return results_df, csv_metadata
 
 
 def main():
     """Main entry point for the search looper (for standalone testing)."""
     logger.info("Search looper started.")
-    results_df = run_search_loop()
+    results_df, metadata = run_search_loop()
     if not results_df.empty:
         logger.info(f"Results:\n{results_df.to_string()}")
+        logger.info(f"CSV Metadata: {metadata}")
     logger.info("Search looper finished.")
 
 

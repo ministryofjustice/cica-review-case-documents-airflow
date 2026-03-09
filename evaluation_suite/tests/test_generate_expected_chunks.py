@@ -1,7 +1,7 @@
 """Unit tests for generate_expected_chunks.py."""
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from evaluation_suite.search_evaluation import generate_expected_chunks
 
@@ -134,35 +134,49 @@ def test_find_matching_chunks_whitespace_handling(mock_is_date_search):
 
 
 # Tests for _read_csv_file
-@patch("builtins.open", create=True)
-def test_read_csv_file_success(mock_file):
+def test_read_csv_file_success(tmp_path):
     """Test that _read_csv_file reads CSV correctly."""
-    mock_file.return_value.__enter__.return_value = MagicMock()
+    csv_file = tmp_path / "test.csv"
+    csv_content = """search_term,expected_chunk_id,expected_page_number
+injury,c1,1
+brain,c2,2
+"""
+    csv_file.write_text(csv_content)
 
-    with patch("evaluation_suite.search_evaluation.generate_expected_chunks.csv.DictReader") as mock_reader:
-        mock_reader.return_value.fieldnames = ["search_term", "expected_chunk_id"]
-        mock_reader.return_value.__iter__ = lambda x: iter([{"search_term": "injury", "expected_chunk_id": ""}])
+    fieldnames, rows = generate_expected_chunks._read_csv_file(csv_file)
 
-        fieldnames, rows = generate_expected_chunks._read_csv_file(Path("test.csv"))
-
-        assert fieldnames == ["search_term", "expected_chunk_id"]
-        assert len(rows) == 1
+    assert "search_term" in fieldnames
+    assert "expected_chunk_id" in fieldnames
+    assert len(rows) == 2
 
 
 # Tests for _write_csv_file
-@patch("builtins.open", create=True)
-def test_write_csv_file_success(mock_file):
-    """Test that _write_csv_file writes CSV correctly."""
-    mock_file_handle = MagicMock()
-    mock_file.return_value.__enter__.return_value = mock_file_handle
+def test_write_csv_file_success(tmp_path):
+    """Test that _write_csv_file writes CSV correctly with metadata columns."""
+    csv_file = tmp_path / "test.csv"
+    fieldnames = ["search_term", "expected_chunk_id"]
+    rows = [
+        {"search_term": "injury", "expected_chunk_id": "c1"},
+        {"search_term": "brain", "expected_chunk_id": "c2"},
+    ]
 
-    with patch("evaluation_suite.search_evaluation.generate_expected_chunks.csv.DictWriter") as mock_writer:
-        fieldnames = ["search_term", "expected_chunk_id"]
-        rows = [{"search_term": "injury", "expected_chunk_id": "c1"}]
+    generate_expected_chunks._write_csv_file(
+        csv_file,
+        fieldnames,
+        rows,
+        use_date_variants=True,
+        use_stemming=False,
+        chunking_strategy="layout_text",
+    )
 
-        generate_expected_chunks._write_csv_file(Path("test.csv"), fieldnames, rows)
-
-        mock_writer.assert_called_once_with(mock_file_handle, fieldnames=fieldnames)
+    # Read back and verify
+    content = csv_file.read_text()
+    assert "chunks_generated_with_date_variants" in content
+    assert "chunks_generated_with_stemming" in content
+    assert "chunking_strategy" in content
+    assert "True" in content  # First row has metadata
+    assert "False" in content
+    assert "layout_text" in content
 
 
 # Tests for _process_search_terms

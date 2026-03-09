@@ -41,7 +41,7 @@ def test_load_search_terms_returns_dataframe(tmp_path):
             },
         ],
     )
-    df = search_looper.load_search_terms(csv_path)
+    df, metadata = search_looper.load_search_terms(csv_path)
     assert isinstance(df, pd.DataFrame)
     assert "search_term" in df.columns
     assert "manual_identifications" in df.columns
@@ -56,7 +56,7 @@ def test_load_search_terms_renames_columns(tmp_path):
             {"search_term": "fracture", "manual identifications": "2", "acceptable associated terms": "bruise"},
         ],
     )
-    df = search_looper.load_search_terms(csv_path)
+    df, metadata = search_looper.load_search_terms(csv_path)
     assert "manual_identifications" in df.columns
     assert "acceptable_terms" in df.columns
     assert "manual identifications" not in df.columns
@@ -71,7 +71,7 @@ def test_load_search_terms_strips_whitespace(tmp_path):
             {"search_term": "  fracture  ", "manual identifications": " 1 ", "acceptable associated terms": " bruise "},
         ],
     )
-    df = search_looper.load_search_terms(csv_path)
+    df, metadata = search_looper.load_search_terms(csv_path)
     assert df["search_term"].iloc[0] == "fracture"
     assert df["manual_identifications"].iloc[0] == "1"
     assert df["acceptable_terms"].iloc[0] == "bruise"
@@ -85,7 +85,7 @@ def test_load_search_terms_fills_na(tmp_path):
             {"search_term": "fracture", "manual identifications": None, "acceptable associated terms": None},
         ],
     )
-    df = search_looper.load_search_terms(csv_path)
+    df, metadata = search_looper.load_search_terms(csv_path)
     assert df["manual_identifications"].iloc[0] == ""
     assert df["acceptable_terms"].iloc[0] == ""
 
@@ -99,7 +99,7 @@ def test_load_search_terms_multiple_rows(tmp_path):
             {"search_term": "injury", "manual identifications": "2", "acceptable associated terms": "wound"},
         ],
     )
-    df = search_looper.load_search_terms(csv_path)
+    df, metadata = search_looper.load_search_terms(csv_path)
     assert len(df) == 2
     assert df["search_term"].tolist() == ["fracture", "injury"]
 
@@ -174,7 +174,7 @@ def test_process_hits_missing_page_number_uses_na():
 
 def test_run_search_loop_returns_empty_df_when_file_not_found():
     """Test run_search_loop returns empty DataFrame when input file does not exist."""
-    result = search_looper.run_search_loop(Path("/nonexistent/path/search_terms.csv"))
+    result, metadata = search_looper.run_search_loop(Path("/nonexistent/path/search_terms.csv"))
     assert isinstance(result, pd.DataFrame)
     assert result.empty
 
@@ -197,7 +197,7 @@ def test_run_search_loop_returns_dataframe_with_results(mock_settings, mock_loca
             },
         ],
     )
-    result = search_looper.run_search_loop(csv_path)
+    result, metadata = search_looper.run_search_loop(csv_path)
     assert isinstance(result, pd.DataFrame)
     assert not result.empty
     assert "search_term" in result.columns
@@ -223,7 +223,7 @@ def test_run_search_loop_filters_hits_by_score(mock_settings, mock_local_search,
             },
         ],
     )
-    result = search_looper.run_search_loop(csv_path)
+    result, metadata = search_looper.run_search_loop(csv_path)
     # Only c1 has score >= 6.0
     assert result["total_results"].iloc[0] == 1
     assert "c1" in result["all_chunk_ids"].iloc[0]
@@ -254,7 +254,7 @@ def test_run_search_loop_skips_empty_search_terms(mock_settings, mock_local_sear
             },
         ],
     )
-    result = search_looper.run_search_loop(csv_path)
+    result, metadata = search_looper.run_search_loop(csv_path)
     assert len(result) == 1
     assert result["search_term"].iloc[0] == "fracture"
 
@@ -284,7 +284,7 @@ def test_run_search_loop_handles_search_exception(mock_settings, mock_local_sear
             },
         ],
     )
-    result = search_looper.run_search_loop(csv_path)
+    result, metadata = search_looper.run_search_loop(csv_path)
     # Both rows should still be in results with 0 hits
     assert len(result) == 2
     assert result["total_results"].iloc[0] == 0
@@ -316,7 +316,7 @@ def test_run_search_loop_adds_index_column(mock_settings, mock_local_search, tmp
             },
         ],
     )
-    result = search_looper.run_search_loop(csv_path)
+    result, metadata = search_looper.run_search_loop(csv_path)
     assert "index" in result.columns
     assert result["index"].tolist() == [1, 2]
 
@@ -353,6 +353,6 @@ def test_run_search_loop_multiple_terms(mock_settings, mock_local_search, tmp_pa
             },
         ],
     )
-    result = search_looper.run_search_loop(csv_path)
+    result, metadata = search_looper.run_search_loop(csv_path)
     assert len(result) == 3
     assert mock_local_search.call_count == 3

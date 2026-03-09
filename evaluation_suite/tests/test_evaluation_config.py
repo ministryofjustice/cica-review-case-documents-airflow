@@ -96,7 +96,7 @@ def test_get_search_config_returns_dict(mock_timestamp, mock_settings):
     """Test that get_search_config returns a dictionary with the correct values."""
     mock_timestamp.return_value = "2024-02-27_12-00-00"
     mock_settings.SCORE_FILTER = 0.5
-    mock_settings.K_QUERIES = 10
+    mock_settings.RESULT_SIZE = 10
     mock_settings.KEYWORD_BOOST = 1
     mock_settings.ANALYSER_BOOST = 2
     mock_settings.SEMANTIC_BOOST = 3
@@ -108,7 +108,7 @@ def test_get_search_config_returns_dict(mock_timestamp, mock_settings):
     config = evaluation_config.get_search_config()
     assert config["search_type"] in {"exact", "stemmed", "fuzzy", "wildcard", "semantic_only", "hybrid"}
     assert config["score_filter"] == 0.5
-    assert config["k_queries"] == 10
+    assert config["result_size"] == 10
     assert config["keyword_boost"] == 1
     assert config["analyser_boost"] == 2
     assert config["semantic_boost"] == 3

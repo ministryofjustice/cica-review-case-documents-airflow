@@ -8,7 +8,7 @@ Run evaluation from local-dev-environment directory:
 
 For programmatic override (e.g., optimization), use:
     from evaluation_suite.search_evaluation.evaluation_settings import apply_overrides, reset_settings
-    apply_overrides({"KEYWORD_BOOST": 2.0, "K_QUERIES": 100})
+    apply_overrides({"KEYWORD_BOOST": 2.0, "RESULT_SIZE": 100})
     # ... run evaluation ...
     reset_settings()  # restore defaults
 """
@@ -29,7 +29,7 @@ WILDCARD_BOOST = 0  # Wildcard pattern matching
 # SEARCH PARAMETERS
 # =============================================================================
 
-K_QUERIES = 40  # Number of results to retrieve per search
+RESULT_SIZE = 40  # Number of results to retrieve per search
 SCORE_FILTER = 0.57  # Minimum score threshold for initial results
 
 # Additive semantic fallback - supplements initial results when too few
@@ -59,6 +59,15 @@ FUZZY_MATCH_THRESHOLD = 85  # Similarity threshold for fuzzy term matching (0-10
 # searches for "20 July 2021", "20/07/2021", etc.)
 
 DATE_FORMAT_DETECTION = True  # Enable/disable date format detection
+
+# =============================================================================
+# EXPECTED CHUNK GENERATION
+# =============================================================================
+# Settings for generate_expected_chunks.py - controls how expected chunk IDs
+# are generated from search terms for evaluation comparison.
+
+CHUNK_GEN_DATE_VARIANTS = False  # Generate expected chunks using date format variants
+CHUNK_GEN_USE_STEMMING = False  # Generate expected chunks using word stemming
 
 # =============================================================================
 # OPENSEARCH CONFIGURATION
@@ -104,7 +113,7 @@ _DEFAULTS = {
     "SEMANTIC_BOOST": SEMANTIC_BOOST,
     "FUZZY_BOOST": FUZZY_BOOST,
     "WILDCARD_BOOST": WILDCARD_BOOST,
-    "K_QUERIES": K_QUERIES,
+    "RESULT_SIZE": RESULT_SIZE,
     "SCORE_FILTER": SCORE_FILTER,
     "ADAPTIVE_SCORE_FILTER": ADAPTIVE_SCORE_FILTER,
     "MIN_RESULTS_BEFORE_FALLBACK": MIN_RESULTS_BEFORE_FALLBACK,
@@ -115,6 +124,8 @@ _DEFAULTS = {
     "PREFIX_LENGTH": PREFIX_LENGTH,
     "FUZZY_MATCH_THRESHOLD": FUZZY_MATCH_THRESHOLD,
     "DATE_FORMAT_DETECTION": DATE_FORMAT_DETECTION,
+    "CHUNK_GEN_DATE_VARIANTS": CHUNK_GEN_DATE_VARIANTS,
+    "CHUNK_GEN_USE_STEMMING": CHUNK_GEN_USE_STEMMING,
     "CASE_FILTER": CASE_FILTER,
     "OPTIMIZATION_DEFAULT_N_TRIALS": OPTIMIZATION_DEFAULT_N_TRIALS,
     "OPTIMIZATION_PHASE1_STEP": OPTIMIZATION_PHASE1_STEP,

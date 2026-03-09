@@ -39,7 +39,7 @@ def test_main_returns_tuple_on_success(
     mock_get_active_search_type.return_value = "exact"
     mock_get_date_folder.return_value = tmp_path
     results_df = pd.DataFrame({"search_term": ["test"], "expected_chunk_id": ["c1"]})
-    mock_run_search_loop.return_value = results_df
+    mock_run_search_loop.return_value = (results_df, {})
     summary = MagicMock()
     mock_evaluate_relevance.return_value = (results_df, summary)
 
@@ -68,7 +68,7 @@ def test_main_returns_none_when_no_results(
     """Test that main returns None when search loop returns empty DataFrame."""
     mock_get_timestamp.return_value = "2026-02-27_12-00-00"
     mock_get_search_config.return_value = {"search_type": "exact"}
-    mock_run_search_loop.return_value = pd.DataFrame()
+    mock_run_search_loop.return_value = (pd.DataFrame(), {})
 
     result = run_evaluation.run_evaluation()
 
@@ -115,7 +115,7 @@ def test_main_applies_and_resets_overrides(
     mock_get_active_search_type.return_value = "exact"
     mock_get_date_folder.return_value = tmp_path
     results_df = pd.DataFrame({"search_term": ["test"], "expected_chunk_id": ["c1"]})
-    mock_run_search_loop.return_value = results_df
+    mock_run_search_loop.return_value = (results_df, {})
     mock_evaluate_relevance.return_value = (results_df, MagicMock())
     overrides = {"KEYWORD_BOOST": 2.0}
 
@@ -156,7 +156,7 @@ def test_main_skips_csv_when_log_to_file_false(
     mock_get_active_search_type.return_value = "exact"
     mock_get_date_folder.return_value = tmp_path
     results_df = pd.DataFrame({"search_term": ["test"], "expected_chunk_id": ["c1"]})
-    mock_run_search_loop.return_value = results_df
+    mock_run_search_loop.return_value = (results_df, {})
     mock_evaluate_relevance.return_value = (results_df, MagicMock())
 
     run_evaluation.run_evaluation(log_to_file=False)
@@ -195,7 +195,7 @@ def test_main_always_appends_to_evaluation_log(
     mock_get_active_search_type.return_value = "exact"
     mock_get_date_folder.return_value = tmp_path
     results_df = pd.DataFrame({"search_term": ["test"], "expected_chunk_id": ["c1"]})
-    mock_run_search_loop.return_value = results_df
+    mock_run_search_loop.return_value = (results_df, {})
     summary = MagicMock()
     mock_evaluate_relevance.return_value = (results_df, summary)
 
@@ -226,7 +226,7 @@ def test_main_resets_settings_even_on_exception(
     mock_get_timestamp.return_value = "2026-02-27_12-00-00"
     mock_get_search_config.return_value = {"search_type": "exact"}
     results_df = pd.DataFrame({"search_term": ["test"], "expected_chunk_id": ["c1"]})
-    mock_run_search_loop.return_value = results_df
+    mock_run_search_loop.return_value = (results_df, {})
     mock_evaluate_relevance.side_effect = RuntimeError("Evaluation failed")
     overrides = {"KEYWORD_BOOST": 2.0}
 

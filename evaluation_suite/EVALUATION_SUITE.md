@@ -82,7 +82,7 @@ Set to `0` to disable, or `>0` to enable and weight.
 
 | Setting | Description | Example |
 |---------|-------------|---------|
-| `K_QUERIES` | Results per search | 60 |
+| `RESULT_SIZE` | Results per search | 60 |
 | `SCORE_FILTER` | Minimum score threshold | 0.56 |
 | `FUZZINESS` | Fuzzy tolerance | "Auto" |
 | `MAX_EXPANSIONS` | Max fuzzy expansions | 50 |

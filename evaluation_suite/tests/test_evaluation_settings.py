@@ -14,7 +14,7 @@ def test_apply_overrides_and_reset_settings():
     overrides = {
         "KEYWORD_BOOST": 9.9,
         "SEMANTIC_BOOST": 8.8,
-        "K_QUERIES": 123,
+        "RESULT_SIZE": 123,
         "DATE_FORMAT_DETECTION": False,
     }
     evaluation_settings.apply_overrides(overrides)
