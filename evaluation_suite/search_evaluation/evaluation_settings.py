@@ -66,8 +66,8 @@ DATE_FORMAT_DETECTION = True  # Enable/disable date format detection
 # Settings for generate_expected_chunks.py - controls how expected chunk IDs
 # are generated from search terms for evaluation comparison.
 
-CHUNK_GEN_DATE_VARIANTS = False  # Generate expected chunks using date format variants
-CHUNK_GEN_USE_STEMMING = False  # Generate expected chunks using word stemming
+EXP_CHUNK_DATE_VARIANTS = False  # Generate expected chunks using date format variants
+EXP_CHUNK_USE_STEMMING = False  # Generate expected chunks using word stemming
 
 # =============================================================================
 # OPENSEARCH CONFIGURATION
@@ -124,8 +124,8 @@ _DEFAULTS = {
     "PREFIX_LENGTH": PREFIX_LENGTH,
     "FUZZY_MATCH_THRESHOLD": FUZZY_MATCH_THRESHOLD,
     "DATE_FORMAT_DETECTION": DATE_FORMAT_DETECTION,
-    "CHUNK_GEN_DATE_VARIANTS": CHUNK_GEN_DATE_VARIANTS,
-    "CHUNK_GEN_USE_STEMMING": CHUNK_GEN_USE_STEMMING,
+    "EXP_CHUNK_DATE_VARIANTS": EXP_CHUNK_DATE_VARIANTS,
+    "EXP_CHUNK_USE_STEMMING": EXP_CHUNK_USE_STEMMING,
     "CASE_FILTER": CASE_FILTER,
     "OPTIMIZATION_DEFAULT_N_TRIALS": OPTIMIZATION_DEFAULT_N_TRIALS,
     "OPTIMIZATION_PHASE1_STEP": OPTIMIZATION_PHASE1_STEP,

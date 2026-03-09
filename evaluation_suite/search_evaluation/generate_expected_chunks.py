@@ -10,8 +10,8 @@ import snowballstemmer
 from evaluation_suite.search_evaluation.chunks_loader import get_chunk_details_from_opensearch
 from evaluation_suite.search_evaluation.date_formats import extract_dates_for_search, is_date_search
 from evaluation_suite.search_evaluation.evaluation_settings import (
-    CHUNK_GEN_DATE_VARIANTS,
-    CHUNK_GEN_USE_STEMMING,
+    EXP_CHUNK_DATE_VARIANTS,
+    EXP_CHUNK_USE_STEMMING,
 )
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -207,8 +207,8 @@ def generate_expected_chunks() -> None:
     updated_rows = _process_search_terms(
         rows,
         all_chunks,
-        use_date_variants=CHUNK_GEN_DATE_VARIANTS,
-        use_stemming=CHUNK_GEN_USE_STEMMING,
+        use_date_variants=EXP_CHUNK_DATE_VARIANTS,
+        use_stemming=EXP_CHUNK_USE_STEMMING,
     )
 
     # Write updated CSV with metadata header
@@ -216,8 +216,8 @@ def generate_expected_chunks() -> None:
         OUTPUT_FILE,
         fieldnames,
         updated_rows,
-        use_date_variants=CHUNK_GEN_DATE_VARIANTS,
-        use_stemming=CHUNK_GEN_USE_STEMMING,
+        use_date_variants=EXP_CHUNK_DATE_VARIANTS,
+        use_stemming=EXP_CHUNK_USE_STEMMING,
         chunking_strategy=CHUNKING_STRATEGY,
     )
 
