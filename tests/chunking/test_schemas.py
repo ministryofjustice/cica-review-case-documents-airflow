@@ -41,6 +41,18 @@ def test_to_textractor_bbox_with_negative_values():
     assert tex_bbox.y == bbox_data["Top"]
 
 
+def test_document_bounding_box_right_and_bottom():
+    bbox = DocumentBoundingBox(Width=10.0, Height=20.0, Left=5.0, Top=7.0)
+    assert bbox.right == 15.0  # 5.0 + 10.0
+    assert bbox.bottom == 27.0  # 7.0 + 20.0
+
+
+def test_document_bounding_box_right_and_bottom_negative():
+    bbox = DocumentBoundingBox(Width=-3.0, Height=-4.0, Left=-2.0, Top=-1.0)
+    assert bbox.right == -5.0  # -2.0 + -3.0
+    assert bbox.bottom == -5.0  # -1.0 + -4.0
+
+
 def make_metadata():
     return DocumentMetadata(
         source_doc_id="doc123",
