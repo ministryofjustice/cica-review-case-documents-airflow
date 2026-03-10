@@ -4,7 +4,7 @@ repos:
     hooks:
       - id: ruff-format
       - id: ruff
-        args: [--fix, local-dev-environment, src, tests]
+        args: [--fix, local-dev-environment, src, tests, evaluation_suite]
         stages: [pre-commit, pre-push]
 
   - repo: https://github.com/gitleaks/gitleaks
@@ -35,7 +35,7 @@ repos:
         entry: .venv/bin/deptry
         # if running on Windows, use: .venv/Scripts/deptry.exe
         # Not recommended, use WSL instead.
-        args: [src]
+        args: ["."]
         types: [python]
         always_run: true
         pass_filenames: false
