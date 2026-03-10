@@ -171,11 +171,12 @@ class Settings(BaseSettings):  # type: ignore
 
     @field_validator("LAYOUT_CHUNKING_Y_TOLERANCE_RATIO", "SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO")
     @classmethod
-    def validate_ratio(cls, v: float) -> float:
+    def validate_ratio(cls, v: float, info) -> float:
         """Ensure ratio is between 0.0 and 1.0.
 
         Args:
             v (float): The ratio value to validate.
+            info: Pydantic validation info containing field name.
 
         Returns:
             float: The validated ratio.
@@ -184,7 +185,7 @@ class Settings(BaseSettings):  # type: ignore
             ValueError: If the ratio is not between 0.0 and 1.0.
         """
         if not 0.0 <= v <= 1.0:
-            raise ValueError("Y_TOLERANCE_RATIO must be between 0.0 and 1.0")
+            raise ValueError(f"{info.field_name} must be between 0.0 and 1.0")
         return v
 
     @field_validator("LAYOUT_CHUNKING_MAX_VERTICAL_GAP")
