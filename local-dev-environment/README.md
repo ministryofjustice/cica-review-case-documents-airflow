@@ -3,54 +3,60 @@
 Docker and LocalStack resources to be created:
 
 - [Localstack](https://www.localstack.cloud/)
-- [OpenSearch](https://docs.localstack.cloud/aws/services/opensearch/) 
+- [OpenSearch](https://docs.localstack.cloud/aws/services/opensearch/)
 - [OpenSearch Dashboard](https://docs.opensearch.org/docs/latest/dashboards/)
-- OpenSearch Domain:```case-document-search-domain```
-- Opensearch Index:```case-documents```, [setup-opensearch.sh](./init-scripts/create-opensearch-resources.sh)
-- AWS resources, [setup-aws-resources.sh](./init-scripts/create-aws-resources.sh)
+- OpenSearch Index: `page_chunks`, [create-opensearch-resources.sh](./init-scripts/create-opensearch-resources.sh)
+- AWS resources, [create-aws-resources.sh](./init-scripts/create-aws-resources.sh)
 
 ## Pre-requisites
 
 - [Docker](https://docs.docker.com/get-started/get-docker/)
 - [Docker Desktop](https://docs.docker.com/desktop/)
 - [LocalStack Desktop](https://docs.localstack.cloud/aws/capabilities/web-app/localstack-desktop/)
+- [uv](https://docs.astral.sh/uv/) for Python dependency management
 - **For VPN WSL users**: If you are running the local environment from behind a corporate VPN with SSL inspection, you must also set the following environment variables in your .bashrc to allow LocalStack to trust your custom certificates:
+
 ```
 # Ensures LocalStack and its internal services trust the custom CA
 export LOCALSTACK_REQUESTS_CA_BUNDLE="/home/your_user/custom_ca_bundle.pem"
 export LOCALSTACK_HOST_MOUNTS="/home/your_user/custom_ca_bundle.pem:/etc/ssl/certs/custom_ca_bundle.pem"
 ```
-This assumes you have already created the custom_ca_bundle.pem file as described in the main project README, CICA specific Windows WSL setup and confguration instructions.
-- Ensure your `local-dev-environment/.env` file is created and contains valid AWS credentials for the `AWS_MOD_PLATFORM_*` variables. You can copy the structure from the `local-dev-environment/.env_template` file.
 
+This assumes you have already created the custom_ca_bundle.pem file as described in the main project README, CICA specific Windows WSL setup and confguration instructions.
+
+- Ensure your `local-dev-environment/.env` file is created and contains valid AWS credentials for the `AWS_MOD_PLATFORM_*` variables. You can copy the structure from the `local-dev-environment/.env_template` file.
 
 ## Setup
 
-Navigate into the local-dev-environment folder 
+Navigate into the local-dev-environment folder
 
-```cd cica-review-case-documents-airflow/local-dev-environment```
+```bash
+cd cica-review-case-documents-airflow/local-dev-environment
+```
 
 and run
 
-```docker compose up -d --force-recreate```
+```bash
+docker compose up -d --force-recreate
+```
 
-You should see 
+You should see
 
 ```
 :~/cica-review-case-documents-airflow/local-dev-environment$ docker compose up -d --force-recreate
 [+] Running 5/5
- ✔ Network local-dev-environment_default  Created                                             
- ✔ Volume "local-dev-environment_data01"  Created                                         
- ✔ Container opensearch                  Started                                             
- ✔ Container localstack-main             Healthy                                     
+ ✔ Network local-dev-environment_default  Created                                       
+ ✔ Volume "local-dev-environment_data01"  Created                                   
+ ✔ Container opensearch                  Started                                       
+ ✔ Container localstack-main             Healthy                               
  ✔ Container opensearch-dashboards       Started   
 ```
 
 View the localstack logs
 
-```docker  logs localstack-main -f```
+``docker  logs localstack-main -f``
 
-Look for 
+Look for
 
 ```
 Waiting for OpenSearch domain to be created...
@@ -61,24 +67,22 @@ OpenSearch domain created.
 DOMAIN_ENDPOINT: case-document-search-domain.eu-west-2.opensearch.localhost.localstack.cloud:4566
 Waiting for OpenSearch to be ready...
 ```
-There may be a short delay whilst the domain spins up then you should see
 
+There may be a short delay whilst the domain spins up then you should see
 
 ```
 OpenSearch is ready! Creating index 'case-documents'...
   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
                                  Dload  Upload   Total   Spent    Left  Speed
 100  1168  100    73  100  1095    174   2610 --:--:-- --:--:-- --:--:--  2794
-{"acknowledged":true,"shards_acknowledged":true,"index":"case-documents"}LocalStack resources configuration completed.
+{"acknowledged":true,"shards_acknowledged":true,"index":"page_chunks"}LocalStack resources configuration completed.
 Ready.
 
 ```
 
-The environment is then ready to be used and the domain endpoint should be: 
-```case-document-search-domain.eu-west-2.opensearch.localhost.localstack.cloud:4566```
+The environment is then ready to be used. OpenSearch is accessible at `http://localhost:9200`.
 
-
-## Docker Desktop 
+## Docker Desktop
 
 If Docker Desktop has been installed you can view, pause, stop, run and view logs for the environment and the individual containers from within the Docker Desktop UI (recommended).
 
@@ -86,65 +90,33 @@ If Docker Desktop has been installed you can view, pause, stop, run and view log
 
 Navigate to http://127.0.0.1:5601/ to view the OpenSearch dashboard.
 
-Navigate to [indices](http://127.0.0.1:5601/app/opensearch_index_management_dashboards#/indices?from=0&search=&showDataStreams=false&size=20&sortDirection=desc&sortField=index) to view the newly created index ```case-documents``` index.
+Navigate to [indices](http://127.0.0.1:5601/app/opensearch_index_management_dashboards#/indices?from=0&search=&showDataStreams=false&size=20&sortDirection=desc&sortField=index) to view the `page_chunks` index.
 
-Note you may need to index a document before creating an index pattern, to do so follow the instructions within the main [README](../README.md)
+### Loading Documents
 
-Create an [index pattern](https://docs.opensearch.org/latest/dashboards/management/index-patterns/) name it case-documents
+To ingest documents into OpenSearch, run the ingestion pipeline from the project root:
 
-you can start keyword searching read the [quickstart](https://docs.opensearch.org/latest/dashboards/quickstart/)
-
-
-## Integration Helper
-
-Within the integration_helper directory you will find a number of python scripts that can be used for local development testing.
-These are largely redundant now and will most likely be removed in an upcoming commit. 
-
-Use the main application [README](../README.md) for instructions on processing a document.
-
-put_doc.py can be used to insert a document into the local opensearch db, it uses an embedding generated by the embedding_generator.py.
-search_for_doc.py searches for the inserted document using the same embedding. 
-
-TODO: add to a local integration test suite.
-
-# Using the Hybrid Search Client (`search_client.py`)
-
-This script allows you to perform hybrid (keyword + semantic) search queries against your local OpenSearch instance and export the results to Excel. You can choose for the keyword section to be either direct keyword or to use fuzzy
-
-## Prerequisites
-
-- Ensure your OpenSearch instance is running and accessible.
-- Ensure your `.env` file in the project root contains valid AWS credentials and OpenSearch connection details (see main README for details).
-- Ensure your `local-dev-environment/.env` file has the same valid AWS credentials see the `local-dev-environment/.env_template` file. 
-
-## Running the Search Client
-
-From the project root, run:
-
-```sh
-python local-dev-environment/search_client.py
+```bash
+cd ..
+bash run_locally_with_dot_env.sh
 ```
 
-## Configuration
+This will process a sample document and index the chunks into OpenSearch. After ingestion, you can create an [index pattern](https://docs.opensearch.org/latest/dashboards/management/index-patterns/) named `page_chunks` and start searching. See the [quickstart](https://docs.opensearch.org/latest/dashboards/quickstart/) for more details.
 
-You can adjust search parameters (e.g., search term, number of results, score filter) and enable/disable fuzzy matching at the top of `search_client.py`.
+## Python Environment Setup
 
-Results will be written to an Excel file in the `output/hybrid-test-results/<date>/` directory.
+This project uses [uv](https://docs.astral.sh/uv/) for dependency management. Local dependencies are defined in a separate `pyproject.toml`.
 
-## Local Environment Resources
+```bash
+cd local-dev-environment
 
-The local environment uses Docker to spin up LocalStack and OpenSearch. The `docker-compose.yml` file orchestrates this setup.
+# Create virtual environment and install dependencies
+uv sync
 
-### AWS Resources (via LocalStack)
+# Activate the virtual environment
+source .venv/bin/activate
+```
 
-The following AWS resources are automatically created by the `init-scripts/create-aws-resources.sh` script when you run `docker compose up`. All resource names are configured in the `.env_template` file.
+## Evaluation Workflow
 
--   **S3 Buckets**:
-    -   `local-kta-documents-bucket`: For storing the source PDF documents to be processed.
-    -   `document-page-bucket`: For storing the generated PNG images of each document page.
--   **SQS Queue**:
-    -   `cica-document-search-queue`: A queue for receiving messages to trigger the ingestion pipeline.
-
-### Automatic Sample Document Provisioning
-
-When you start the local environment, a sample PDF is automatically downloaded from a real AWS S3 bucket (defined by `SRC_S3_BUCKET` and `SRC_S3_KEY` in your `.env` file) and uploaded to the `local-kta-documents-bucket` in LocalStack. This allows you to test the full pipeline without any manual setup.
+For details on running the search evaluation workflow (measuring precision/recall of different search configurations), see the [Evaluation Suite README](../evaluation_suite/EVALUATION_SUITE.md).

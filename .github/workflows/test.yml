@@ -22,7 +22,7 @@ jobs:
 
       - name: Create virtual environment and install dependencies
         run: |
-          uv venv && uv sync --frozen
+          uv venv && uv sync --extra evaluation --frozen
 
       - name: Run ingestion unit tests
         run: |
