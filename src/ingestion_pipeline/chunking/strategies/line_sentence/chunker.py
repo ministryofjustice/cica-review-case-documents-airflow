@@ -113,17 +113,23 @@ class LineSentenceChunker:
                     should_break_on_gap = True
                     gap_reason = f"vertical_gap={vertical_gap:.4f} > threshold={self.config.max_vertical_gap_ratio}"
 
+            # --- Gap break: behavior: emit current chunk, then start new chunk with gap-triggering line ---
+            if should_break_on_gap:
+                if current_lines:
+                    chunk_index = self._emit_chunk(
+                        chunks, current_lines, page_number, metadata, chunk_index, gap_reason
+                    )
+                # Start new chunk with gap-triggering line
+                current_lines = [(line_text, line_bbox)]
+                current_word_count = line_word_count
+                prev_line_bottom = line_bbox.y + line_bbox.height
+                i += 1
+                continue
+
+            # If not a gap break, proceed as normal
             current_lines.append((line_text, line_bbox))
             current_word_count += line_word_count
             prev_line_bottom = line_bbox.y + line_bbox.height
-
-            # --- Gap break: close chunk including the gap-triggering line ---
-            if should_break_on_gap:
-                chunk_index = self._emit_chunk(chunks, current_lines, page_number, metadata, chunk_index, gap_reason)
-                current_lines = []
-                current_word_count = 0
-                i += 1
-                continue
 
             # --- Sentence / max-words break ---
             if current_word_count >= self.config.min_words:
@@ -155,6 +161,7 @@ class LineSentenceChunker:
                         chunk_index = self._emit_chunk(
                             chunks, emit_lines, page_number, metadata, chunk_index, "backward_sentence_boundary"
                         )
+
             i += 1
 
         if current_lines:
