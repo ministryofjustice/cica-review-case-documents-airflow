@@ -168,7 +168,7 @@ class TestLineBasedDocumentChunker:
 
     def test_chunk_indices_increment_correctly(self, chunker, sample_metadata):
         """Test that chunk indices increment correctly across pages."""
-        # Page 1 - will create 2 chunks
+        # Page 1 - will create 2 chunks (gap break between lines)
         page1_lines = [
             create_mock_line("First chunk on page one.", 0.1),
             create_mock_line("Second chunk on page one.", 0.2),  # Large gap forces break
@@ -194,8 +194,8 @@ class TestLineBasedDocumentChunker:
             indices = [chunk.chunk_index for chunk in page_chunks]
             assert indices == list(range(len(indices)))  # Each page: 0, 1, ...
 
-        # Optionally, check total chunk count
-        assert len(result.chunks) == 2
+        # Page 1: 2 chunks (gap break), Page 2: 1 chunk
+        assert len(result.chunks) == 3
 
     def test_page_without_lines_skipped(self, chunker, sample_metadata):
         """Test that pages without lines are skipped."""
