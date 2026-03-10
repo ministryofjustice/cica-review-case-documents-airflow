@@ -193,12 +193,11 @@ def test_vertical_gap_forces_chunk_break(custom_chunker, sample_metadata):
         chunk_index_start=0,
     )
 
-    if custom_chunker.config.min_words > 6:
-        assert len(chunks) == 1
-        assert "First paragraph" in chunks[0].chunk_text
-        assert "Second paragraph" in chunks[0].chunk_text
-    else:
-        assert len(chunks) >= 1
+    # Gap-triggering line starts a new chunk
+    assert len(chunks) == 2
+    assert "First paragraph" in chunks[0].chunk_text
+    assert "More text" in chunks[0].chunk_text
+    assert "Second paragraph" in chunks[1].chunk_text
 
 
 def test_chunk_index_increments_correctly(custom_chunker, sample_metadata):
@@ -250,9 +249,9 @@ def test_lines_without_text_are_skipped(chunker, sample_metadata):
     """Test that lines without text are skipped."""
     lines = [
         create_mock_line("Valid line.", top=0.1),
-        create_mock_line("", top=0.15),
-        create_mock_line("   ", top=0.2),
-        create_mock_line("Another valid line.", top=0.25),
+        create_mock_line("", top=0.11),
+        create_mock_line("   ", top=0.12),
+        create_mock_line("Another valid line.", top=0.13),
     ]
 
     chunks = chunker.chunk_page(
