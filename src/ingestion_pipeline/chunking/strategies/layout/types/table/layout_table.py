@@ -6,11 +6,11 @@ from typing import List, Optional
 from textractor.entities.layout import Layout, Line
 from textractor.entities.table import Table
 
-from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
 from ingestion_pipeline.chunking.exceptions import ChunkException
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
-from ingestion_pipeline.chunking.strategies.base import ChunkingStrategyHandler
-from ingestion_pipeline.chunking.strategies.table.base import BaseTableChunker
+from ingestion_pipeline.chunking.strategies.layout.config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.strategies.layout.types.base import LayoutType
+from ingestion_pipeline.chunking.strategies.layout.types.table.base import BaseTableChunker
 
 from .cell_chunker import CellTableChunker
 from .line_chunker import LineTableChunker
@@ -18,17 +18,17 @@ from .line_chunker import LineTableChunker
 logger = logging.getLogger(__name__)
 
 
-class LayoutTableChunkingStrategy(ChunkingStrategyHandler):
+class LayoutTableChunkingStrategy(LayoutType):
     """Main strategy class that delegates to appropriate table chunkers.
 
     Args:
-        ChunkingStrategyHandler (ChunkingStrategyHandler): The base class for chunking strategy handlers.
+        LayoutType (LayoutType): The base class for chunking strategy handlers.
 
     Returns:
         LayoutTableChunkingStrategy: An instance of the layout table chunking strategy.
     """
 
-    def __init__(self, config: ChunkingConfig):
+    def __init__(self, config: LayoutChunkingConfig):
         """Initialize the layout table chunking strategy.
 
         Args:

@@ -2,8 +2,8 @@
 
 import logging
 
+from ingestion_pipeline.chunking.chunk_strategy import ChunkError, ChunkStrategy
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
-from ingestion_pipeline.chunking.textract_document_chunker import ChunkError, DocumentChunker
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingError, EmbeddingGenerator
 from ingestion_pipeline.indexing.indexer import IndexingError, OpenSearchIndexer
@@ -30,7 +30,7 @@ class Pipeline:
     def __init__(
         self,
         textract_processor: TextractProcessor,
-        chunker: DocumentChunker,
+        chunker: ChunkStrategy,
         embedding_generator: EmbeddingGenerator,
         chunk_indexer: OpenSearchIndexer,
         page_indexer: OpenSearchIndexer,
@@ -40,7 +40,7 @@ class Pipeline:
 
         Args:
             textract_processor: Processor to extract data using Textract.
-            chunker: Document chunker with configured strategies.
+            chunker: ChunkStrategy with configured strategies.
             embedding_generator: Generator for creating embeddings from text.
             chunk_indexer: Indexer to store documents in OpenSearch.
             page_indexer: Indexer to store document pages in OpenSearch.

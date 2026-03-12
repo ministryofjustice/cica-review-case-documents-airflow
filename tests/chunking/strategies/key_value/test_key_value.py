@@ -10,9 +10,9 @@ from textractor.entities.layout import Layout
 from textractor.entities.line import Line
 from textractor.entities.word import Word
 
-from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
-from ingestion_pipeline.chunking.strategies.key_value.layout_key_value import KeyValueChunker
+from ingestion_pipeline.chunking.strategies.layout.config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.strategies.layout.types.key_value.layout_key_value import KeyValueChunker
 
 
 @pytest.fixture
@@ -53,7 +53,12 @@ def mock_line_factory():
 @pytest.fixture
 def default_config():
     """Provides a default chunking configuration."""
-    return ChunkingConfig(maximum_chunk_size=500)
+    return LayoutChunkingConfig(
+        maximum_chunk_size=500,
+        y_tolerance_ratio=0.1,
+        max_vertical_gap=10,
+        line_chunk_char_limit=100,
+    )
 
 
 @pytest.fixture
@@ -81,7 +86,7 @@ def test_chunks_mixed_key_value_and_line_children(
         mock_kv_pair_factory (Callable): Factory to create mock KeyValue objects.
         mock_line_factory (Callable): Factory to create mock Line objects.
     """
-    mock_os_doc_from_layout = mocker.patch.object(DocumentChunk, "from_textractor_layout")
+    mock_os_doc_from_layout = mocker.patch.object(DocumentChunk, "create_chunk")
 
     kv_child = mock_kv_pair_factory("Name:", "John Doe", "kv-1")
     line_child = mock_line_factory("This is a standalone line.", "line-1")
@@ -96,21 +101,23 @@ def test_chunks_mixed_key_value_and_line_children(
     assert mock_os_doc_from_layout.call_count == 2
 
     expected_kv_call = call(
-        block=layout_block,
         page_number=1,
         metadata=chunk_args["metadata"],
         chunk_index=0,
         chunk_text="Name: John Doe",
         combined_bbox=kv_child.bbox,
+        layout_type=layout_block.layout_type,
+        confidence=layout_block.confidence,
     )
 
     expected_line_call = call(
-        block=layout_block,
         page_number=1,
         metadata=chunk_args["metadata"],
         chunk_index=1,
         chunk_text="This is a standalone line.",
         combined_bbox=line_child.bbox,
+        layout_type=layout_block.layout_type,
+        confidence=layout_block.confidence,
     )
 
     mock_os_doc_from_layout.assert_has_calls([expected_kv_call, expected_line_call], any_order=False)
@@ -128,7 +135,7 @@ def test_returns_empty_list_for_empty_layout_block(default_config, chunk_args):
 
 def test_skips_key_value_pair_if_missing_key_or_value(mocker, default_config, chunk_args, mock_kv_pair_factory):
     """Verifies that KeyValue pairs with a missing key or value are skipped."""
-    mock_os_doc_from_layout = mocker.patch.object(DocumentChunk, "from_textractor_layout")
+    mock_os_doc_from_layout = mocker.patch.object(DocumentChunk, "create_chunk")
 
     kv_missing_value = mock_kv_pair_factory("Address:", "123 Main St", "kv-1")
     kv_missing_value.value = None
@@ -148,7 +155,7 @@ def test_skips_key_value_pair_if_missing_key_or_value(mocker, default_config, ch
 
 def test_skips_empty_or_whitespace_only_lines(mocker, default_config, chunk_args, mock_line_factory):
     """Verifies that lines containing no text or only whitespace are skipped."""
-    mock_os_doc_from_layout = mocker.patch.object(DocumentChunk, "from_textractor_layout")
+    mock_os_doc_from_layout = mocker.patch.object(DocumentChunk, "create_chunk")
 
     empty_line = mock_line_factory("", "line-empty")
     whitespace_line = mock_line_factory("   \t\n ", "line-whitespace")
@@ -165,12 +172,13 @@ def test_skips_empty_or_whitespace_only_lines(mocker, default_config, chunk_args
     mock_os_doc_from_layout.assert_called_once()
 
     mock_os_doc_from_layout.assert_called_with(
-        block=layout_block,
         page_number=1,
         metadata=chunk_args["metadata"],
         chunk_index=0,
         chunk_text="Valid text",
         combined_bbox=valid_line.bbox,
+        layout_type=layout_block.layout_type,
+        confidence=layout_block.confidence,
     )
 
 
@@ -180,9 +188,9 @@ def test_skips_unsupported_child_types_and_logs_warning(mocker, default_config, 
     are skipped and a warning is logged.
     """
     mock_logger_warning = mocker.patch(
-        "ingestion_pipeline.chunking.strategies.key_value.layout_key_value.logger.warning"
+        "ingestion_pipeline.chunking.strategies.layout.types.key_value.layout_key_value.logger.warning"
     )
-    mock_os_doc_from_layout = mocker.patch.object(DocumentChunk, "from_textractor_layout")
+    mock_os_doc_from_layout = mocker.patch.object(DocumentChunk, "create_chunk")
 
     unsupported_child = MagicMock(spec=DocumentEntity)
     unsupported_child.__class__.__name__ = "UnsupportedType"
@@ -203,10 +211,11 @@ def test_skips_unsupported_child_types_and_logs_warning(mocker, default_config, 
 
     mock_os_doc_from_layout.assert_called_once()
     mock_os_doc_from_layout.assert_called_with(
-        block=layout_block,
         page_number=1,
         metadata=chunk_args["metadata"],
         chunk_index=0,
         chunk_text="This should be processed",
         combined_bbox=valid_line.bbox,
+        layout_type=layout_block.layout_type,
+        confidence=layout_block.confidence,
     )

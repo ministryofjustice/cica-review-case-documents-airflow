@@ -3,26 +3,26 @@
 import logging
 from typing import List, Optional
 
-from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
-from ingestion_pipeline.chunking.strategies.base import ChunkingStrategyHandler
+from ingestion_pipeline.chunking.strategies.layout.config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.strategies.layout.types.base import LayoutType
 from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes
 
 logger = logging.getLogger(__name__)
 
 
-class LayoutListChunkingStrategy(ChunkingStrategyHandler):
+class LayoutListChunkingStrategy(LayoutType):
     """Chunking strategy for LAYOUT_LIST blocks.
 
     Args:
-        ChunkingStrategyHandler (ChunkingStrategyHandler): The base chunking strategy handler.
+        LayoutType (LayoutType): The base chunking strategy handler.
 
     Returns:
         LayoutListChunkingStrategy: An instance of the list chunking strategy.
 
     """
 
-    def __init__(self, config: ChunkingConfig):
+    def __init__(self, config: LayoutChunkingConfig):
         """Chunking strategy for LAYOUT_LIST blocks.
 
         Args:
@@ -70,13 +70,14 @@ class LayoutListChunkingStrategy(ChunkingStrategyHandler):
                 continue
 
             combined_bbox = combine_bounding_boxes([line_bbox])
-            chunk = DocumentChunk.from_textractor_layout(
-                block=layout_block,
+            chunk = DocumentChunk.create_chunk(
+                layout_type=child_block.layout_type,
                 page_number=page_number,
                 metadata=metadata,
                 chunk_index=chunk_index,
                 chunk_text=line_text,
                 combined_bbox=combined_bbox,
+                confidence=child_block.confidence,
             )
             chunks.append(chunk)
             chunk_index += 1

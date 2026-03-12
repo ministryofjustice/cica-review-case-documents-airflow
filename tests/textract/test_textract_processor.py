@@ -11,11 +11,11 @@ from ingestion_pipeline.orchestration.pipeline import Pipeline
 from ingestion_pipeline.textract.textract_processor import TextractProcessor
 
 
-# Note: This is a workaround until we get a better solution for handling the LOCAL_DEVELOPMENT_MODE
+# Note: This is a workaround until we get a better solution for handling the USE_MOD_PLATFORM_MODE
 # for Textract processing.
 @pytest.fixture(autouse=True)
-def set_local_dev_mode_false(monkeypatch):
-    monkeypatch.setattr("ingestion_pipeline.textract.textract_processor.LOCAL_DEVELOPMENT_MODE", False)
+def set_mod_platform_mode_false(monkeypatch):
+    monkeypatch.setattr("ingestion_pipeline.textract.textract_processor.USE_MOD_PLATFORM_MODE", False)
 
 
 @pytest.fixture
@@ -130,7 +130,9 @@ def test_process_document_stops_if_job_fails(
 
     textract_processor = TextractProcessor(mock_orchestrator, mock_textractor, mock_textract_client)
 
-    with pytest.raises(Exception, match="Textract job job-fail failed with status: FAILED"):
+    from ingestion_pipeline.textract.textract_processor import TextractProcessingError
+
+    with pytest.raises(TextractProcessingError, match="Textract job job-fail failed with status: FAILED"):
         textract_processor.process_document(s3_uri)
 
     mock_start_job.assert_called_once_with(s3_uri)
@@ -173,7 +175,9 @@ def test_process_document_handles_general_exception(
 
     textract_processor = TextractProcessor(mock_orchestrator, mock_textractor, mock_textract_client)
 
-    with pytest.raises(Exception, match="Unexpected AWS error"):
+    from ingestion_pipeline.textract.textract_processor import TextractProcessingError
+
+    with pytest.raises(TextractProcessingError, match="Unexpected AWS error"):
         textract_processor.process_document(s3_uri)
 
     assert f"Failed to process s3 file {s3_uri}: Unexpected AWS error" in caplog.text
@@ -217,7 +221,7 @@ def test_process_document_remaps_s3_uri_for_local_dev(monkeypatch, mock_textract
     remapped_uri = f"s3://{remapped_bucket}/{original_key}"
 
     # Patch settings and logger
-    monkeypatch.setattr("ingestion_pipeline.textract.textract_processor.LOCAL_DEVELOPMENT_MODE", True)
+    monkeypatch.setattr("ingestion_pipeline.textract.textract_processor.USE_MOD_PLATFORM_MODE", True)
     monkeypatch.setattr(
         "ingestion_pipeline.textract.textract_processor.settings.AWS_LOCAL_DEV_TEXTRACT_S3_ROOT_BUCKET",
         remapped_bucket,
