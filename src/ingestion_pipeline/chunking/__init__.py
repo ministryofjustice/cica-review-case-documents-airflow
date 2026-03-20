@@ -1,1 +1,1 @@
-"""Chunking utilities for the airflowingestion pipeline."""
+"""Chunking module for processing documents."""

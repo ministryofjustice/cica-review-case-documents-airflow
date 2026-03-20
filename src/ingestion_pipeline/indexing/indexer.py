@@ -22,8 +22,7 @@ class OpenSearchIndexer:
 
     Args:
         index_name: Target index name.
-        proxy_url: Full proxy/base URL, e.g.,
-                   'http://proxy:8080'
+        proxy_url: Full proxy/base URL, e.g. 'http://proxy:8080'
     """
 
     def __init__(
@@ -32,7 +31,18 @@ class OpenSearchIndexer:
         index_name: str,
         proxy_url: str,
     ):
-        """Initialize the indexer connection using a single proxy URL."""
+        """Initialize the indexer connection using a single proxy URL.
+
+        Args:
+            proxy_url (str): The full proxy/base URL for OpenSearch, which may include the path (url prefix).
+                Example: 'http://proxy:8080' or 'https://proxy:9200/opensearch'
+            index_name (str): The name of the OpenSearch index to which documents will be indexed.
+
+        Raises:
+            ValueError: If the index name is empty.
+            ValueError: If the proxy URL is empty.
+            ValueError: If the proxy URL is invalid.
+        """
         if not index_name:
             raise ValueError("Index name cannot be empty.")
         self.index_name = index_name
@@ -101,7 +111,10 @@ class OpenSearchIndexer:
 
         try:
             logger.info(f"Indexing {len(documents)} documents into index {self.index_name}")
-            success, errors = helpers.bulk(self.client, actions, raise_on_error=False)
+            # raise_on_error=False
+            # allows the function to continue and collect all errors,
+            # so we can handle them (log, retry, cleanup) instead of immediately stopping on the first error.
+            success, errors = helpers.bulk(self.client, actions, raise_on_error=False, chunk_size=50)
 
             if errors:
                 logger.info(f"Deleted existing documents due to indexing errors. Errors:{errors}")

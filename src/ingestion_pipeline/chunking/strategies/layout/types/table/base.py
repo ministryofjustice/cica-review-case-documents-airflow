@@ -7,8 +7,8 @@ from typing import List, Optional
 from textractor.entities.bbox import BoundingBox
 from textractor.entities.layout import Layout
 
-from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
+from ingestion_pipeline.chunking.strategies.layout.config import LayoutChunkingConfig
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class BaseTableChunker(ABC):
         ABC: An instance of a table chunker.
     """
 
-    def __init__(self, config: ChunkingConfig):
+    def __init__(self, config: LayoutChunkingConfig):
         """Initializes the base table chunker.
 
         Args:
@@ -81,11 +81,12 @@ class BaseTableChunker(ABC):
 
         logger.debug(f"Table chunk : {chunk_text}")
 
-        return DocumentChunk.from_textractor_layout(
-            block=layout_block,
+        return DocumentChunk.create_chunk(
             page_number=page_number,
             metadata=metadata,
             chunk_index=chunk_index,
             chunk_text=chunk_text,
             combined_bbox=combined_bbox,
+            layout_type=layout_block.layout_type,
+            confidence=layout_block.confidence,
         )

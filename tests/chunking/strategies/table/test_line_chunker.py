@@ -6,10 +6,10 @@ from unittest.mock import MagicMock
 import pytest
 
 # Application modules that we will be patching
-import ingestion_pipeline.chunking.strategies.table.base as base_module
-import ingestion_pipeline.chunking.strategies.table.line_chunker as line_chunker_module
-from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
-from ingestion_pipeline.chunking.strategies.table.line_chunker import LineTableChunker
+import ingestion_pipeline.chunking.strategies.layout.types.table.base as base_module
+import ingestion_pipeline.chunking.strategies.layout.types.table.line_chunker as line_chunker_module
+from ingestion_pipeline.chunking.strategies.layout.config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.strategies.layout.types.table.line_chunker import LineTableChunker
 
 
 # --- Mock Objects ---
@@ -77,6 +77,7 @@ class MockLayout:
     bbox: MockBoundingBox
     children: List[MockLine]
     layout_type: str = "LAYOUT_TABLE"
+    confidence: float = 0.95
 
 
 @dataclass
@@ -86,7 +87,7 @@ class MockDocumentMetadata:
 
 @dataclass
 class MockTextBlock:
-    """A mock for the REFACTORED ingestion_pipeline.chunking.strategies.table.schemas.TextBlock."""
+    """A mock for the REFACTORED ingestion_pipeline.chunking.strategies.layout.strategies.table.schemas.TextBlock."""
 
     text: str
     bbox: "MockBoundingBox"
@@ -129,7 +130,11 @@ def apply_patches(monkeypatch):
 @pytest.fixture
 def chunker():
     """Provides a LineTableChunker instance for tests."""
-    return LineTableChunker(config=ChunkingConfig(y_tolerance_ratio=0.5, line_chunk_char_limit=0))
+    return LineTableChunker(
+        config=LayoutChunkingConfig(
+            y_tolerance_ratio=0.5, line_chunk_char_limit=0, maximum_chunk_size=100, max_vertical_gap=0.05
+        )
+    )
 
 
 # --- Tests ---
@@ -208,7 +213,7 @@ def test_chunk_method_integration(chunker, monkeypatch):
             self.kwargs = kwargs
 
         @classmethod
-        def from_textractor_layout(cls, **kwargs):
+        def create_chunk(cls, **kwargs):
             return cls(**kwargs)
 
     monkeypatch.setattr(base_module, "DocumentChunk", MockDocumentChunk)
@@ -442,7 +447,7 @@ def test_chunk_method_resilience_with_mixed_quality_data(chunker, monkeypatch):
             self.kwargs = kwargs
 
         @classmethod
-        def from_textractor_layout(cls, **kwargs):
+        def create_chunk(cls, **kwargs):
             return cls(**kwargs)
 
     monkeypatch.setattr(base_module, "DocumentChunk", MockDocumentChunk)
@@ -534,7 +539,7 @@ def test_chunk_method_single_chunk_under_limit(chunker, monkeypatch):
             self.kwargs = kwargs
 
         @classmethod
-        def from_textractor_layout(cls, **kwargs):
+        def create_chunk(cls, **kwargs):
             # In the actual implementation, this would be called on the class
             # For the mock, we just instantiate it to capture the args
             return cls(**kwargs)

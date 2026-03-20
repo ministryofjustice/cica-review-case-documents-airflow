@@ -6,7 +6,6 @@ from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 from textractor.entities.bbox import BoundingBox
-from textractor.entities.layout import Layout
 
 from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
 
@@ -89,7 +88,7 @@ class DocumentChunk(BaseModel):
     chunk_index: int
     source_file_s3_uri: str
     chunk_type: str
-    confidence: float
+    confidence: float | None
     bounding_box: DocumentBoundingBox
     embedding: Optional[List[float]] = None
     case_ref: str
@@ -131,26 +130,26 @@ class DocumentChunk(BaseModel):
         return chunk_uuid
 
     @classmethod
-    def from_textractor_layout(
+    def create_chunk(
         cls,
-        block: Layout,  # TODO consider only passing in layout_type and confidence
         page_number: int,
         metadata: DocumentMetadata,
         chunk_index: int,
         chunk_text: str,
         combined_bbox: BoundingBox,
+        layout_type: str,
+        confidence: float | None,
     ) -> "DocumentChunk":
-        """Creates a DocumentChunk from a Textractor Layout block.
-
-        using pre-computed text and a combined bounding box, useful for splitting large blocks.
+        """Creates a DocumentChunk from layout_type and confidence, not a Layout block.
 
         Args:
-            block (Layout): The Textractor Layout block.
             page_number (int): The page number of the chunk (1-based).
             metadata (DocumentMetadata): The document metadata.
             chunk_index (int): The index of the chunk on the page (0-based).
             chunk_text (str): The text content of the chunk.
             combined_bbox (BoundingBox): The combined bounding box for the chunk.
+            layout_type (str): The type of the chunk (e.g., "LINE_SENTENCE_CHUNK").
+            confidence (float | None): The confidence score for the chunk, or None if not available.
 
         Returns:
             DocumentChunk: The created DocumentChunk instance.
@@ -158,8 +157,6 @@ class DocumentChunk(BaseModel):
         chunk_id = cls._generate_chunk_id(metadata, page_number, chunk_index)
         bounding_box_model = DocumentBoundingBox.from_textractor_bbox(combined_bbox)
 
-        # Pydantic validates the data upon instantiation here
-        # We will need to identify whether chunk is/contains HANDWRITTEN elements
         return cls(
             chunk_id=chunk_id,
             source_doc_id=metadata.source_doc_id,
@@ -169,8 +166,8 @@ class DocumentChunk(BaseModel):
             page_count=metadata.page_count,
             page_number=page_number,
             chunk_index=chunk_index,
-            chunk_type=block.layout_type,
-            confidence=block.confidence,  # TODO does this need recalculated for combined chunks
+            chunk_type=layout_type,
+            confidence=confidence,
             bounding_box=bounding_box_model,
             case_ref=metadata.case_ref,
             received_date=metadata.received_date,

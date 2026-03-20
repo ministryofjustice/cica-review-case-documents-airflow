@@ -10,14 +10,14 @@ import pytest
 from pydantic import ValidationError
 from textractor.entities.document import Document
 
-from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
 from ingestion_pipeline.chunking.schemas import DocumentBoundingBox, DocumentMetadata
-from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkingStrategy
-from ingestion_pipeline.chunking.strategies.table import LayoutTableChunkingStrategy
-from ingestion_pipeline.chunking.textract_document_chunker import (
+from ingestion_pipeline.chunking.strategies.layout.config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.strategies.layout.layout_chunk_handler import (
     DocumentChunk,
-    DocumentChunker,
+    TextractLayoutDocumentChunker,
 )
+from ingestion_pipeline.chunking.strategies.layout.types.table import LayoutTableChunkingStrategy
+from ingestion_pipeline.chunking.strategies.layout.types.text.layout_text import LayoutTextChunkingStrategy
 
 TEXTRACT_JSON_PATH = Path(__file__).parent / "data" / "single_text_layout_textract_response.json"
 
@@ -76,20 +76,22 @@ def document_chunker_factory():
         DocumentChunker: The created DocumentChunker object.
     """
 
-    def _factory(config: Optional[ChunkingConfig] = None) -> DocumentChunker:
+    def _factory(config: Optional[LayoutChunkingConfig] = None) -> TextractLayoutDocumentChunker:
         # If no config is provided by the test, use the default one.
         if config is None:
-            config = ChunkingConfig()
-
+            config = LayoutChunkingConfig(
+                maximum_chunk_size=500,
+                y_tolerance_ratio=0.1,
+                max_vertical_gap=10,
+                line_chunk_char_limit=100,
+            )
         layout_text_strategy = LayoutTextChunkingStrategy(config)
         layout_table_strategy = LayoutTableChunkingStrategy(config)
-
         strategy_handlers = {
             "LAYOUT_TEXT": layout_text_strategy,
             "LAYOUT_TABLE": layout_table_strategy,
         }
-
-        return DocumentChunker(
+        return TextractLayoutDocumentChunker(
             strategy_handlers=strategy_handlers,
             config=config,
         )
