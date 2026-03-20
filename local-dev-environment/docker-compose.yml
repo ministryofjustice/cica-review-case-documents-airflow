@@ -7,11 +7,11 @@ services:
       - cluster.name=opensearch-docker-cluster
       - discovery.type=single-node
       - bootstrap.memory_lock=true
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"  # Increased from 512m - needed for reliable startup
       - "DISABLE_SECURITY_PLUGIN=true" # Acceptable for CI testing and Local Development
     ports:
       - "9200:9200"
-    mem_limit: 1g
+    mem_limit: 2g
     ulimits:
       memlock:
         soft: -1
@@ -28,7 +28,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 3600s # Give it time to initialize (long time for Max)
+      start_period: 120s #  2 minutes should be sufficient with 1GB heap
 
   localstack:
     container_name: "${LOCALSTACK_DOCKER_NAME:-localstack-main}"
@@ -59,7 +59,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-      start_period: 30s # Give LocalStack time to execute init scripts and for index creation
+      start_period: 90s # Give LocalStack time to execute init scripts and for index creation
 
   opensearch-dashboards:
     container_name: opensearch-dashboards
