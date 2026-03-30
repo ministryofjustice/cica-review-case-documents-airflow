@@ -60,6 +60,20 @@ FUZZY_MATCH_THRESHOLD = 85  # Similarity threshold for fuzzy term matching (0-10
 
 DATE_FORMAT_DETECTION = True  # Enable/disable date format detection
 
+# Query mode for date+text searches:
+# - "simple": Flat OR query - any date variant OR remaining text matches
+# - "combined": Tiered AND query - prefers chunks with BOTH text AND date,
+#               with fallback tiers for partial date matching
+QUERY_MODE = "simple"  # "simple" or "combined"
+
+# Combined mode boosts (only used when QUERY_MODE = "combined")
+COMBINED_PHRASE_BOOST = 6  # Boost for remaining text phrase match
+COMBINED_PHRASE_SLOP = 1  # Slop for phrase matching (word gap tolerance)
+COMBINED_EXACT_DATE_BOOST = 10  # Boost for exact date matches in combined mode
+COMBINED_PARTIAL_DATE_BOOST = 6  # Boost for month-year partial matches
+COMBINED_TIER1_BOOST = 3  # Outer boost for text+exact date tier
+COMBINED_TIER2_BOOST = 2  # Outer boost for text+partial date tier
+
 # =============================================================================
 # EXPECTED CHUNK GENERATION
 # =============================================================================

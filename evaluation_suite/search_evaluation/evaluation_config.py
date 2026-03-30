@@ -117,6 +117,7 @@ def get_search_config(timestamp: str | None = None, csv_metadata: dict | None = 
 
     return {
         "search_type": get_active_search_type(),
+        "query_mode": settings.QUERY_MODE,
         "score_filter": settings.SCORE_FILTER,
         "result_size": settings.RESULT_SIZE,
         "keyword_boost": settings.KEYWORD_BOOST,

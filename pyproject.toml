@@ -23,18 +23,8 @@ test = [
     "moto>=5.1.10,<6",
 ]
 dev = ["deptry>=0.23.1,<0.25", "pre-commit>=4.2.0,<5"]
-
-# Evaluation suite dependencies are declared as optional dependencies.
-# They are intentionally separate from [project.dependencies] to avoid being
-# bundled into the production Docker image.
-#
-# NOTE: deptry does not check [project.optional-dependencies] for DEP002 (unused
-# packages). This is a known limitation of deptry. Unused evaluation dependencies
-# must be reviewed manually.
-#
-# To install evaluation dependencies locally:
-#   uv sync --extra evaluation
-[project.optional-dependencies]
+# Evaluation suite dependencies - separate from [project.dependencies] to avoid
+# being bundled into the production Docker image.
 evaluation = [
     "numpy>=2.0.0",
     "pandas>=2.0.0",
@@ -46,7 +36,7 @@ evaluation = [
 ]
 
 [tool.uv]
-default-groups = ["test", "dev"]
+default-groups = ["test", "dev", "evaluation"]
 
 [tool.hatch.build.targets.sdist]
 include = ["src/ingestion_pipeline"]
@@ -63,10 +53,10 @@ include = ["src/ingestion_pipeline"]
 known_first_party = ["ingestion_pipeline", "evaluation_suite"]
 
 [tool.deptry.per_rule_ignores]
-# numpy is declared in the 'evaluation' optional dependency group
-DEP002 = ["numpy"]
-# pytest is correctly a dev/test dependency, ignore it being imported in test files
-DEP004 = ["pytest"]
+# These packages are in the 'evaluation' dependency group (non-production code)
+DEP002 = ["numpy", "pandas", "dateparser"]
+# pytest and evaluation packages are correctly dev/test dependencies
+DEP004 = ["pytest", "pandas", "optuna", "snowballstemmer", "rapidfuzz", "xlsxwriter"]
 
 [tool.deptry.package_module_name_map]
 snowballstemmer = "snowballstemmer"

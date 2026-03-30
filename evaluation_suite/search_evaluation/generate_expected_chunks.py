@@ -8,7 +8,11 @@ from pathlib import Path
 import snowballstemmer
 
 from evaluation_suite.search_evaluation.chunks_loader import get_chunk_details_from_opensearch
-from evaluation_suite.search_evaluation.date_formats import extract_dates_for_search, is_date_search
+from evaluation_suite.search_evaluation.date_formats import (
+    extract_dates_from_search_string,
+    generate_date_format_variants,
+    is_date_search,
+)
 from evaluation_suite.search_evaluation.evaluation_settings import (
     EXP_CHUNK_DATE_VARIANTS,
     EXP_CHUNK_USE_STEMMING,
@@ -43,10 +47,18 @@ def find_matching_chunks(
 
     if is_date_search(term):
         if use_date_variants:
-            date_variants = extract_dates_for_search(term)
+            extraction = extract_dates_from_search_string(term)
+            all_variants: set[str] = set()
+            for i, date in enumerate(extraction.dates):
+                matched_pattern = extraction.matched_patterns[i] if i < len(extraction.matched_patterns) else {}
+                variants = generate_date_format_variants(date, matched_pattern)
+                if variants:
+                    all_variants.update(variants)
+                else:
+                    all_variants.add(date)
             for chunk in chunks:
                 chunk_text_lower = chunk["chunk_text"].lower()
-                if any(variant.lower() in chunk_text_lower for variant in date_variants):
+                if any(variant.lower() in chunk_text_lower for variant in all_variants):
                     matching_chunks.append(chunk)
         else:
             term_lower = term.lower()

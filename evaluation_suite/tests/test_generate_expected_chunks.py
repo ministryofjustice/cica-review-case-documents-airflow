@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from evaluation_suite.search_evaluation import generate_expected_chunks
+from evaluation_suite.search_evaluation.date_formats import DateExtractionResult
 
 
 def sample_chunks():
@@ -49,12 +50,16 @@ def test_find_matching_chunks_regular_stemming(mock_is_date_search):
 
 
 @patch("evaluation_suite.search_evaluation.generate_expected_chunks.is_date_search")
-@patch("evaluation_suite.search_evaluation.generate_expected_chunks.extract_dates_for_search")
-def test_find_matching_chunks_date_variants(mock_extract_dates, mock_is_date_search):
+@patch("evaluation_suite.search_evaluation.generate_expected_chunks.generate_date_format_variants")
+@patch("evaluation_suite.search_evaluation.generate_expected_chunks.extract_dates_from_search_string")
+def test_find_matching_chunks_date_variants(mock_extract, mock_variants, mock_is_date_search):
     """Test that find_matching_chunks correctly matches date variants when use_date_variants=True."""
     chunks = sample_chunks()
     mock_is_date_search.return_value = True
-    mock_extract_dates.return_value = ["12/05/2021", "2021-05-12"]
+    mock_extract.return_value = DateExtractionResult(
+        dates=["12/05/2021"], remaining_text="", matched_patterns=[{"numeric": True}]
+    )
+    mock_variants.return_value = ["12/05/2021", "2021-05-12"]
 
     result = generate_expected_chunks.find_matching_chunks(
         chunks, "12/05/2021", use_date_variants=True, use_stemming=False
