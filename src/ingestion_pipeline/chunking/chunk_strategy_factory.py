@@ -11,9 +11,11 @@ from ingestion_pipeline.chunking.strategies.layout.types.table.layout_table impo
 from ingestion_pipeline.chunking.strategies.layout.types.text.layout_text import LayoutTextChunkingStrategy
 from ingestion_pipeline.chunking.strategies.line_sentence.config import LineSentenceChunkingConfig
 from ingestion_pipeline.chunking.strategies.line_sentence.line_sentence_handler import LineBasedDocumentChunker
+from ingestion_pipeline.chunking.strategies.word_stream.config import WordStreamChunkingConfig
+from ingestion_pipeline.chunking.strategies.word_stream.handler import TextractorWordStreamDocumentChunker
 from ingestion_pipeline.config import settings
 
-ALLOWED_CHUNKER_TYPES = {"layout", "linear-sentence-splitter"}
+ALLOWED_CHUNKER_TYPES = {"layout", "linear-sentence-splitter", "textractor-word-stream"}
 logger = logging.getLogger(__name__)
 
 
@@ -21,7 +23,8 @@ def get_chunk_strategy(chunker_type: str) -> ChunkStrategy:
     """Factory function to return the desired ChunkStrategy implementation.
 
     Args:
-        chunker_type (str): Which chunker to use. Allowed: "layout", "linear-sentence-splitter".
+        chunker_type (str): Which chunker to use. Allowed: "layout",
+        "linear-sentence-splitter", "textractor-word-stream".
 
     Returns:
         ChunkStrategy: The selected chunker implementation.
@@ -66,5 +69,13 @@ def get_chunk_strategy(chunker_type: str) -> ChunkStrategy:
             max_vertical_gap_ratio=settings.SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO,
         )
         return LineBasedDocumentChunker(config=line_chunking_config)
+    elif chunker_type == "textractor-word-stream":
+        word_stream_config = WordStreamChunkingConfig(
+            min_words=settings.SENTENCE_CHUNKER_MIN_WORDS,
+            max_words=settings.SENTENCE_CHUNKER_MAX_WORDS,
+            max_vertical_gap_ratio=settings.SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO,
+            normalize_spacing=True,
+        )
+        return TextractorWordStreamDocumentChunker(config=word_stream_config)
 
     raise RuntimeError("Unreachable code: chunker_type guard should prevent this path.")
