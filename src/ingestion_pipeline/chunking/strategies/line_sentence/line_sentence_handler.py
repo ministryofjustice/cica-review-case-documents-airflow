@@ -35,16 +35,8 @@ class LineBasedDocumentChunker(ChunkStrategy):
             config: Configuration for line-based sentence chunking.
                     If None, uses settings from environment variables.
         """
-        if config is None:
-            # Load configuration from settings
-            config = LineSentenceChunkingConfig(
-                min_words=settings.SENTENCE_CHUNKER_MIN_WORDS,
-                max_words=settings.SENTENCE_CHUNKER_MAX_WORDS,
-                max_vertical_gap_ratio=settings.SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO,
-            )
-
-        self.config = config
-        self.chunker = LineSentenceChunker(config=config)
+        self.config = config or LineSentenceChunkingConfig.from_settings(settings)
+        self.chunker = LineSentenceChunker(config=self.config)
 
     def chunk(self, doc: Document, metadata: DocumentMetadata) -> ProcessedDocument:
         """Parses a Textractor Document and extracts LINE blocks as structured chunks.
@@ -68,30 +60,9 @@ class LineBasedDocumentChunker(ChunkStrategy):
         try:
             # Validate the document structure
             self._validate_textract_document(doc)
+            self._validate_raw_response(doc, metadata)
 
-            all_chunks = []
-
-            # Verify raw response exists (needed for compatibility checks)
-            if not doc.response:
-                raise ChunkException(f"Document {metadata.source_doc_id} missing raw response from Textract.")
-
-            # Process each page
-            for page in doc.pages:
-                logger.debug(f"Chunking page {page.page_num} of {len(doc.pages)} using line-based approach")
-
-                # Always start chunk_index at zero for each page
-                page_chunks = self._process_page(
-                    page=page,
-                    metadata=metadata,
-                    chunk_index_start=0,
-                )
-
-                all_chunks.extend(page_chunks)
-
-                logger.debug(
-                    f"Extracted {len(page_chunks)} chunks from page {page.page_num} "
-                    f"(total: {len(all_chunks)} chunks from {page.page_num}/{len(doc.pages)} pages)"
-                )
+            all_chunks = self._process_document_pages(doc, metadata)
 
             logger.info(f"Line-based chunking complete: {len(all_chunks)} chunks from {len(doc.pages)} pages")
             return ProcessedDocument(chunks=all_chunks)
@@ -99,6 +70,34 @@ class LineBasedDocumentChunker(ChunkStrategy):
         except Exception as e:
             logger.error(f"Error extracting chunks from document: {str(e)}")
             raise ChunkError(f"Error extracting chunks from document: {str(e)}") from e
+
+    def _validate_raw_response(self, doc: Document, metadata: DocumentMetadata) -> None:
+        """Ensure the Textract raw response is present."""
+        if not doc.response:
+            raise ChunkException(f"Document {metadata.source_doc_id} missing raw response from Textract.")
+
+    def _process_document_pages(self, doc: Document, metadata: DocumentMetadata) -> List[DocumentChunk]:
+        """Process all pages and return the aggregated chunks."""
+        all_chunks: List[DocumentChunk] = []
+
+        for page in doc.pages:
+            logger.debug(f"Chunking page {page.page_num} of {len(doc.pages)} using line-based approach")
+
+            # Always start chunk_index at zero for each page
+            page_chunks = self._process_page(
+                page=page,
+                metadata=metadata,
+                chunk_index_start=0,
+            )
+
+            all_chunks.extend(page_chunks)
+
+            logger.debug(
+                f"Extracted {len(page_chunks)} chunks from page {page.page_num} "
+                f"(total: {len(all_chunks)} chunks from {page.page_num}/{len(doc.pages)} pages)"
+            )
+
+        return all_chunks
 
     def _validate_textract_document(self, doc: Document) -> None:
         """Validate inputs before processing.
