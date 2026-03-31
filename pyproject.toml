@@ -23,8 +23,23 @@ test = [
     "moto>=5.1.10,<6",
 ]
 dev = ["deptry>=0.23.1,<0.25", "pre-commit>=4.2.0,<5"]
-# Evaluation suite dependencies - separate from [project.dependencies] to avoid
-# being bundled into the production Docker image.
+# Include the evaluation optional-dependencies as a dependency group
+# so `uv sync` installs them locally via default-groups.
+evaluation = [
+    "numpy>=2.0.0",
+    "pandas>=2.0.0",
+    "snowballstemmer>=2.2.0",
+    "rapidfuzz>=3.0.0",
+    "dateparser>=1.1.0",
+    "optuna>=4.0.0",
+    "xlsxwriter>=3.2.0",
+]
+
+# Also declared as optional dependencies so CI can install
+# them with `uv sync --extra evaluation`.
+# Kept separate from [project.dependencies] to avoid being
+# bundled into the production Docker image.
+[project.optional-dependencies]
 evaluation = [
     "numpy>=2.0.0",
     "pandas>=2.0.0",

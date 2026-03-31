@@ -21,7 +21,7 @@ For programmatic override (e.g., optimization), use:
 
 KEYWORD_BOOST = 1.2  # Exact keyword matching
 ANALYSER_BOOST = 0  # English analyzer (stemming, stopwords)
-SEMANTIC_BOOST = 0  # Vector/embedding similarity search
+SEMANTIC_BOOST = 1  # Vector/embedding similarity search
 FUZZY_BOOST = 0  # Fuzzy matching (typo tolerance)
 WILDCARD_BOOST = 0  # Wildcard pattern matching
 
@@ -64,7 +64,7 @@ DATE_FORMAT_DETECTION = True  # Enable/disable date format detection
 # - "simple": Flat OR query - any date variant OR remaining text matches
 # - "combined": Tiered AND query - prefers chunks with BOTH text AND date,
 #               with fallback tiers for partial date matching
-QUERY_MODE = "simple"  # "simple" or "combined"
+QUERY_MODE = "combined"  # "simple" or "combined"
 
 # Combined mode boosts (only used when QUERY_MODE = "combined")
 COMBINED_PHRASE_BOOST = 6  # Boost for remaining text phrase match
@@ -80,7 +80,7 @@ COMBINED_TIER2_BOOST = 2  # Outer boost for text+partial date tier
 # Settings for generate_expected_chunks.py - controls how expected chunk IDs
 # are generated from search terms for evaluation comparison.
 
-EXP_CHUNK_DATE_VARIANTS = False  # Generate expected chunks using date format variants
+EXP_CHUNK_DATE_VARIANTS = True  # Generate expected chunks using date format variants
 EXP_CHUNK_USE_STEMMING = False  # Generate expected chunks using word stemming
 
 # =============================================================================

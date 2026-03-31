@@ -16,4 +16,4 @@ class LineSentenceChunkingConfig:
     max_vertical_gap_ratio: float
 
     # Toggle for gap splitting behavior (for testing, not yet used)
-    include_gap_line_in_previous_chunk: bool = False
+    include_gap_line_in_previous_chunk: bool = True

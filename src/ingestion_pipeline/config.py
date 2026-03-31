@@ -94,7 +94,7 @@ class Settings(BaseSettings):  # type: ignore
 
     # -- Line-by-Line Sentence Chunker Configuration --
     # Word-based limits (not character-based)
-    SENTENCE_CHUNKER_MIN_WORDS: int = 60
+    SENTENCE_CHUNKER_MIN_WORDS: int = 80
     SENTENCE_CHUNKER_MAX_WORDS: int = 120
     # Vertical gap threshold (relative to page height, 0.0-1.0)
     SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO: float = 0.05
