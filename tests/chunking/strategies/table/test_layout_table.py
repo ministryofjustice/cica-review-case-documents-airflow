@@ -6,11 +6,11 @@ import pytest
 from textractor.entities.layout import Layout, Line
 from textractor.entities.table import Table
 
-from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
 from ingestion_pipeline.chunking.exceptions import ChunkException
-from ingestion_pipeline.chunking.strategies.table import LayoutTableChunkingStrategy
-from ingestion_pipeline.chunking.strategies.table.cell_chunker import CellTableChunker
-from ingestion_pipeline.chunking.strategies.table.line_chunker import LineTableChunker
+from ingestion_pipeline.chunking.strategies.layout.config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.strategies.layout.types.table import LayoutTableChunkingStrategy
+from ingestion_pipeline.chunking.strategies.layout.types.table.cell_chunker import CellTableChunker
+from ingestion_pipeline.chunking.strategies.layout.types.table.line_chunker import LineTableChunker
 
 
 @pytest.fixture
@@ -35,7 +35,12 @@ def mock_chunkers(mocker):
 @pytest.fixture
 def default_config():
     """Fixture providing a default chunking configuration for tests."""
-    return ChunkingConfig(maximum_chunk_size=500)
+    return LayoutChunkingConfig(
+        maximum_chunk_size=500,
+        y_tolerance_ratio=0.1,
+        max_vertical_gap=10,
+        line_chunk_char_limit=100,
+    )
 
 
 # Dummy arguments to pass into the chunk method for all tests

@@ -9,9 +9,9 @@ import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
 
-from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
-from ingestion_pipeline.chunking.strategies.list.list_chunker import LayoutListChunkingStrategy
+from ingestion_pipeline.chunking.strategies.layout.config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.strategies.layout.types.list.list_chunker import LayoutListChunkingStrategy
 
 
 # Helper function to create mock layout blocks for cleaner tests
@@ -27,9 +27,14 @@ def create_mock_layout_block(layout_type: str, text: str, block_id: str = "id-12
 
 # Pytest fixtures to provide reusable setup for tests
 @pytest.fixture
-def chunking_config() -> ChunkingConfig:
+def chunking_config() -> LayoutChunkingConfig:
     """Provides a default ChunkingConfig instance."""
-    return ChunkingConfig()
+    return LayoutChunkingConfig(
+        maximum_chunk_size=500,
+        y_tolerance_ratio=0.1,
+        max_vertical_gap=10,
+        line_chunk_char_limit=100,
+    )
 
 
 @pytest.fixture
@@ -49,7 +54,7 @@ def document_metadata() -> DocumentMetadata:
 
 
 @pytest.fixture
-def list_chunking_strategy(chunking_config: ChunkingConfig) -> LayoutListChunkingStrategy:
+def list_chunking_strategy(chunking_config: LayoutChunkingConfig) -> LayoutListChunkingStrategy:
     """Provides an instance of the class under test."""
     return LayoutListChunkingStrategy(config=chunking_config)
 
@@ -61,7 +66,7 @@ def test_chunk_with_valid_list_items(list_chunking_strategy, document_metadata):
     layout_list_block = create_mock_layout_block("LAYOUT_LIST", "Unused parent text")
     layout_list_block.children = [list_item_1, list_item_2]
 
-    with patch("ingestion_pipeline.chunking.schemas.DocumentChunk.from_textractor_layout") as mock_from_layout:
+    with patch("ingestion_pipeline.chunking.schemas.DocumentChunk.create_chunk") as mock_from_layout:
         mock_from_layout.side_effect = lambda **kwargs: MagicMock(text=kwargs["chunk_text"])
 
         chunks = list_chunking_strategy.chunk(

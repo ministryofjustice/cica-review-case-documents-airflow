@@ -129,6 +129,8 @@ def write_hits_to_xlsx(
     worksheet.write(1, 9, initial_search_results)
     worksheet.write(0, 10, "Adaptive filter used:")
     worksheet.write(1, 10, adaptive_filter_used)
+    worksheet.write(0, 11, "Query mode:")
+    worksheet.write(1, 11, eval_settings.QUERY_MODE)
 
     headers = ["Score", "Type", "Term Freq", "Case Ref", "Chunk ID", "Page", "Text Snippet"]
     for col, header in enumerate(headers):
@@ -159,6 +161,6 @@ def write_hits_to_xlsx(
 
 
 if __name__ == "__main__":
-    _search_term = "gaba"  # Change this to explore a different term
+    _search_term = "acute 28th November 2022"  # Change this to explore a different term
     _hits = local_search_client(_search_term)
     write_hits_to_xlsx(_hits, search_term=_search_term)

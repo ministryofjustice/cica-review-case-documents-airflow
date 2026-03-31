@@ -78,12 +78,14 @@ def append_to_evaluation_log(config: dict, summary: EvaluationSummary | dict) ->
     for key in ["fuzziness", "max_expansions", "queries_with_expected_chunk"]:
         log_entry.pop(key, None)
 
-    # Reorder to put timestamp first, then search_type
+    # Reorder to put timestamp first, then search_type, then query_mode
     reordered = {}
     if "timestamp" in log_entry:
         reordered["timestamp"] = log_entry.pop("timestamp")
     if "search_type" in log_entry:
         reordered["search_type"] = log_entry.pop("search_type")
+    if "query_mode" in log_entry:
+        reordered["query_mode"] = log_entry.pop("query_mode")
     log_entry = {**reordered, **log_entry}
 
     # Check if file exists to determine if we need headers

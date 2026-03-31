@@ -7,10 +7,10 @@ from unittest.mock import MagicMock, call
 import pytest
 from textractor.entities.bbox import BoundingBox
 
-import ingestion_pipeline.chunking.strategies.layout_text as layout_text_module
-from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+import ingestion_pipeline.chunking.strategies.layout.types.text.layout_text as layout_text_module
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
-from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkingStrategy
+from ingestion_pipeline.chunking.strategies.layout.config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.strategies.layout.types.text.layout_text import LayoutTextChunkingStrategy
 from ingestion_pipeline.chunking.utils.bbox_utils import combine_bounding_boxes
 
 
@@ -51,7 +51,7 @@ def document_metadata_factory():
 @pytest.fixture
 def mock_config():
     """Provides a mock ChunkingConfig for the strategy."""
-    config = MagicMock(spec=ChunkingConfig)
+    config = MagicMock(spec=LayoutChunkingConfig)
     config.maximum_chunk_size = 50
     return config
 
@@ -104,7 +104,7 @@ def test_single_chunk_created_for_two_lines_within_size_limit(strategy, document
 
     with pytest.MonkeyPatch.context() as m:
         mock_creator = MagicMock()
-        m.setattr(layout_text_module.DocumentChunk, DocumentChunk.from_textractor_layout.__name__, mock_creator)
+        m.setattr(layout_text_module.DocumentChunk, DocumentChunk.create_chunk.__name__, mock_creator)
 
         chunks = strategy.chunk(layout_block, page_number=1, metadata=metadata, chunk_index_start=0)
 
@@ -126,7 +126,7 @@ def test_multiple_chunks_created_on_size_limit(strategy, document_metadata_facto
 
     with pytest.MonkeyPatch.context() as m:
         mock_creator = MagicMock()
-        m.setattr(layout_text_module.DocumentChunk, DocumentChunk.from_textractor_layout.__name__, mock_creator)
+        m.setattr(layout_text_module.DocumentChunk, DocumentChunk.create_chunk.__name__, mock_creator)
 
         chunks = strategy.chunk(layout_block, page_number=2, metadata=metadata, chunk_index_start=5)
 
@@ -150,7 +150,7 @@ def test_single_line_exceeding_limit_only_creates_one_chunk(strategy, document_m
 
     with pytest.MonkeyPatch.context() as m:
         mock_creator = MagicMock()
-        m.setattr(layout_text_module.DocumentChunk, DocumentChunk.from_textractor_layout.__name__, mock_creator)
+        m.setattr(layout_text_module.DocumentChunk, DocumentChunk.create_chunk.__name__, mock_creator)
 
         chunks = strategy.chunk(layout_block, page_number=1, metadata=metadata, chunk_index_start=0)
 
@@ -180,7 +180,7 @@ def test_bounding_boxes_are_combined_per_chunk(strategy, document_metadata_facto
     mock_combiner = MagicMock()
 
     monkeypatch.setattr(layout_text_module, combine_bounding_boxes.__name__, mock_combiner)
-    monkeypatch.setattr(layout_text_module.DocumentChunk, DocumentChunk.from_textractor_layout.__name__, MagicMock())
+    monkeypatch.setattr(layout_text_module.DocumentChunk, DocumentChunk.create_chunk.__name__, MagicMock())
 
     strategy.chunk(layout_block, page_number=1, metadata=metadata, chunk_index_start=0)
 

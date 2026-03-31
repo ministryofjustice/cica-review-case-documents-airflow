@@ -73,14 +73,31 @@ class Settings(BaseSettings):  # type: ignore
 
     # -- SOURCE DOCUMENT BUCKET --
     AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET: str = "local-kta-documents-bucket"
+    AWS_CICA_S3_SOURCE_DOCUMENT_CASE_PREFIX: str = "26-711111"
+    AWS_CICA_S3_SOURCE_DOCUMENT_FILENAME: str = "Case1_TC19_50_pages_brain_injury.pdf"
 
     AWS_LOCAL_DEV_TEXTRACT_S3_ROOT_BUCKET: str = "mod-platfform-sandbox-kta-documents-bucket"
 
+    # -- Chunking Configuration --
+    # The original strategy was "layout" based chunking, which uses Textract layout analysis to group text into chunks.
+    # The new strategy is a "linear-sentence-splitter" which ignores layout
+    # and simply splits text into chunks based on sentence boundaries and word counts.
+    # This is still a work in progress and we are experimenting with both approaches,
+    # but defaulting to the new "linear-sentence-splitter" for now.
+    DOCUMENT_CHUNKING_STRATEGY: str = "linear-sentence-splitter"  # or "layout"
+
     # review these values when we have a working system
-    MAXIMUM_CHUNK_SIZE: int = 80  # maximum chunk size
-    Y_TOLERANCE_RATIO: float = 0.5
-    MAX_VERTICAL_GAP: float = 0.5
-    LINE_CHUNK_CHAR_LIMIT: int = 300
+    LAYOUT_CHUNKING_MAXIMUM_CHUNK_SIZE: int = 80  # maximum chunk size
+    LAYOUT_CHUNKING_Y_TOLERANCE_RATIO: float = 0.5
+    LAYOUT_CHUNKING_MAX_VERTICAL_GAP: float = 0.5
+    LAYOUT_CHUNKING_LINE_CHUNK_CHAR_LIMIT: int = 300
+
+    # -- Line-by-Line Sentence Chunker Configuration --
+    # Word-based limits (not character-based)
+    SENTENCE_CHUNKER_MIN_WORDS: int = 80
+    SENTENCE_CHUNKER_MAX_WORDS: int = 120
+    # Vertical gap threshold (relative to page height, 0.0-1.0)
+    SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO: float = 0.05
 
     # Create a unique namespace for your application
     # This is a fixed UUID defined once for the system.
@@ -98,8 +115,14 @@ class Settings(BaseSettings):  # type: ignore
     BEDROCK_EMBEDDING_MODEL_ID: str = "amazon.titan-embed-text-v2:0"
 
     # -- Local Development Mode --
-    # Confgure via .env or environment variable
+    # Confgure via .env
     LOCAL_DEVELOPMENT_MODE: bool = False
+
+    # -- Temp Development setting until MOD_PLATFORM is fully integrated --
+    # That is MOD PLAT Textract can talk to CICA AWS resources
+    # and we can point the Textract S3 output to the same bucket as the source documents
+    # Confgure via .env
+    USE_MOD_PLATFORM_MODE: bool = False
 
     LOG_LEVEL: str = "INFO"
 
@@ -123,7 +146,12 @@ class Settings(BaseSettings):  # type: ignore
             raise ValueError("All page numbers in DEBUG_PAGE_NUMBERS must be >= 1")
         return v
 
-    @field_validator("MAXIMUM_CHUNK_SIZE", "LINE_CHUNK_CHAR_LIMIT")
+    @field_validator(
+        "LAYOUT_CHUNKING_MAXIMUM_CHUNK_SIZE",
+        "LAYOUT_CHUNKING_LINE_CHUNK_CHAR_LIMIT",
+        "SENTENCE_CHUNKER_MIN_WORDS",
+        "SENTENCE_CHUNKER_MAX_WORDS",
+    )
     @classmethod
     def validate_positive_int(cls, v: int) -> int:
         """Ensure chunk size values are positive integers.
@@ -141,13 +169,14 @@ class Settings(BaseSettings):  # type: ignore
             raise ValueError("Chunk size must be a positive integer")
         return v
 
-    @field_validator("Y_TOLERANCE_RATIO")
+    @field_validator("LAYOUT_CHUNKING_Y_TOLERANCE_RATIO", "SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO")
     @classmethod
-    def validate_ratio(cls, v: float) -> float:
+    def validate_ratio(cls, v: float, info) -> float:
         """Ensure ratio is between 0.0 and 1.0.
 
         Args:
             v (float): The ratio value to validate.
+            info: Pydantic validation info containing field name.
 
         Returns:
             float: The validated ratio.
@@ -156,10 +185,10 @@ class Settings(BaseSettings):  # type: ignore
             ValueError: If the ratio is not between 0.0 and 1.0.
         """
         if not 0.0 <= v <= 1.0:
-            raise ValueError("Y_TOLERANCE_RATIO must be between 0.0 and 1.0")
+            raise ValueError(f"{info.field_name} must be between 0.0 and 1.0")
         return v
 
-    @field_validator("MAX_VERTICAL_GAP")
+    @field_validator("LAYOUT_CHUNKING_MAX_VERTICAL_GAP")
     @classmethod
     def validate_positive_float(cls, v: float) -> float:
         """Ensure gap value is positive.
@@ -174,7 +203,7 @@ class Settings(BaseSettings):  # type: ignore
             ValueError: If the value is not positive.
         """
         if v <= 0.0:
-            raise ValueError("MAX_VERTICAL_GAP must be a positive number")
+            raise ValueError("LAYOUT_CHUNKING_MAX_VERTICAL_GAP must be a positive number")
         return v
 
     @field_validator("TEXTRACT_API_POLL_INTERVAL_SECONDS")
@@ -207,6 +236,23 @@ class Settings(BaseSettings):  # type: ignore
         """
         if self.TEXTRACT_API_JOB_TIMEOUT_SECONDS <= self.TEXTRACT_API_POLL_INTERVAL_SECONDS:
             raise ValueError("TEXTRACT_API_JOB_TIMEOUT_SECONDS must be greater than TEXTRACT_API_POLL_INTERVAL_SECONDS")
+        return self
+
+    @model_validator(mode="after")
+    def validate_sentence_chunker_word_limits(self) -> "Settings":
+        """Ensure min_words < max_words for sentence chunker.
+
+        Returns:
+            Settings: The validated settings object.
+
+        Raises:
+            ValueError: If min_words >= max_words.
+        """
+        if self.SENTENCE_CHUNKER_MIN_WORDS >= self.SENTENCE_CHUNKER_MAX_WORDS:
+            raise ValueError(
+                f"SENTENCE_CHUNKER_MIN_WORDS ({self.SENTENCE_CHUNKER_MIN_WORDS}) must be less than "
+                f"SENTENCE_CHUNKER_MAX_WORDS ({self.SENTENCE_CHUNKER_MAX_WORDS})"
+            )
         return self
 
 

@@ -4,15 +4,20 @@ from unittest.mock import MagicMock, call
 
 import pytest
 
-import ingestion_pipeline.chunking.strategies.layout_text as layout_text_module
-from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
-from ingestion_pipeline.chunking.strategies.layout_text import LayoutTextChunkingStrategy
+import ingestion_pipeline.chunking.strategies.layout.types.text.layout_text as layout_text_module
+from ingestion_pipeline.chunking.strategies.layout.config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.strategies.layout.types.text.layout_text import LayoutTextChunkingStrategy
 
 
 @pytest.fixture
 def default_config():
     """Provides a default ChunkingConfig for tests."""
-    return ChunkingConfig(maximum_chunk_size=600)
+    return LayoutChunkingConfig(
+        maximum_chunk_size=600,
+        y_tolerance_ratio=0.1,
+        max_vertical_gap=10,
+        line_chunk_char_limit=100,
+    )
 
 
 # Set this DEBUG param to an empty set to disable debug logging during tests
@@ -74,9 +79,9 @@ def test_chunk_creates_a_single_chunk_for_short_text(mock_dependencies, default_
     result_chunks = handler.chunk(fake_layout_block, page_number, fake_metadata, chunk_index_start)
     assert len(result_chunks) == 1
 
-    mock_opensearch_chunk.from_textractor_layout.assert_called_once()
+    mock_opensearch_chunk.create_chunk.assert_called_once()
 
-    call_args = mock_opensearch_chunk.from_textractor_layout.call_args
+    call_args = mock_opensearch_chunk.create_chunk.call_args
     assert call_args.kwargs["chunk_text"] == "This is the first line. This is the second line."
     assert call_args.kwargs["page_number"] == 1
     assert call_args.kwargs["chunk_index"] == 0
@@ -85,7 +90,9 @@ def test_chunk_creates_a_single_chunk_for_short_text(mock_dependencies, default_
 def test_chunk_splits_text_into_multiple_chunks(mock_dependencies, default_config):
     """Tests that text larger than the maximum size is split into multiple chunks."""
     mock_opensearch_chunk, mock_combine_bboxes = mock_dependencies
-    chunking_config = ChunkingConfig(maximum_chunk_size=30)
+    chunking_config = LayoutChunkingConfig(
+        maximum_chunk_size=30, y_tolerance_ratio=0.1, max_vertical_gap=10, line_chunk_char_limit=100
+    )
     handler = LayoutTextChunkingStrategy(chunking_config)
 
     fake_lines = [
@@ -105,31 +112,34 @@ def test_chunk_splits_text_into_multiple_chunks(mock_dependencies, default_confi
 
     expected_calls = [
         call(
-            block=fake_layout_block,
             page_number=3,
             metadata=fake_metadata,
             chunk_index=5,
             chunk_text="This is the first chunk.",
             combined_bbox=mock_combine_bboxes.return_value,
+            layout_type=fake_layout_block.layout_type,
+            confidence=fake_layout_block.confidence,
         ),
         call(
-            block=fake_layout_block,
             page_number=3,
             metadata=fake_metadata,
             chunk_index=6,
             chunk_text="This line starts a new one.",
             combined_bbox=mock_combine_bboxes.return_value,
+            layout_type=fake_layout_block.layout_type,
+            confidence=fake_layout_block.confidence,
         ),
         call(
-            block=fake_layout_block,
             page_number=3,
             metadata=fake_metadata,
             chunk_index=7,
             chunk_text="And so does this.",
             combined_bbox=mock_combine_bboxes.return_value,
+            layout_type=fake_layout_block.layout_type,
+            confidence=fake_layout_block.confidence,
         ),
     ]
-    mock_opensearch_chunk.from_textractor_layout.assert_has_calls(expected_calls)
+    mock_opensearch_chunk.create_chunk.assert_has_calls(expected_calls)
 
 
 def test_simple_strategy_handles_empty_block(default_config):
@@ -170,7 +180,12 @@ def test_simple_strategy_handles_empty_block(default_config):
 )
 def test_would_exceed_size_limit(current_text, new_line, expected):
     """Tests the helper method directly with various inputs."""
-    chunking_config = ChunkingConfig(maximum_chunk_size=20)
+    chunking_config = LayoutChunkingConfig(
+        maximum_chunk_size=20,
+        y_tolerance_ratio=0.1,
+        max_vertical_gap=10,
+        line_chunk_char_limit=100,
+    )
     handler = LayoutTextChunkingStrategy(chunking_config)
     assert handler._would_exceed_size_limit(current_text, new_line) is expected
 
@@ -178,7 +193,12 @@ def test_would_exceed_size_limit(current_text, new_line, expected):
 def test_chunk_handles_single_line_exceeding_max_size(mock_dependencies, default_config):
     """Tests that a single line longer than the maximum chunk size becomes its own chunk."""
     mock_opensearch_chunk, mock_combine_bboxes = mock_dependencies
-    chunking_config = ChunkingConfig(maximum_chunk_size=20)
+    chunking_config = chunking_config = LayoutChunkingConfig(
+        maximum_chunk_size=20,
+        y_tolerance_ratio=0.1,
+        max_vertical_gap=10,
+        line_chunk_char_limit=100,
+    )
     handler = LayoutTextChunkingStrategy(chunking_config)
 
     long_line = "This single line is far too long for the chunk size."  # len > 20
@@ -201,20 +221,22 @@ def test_chunk_handles_single_line_exceeding_max_size(mock_dependencies, default
 
     expected_calls = [
         call(
-            block=fake_layout_block,
             page_number=1,
             metadata=fake_metadata,
             chunk_index=0,
             chunk_text=long_line,
             combined_bbox=mock_combine_bboxes.return_value,
+            layout_type=fake_layout_block.layout_type,
+            confidence=fake_layout_block.confidence,
         ),
         call(
-            block=fake_layout_block,
             page_number=1,
             metadata=fake_metadata,
             chunk_index=1,
             chunk_text=short_line,
             combined_bbox=mock_combine_bboxes.return_value,
+            layout_type=fake_layout_block.layout_type,
+            confidence=fake_layout_block.confidence,
         ),
     ]
-    mock_opensearch_chunk.from_textractor_layout.assert_has_calls(expected_calls)
+    mock_opensearch_chunk.create_chunk.assert_has_calls(expected_calls)
