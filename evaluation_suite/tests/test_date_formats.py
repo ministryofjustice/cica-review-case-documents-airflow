@@ -207,18 +207,22 @@ class TestGenerateMonthYearVariants:
         """Test that month-year variants are generated from full date."""
         variants = date_formats.generate_month_year_variants("15/12/2022", {"numeric": True})
         assert len(variants) > 0
-        # Should include text month variants
-        assert any("December" in v for v in variants)
-        assert any("Dec" in v for v in variants)
-        # Should include numeric month/year
-        assert any("12/22" in v for v in variants)
+        # Should include text month variants with 4-digit year only
+        assert any("December 2022" in v for v in variants)
+        assert any("Dec 2022" in v for v in variants)
+        # Should NOT include 2-digit year variants (ambiguous with day-of-month)
+        assert not any("Dec 22" in v and "2022" not in v for v in variants)
+        assert not any("12/22" in v for v in variants)
 
     def test_generates_from_day_month_year(self):
         """Test month-year variants from day-month-year format."""
         variants = date_formats.generate_month_year_variants("15 December 2022", {"dayMonthYear": True})
         assert len(variants) > 0
-        assert any("December 2022" in v or "December 22" in v for v in variants)
-        assert any("Dec 2022" in v or "Dec 22" in v for v in variants)
+        assert any("December 2022" in v for v in variants)
+        assert any("Dec 2022" in v for v in variants)
+        # Should NOT include 2-digit year variants (ambiguous with day-of-month)
+        assert not any(v == "December 22" for v in variants)
+        assert not any(v == "Dec 22" for v in variants)
 
     def test_returns_empty_for_month_year_input(self):
         """Test that month-year only input returns empty (no partial for partial)."""

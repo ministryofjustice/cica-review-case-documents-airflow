@@ -6,7 +6,7 @@ It is used by search_client to execute searches against OpenSearch.
 Responsibilities:
 - Build hybrid search queries (keyword, analyser, fuzzy, wildcard, semantic)
 - Apply adaptive score filtering with semantic fallback
-- Support simple and combined query modes for date+text searches
+- Support simple and combined query modes for date+text and multi-term text searches
 """
 
 import logging
@@ -87,6 +87,54 @@ def _build_hybrid_clauses(query_text: str, query_vector: list[float], result_siz
     return clauses
 
 
+def _build_tiered_text_query(query_text: str) -> list[dict]:
+    """Build tiered text query for multi-term searches without dates.
+
+    Creates a tiered query structure:
+    - Tier 1 (highest): ALL search terms required (operator: "and")
+    - Tier 2 (medium): MOST search terms required (minimum_should_match)
+    - Tier 3 (fallback): ANY search term matches (operator: "or")
+
+    Args:
+        query_text: The text query to search for.
+
+    Returns:
+        List of should clauses for the tiered query.
+    """
+    return [
+        # Tier 1: All terms required
+        {
+            "match": {
+                "chunk_text": {
+                    "query": query_text,
+                    "operator": "and",
+                    "boost": eval_settings.TEXT_TIER1_BOOST,
+                }
+            }
+        },
+        # Tier 2: Most terms required
+        {
+            "match": {
+                "chunk_text": {
+                    "query": query_text,
+                    "minimum_should_match": eval_settings.TEXT_MINIMUM_SHOULD_MATCH,
+                    "boost": eval_settings.TEXT_TIER2_BOOST,
+                }
+            }
+        },
+        # Tier 3: Any term (fallback)
+        {
+            "match": {
+                "chunk_text": {
+                    "query": query_text,
+                    "operator": "or",
+                    "boost": eval_settings.TEXT_TIER3_BOOST,
+                }
+            }
+        },
+    ]
+
+
 def _build_combined_date_query(
     remaining_text: str,
     exact_variants: list[str],
@@ -97,7 +145,7 @@ def _build_combined_date_query(
 
     Creates a tiered query structure:
     - Tier 1 (highest): Text phrase AND exact date (any variant)
-    - Tier 2 (medium): Text phrase AND partial date (month-year only)
+    - Tier 2 (medium): Exact date AND partial match of remaining text terms
     - Tier 3 (fallback): Simple bag-of-words query
 
     Args:
@@ -137,41 +185,37 @@ def _build_combined_date_query(
         }
         should_clauses.append(tier1)
 
-    # Tier 2: Text phrase AND partial date variants (month-year)
-    if remaining_text and partial_variants:
-        partial_date_should = [
-            {"match_phrase": {"chunk_text": {"query": v, "boost": eval_settings.COMBINED_PARTIAL_DATE_BOOST}}}
-            for v in partial_variants
+    # Tier 2: Exact date AND partial match of remaining text terms
+    if remaining_text and exact_variants:
+        exact_date_should_t2 = [
+            {"match_phrase": {"chunk_text": {"query": v, "boost": eval_settings.COMBINED_EXACT_DATE_BOOST}}}
+            for v in exact_variants
         ]
 
         tier2 = {
             "bool": {
                 "must": [
                     {
-                        "match_phrase": {
+                        "match": {
                             "chunk_text": {
                                 "query": remaining_text,
-                                "slop": eval_settings.COMBINED_PHRASE_SLOP,
-                                "boost": eval_settings.COMBINED_PHRASE_BOOST - 1,  # Slightly lower than tier 1
+                                "minimum_should_match": eval_settings.TEXT_MINIMUM_SHOULD_MATCH,
+                                "boost": eval_settings.COMBINED_PHRASE_BOOST - 1,
                             }
                         }
                     },
-                    {"bool": {"should": partial_date_should, "minimum_should_match": 1}},
+                    {"bool": {"should": exact_date_should_t2, "minimum_should_match": 1}},
                 ],
                 "boost": eval_settings.COMBINED_TIER2_BOOST,
             }
         }
         should_clauses.append(tier2)
 
-    # Tier 3: Fallback simple_query_string (bag-of-words)
-    fallback = {
-        "simple_query_string": {
-            "query": query_text,
-            "fields": ["chunk_text"],
-            "default_operator": "or",
-        }
-    }
-    should_clauses.append(fallback)
+    # Tier 3: Fallback - date variants OR remaining text (no thresholds)
+    for v in exact_variants:
+        should_clauses.append({"match_phrase": {"chunk_text": {"query": v, "boost": eval_settings.DATE_QUERY_BOOST}}})
+    if remaining_text:
+        should_clauses.append({"match": {"chunk_text": {"query": remaining_text, "operator": "or"}}})
 
     return should_clauses
 
@@ -183,6 +227,11 @@ def create_hybrid_query(query_text: str, query_vector: list[float], result_size:
     For queries containing dates (when DATE_FORMAT_DETECTION is enabled):
     - Simple mode: Flat OR query with date variants and remaining text
     - Combined mode: Tiered AND query preferring chunks with both text and date
+
+    For non-date queries:
+    - Simple mode: Flat hybrid clauses (keyword, analyser, fuzzy, wildcard, semantic)
+    - Combined mode: Tiered text query (all terms > most terms > any term) with
+      supplementary fuzzy/wildcard/semantic clauses
 
     Restricts results to the case specified in CASE_FILTER.
 
@@ -267,8 +316,22 @@ def create_hybrid_query(query_text: str, query_vector: list[float], result_size:
 
             return query_body
 
-    # Standard hybrid query (no dates detected or date detection disabled)
-    should_clauses = _build_hybrid_clauses(query_text, query_vector, result_size)
+    # Standard query (no dates detected or date detection disabled)
+    if eval_settings.QUERY_MODE == "combined":
+        # Tiered text query: all terms > most terms > any term
+        logger.debug("Using combined text query mode (tiered match)")
+        should_clauses = _build_tiered_text_query(query_text)
+    else:
+        # Simple mode: flat hybrid clauses
+        should_clauses = _build_hybrid_clauses(query_text, query_vector, result_size)
+
+    # Add supplementary clauses (fuzzy, wildcard, semantic) if enabled
+    if eval_settings.QUERY_MODE == "combined":
+        for clause in _build_hybrid_clauses(query_text, query_vector, result_size):
+            # Skip keyword/analyser match clauses (already covered by tiered query)
+            key = list(clause.keys())[0]
+            if key not in ("match",):
+                should_clauses.append(clause)
 
     query_body = {
         "size": result_size,

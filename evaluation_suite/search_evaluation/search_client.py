@@ -161,6 +161,6 @@ def write_hits_to_xlsx(
 
 
 if __name__ == "__main__":
-    _search_term = "acute 28th November 2022"  # Change this to explore a different term
+    _search_term = "acute 28-Nov-2022"  # Change this to explore a different term
     _hits = local_search_client(_search_term)
     write_hits_to_xlsx(_hits, search_term=_search_term)

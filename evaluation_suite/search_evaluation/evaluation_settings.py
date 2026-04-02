@@ -21,7 +21,7 @@ For programmatic override (e.g., optimization), use:
 
 KEYWORD_BOOST = 1.2  # Exact keyword matching
 ANALYSER_BOOST = 0  # English analyzer (stemming, stopwords)
-SEMANTIC_BOOST = 1  # Vector/embedding similarity search
+SEMANTIC_BOOST = 0  # Vector/embedding similarity search
 FUZZY_BOOST = 0  # Fuzzy matching (typo tolerance)
 WILDCARD_BOOST = 0  # Wildcard pattern matching
 
@@ -73,6 +73,15 @@ COMBINED_EXACT_DATE_BOOST = 10  # Boost for exact date matches in combined mode
 COMBINED_PARTIAL_DATE_BOOST = 6  # Boost for month-year partial matches
 COMBINED_TIER1_BOOST = 3  # Outer boost for text+exact date tier
 COMBINED_TIER2_BOOST = 2  # Outer boost for text+partial date tier
+
+# Tiered text query boosts (used when QUERY_MODE = "combined" for non-date queries)
+# Tier 1: ALL search terms required (operator: "and")
+# Tier 2: MOST search terms required (minimum_should_match)
+# Tier 3: ANY search term matches (fallback)
+TEXT_TIER1_BOOST = 3  # Boost for all-terms-required tier
+TEXT_TIER2_BOOST = 2  # Boost for most-terms-required tier
+TEXT_TIER3_BOOST = 1  # Boost for any-term fallback tier
+TEXT_MINIMUM_SHOULD_MATCH = "55%"  # Threshold for Tier 2 (most terms)
 
 # =============================================================================
 # EXPECTED CHUNK GENERATION

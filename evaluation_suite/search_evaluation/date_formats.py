@@ -464,11 +464,15 @@ def generate_month_year_variants(date_string: str, matched_patterns: MatchedPatt
 
     _, month, year = parsed
 
-    # Generate month-year variants using the monthYear format templates
+    # Generate month-year variants using only 4-digit year formats to avoid
+    # ambiguity with day-of-month (e.g., "Nov 22" could match "November 22nd")
     variants: set[str] = set()
     month_year_formats = _POSSIBLE_DATE_FORMATS.get("monthYear", [])
 
     for fmt in month_year_formats:
+        # Skip 2-digit year formats - they produce ambiguous variants like "Nov 22"
+        if "yy" in fmt and "yyyy" not in fmt:
+            continue
         # Use day=1 as placeholder (not included in output)
         formatted = _format_date(1, month, year, fmt)
         variants.add(formatted)
@@ -477,9 +481,5 @@ def generate_month_year_variants(date_string: str, matched_patterns: MatchedPatt
         if month == 9 and "Sep" in formatted:
             sept_variant = formatted.replace("Sep", "Sept")
             variants.add(sept_variant)
-
-    # Also add numeric month/year format (e.g., "12/22" for December 2022)
-    year_2digit = year % 100
-    variants.add(f"{month}/{year_2digit:02d}")
 
     return list(variants)
