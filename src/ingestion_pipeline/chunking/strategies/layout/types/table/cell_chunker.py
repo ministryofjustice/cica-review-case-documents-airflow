@@ -11,7 +11,7 @@ from textractor.entities.table_cell import TableCell
 
 from ingestion_pipeline.chunking.exceptions import ChunkException
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
-from ingestion_pipeline.chunking.strategies.table.base import BaseTableChunker
+from ingestion_pipeline.chunking.strategies.layout.types.table.base import BaseTableChunker
 
 logger = logging.getLogger(__name__)
 

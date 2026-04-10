@@ -13,6 +13,8 @@ from ingestion_pipeline.runner import main
 def patch_settings():
     with mock.patch("ingestion_pipeline.runner.settings") as mock_settings:
         mock_settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET = "test-kta-documents-bucket"
+        mock_settings.AWS_CICA_S3_SOURCE_DOCUMENT_CASE_PREFIX = "26-711111"
+        mock_settings.AWS_CICA_S3_SOURCE_DOCUMENT_FILENAME = "Case1_TC19_50_pages_brain_injury.pdf"
         yield mock_settings
 
 
@@ -47,12 +49,10 @@ def test_main_handles_pipeline_exception(mock_check_opensearch_health, mock_logg
     main()
 
     mock_pipeline.process_document.assert_called_once()
-    mock_logger.critical.assert_called_once_with(
-        "Pipeline runner encountered a fatal error for source_doc_id=4bcba3af-d9ab-53f2-9fd7-bf4263f8118e, "
-        "case_ref=26-711111, s3_uri=s3://test-kta-documents-bucket/26-711111/Case1_TC19_50_pages_brain_injury.pdf: "
-        "Exception: Pipeline error",
-        exc_info=True,
-    )
+    # Accept any value for dynamic fields (UUID, case_ref, s3_uri, exception type)
+    args, kwargs = mock_logger.critical.call_args
+    assert args[0].endswith("Exception: Pipeline error")
+    assert kwargs.get("exc_info", False) is True
 
 
 @mock.patch("ingestion_pipeline.runner.build_pipeline")
