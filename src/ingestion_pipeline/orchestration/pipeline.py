@@ -5,7 +5,6 @@ import logging
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
 from ingestion_pipeline.chunking.textract_document_chunker import ChunkError, DocumentChunker
 from ingestion_pipeline.config import settings
-from ingestion_pipeline.embedding.embedding_generator import EmbeddingError, EmbeddingGenerator
 from ingestion_pipeline.indexing.indexer import IndexingError, OpenSearchIndexer
 from ingestion_pipeline.page_processor.processor import PageProcessor
 from ingestion_pipeline.textract.textract_processor import TextractProcessingError, TextractProcessor
@@ -25,13 +24,12 @@ class PipelineError(Exception):
 
 
 class Pipeline:
-    """Orchestrates the document processing pipeline: chunking -> embedding -> indexing."""
+    """Orchestrates the document processing pipeline: chunking -> indexing."""
 
     def __init__(
         self,
         textract_processor: TextractProcessor,
         chunker: DocumentChunker,
-        embedding_generator: EmbeddingGenerator,
         chunk_indexer: OpenSearchIndexer,
         page_indexer: OpenSearchIndexer,
         page_processor: PageProcessor,
@@ -41,14 +39,12 @@ class Pipeline:
         Args:
             textract_processor: Processor to extract data using Textract.
             chunker: Document chunker with configured strategies.
-            embedding_generator: Generator for creating embeddings from text.
             chunk_indexer: Indexer to store documents in OpenSearch.
             page_indexer: Indexer to store document pages in OpenSearch.
             page_processor: Processor to handle page-level processing.
         """
         self.textract_processor = textract_processor
         self.chunker = chunker
-        self.embedding_generator = embedding_generator
         self.chunk_indexer = chunk_indexer
         self.page_indexer = page_indexer
         self.page_processor = page_processor
@@ -66,7 +62,6 @@ class Pipeline:
         Raises:
             TextractProcessingError: If Textract analysis fails.
             ChunkError: If document chunking fails.
-            EmbeddingError: If embedding generation fails.
             IndexingError: If OpenSearch indexing fails.
             PipelineError: If an unexpected error occurs during processing.
         """
@@ -89,15 +84,10 @@ class Pipeline:
                 logger.warning("No chunks were generated. Skipping embedding and indexing.")
                 return
 
-            logger.info(f"Generating embeddings for {len(processed_data.chunks)} chunks")
-            for chunk in processed_data.chunks:
-                chunk.embedding = self.embedding_generator.generate_embedding(chunk.chunk_text)
-            logger.info(f"Finished generating embeddings for {len(processed_data.chunks)} chunks")
-
             self.chunk_indexer.index_documents(processed_data.chunks)
             logger.info("Successfully finished processing document")
 
-        except (TextractProcessingError, EmbeddingError, IndexingError, ChunkError) as e:
+        except (TextractProcessingError, IndexingError, ChunkError) as e:
             logger.critical(f"Pipeline failed for document: {e}", exc_info=True)
             self._cleanup_indexed_data(source_doc_id)
             raise
