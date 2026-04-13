@@ -32,6 +32,8 @@ logging.getLogger("opensearch").setLevel(logging.WARNING)
 # Suppress urllib3 retry noise (connection errors are re-raised explicitly)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 
+BEDROCK_ML_MODEL_NAME = "bedrock-titan-embed-text-v2"
+
 
 def get_opensearch_client() -> OpenSearch:
     """Create and return an OpenSearch client with retry configuration.
@@ -54,6 +56,41 @@ def get_opensearch_client() -> OpenSearch:
         retry_on_timeout=True,  # Enable retry on timeout
         max_retries=evaluation_settings.OPENSEARCH_MAX_RETRIES,  # Retry count for transient failures
     )
+
+
+def get_deployed_ml_model_id(client: OpenSearch, model_name: str = BEDROCK_ML_MODEL_NAME) -> str:
+    """Look up the ML Commons model ID for a deployed model by name.
+
+    The model ID is assigned dynamically when the Bedrock connector is set up, so
+    it changes on every environment rebuild. This function resolves the current ID
+    at runtime by querying ML Commons, so callers never need to hard-code it.
+
+    Args:
+        client: An active OpenSearch client.
+        model_name: The registered model name to look up.
+
+    Returns:
+        The ML Commons model ID string (a UUID-like value).
+
+    Raises:
+        ValueError: If no deployed model with the given name is found.
+    """
+    response = client.transport.perform_request(
+        "GET",
+        "/_plugins/_ml/models/_search",
+        body={
+            "query": {"match": {"name.keyword": model_name}},
+            "sort": [{"last_updated_time": {"order": "desc"}}],
+            "size": 1,
+        },
+    )
+    hits = response.get("hits", {}).get("hits", [])
+    if not hits:
+        raise ValueError(
+            f"No ML Commons model named '{model_name}' found. "
+            "Has the Bedrock connector setup script run successfully?"
+        )
+    return hits[0]["_id"]
 
 
 def check_opensearch_health() -> None:
@@ -79,9 +116,11 @@ def check_opensearch_health() -> None:
 
 __all__ = [
     "get_opensearch_client",
+    "get_deployed_ml_model_id",
     "check_opensearch_health",
     "OpenSearchConnectionError",
     "CHUNK_INDEX_NAME",
+    "BEDROCK_ML_MODEL_NAME",
     "USER",
     "PASSWORD",
 ]

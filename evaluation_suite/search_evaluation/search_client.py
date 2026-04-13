@@ -18,11 +18,11 @@ from evaluation_suite.search_evaluation.evaluation_config import get_active_sear
 from evaluation_suite.search_evaluation.opensearch_client import (
     CHUNK_INDEX_NAME,
     OpenSearchConnectionError,
+    get_deployed_ml_model_id,
     get_opensearch_client,
 )
 from evaluation_suite.search_evaluation.search_query_builder import apply_adaptive_score_filter, create_hybrid_query
 from ingestion_pipeline.config import settings
-from ingestion_pipeline.embedding.embedding_generator import EmbeddingGenerator
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 
@@ -39,13 +39,10 @@ def local_search_client(search_term: str) -> list[dict]:
         List of search hits from OpenSearch.
     """
     try:
-        embedding_generator = EmbeddingGenerator(settings.BEDROCK_EMBEDDING_MODEL_ID)
-        embedding = embedding_generator.generate_embedding(search_term)
-        logger.debug(f"Generated embedding for search term: '{search_term}'")
-
         client = get_opensearch_client()
+        model_id = get_deployed_ml_model_id(client)
 
-        search_query = create_hybrid_query(search_term, embedding, result_size=eval_settings.RESULT_SIZE)
+        search_query = create_hybrid_query(search_term, model_id=model_id, result_size=eval_settings.RESULT_SIZE)
         logger.debug(
             f"Hybrid search: '{search_term}', result_size={eval_settings.RESULT_SIZE}, index='{CHUNK_INDEX_NAME}'"
         )

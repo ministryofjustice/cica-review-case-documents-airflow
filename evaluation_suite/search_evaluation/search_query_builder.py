@@ -12,16 +12,19 @@ from evaluation_suite.search_evaluation import evaluation_settings as eval_setti
 from evaluation_suite.search_evaluation.date_formats import extract_dates_for_search
 
 
-def _build_hybrid_clauses(query_text: str, query_vector: list[float], result_size: int) -> list[dict]:
+def _build_hybrid_clauses(query_text: str, result_size: int, model_id: str) -> list[dict]:
     """Build the standard hybrid search clauses based on evaluation settings.
 
     Returns a list of should clauses for keyword, analyzer, fuzzy, wildcard, and semantic search.
     Each clause is only included if its corresponding boost setting is greater than 0.
 
+    The semantic clause uses a `neural` query so OpenSearch ML Commons handles
+    embedding via the Bedrock connector — no client-side Bedrock call is needed.
+
     Args:
         query_text: The text query to search for.
-        query_vector: The embedding vector for semantic search.
-        result_size: Number of nearest neighbours for knn search.
+        result_size: Number of nearest neighbours for neural/knn search.
+        model_id: The ML Commons model ID for the deployed Bedrock embedding model.
 
     Returns:
         List of OpenSearch query clause dicts.
@@ -72,13 +75,13 @@ def _build_hybrid_clauses(query_text: str, query_vector: list[float], result_siz
 
     if eval_settings.SEMANTIC_BOOST > 0:
         clauses.append(
-            {"knn": {"embedding": {"vector": query_vector, "k": result_size, "boost": eval_settings.SEMANTIC_BOOST}}}
+            {"neural": {"embedding": {"query_text": query_text, "model_id": model_id, "k": result_size, "boost": eval_settings.SEMANTIC_BOOST}}}
         )
 
     return clauses
 
 
-def create_hybrid_query(query_text: str, query_vector: list[float], result_size: int = 5) -> dict:
+def create_hybrid_query(query_text: str, model_id: str, result_size: int = 5) -> dict:
     """Create a hybrid search query combining keyword, fuzzy, and semantic vector search.
 
     Each search type is only included if its boost value is greater than 0.
@@ -89,7 +92,7 @@ def create_hybrid_query(query_text: str, query_vector: list[float], result_size:
 
     Args:
         query_text: The text query to search for.
-        query_vector: The embedding vector for semantic search.
+        model_id: The ML Commons model ID for the deployed Bedrock embedding model.
         result_size: Number of results to return.
 
     Returns:
@@ -119,7 +122,7 @@ def create_hybrid_query(query_text: str, query_vector: list[float], result_size:
 
         return query_body
 
-    should_clauses = _build_hybrid_clauses(query_text, query_vector, result_size)
+    should_clauses = _build_hybrid_clauses(query_text, result_size, model_id)
 
     query_body = {
         "size": result_size,

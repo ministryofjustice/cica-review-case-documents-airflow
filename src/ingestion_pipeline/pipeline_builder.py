@@ -15,7 +15,6 @@ from ingestion_pipeline.chunking.strategies.table.layout_table import LayoutTabl
 from ingestion_pipeline.chunking.textract_document_chunker import DocumentChunker
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.custom_logging.log_context import setup_logging
-from ingestion_pipeline.embedding.embedding_generator import EmbeddingGenerator
 from ingestion_pipeline.indexing.indexer import OpenSearchIndexer
 from ingestion_pipeline.orchestration.pipeline import Pipeline
 from ingestion_pipeline.page_processor.image_converter import ImageConverter
@@ -67,7 +66,6 @@ def build_pipeline() -> Pipeline:
         config=chunking_config,
     )
 
-    embedding_generator = EmbeddingGenerator(model_id=settings.BEDROCK_EMBEDDING_MODEL_ID)
     chunk_indexer = OpenSearchIndexer(
         index_name=settings.OPENSEARCH_CHUNK_INDEX_NAME,
         proxy_url=settings.OPENSEARCH_PROXY_URL,
@@ -95,7 +93,6 @@ def build_pipeline() -> Pipeline:
     return Pipeline(
         textract_processor=textract_processor,
         chunker=chunker,
-        embedding_generator=embedding_generator,
         chunk_indexer=chunk_indexer,
         page_indexer=page_indexer,
         page_processor=page_processor,

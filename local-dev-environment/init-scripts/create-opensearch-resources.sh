@@ -167,7 +167,7 @@ else
   echo "Creating index '${INDEX_NAME}'..."
   CREATE_RESPONSE=$(curl -s -XPUT "${DIRECT_OPENSEARCH_ENDPOINT}/${INDEX_NAME}" -H 'Content-Type: application/json' --data-binary @- <<EOF
 {
-    
+
     "mappings": {
         "properties": {
             "page_id": {

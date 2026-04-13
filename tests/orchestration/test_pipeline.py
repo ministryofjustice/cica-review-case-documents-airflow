@@ -6,7 +6,6 @@ import pytest
 
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
 from ingestion_pipeline.chunking.textract_document_chunker import ChunkError
-from ingestion_pipeline.embedding.embedding_generator import EmbeddingError
 from ingestion_pipeline.indexing.indexer import IndexingError
 from ingestion_pipeline.orchestration.pipeline import Pipeline, PipelineError
 from ingestion_pipeline.textract.textract_processor import TextractProcessingError
@@ -36,11 +35,6 @@ def mock_chunker():
 
 
 @pytest.fixture
-def mock_embedding_generator():
-    return mock.Mock()
-
-
-@pytest.fixture
 def mock_chunk_indexer():
     return mock.Mock()
 
@@ -59,7 +53,6 @@ def mock_page_processor():
 def pipeline(
     mock_textract_processor,
     mock_chunker,
-    mock_embedding_generator,
     mock_chunk_indexer,
     mock_page_indexer,
     mock_page_processor,
@@ -67,7 +60,6 @@ def pipeline(
     return Pipeline(
         textract_processor=mock_textract_processor,
         chunker=mock_chunker,
-        embedding_generator=mock_embedding_generator,
         chunk_indexer=mock_chunk_indexer,
         page_indexer=mock_page_indexer,
         page_processor=mock_page_processor,
@@ -84,7 +76,6 @@ def test_process_document_success(
     document_metadata,
     mock_textract_processor,
     mock_chunker,
-    mock_embedding_generator,
     mock_chunk_indexer,
     mock_page_indexer,
     mock_page_processor,
@@ -97,7 +88,6 @@ def test_process_document_success(
     chunk = mock.Mock()
     processed_data.chunks = [chunk]
     mock_chunker.chunk.return_value = processed_data
-    mock_embedding_generator.generate_embedding.return_value = [0.1, 0.2]
     mock_chunk_indexer.index_documents.return_value = None
 
     page_documents = [mock.Mock()]
@@ -110,7 +100,6 @@ def test_process_document_success(
     mock_page_processor.process.assert_called_once_with(mock_document, mock.ANY)
     mock_page_indexer.index_documents.assert_called_once_with(page_documents, id_field="page_id")
     mock_chunker.chunk.assert_called_once()
-    mock_embedding_generator.generate_embedding.assert_called_once_with(chunk.chunk_text)
     mock_chunk_indexer.index_documents.assert_called_once_with(processed_data.chunks)
 
 
@@ -162,7 +151,6 @@ def test_process_document_no_chunks(
     "exception",
     [
         TextractProcessingError("textract error"),
-        EmbeddingError("embedding error"),
         IndexingError("indexing error"),
         ChunkError("chunk error"),
     ],

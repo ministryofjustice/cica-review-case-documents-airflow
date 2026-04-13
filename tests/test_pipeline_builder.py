@@ -21,7 +21,6 @@ def patch_external_dependencies():
         patch("ingestion_pipeline.pipeline_builder.KeyValueChunker") as mock_kv_strategy,
         patch("ingestion_pipeline.pipeline_builder.LayoutListChunkingStrategy") as mock_list_strategy,
         patch("ingestion_pipeline.pipeline_builder.DocumentChunker") as mock_document_chunker,
-        patch("ingestion_pipeline.pipeline_builder.EmbeddingGenerator") as mock_embedding_generator,
         patch("ingestion_pipeline.pipeline_builder.OpenSearchIndexer") as mock_indexer,
         patch("ingestion_pipeline.pipeline_builder.Pipeline") as mock_pipeline,
         patch("ingestion_pipeline.pipeline_builder.S3DocumentService") as mock_s3_document_service,
@@ -30,7 +29,6 @@ def patch_external_dependencies():
         patch("ingestion_pipeline.pipeline_builder.PageProcessor") as mock_page_processor,
     ):
         # Set up minimal config for settings mock
-        mock_settings.BEDROCK_EMBEDDING_MODEL_ID = "test-model-id"
         mock_settings.OPENSEARCH_CHUNK_INDEX_NAME = "test-chunk-index"
         mock_settings.OPENSEARCH_PAGE_METADATA_INDEX_NAME = "test-page-index"
         mock_settings.OPENSEARCH_PROXY_URL = "http://test-proxy"
@@ -49,7 +47,6 @@ def patch_external_dependencies():
             "KeyValueChunker": mock_kv_strategy,
             "LayoutListChunkingStrategy": mock_list_strategy,
             "DocumentChunker": mock_document_chunker,
-            "EmbeddingGenerator": mock_embedding_generator,
             "OpenSearchIndexer": mock_indexer,
             "Pipeline": mock_pipeline,
             "S3DocumentService": mock_s3_document_service,
@@ -71,7 +68,6 @@ def test_build_pipeline_wires_up_pipeline_correctly(patch_external_dependencies)
     patch_external_dependencies["ImageConverter"].assert_called_once()
     patch_external_dependencies["DocumentPageFactory"].assert_called_once()
     patch_external_dependencies["TextractProcessor"].assert_called_once()
-    patch_external_dependencies["EmbeddingGenerator"].assert_called_once()
     patch_external_dependencies["OpenSearchIndexer"].assert_any_call(
         index_name="test-chunk-index", proxy_url="http://test-proxy"
     )
