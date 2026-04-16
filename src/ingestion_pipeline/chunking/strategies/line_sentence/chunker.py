@@ -6,21 +6,20 @@ complex layout-based grouping.
 """
 
 import logging
-import re
 from typing import List, Optional, Tuple
 
 from textractor.entities.bbox import BoundingBox
 from textractor.entities.line import Line
 
 from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata
+from ingestion_pipeline.chunking.strategies.line_sentence.accumulator import ChunkAccumulator
 from ingestion_pipeline.chunking.strategies.line_sentence.chunk_builder import ChunkBuilder
 from ingestion_pipeline.chunking.strategies.line_sentence.config import LineSentenceChunkingConfig
+from ingestion_pipeline.chunking.strategies.line_sentence.line_preprocessor import filter_and_sort_lines
 from ingestion_pipeline.chunking.strategies.line_sentence.sentence_detector import SentenceDetector
 from ingestion_pipeline.config import settings
 
 logger = logging.getLogger(__name__)
-
-ChunkState = Tuple[List[Tuple[str, BoundingBox]], int]  # (current_lines, current_word_count)
 
 
 class LineSentenceChunker:
@@ -41,11 +40,7 @@ class LineSentenceChunker:
         Args:
             config: Configuration for chunking behavior
         """
-        self.config = config or LineSentenceChunkingConfig(
-            min_words=settings.SENTENCE_CHUNKER_MIN_WORDS,
-            max_words=settings.SENTENCE_CHUNKER_MAX_WORDS,
-            max_vertical_gap_ratio=settings.SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO,
-        )
+        self.config = config or LineSentenceChunkingConfig.from_settings(settings)
         self.chunk_builder = ChunkBuilder(self.config)
         self.sentence_detector = SentenceDetector()
 
@@ -70,102 +65,66 @@ class LineSentenceChunker:
         if not lines:
             return []
 
-        sorted_lines = self._filter_and_sort_lines(lines)
+        sorted_lines = filter_and_sort_lines(lines)
 
         chunks: List[DocumentChunk] = []
         chunk_index = chunk_index_start
-        current_lines: List[Tuple[str, BoundingBox]] = []
-        current_word_count = 0
-        prev_line_bottom: Optional[float] = None
+        state = ChunkAccumulator()
 
         i = 0
         n = len(sorted_lines)
         while i < n:
-            line = sorted_lines[i]
-            if not line.text or not line.bbox:
+            line_data = self._prepare_line_data(sorted_lines[i])
+            if line_data is None:
                 i += 1
                 continue
 
-            line_text = line.text.strip()
-            if not line_text:
-                i += 1
-                continue
+            line_text, line_bbox, line_word_count = line_data
 
-            line_bbox = line.bbox
-            line_word_count = len(line_text.split())
-
-            logger.debug(
-                '"%s",%s,%s,%s,%s,%s',
-                line_text.replace(chr(34), chr(39)),
-                line_text.split(),
-                line_bbox.x,
-                line_bbox.y,
-                line_bbox.width,
-                line_bbox.height,
-            )
+            self._log_line_debug(line_text, line_bbox)
 
             # Detect vertical gap before adding the line
-            should_break_on_gap = False
-            gap_reason: Optional[str] = None
-            if prev_line_bottom is not None:
-                vertical_gap = line_bbox.y - prev_line_bottom
-                if vertical_gap > self.config.max_vertical_gap_ratio:
-                    should_break_on_gap = True
-                    gap_reason = f"vertical_gap={vertical_gap:.4f} > threshold={self.config.max_vertical_gap_ratio}"
+            gap_reason = self._get_gap_reason(state.prev_line_bottom, line_bbox)
 
             # --- Gap break: behavior: emit current chunk, then start new chunk with gap-triggering line ---
-            if should_break_on_gap:
-                if current_lines:
-                    chunk_index = self._emit_chunk(
-                        chunks, current_lines, page_number, metadata, chunk_index, gap_reason
-                    )
-                # Start new chunk with gap-triggering line
-                current_lines = [(line_text, line_bbox)]
-                current_word_count = line_word_count
-                prev_line_bottom = line_bbox.y + line_bbox.height
+            if gap_reason is not None:
+                if state.lines:
+                    chunk_index = self._emit_chunk(chunks, state.lines, page_number, metadata, chunk_index, gap_reason)
+                state.start_with_line(line_text, line_bbox, line_word_count)
                 i += 1
                 continue
 
             # If not a gap break, proceed as normal
-            current_lines.append((line_text, line_bbox))
-            current_word_count += line_word_count
-            prev_line_bottom = line_bbox.y + line_bbox.height
+            state.add_line(line_text, line_bbox, line_word_count)
 
             # --- Sentence / max-words break ---
-            if current_word_count >= self.config.min_words:
+            if state.word_count >= self.config.min_words:
                 should_close, reason, lookahead_count = self._check_forward_close(
-                    sorted_lines, i, n, current_lines, current_word_count
+                    sorted_lines, i, n, state.lines, state.word_count
                 )
 
                 if should_close and lookahead_count > 0:
                     # Absorb lookahead lines into current chunk
-                    for k in range(1, lookahead_count + 1):
-                        next_line = sorted_lines[i + k]
-                        if next_line.text and next_line.bbox:
-                            current_lines.append((next_line.text.strip(), next_line.bbox))
-                            current_word_count += len(next_line.text.strip().split())
-                            prev_line_bottom = next_line.bbox.y + next_line.bbox.height
+                    self._absorb_lookahead_lines(sorted_lines, i, lookahead_count, state)
                     i += lookahead_count
 
                 if should_close:
-                    chunk_index = self._emit_chunk(chunks, current_lines, page_number, metadata, chunk_index, reason)
-                    current_lines = []
-                    current_word_count = 0
+                    chunk_index = self._emit_chunk(chunks, state.lines, page_number, metadata, chunk_index, reason)
+                    state.reset()
                 else:
                     # Try backward split: find last sentence boundary in current chunk
-                    split_at = self._find_backward_split(current_lines)
+                    split_at = self._find_backward_split(state.lines)
                     if split_at is not None:
-                        emit_lines = current_lines[:split_at]
-                        current_lines = current_lines[split_at:]
-                        current_word_count = sum(len(t.split()) for t, _ in current_lines)
+                        emit_lines, remaining_lines = state.split_at(split_at)
+                        state.replace_lines(remaining_lines)
                         chunk_index = self._emit_chunk(
                             chunks, emit_lines, page_number, metadata, chunk_index, "backward_sentence_boundary"
                         )
 
             i += 1
 
-        if current_lines:
-            self._emit_chunk(chunks, current_lines, page_number, metadata, chunk_index, "final_chunk")
+        if state.lines:
+            self._emit_chunk(chunks, state.lines, page_number, metadata, chunk_index, "final_chunk")
 
         logger.debug(f"Page {page_number}: Created {len(chunks)} chunks from {len(sorted_lines)} lines")
 
@@ -174,6 +133,55 @@ class LineSentenceChunker:
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
+
+    def _prepare_line_data(self, line: Line) -> Optional[Tuple[str, BoundingBox, int]]:
+        """Normalize and validate a line before chunking."""
+        if not line.text or not line.bbox:
+            return None
+
+        line_text = line.text.strip()
+        if not line_text:
+            return None
+
+        return line_text, line.bbox, len(line_text.split())
+
+    def _log_line_debug(self, line_text: str, line_bbox: BoundingBox) -> None:
+        """Emit per-line debug logs used by existing diagnostics."""
+        logger.debug(
+            '"%s",%s,%s,%s,%s,%s',
+            line_text.replace(chr(34), chr(39)),
+            line_text.split(),
+            line_bbox.x,
+            line_bbox.y,
+            line_bbox.width,
+            line_bbox.height,
+        )
+
+    def _get_gap_reason(self, prev_line_bottom: Optional[float], line_bbox: BoundingBox) -> Optional[str]:
+        """Return a reason string when a vertical gap break should occur."""
+        if prev_line_bottom is None:
+            return None
+
+        vertical_gap = line_bbox.y - prev_line_bottom
+        if vertical_gap > self.config.max_vertical_gap_ratio:
+            return f"vertical_gap={vertical_gap:.4f} > threshold={self.config.max_vertical_gap_ratio}"
+
+        return None
+
+    def _absorb_lookahead_lines(
+        self,
+        sorted_lines: List[Line],
+        current_index: int,
+        lookahead_count: int,
+        state: ChunkAccumulator,
+    ) -> None:
+        """Absorb lookahead lines into state while preserving existing guards."""
+        for k in range(1, lookahead_count + 1):
+            line_data = self._prepare_line_data(sorted_lines[current_index + k])
+            if line_data is None:
+                continue
+            line_text, line_bbox, line_word_count = line_data
+            state.add_line(line_text, line_bbox, line_word_count)
 
     def _emit_chunk(
         self,
@@ -197,19 +205,6 @@ class LineSentenceChunker:
         )
         chunks.append(chunk)
         return chunk_index + 1
-
-    def _filter_and_sort_lines(self, lines: List[Line]) -> List[Line]:
-        """Filter footer lines and sort by vertical position."""
-        footer_threshold = 0.95
-        page_number_pattern = re.compile(r"^Page\s*\d+", re.IGNORECASE)
-        filtered = [
-            line
-            for line in lines
-            if line.bbox
-            and line.bbox.y < footer_threshold
-            and not (line.text and page_number_pattern.match(line.text.strip()))
-        ]
-        return sorted(filtered, key=lambda line: line.bbox.y if line.bbox else 0)
 
     def _check_forward_close(
         self,

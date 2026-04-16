@@ -1,26 +1,22 @@
-"""Configuration for line-by-line sentence-aware chunking strategy."""
+"""Configuration for Textractor word-stream sentence-aware chunking."""
 
 from dataclasses import dataclass
 from typing import Any
 
 
 @dataclass
-class LineSentenceChunkingConfig:
-    """Configuration for line-by-line sentence-aware chunking."""
+class WordStreamChunkingConfig:
+    """Configuration for chunking words returned by get_text_and_words()."""
 
-    # Word count limits
     min_words: int
     max_words: int
-
-    # Vertical spacing threshold for forcing chunk breaks
-    # This is relative to page height (0.0 to 1.0)
     max_vertical_gap_ratio: float
-
-    # Toggle for gap splitting behavior (for testing, not yet used)
-    include_gap_line_in_previous_chunk: bool = False
+    forward_lookahead_words: int = 8
+    backward_scan_words: int = 20
+    normalize_spacing: bool = True
 
     @classmethod
-    def from_settings(cls, settings_obj: Any = None) -> "LineSentenceChunkingConfig":
+    def from_settings(cls, settings_obj: Any = None) -> "WordStreamChunkingConfig":
         """Create config from app settings.
 
         Args:
@@ -34,4 +30,7 @@ class LineSentenceChunkingConfig:
             min_words=settings_obj.SENTENCE_CHUNKER_MIN_WORDS,
             max_words=settings_obj.SENTENCE_CHUNKER_MAX_WORDS,
             max_vertical_gap_ratio=settings_obj.SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO,
+            forward_lookahead_words=getattr(settings_obj, "SENTENCE_CHUNKER_FORWARD_LOOKAHEAD_WORDS", 8),
+            backward_scan_words=getattr(settings_obj, "SENTENCE_CHUNKER_BACKWARD_SCAN_WORDS", 20),
+            normalize_spacing=True,
         )

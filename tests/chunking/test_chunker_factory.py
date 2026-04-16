@@ -3,6 +3,7 @@ import pytest
 from ingestion_pipeline.chunking.chunk_strategy_factory import get_chunk_strategy
 from ingestion_pipeline.chunking.strategies.layout.layout_chunk_handler import TextractLayoutDocumentChunker
 from ingestion_pipeline.chunking.strategies.line_sentence.line_sentence_handler import LineBasedDocumentChunker
+from ingestion_pipeline.chunking.strategies.word_stream.handler import TextractorWordStreamDocumentChunker
 
 
 def test_factory_returns_line_chunker():
@@ -13,6 +14,11 @@ def test_factory_returns_line_chunker():
 def test_factory_returns_layout_chunker():
     chunker = get_chunk_strategy("layout")
     assert isinstance(chunker, TextractLayoutDocumentChunker)
+
+
+def test_factory_returns_textractor_word_stream_chunker():
+    chunker = get_chunk_strategy("textractor-word-stream")
+    assert isinstance(chunker, TextractorWordStreamDocumentChunker)
 
 
 def test_factory_explicit_type_line_normalization():
