@@ -1,6 +1,7 @@
 """Document chunker using Textractor get_text_and_words() output."""
 
 import logging
+import re
 from typing import List, Optional
 
 from textractor.entities.document import Document
@@ -61,23 +62,57 @@ class TextractorWordStreamDocumentChunker(ChunkStrategy):
             raise ValueError("Document cannot be None and must contain pages.")
 
     def _process_page(self, page, metadata: DocumentMetadata, chunk_index_start: int) -> List[DocumentChunk]:
-        words = self._get_words_from_page(page)
+        words, page_text_from_source = self._get_words_from_page(page)
         if not words:
             logger.info("Page %s has no words, skipping", page.page_num)
             return []
 
-        return self.chunker.chunk_page(
+        page_chunks = self.chunker.chunk_page(
             words=words,
             page_number=page.page_num,
             metadata=metadata,
             chunk_index_start=chunk_index_start,
         )
+        self._validate_text_consistency(page_text_from_source, page_chunks, page.page_num)
+        return page_chunks
 
     @staticmethod
-    def _get_words_from_page(page) -> List[Word]:
+    def _normalize_text_for_consistency_check(text: str) -> str:
+        """Normalize text for lightweight chunk/page consistency checks."""
+        if not isinstance(text, str):
+            return ""
+        return re.sub(r"\s+", " ", text).strip()
+
+    def _validate_text_consistency(
+        self, page_text_from_source: str, page_chunks: List[DocumentChunk], page_num: int
+    ) -> None:
+        """Raise ChunkException if get_text_and_words() text diverges from concatenated chunk text.
+
+        Uses the text returned by get_text_and_words() as the authoritative source.
+        """
+        page_text = self._normalize_text_for_consistency_check(page_text_from_source)
+        chunks_text = self._normalize_text_for_consistency_check(" ".join(chunk.chunk_text for chunk in page_chunks))
+
+        if not page_text or not chunks_text:
+            return
+
+        if page_text != chunks_text:
+            raise ChunkException(
+                "Word-stream text mismatch "
+                f"on page={page_num}: page_text_chars={len(page_text)} "
+                f"chunk_text_chars={len(chunks_text)}"
+            )
+
+    @staticmethod
+    def _get_words_from_page(page) -> tuple[List[Word], str]:
+        """Get words and text from page using get_text_and_words().
+
+        Returns:
+            Tuple of (words, text) from get_text_and_words(), or ([], "") if unavailable.
+        """
         if not hasattr(page, "get_text_and_words"):
             logger.warning("Page %s has no get_text_and_words method; returning no words", page.page_num)
-            return []
+            return [], ""
 
-        _, words = page.get_text_and_words()
-        return words or []
+        text, words = page.get_text_and_words()
+        return (words or [], text or "")

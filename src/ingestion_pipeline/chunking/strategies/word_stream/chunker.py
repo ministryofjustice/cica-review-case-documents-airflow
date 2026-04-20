@@ -94,14 +94,27 @@ class TextractorWordStreamChunker:
             if state.word_count >= self.config.min_words:
                 should_close, reason, lookahead_count = self._check_forward_close(words, i, n, state)
                 if should_close and lookahead_count > 0:
-                    self._absorb_lookahead_words(words, i, lookahead_count, state)
-                    i += lookahead_count
+                    consumed_lookahead_count, gap_reason = self._absorb_lookahead_words(
+                        words, i, lookahead_count, state
+                    )
+                    i += consumed_lookahead_count
+
+                    if gap_reason is not None:
+                        should_close = True
+                        reason = gap_reason
+                    elif reason == "sentence_boundary" and consumed_lookahead_count < lookahead_count:
+                        # Sentence-boundary close is only valid if the boundary word was consumed.
+                        should_close = False
+                        reason = None
 
                 if should_close and reason == "sentence_boundary":
                     chunk_index = self._emit_chunk(chunks, state, page_number, metadata, chunk_index, reason)
                     state.reset()
                 elif should_close and reason == "hard_max":
                     chunk_index = self._split_or_emit_at_hard_max(chunks, state, page_number, metadata, chunk_index)
+                elif should_close and reason and reason.startswith("lookahead_vertical_gap"):
+                    chunk_index = self._emit_chunk(chunks, state, page_number, metadata, chunk_index, reason)
+                    state.reset()
 
             i += 1
 
@@ -175,19 +188,34 @@ class TextractorWordStreamChunker:
         current_index: int,
         lookahead_count: int,
         state: WordChunkState,
-    ) -> None:
-        """Absorb lookahead words into the current chunk state."""
+    ) -> tuple[int, Optional[str]]:
+        """Absorb lookahead words into the current chunk state.
+
+        Returns:
+            Tuple of (consumed_lookahead_count, gap_reason). consumed_lookahead_count
+            represents how many lookahead positions were consumed from the input stream.
+            gap_reason is set when lookahead absorption stops due to vertical gap.
+        """
+        consumed_lookahead_count = 0
         for k in range(1, lookahead_count + 1):
             word = words[current_index + k]
             word_text = self._normalize_word_text(getattr(word, "text", ""))
             word_bbox = getattr(word, "bbox", None)
             if not word_text or word_bbox is None:
+                consumed_lookahead_count = k
                 continue
+
+            gap_reason = self._get_gap_reason(state.prev_bottom, word_bbox)
+            if gap_reason is not None:
+                return consumed_lookahead_count, f"lookahead_{gap_reason}"
 
             state.tokens.append(word_text)
             state.bboxes.append(word_bbox)
             state.word_count += len(word_text.split())
             state.prev_bottom = word_bbox.y + word_bbox.height
+            consumed_lookahead_count = k
+
+        return consumed_lookahead_count, None
 
     def _find_backward_split(self, tokens: List[str]) -> Optional[int]:
         """Return index after nearest backward sentence boundary token."""

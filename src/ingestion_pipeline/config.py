@@ -96,10 +96,18 @@ class Settings(BaseSettings):  # type: ignore
 
     # -- Line-by-Line Sentence Chunker Configuration --
     # Word-based limits (not character-based)
-    SENTENCE_CHUNKER_MIN_WORDS: int = 60
+    SENTENCE_CHUNKER_MIN_WORDS: int = 80
     SENTENCE_CHUNKER_MAX_WORDS: int = 120
     # Vertical gap threshold (relative to page height, 0.0-1.0)
     SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO: float = 0.05
+
+    # -- Word Stream Chunker Configuration --
+    # Dedicated settings for textractor-word-stream strategy.
+    WORDSTREAM_CHUNKER_MIN_WORDS: int = 80
+    WORDSTREAM_CHUNKER_MAX_WORDS: int = 120
+    WORDSTREAM_CHUNKER_MAX_VERTICAL_GAP_RATIO: float = 0.05
+    WORDSTREAM_CHUNKER_FORWARD_LOOKAHEAD_WORDS: int = 8
+    WORDSTREAM_CHUNKER_BACKWARD_SCAN_WORDS: int = 20
 
     # Create a unique namespace for your application
     # This is a fixed UUID defined once for the system.
@@ -153,6 +161,10 @@ class Settings(BaseSettings):  # type: ignore
         "LAYOUT_CHUNKING_LINE_CHUNK_CHAR_LIMIT",
         "SENTENCE_CHUNKER_MIN_WORDS",
         "SENTENCE_CHUNKER_MAX_WORDS",
+        "WORDSTREAM_CHUNKER_MIN_WORDS",
+        "WORDSTREAM_CHUNKER_MAX_WORDS",
+        "WORDSTREAM_CHUNKER_FORWARD_LOOKAHEAD_WORDS",
+        "WORDSTREAM_CHUNKER_BACKWARD_SCAN_WORDS",
     )
     @classmethod
     def validate_positive_int(cls, v: int) -> int:
@@ -171,7 +183,11 @@ class Settings(BaseSettings):  # type: ignore
             raise ValueError("Chunk size must be a positive integer")
         return v
 
-    @field_validator("LAYOUT_CHUNKING_Y_TOLERANCE_RATIO", "SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO")
+    @field_validator(
+        "LAYOUT_CHUNKING_Y_TOLERANCE_RATIO",
+        "SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO",
+        "WORDSTREAM_CHUNKER_MAX_VERTICAL_GAP_RATIO",
+    )
     @classmethod
     def validate_ratio(cls, v: float, info) -> float:
         """Ensure ratio is between 0.0 and 1.0.
@@ -254,6 +270,16 @@ class Settings(BaseSettings):  # type: ignore
             raise ValueError(
                 f"SENTENCE_CHUNKER_MIN_WORDS ({self.SENTENCE_CHUNKER_MIN_WORDS}) must be less than "
                 f"SENTENCE_CHUNKER_MAX_WORDS ({self.SENTENCE_CHUNKER_MAX_WORDS})"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def validate_wordstream_chunker_word_limits(self) -> "Settings":
+        """Ensure min_words < max_words for word-stream chunker."""
+        if self.WORDSTREAM_CHUNKER_MIN_WORDS >= self.WORDSTREAM_CHUNKER_MAX_WORDS:
+            raise ValueError(
+                f"WORDSTREAM_CHUNKER_MIN_WORDS ({self.WORDSTREAM_CHUNKER_MIN_WORDS}) must be less than "
+                f"WORDSTREAM_CHUNKER_MAX_WORDS ({self.WORDSTREAM_CHUNKER_MAX_WORDS})"
             )
         return self
 

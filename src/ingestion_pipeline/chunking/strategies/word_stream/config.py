@@ -27,10 +27,10 @@ class WordStreamChunkingConfig:
             from ingestion_pipeline.config import settings as settings_obj
 
         return cls(
-            min_words=settings_obj.SENTENCE_CHUNKER_MIN_WORDS,
-            max_words=settings_obj.SENTENCE_CHUNKER_MAX_WORDS,
-            max_vertical_gap_ratio=settings_obj.SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO,
-            forward_lookahead_words=getattr(settings_obj, "SENTENCE_CHUNKER_FORWARD_LOOKAHEAD_WORDS", 8),
-            backward_scan_words=getattr(settings_obj, "SENTENCE_CHUNKER_BACKWARD_SCAN_WORDS", 20),
+            min_words=settings_obj.WORDSTREAM_CHUNKER_MIN_WORDS,
+            max_words=settings_obj.WORDSTREAM_CHUNKER_MAX_WORDS,
+            max_vertical_gap_ratio=settings_obj.WORDSTREAM_CHUNKER_MAX_VERTICAL_GAP_RATIO,
+            forward_lookahead_words=settings_obj.WORDSTREAM_CHUNKER_FORWARD_LOOKAHEAD_WORDS,
+            backward_scan_words=settings_obj.WORDSTREAM_CHUNKER_BACKWARD_SCAN_WORDS,
             normalize_spacing=True,
         )
