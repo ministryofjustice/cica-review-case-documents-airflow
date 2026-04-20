@@ -63,11 +63,7 @@ def get_chunk_strategy(chunker_type: str) -> ChunkStrategy:
         }
         return TextractLayoutDocumentChunker(strategy_handlers=strategy_handlers, config=chunking_config)
     elif chunker_type == "linear-sentence-splitter":
-        line_chunking_config = LineSentenceChunkingConfig(
-            min_words=settings.SENTENCE_CHUNKER_MIN_WORDS,
-            max_words=settings.SENTENCE_CHUNKER_MAX_WORDS,
-            max_vertical_gap_ratio=settings.SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO,
-        )
+        line_chunking_config = LineSentenceChunkingConfig.from_settings(settings)
         return LineBasedDocumentChunker(config=line_chunking_config)
     elif chunker_type == "textractor-word-stream":
         word_stream_config = WordStreamChunkingConfig.from_settings(settings)
