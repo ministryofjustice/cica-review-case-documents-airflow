@@ -90,7 +90,7 @@ def main():
         source_file_s3_uri=S3_DOCUMENT_URI,
         page_count=None,
         case_ref=case_ref,
-        received_date=datetime.datetime.now(),
+        received_date=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
         correspondence_type=correspondence_type,
     )
 
