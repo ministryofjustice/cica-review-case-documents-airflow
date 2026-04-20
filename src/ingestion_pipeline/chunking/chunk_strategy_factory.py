@@ -70,12 +70,7 @@ def get_chunk_strategy(chunker_type: str) -> ChunkStrategy:
         )
         return LineBasedDocumentChunker(config=line_chunking_config)
     elif chunker_type == "textractor-word-stream":
-        word_stream_config = WordStreamChunkingConfig(
-            min_words=settings.SENTENCE_CHUNKER_MIN_WORDS,
-            max_words=settings.SENTENCE_CHUNKER_MAX_WORDS,
-            max_vertical_gap_ratio=settings.SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO,
-            normalize_spacing=True,
-        )
+        word_stream_config = WordStreamChunkingConfig.from_settings(settings)
         return TextractorWordStreamDocumentChunker(config=word_stream_config)
 
     raise RuntimeError("Unreachable code: chunker_type guard should prevent this path.")
