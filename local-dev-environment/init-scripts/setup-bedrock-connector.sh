@@ -12,7 +12,7 @@ echo "Starting Bedrock connector setup..."
 # alphabetically, so this file (setup-*) runs after create-* scripts, meaning
 # the page_chunks index is guaranteed to exist before this script runs.
 
-DIRECT_OPENSEARCH_ENDPOINT="http://opensearch:9200"
+DIRECT_OPENSEARCH_ENDPOINT="http://localhost:9200"
 
 # Load environment variables for AWS credentials (same pattern as create-aws-resources.sh)
 if [ -f /etc/localstack/.env ]; then
@@ -63,7 +63,7 @@ else
     --data-binary @- <<EOF
 {
   "name": "bedrock-titan-embed-connector",
-  "description": "Remote connector to Amazon Bedrock Titan Embed Text v2 (1024 dimensions)",
+  "description": "Remote connector to Amazon Bedrock Titan Embed Text v2",
   "version": 1,
   "protocol": "aws_sigv4",
   "parameters": {
@@ -108,7 +108,7 @@ EOF
 {
   "name": "bedrock-titan-embed-text-v2",
   "function_name": "remote",
-  "description": "Amazon Bedrock Titan Embed Text v2 — used for page_chunks automatic embedding",
+  "description": "Amazon Bedrock Titan Embed Text v2",
   "connector_id": "${CONNECTOR_ID}"
 }
 EOF
@@ -173,7 +173,7 @@ EOF
     -H 'Content-Type: application/json' \
     --data-binary @- <<EOF
 {
-  "description": "Automatically generates a 1024-dimension embedding for chunk_text using Amazon Bedrock Titan Embed Text v2",
+  "description": "Automatically generates a 1024 dimension embedding for chunk_text using Amazon Bedrock Titan Embed Text v2",
   "processors": [
     {
       "text_embedding": {

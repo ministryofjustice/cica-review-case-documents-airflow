@@ -53,6 +53,7 @@ def get_opensearch_client() -> OpenSearch:
         verify_certs=False,
         ssl_assert_hostname=False,
         timeout=evaluation_settings.OPENSEARCH_TIMEOUT,
+        max_connections=100,
         retry_on_timeout=True,  # Enable retry on timeout
         max_retries=evaluation_settings.OPENSEARCH_MAX_RETRIES,  # Retry count for transient failures
     )
