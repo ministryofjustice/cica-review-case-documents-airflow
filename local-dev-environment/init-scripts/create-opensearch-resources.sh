@@ -7,7 +7,7 @@ echo "Starting OpenSearch index setup..."
 # This script now interacts directly with the OpenSearch container, bypassing
 # the need to create a LocalStack-managed AWS OpenSearch domain. It is set up
 # to allow searches requiring an analyzer and keyword searches from the chunks.
-DIRECT_OPENSEARCH_ENDPOINT="http://opensearch:9200"
+DIRECT_OPENSEARCH_ENDPOINT="${DIRECT_OPENSEARCH_ENDPOINT:-http://opensearch:9200}"
 
 # --- Step 1: Wait for the OpenSearch container to be ready ---
 echo "Waiting for OpenSearch container at ${DIRECT_OPENSEARCH_ENDPOINT} to be ready..."
