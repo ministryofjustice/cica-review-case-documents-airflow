@@ -180,7 +180,7 @@ class Settings(BaseSettings):  # type: ignore
             ValueError: If the value is not positive.
         """
         if v <= 0:
-            raise ValueError("Chunk size must be a positive integer")
+            raise ValueError("Value must be a positive integer")
         return v
 
     @field_validator(
