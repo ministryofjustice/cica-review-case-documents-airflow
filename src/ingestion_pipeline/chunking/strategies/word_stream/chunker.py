@@ -217,7 +217,7 @@ class TextractorWordStreamChunker:
                 page_number,
                 metadata,
                 chunk_index,
-                f"max_words={state.word_count} >= {self.config.max_words}",
+                f"would_exceed_max_words current_words={state.word_count} max_words={self.config.max_words}",
             )
             state.reset()
             return chunk_index
