@@ -84,9 +84,9 @@ class Settings(BaseSettings):  # type: ignore
     # and simply splits text into chunks based on sentence boundaries and word counts.
     # The "textractor-word-stream" strategy chunks from Page.get_text_and_words()
     # so chunk text ordering aligns with Textractor's own linearized reading order.
-    # This is still a work in progress and we are experimenting with both approaches,
-    # but defaulting to "linear-sentence-splitter" for now.
-    DOCUMENT_CHUNKING_STRATEGY: str = "linear-sentence-splitter"  # or "layout" or "textractor-word-stream"
+    # This is still a work in progress and we are experimenting with these approaches,
+    # but defaulting to "textractor-word-stream" for now as it looks to be the most promising.
+    DOCUMENT_CHUNKING_STRATEGY: str = "textractor-word-stream"  # or "layout" or "linear-sentence-splitter"
 
     # review these values when we have a working system
     LAYOUT_CHUNKING_MAXIMUM_CHUNK_SIZE: int = 80  # maximum chunk size
