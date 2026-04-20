@@ -1,10 +1,12 @@
 """Tests for Textractor word-stream chunking strategy."""
 
 from datetime import datetime
+from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
 from textractor.entities.bbox import BoundingBox
+from textractor.entities.word import Word
 
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
 from ingestion_pipeline.chunking.strategies.word_stream.chunker import TextractorWordStreamChunker
@@ -25,31 +27,11 @@ def sample_metadata():
     )
 
 
-def create_mock_word(text: str, top: float, left: float = 0.1, width: float = 0.05, height: float = 0.02):
-    word = MagicMock()
+def create_mock_word(text: str, top: float, left: float = 0.1, width: float = 0.05, height: float = 0.02) -> Word:
+    word = cast(Word, MagicMock())
     word.text = text
     word.bbox = BoundingBox(x=left, y=top, width=width, height=height)
     return word
-
-
-def test_spacing_normalization_around_punctuation(sample_metadata):
-    config = WordStreamChunkingConfig(min_words=50, max_words=100, max_vertical_gap_ratio=0.05, normalize_spacing=True)
-    chunker = TextractorWordStreamChunker(config=config)
-
-    words = [
-        create_mock_word("Hello", 0.1),
-        create_mock_word(",", 0.1, left=0.16, width=0.01),
-        create_mock_word("world", 0.1, left=0.18),
-        create_mock_word("!", 0.1, left=0.24, width=0.01),
-        create_mock_word("(", 0.1, left=0.26, width=0.01),
-        create_mock_word("test", 0.1, left=0.28),
-        create_mock_word(")", 0.1, left=0.34, width=0.01),
-    ]
-
-    chunks = chunker.chunk_page(words=words, page_number=1, metadata=sample_metadata)
-
-    assert len(chunks) == 1
-    assert chunks[0].chunk_text == "Hello, world! (test)"
 
 
 def test_sentence_boundary_split(sample_metadata):

@@ -38,8 +38,6 @@ class TextractorWordStreamChunker:
     """Chunker that uses Textractor's reading-order word stream as source of truth."""
 
     _MULTI_SPACE_RE = re.compile(r"\s+")
-    _SPACE_BEFORE_PUNCT_RE = re.compile(r"\s+([,.;:!?\)\]\}])")
-    _SPACE_AFTER_OPEN_RE = re.compile(r"([\(\[\{])\s+")
 
     def __init__(self, config: Optional[WordStreamChunkingConfig] = None):
         """Initialize with optional configuration."""
@@ -118,14 +116,12 @@ class TextractorWordStreamChunker:
         return re.sub(r"\s+", " ", text).strip()
 
     def _normalize_chunk_text(self, tokens: List[str]) -> str:
-        """Normalize chunk text to standard spacing between words/punctuation."""
+        """Normalize chunk text and collapse whitespace."""
         text = " ".join(tokens)
         if not self.config.normalize_spacing:
             return text.strip()
 
         text = self._MULTI_SPACE_RE.sub(" ", text)
-        text = self._SPACE_BEFORE_PUNCT_RE.sub(r"\1", text)
-        text = self._SPACE_AFTER_OPEN_RE.sub(r"\1", text)
         return text.strip()
 
     def _get_gap_reason(self, prev_bottom: Optional[float], bbox: BoundingBox) -> Optional[str]:
