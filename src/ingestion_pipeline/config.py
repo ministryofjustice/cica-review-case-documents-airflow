@@ -76,7 +76,7 @@ class Settings(BaseSettings):  # type: ignore
     AWS_CICA_S3_SOURCE_DOCUMENT_CASE_PREFIX: str = "26-711111"
     AWS_CICA_S3_SOURCE_DOCUMENT_FILENAME: str = "Case1_TC19_50_pages_brain_injury.pdf"
 
-    AWS_LOCAL_DEV_TEXTRACT_S3_ROOT_BUCKET: str = "mod-platfform-sandbox-kta-documents-bucket"
+    AWS_LOCAL_DEV_TEXTRACT_S3_ROOT_BUCKET: str = "mod-platform-sandbox-kta-documents-bucket"
 
     # -- Chunking Configuration --
     # The original strategy was "layout" based chunking, which uses Textract layout analysis to group text into chunks.
