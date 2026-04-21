@@ -98,11 +98,11 @@ class Pipeline:
             logger.info("Successfully finished processing document")
 
         except (TextractProcessingError, EmbeddingError, IndexingError, ChunkError) as e:
-            logger.critical(f"Pipeline failed for document: {e}", exc_info=True)
+            logger.critical(f"Pipeline failed for document: {e}")
             self._cleanup_indexed_data(source_doc_id)
             raise
         except Exception as e:
-            logger.critical(f"An unexpected error occurred in the pipeline for document: {e}", exc_info=True)
+            logger.critical(f"An unexpected error occurred in the pipeline for document: {e}")
             self._cleanup_indexed_data(source_doc_id)
             raise PipelineError(f"Unexpected pipeline failure: {str(e)}") from e
 
@@ -120,6 +120,22 @@ class Pipeline:
             self.chunk_indexer.delete_documents_by_source_doc_id(source_doc_id)
             self.page_indexer.delete_documents_by_source_doc_id(source_doc_id)
         except Exception as cleanup_error:
-            logger.error(
-                f"Failed to clean up indexed data for document {source_doc_id}: {cleanup_error}", exc_info=True
-            )
+            if self._is_opensearch_connectivity_error(cleanup_error):
+                logger.debug(
+                    "Skipping verbose cleanup error log for connectivity issue on document %s: %s",
+                    source_doc_id,
+                    cleanup_error,
+                )
+                return
+
+            logger.error(f"Failed to clean up indexed data for document {source_doc_id}: {cleanup_error}")
+
+    @staticmethod
+    def _is_opensearch_connectivity_error(error: Exception) -> bool:
+        """Return True for expected OpenSearch connectivity failures."""
+        message = str(error)
+        return (
+            "Connection refused" in message
+            or "Failed to establish a new connection" in message
+            or "Name or service not known" in message
+        )

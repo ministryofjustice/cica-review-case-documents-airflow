@@ -50,3 +50,8 @@ def setup_logging():
     # Configure root logger
     root_logger.addHandler(handler)
     root_logger.setLevel(settings.LOG_LEVEL)
+
+    # Reduce noisy network tracebacks from OpenSearch client internals.
+    logging.getLogger("opensearch").setLevel(logging.ERROR)
+    logging.getLogger("opensearchpy").setLevel(logging.ERROR)
+    logging.getLogger("urllib3").setLevel(logging.ERROR)

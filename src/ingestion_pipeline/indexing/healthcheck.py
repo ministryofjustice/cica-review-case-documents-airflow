@@ -35,22 +35,44 @@ def check_opensearch_health(proxy_url: str, timeout: int = 10, interval: float =
         use_ssl=host_entry["scheme"] == "https",
         verify_certs=False,
         ssl_assert_hostname=False,
+        timeout=60,  # Increased to match indexer timeout for consistency
+        max_retries=2,
+        retry_on_timeout=True,
     )
     start = time.time()
+    attempts = 0
+    last_status = None
+    last_error: Exception | None = None
+
     while time.time() - start < timeout:
+        attempts += 1
         try:
             health = client.cluster.health()
             status = health.get("status")
             if status in ("green", "yellow"):
-                logger.info(f"OpenSearch health check passed: status={status}")
+                logger.info(f"OpenSearch health check passed: status={status}, attempts={attempts}")
                 return True
-            else:
-                logger.warning(f"OpenSearch unhealthy: status={status}")
+            last_status = status
+            last_error = None
         except ConnectionError as e:
-            logger.warning(f"OpenSearch not reachable: {e}")
+            last_error = e
         except Exception as e:
-            logger.error(f"Unexpected error during OpenSearch health check: {e}")
+            last_error = e
         time.sleep(interval)
+
     elapsed = time.time() - start
-    logger.error(f"OpenSearch health check failed: timeout reached after {elapsed:.2f} seconds.")
+    if last_error is not None:
+        logger.error(
+            "OpenSearch health check failed after %s attempts over %.2f seconds: %s",
+            attempts,
+            elapsed,
+            last_error,
+        )
+    else:
+        logger.error(
+            "OpenSearch health check failed after %s attempts over %.2f seconds: status=%s",
+            attempts,
+            elapsed,
+            last_status,
+        )
     return False

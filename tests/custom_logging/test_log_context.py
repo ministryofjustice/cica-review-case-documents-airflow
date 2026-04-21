@@ -46,7 +46,14 @@ def test_setup_logging_sets_root_logger(monkeypatch):
             self.filters.append(filter)
 
     dummy_logger = logging.getLogger("test_logger")
-    monkeypatch.setattr(logging, "getLogger", lambda: dummy_logger)
+    original_get_logger = logging.getLogger
+
+    def fake_get_logger(name=None):
+        if name is None:
+            return dummy_logger
+        return original_get_logger(name)
+
+    monkeypatch.setattr(logging, "getLogger", fake_get_logger)
     dummy_logger.handlers.clear()
     monkeypatch.setattr(logging, "StreamHandler", DummyHandler)
 
