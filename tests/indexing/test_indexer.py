@@ -129,19 +129,13 @@ def test_index_documents_with_partial_failures(mock_helpers_bulk, mock_opensearc
     indexer.client.indices = MagicMock()
     indexer.client.indices.exists.return_value = True
 
-    import re
-
-    expected_message = (
-        "Failed to index: Failed to index all chunks: "
-        "[{'index': {'error': {'reason': 'Test error'}}}, "
-        "{'index': {'error': {'reason': 'Another error'}}}]"
-    )
-
-    with pytest.raises(
-        IndexingError,
-        match=re.escape(expected_message),
-    ):
+    with pytest.raises(IndexingError) as exc_info:
         indexer.index_documents(sample_documents)
+
+    message = str(exc_info.value)
+    assert message.startswith("Failed to index 2 chunk(s). Top causes:")
+    assert "reason=Test error" in message
+    assert "reason=Another error" in message
 
 
 def test_index_documents_raises_on_bulk_exception(mock_helpers_bulk, mock_opensearch_client, sample_documents):
@@ -154,8 +148,10 @@ def test_index_documents_raises_on_bulk_exception(mock_helpers_bulk, mock_opense
     indexer.client.delete_by_query.return_value = {"deleted": 0}
     indexer.client.indices = MagicMock()
     indexer.client.indices.exists.return_value = True
-    with pytest.raises(IndexingError, match="Failed to index documents due to bulk errors:"):
+    with pytest.raises(IndexingError) as exc_info:
         indexer.index_documents(sample_documents)
+
+    assert str(exc_info.value).startswith("Failed to index 1 chunk(s). Top causes:")
 
 
 def test_generate_bulk_actions_missing_id_field_raises_error(mock_opensearch_client):
