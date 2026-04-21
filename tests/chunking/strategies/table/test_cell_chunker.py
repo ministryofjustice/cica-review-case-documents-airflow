@@ -1,4 +1,4 @@
-"""Tests for the CellTableChunker class in ingestion_pipeline.chunking.strategies.table.cell_chunker."""
+"""Tests for the CellTableChunker class."""
 
 from dataclasses import dataclass
 from typing import List
@@ -11,12 +11,12 @@ from textractor.entities.line import Line
 from textractor.entities.table import Table
 from textractor.entities.table_cell import TableCell
 
-import ingestion_pipeline.chunking.strategies.table.base as base_module
-import ingestion_pipeline.chunking.strategies.table.cell_chunker as cell_chunker_module
-from ingestion_pipeline.chunking.chunking_config import ChunkingConfig
+import ingestion_pipeline.chunking.strategies.layout.types.table.base as base_module
+import ingestion_pipeline.chunking.strategies.layout.types.table.cell_chunker as cell_chunker_module
 from ingestion_pipeline.chunking.exceptions import ChunkException
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
-from ingestion_pipeline.chunking.strategies.table.cell_chunker import CellTableChunker
+from ingestion_pipeline.chunking.strategies.layout.config import LayoutChunkingConfig
+from ingestion_pipeline.chunking.strategies.layout.types.table.cell_chunker import CellTableChunker
 
 
 @pytest.fixture
@@ -26,7 +26,12 @@ def default_config():
     Returns:
         ChunkingConfig: The default chunking configuration.
     """
-    return ChunkingConfig(y_tolerance_ratio=0.5)
+    return LayoutChunkingConfig(
+        maximum_chunk_size=500,
+        y_tolerance_ratio=0.5,
+        max_vertical_gap=10,
+        line_chunk_char_limit=100,
+    )
 
 
 def create_fake_cell(text: str, row: int, col: int, y: float):
@@ -217,6 +222,8 @@ class MockLayout:
 
     id: str
     bbox: MockBoundingBox
+    layout_type: str = "TABLE"
+    confidence: float = 0.95
 
 
 @dataclass
@@ -271,7 +278,7 @@ def test_create_chunk_with_multiple_bboxes(chunker, monkeypatch):
             self.kwargs = kwargs
 
         @classmethod
-        def from_textractor_layout(cls, **kwargs):
+        def create_chunk(cls, **kwargs):
             return cls(**kwargs)
 
     monkeypatch.setattr(base_module, "DocumentChunk", MockDocumentChunk)
@@ -283,7 +290,7 @@ def test_create_chunk_with_multiple_bboxes(chunker, monkeypatch):
 
     expected_bbox = MockBoundingBox(x=0.1, y=0.2, width=0.8, height=0.1)
 
-    mock_layout = MockLayout(id="layout1", bbox=MockBoundingBox(0, 0, 1, 1))
+    mock_layout = MockLayout(id="layout1", bbox=MockBoundingBox(0, 0, 1, 1), layout_type="TABLE", confidence=0.95)
     mock_metadata = MockDocumentMetadata(source_doc_id="doc1")
 
     # Act
@@ -317,14 +324,14 @@ def test_create_chunk_with_no_bboxes(chunker, monkeypatch):
             self.kwargs = kwargs
 
         @classmethod
-        def from_textractor_layout(cls, **kwargs):
+        def create_chunk(cls, **kwargs):
             return cls(**kwargs)
 
     monkeypatch.setattr(base_module, "DocumentChunk", MockDocumentChunk)
 
     # This is the bbox we expect to be used as the fallback
     layout_bbox = MockBoundingBox(x=0.05, y=0.05, width=0.9, height=0.9)
-    mock_layout = MockLayout(id="layout1", bbox=layout_bbox)
+    mock_layout = MockLayout(id="layout1", bbox=layout_bbox, layout_type="TABLE", confidence=0.95)
     mock_metadata = MockDocumentMetadata(source_doc_id="doc1")
 
     # Act
