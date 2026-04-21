@@ -107,6 +107,21 @@ This will process a sample document and index the chunks into OpenSearch. After 
 
 Bedrock connector setup is managed in [03-setup-bedrock-connector-neural.sh](./init-scripts/03-setup-bedrock-connector-neural.sh).
 
+### Shared setup implementation
+
+Both setup entrypoints now reuse shared helper functions in [init-scripts/lib/bedrock_connector_common.inc](./init-scripts/lib/bedrock_connector_common.inc):
+
+- LocalStack init flow: [03-setup-bedrock-connector-neural.sh](./init-scripts/03-setup-bedrock-connector-neural.sh)
+- Port-forward flow: [setup-bedrock-connector-portforward.sh](./setup-bedrock-connector-portforward.sh)
+
+For maintenance, update connector/model/pipeline logic in the shared helper first, then keep entrypoint scripts focused on environment-specific auth and bootstrapping.
+
+For the port-forward setup script, `CONFIRM_OVERWRITE` controls behavior when existing pipelines or index settings are found:
+
+- `prompt` (default): ask before overwriting
+- `true`: overwrite without prompting
+- `false`: fail instead of overwriting
+
 ### Ingest-time embedding toggle
 
 Use `BEDROCK_ENABLE_INGEST_PIPELINE` to control whether OpenSearch generates embeddings at index time:
@@ -126,6 +141,31 @@ When `BEDROCK_ENABLE_INGEST_PIPELINE=false`:
 ### Hybrid search score fusion
 
 Hybrid result normalization and branch score combination are configured in the default search pipeline created by [03-setup-bedrock-connector-neural.sh](./init-scripts/03-setup-bedrock-connector-neural.sh), not in [02-create-opensearch-resources.sh](./init-scripts/02-create-opensearch-resources.sh).
+
+### Hybrid query tuning options (quick guidance)
+
+If you want stable behavior without deep tuning, use this order of controls:
+
+1. Branch weights in the search pipeline (primary control)
+2. Candidate depth (`k` on `neural`, `pagination_depth` on `hybrid`)
+3. Per-query boosts (secondary, optional)
+
+Recommended starting point:
+
+- Keep normalization enabled (`min_max` + `arithmetic_mean`)
+- Use moderate lexical boosts (for example: `match_phrase.boost=3`, `match.boost=1.5`)
+- Use larger semantic candidate pool (for example: `neural.k=40`, `hybrid.pagination_depth=20`)
+
+Suggested operating modes:
+
+- Balanced (default): pipeline weights `[0.6, 0.2, 0.2]`
+- Precision-first lexical: try `[0.5, 0.3, 0.2]`
+- Recall/semantic-first: try `[0.5, 0.2, 0.3]`
+
+Notes:
+
+- Boosts are still valid with normalization, but mainly influence ranking within each branch.
+- Weights are the main lever for balancing lexical vs semantic contribution after normalization.
 
 ## Python Environment Setup
 
