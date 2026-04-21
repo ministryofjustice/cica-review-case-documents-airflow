@@ -20,6 +20,13 @@ set -euo pipefail # Exit immediately if a command exits with a non-zero status o
 #####################################################################
 
 echo "Starting LocalStack AWS resource creation..."
+echo "[01] init-scripts/01-create-aws-resources.sh starting"
+
+AWS_READY_SENTINEL="/tmp/aws_resources_ready"
+AWS_FAILED_SENTINEL="/tmp/aws_resources_failed"
+
+# Reset stale sentinel files from previous runs.
+rm -f "${AWS_READY_SENTINEL}" "${AWS_FAILED_SENTINEL}"
 
 # Load environment variables from LocalStack .env file if it exists
 if [ -f /etc/localstack/.env ]; then
@@ -84,6 +91,7 @@ SRC_BUCKET_NAME="${SRC_S3_BUCKET}"
 DEST_BUCKET_NAME="${S3_KTA_DOCUMENTS_BUCKET_NAME}"
 
 IFS=',' read -ra KEY_ARRAY <<< "${SRC_S3_KEY}"
+COPY_FAILED=0
 for SRC_KEY_PATH in "${KEY_ARRAY[@]}"; do
    # Trim leading and trailing whitespace from the key path
   TRIMMED_SRC_KEY_PATH="${SRC_KEY_PATH#"${SRC_KEY_PATH%%[![:space:]]*}"}"
@@ -104,16 +112,24 @@ for SRC_KEY_PATH in "${KEY_ARRAY[@]}"; do
       awslocal s3 ls "s3://${DEST_BUCKET_NAME}/$(dirname "${TRIMMED_SRC_KEY_PATH}")/"
     else
       echo "ERROR: Failed to upload sample document to LocalStack S3: ${TRIMMED_SRC_KEY_PATH}" >&2
+      COPY_FAILED=1
     fi
   else
-    echo "WARNING: Could not download s3://${SRC_BUCKET_NAME}/${TRIMMED_SRC_KEY_PATH}. Skipping this key." >&2
+    echo "ERROR: Could not download s3://${SRC_BUCKET_NAME}/${TRIMMED_SRC_KEY_PATH}." >&2
+    COPY_FAILED=1
   fi
   # Clean up temp file
   rm -f "${TMP_FILE}"
 done
 
+if [ "${COPY_FAILED}" -ne 0 ]; then
+  echo "One or more sample documents failed to sync to LocalStack S3. Failing init script." >&2
+  touch "${AWS_FAILED_SENTINEL}"
+  exit 1
+fi
+
 # --- Final Message ---
 echo "All LocalStack AWS resources checked/created successfully."
-touch /tmp/aws_resources_ready
+touch "${AWS_READY_SENTINEL}"
 
 
