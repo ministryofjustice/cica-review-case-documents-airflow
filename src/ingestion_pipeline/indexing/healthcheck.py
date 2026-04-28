@@ -35,9 +35,9 @@ def check_opensearch_health(proxy_url: str, timeout: int = 10, interval: float =
         use_ssl=host_entry["scheme"] == "https",
         verify_certs=False,
         ssl_assert_hostname=False,
-        timeout=60,  # Increased to match indexer timeout for consistency
-        max_retries=2,
-        retry_on_timeout=True,
+        timeout=1,  # Match interval to allow multiple retries within timeout budget
+        max_retries=0,
+        retry_on_timeout=False,
     )
     start = time.time()
     attempts = 0
