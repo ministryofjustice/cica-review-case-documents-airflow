@@ -1,4 +1,4 @@
-services:  
+services:
   opensearch-dashboard-only:
     container_name: opensearch-dashboard-only
     image: opensearchproject/opensearch-dashboards:3.3.0 # Or the version you need
