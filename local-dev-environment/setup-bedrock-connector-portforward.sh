@@ -114,6 +114,7 @@ load_role_arn() {
   prompt_if_empty "K8S_SECRET_NAME" "Enter Kubernetes secret name"
   prompt_if_empty "K8S_SECRET_KEY" "Enter Kubernetes secret key" "role_arn"
   require_cmd kubectl
+  require_cmd base64
 
   log "Loading role ARN from secret ${K8S_SECRET_NAME} in namespace ${K8S_NAMESPACE}"
   BEDROCK_ROLE_ARN="$(kubectl get secret -n "${K8S_NAMESPACE}" "${K8S_SECRET_NAME}" -o "jsonpath={.data.${K8S_SECRET_KEY}}" | base64 -d)"

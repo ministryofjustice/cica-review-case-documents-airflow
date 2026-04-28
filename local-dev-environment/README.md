@@ -124,6 +124,22 @@ For the port-forward setup script, `CONFIRM_OVERWRITE` controls behavior when ex
 - `true`: overwrite without prompting
 - `false`: fail instead of overwriting
 
+### Port-forward usage and security notes
+
+The port-forward setup script is intended for manual, local execution only:
+
+- Run `kubectl port-forward` first on the same machine where the script runs (loopback binding expected, for example `127.0.0.1:9200`).
+- Do not use this workflow on shared hosts or jump boxes.
+- Required local tools include `curl`, `kubectl`, and `base64`.
+
+Credential handling considerations:
+
+- Avoid storing `OPENSEARCH_PASSWORD` / `OPENSEARCH_BEARER_TOKEN` in shell startup files.
+- Prefer short-lived terminal environment variables and clear them after use.
+- Stop the port-forward session when setup is complete.
+
+This is a temporary operational workaround to configure a remote OpenSearch instance through a local port-forward.
+
 ### Ingest-time embedding toggle
 
 Use `BEDROCK_ENABLE_INGEST_PIPELINE` to control whether OpenSearch generates embeddings at index time:
