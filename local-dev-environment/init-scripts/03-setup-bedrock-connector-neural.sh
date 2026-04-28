@@ -56,8 +56,9 @@ BEDROCK_OPENSEARCH_ENDPOINT="${DIRECT_OPENSEARCH_ENDPOINT}"
 BEDROCK_AUTH_ARGS=()
 
 if [ -z "${AWS_MOD_PLATFORM_ACCESS_KEY_ID:-}" ] || [ -z "${AWS_MOD_PLATFORM_SECRET_ACCESS_KEY:-}" ]; then
-  echo "WARNING: AWS credentials not found. Skipping Bedrock connector setup."
-  exit 0
+  echo "ERROR: AWS credentials not found. Marking Bedrock connector setup as failed."
+  mark_bedrock_setup_failed
+  exit 1
 fi
 
 if [ -n "${AWS_MOD_PLATFORM_SESSION_TOKEN:-}" ]; then
