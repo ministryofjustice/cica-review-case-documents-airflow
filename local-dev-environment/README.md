@@ -107,6 +107,8 @@ This will process a sample document and index the chunks into OpenSearch. After 
 
 Bedrock connector setup is managed in [03-setup-bedrock-connector-neural.sh](./init-scripts/03-setup-bedrock-connector-neural.sh).
 
+Canonical explanation of search pipeline behavior (including when requests do or do not need to specify a pipeline explicitly) is documented in [../README.md](../README.md#opensearch-search-pipeline-behavior).
+
 ### Shared setup implementation
 
 Both setup entrypoints now reuse shared helper functions in [init-scripts/lib/bedrock_connector_common.inc](./init-scripts/lib/bedrock_connector_common.inc):
