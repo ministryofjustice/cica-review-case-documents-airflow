@@ -184,6 +184,57 @@ def test_process_document_unexpected_error(
     mock_textract_processor,
 ):
     mock_textract_processor.process_document.side_effect = RuntimeError("unexpected")
+    cleanup_spy = mock.Mock()
+    pipeline._cleanup_indexed_data = cleanup_spy
+
     with pytest.raises(PipelineError):
         pipeline.process_document(document_metadata)
-        assert pipeline._cleanup_indexed_data.called_once_with(document_metadata.source_doc_id)
+
+    cleanup_spy.assert_called_once_with(document_metadata.source_doc_id)
+
+
+@pytest.mark.parametrize(
+    ("message", "expected"),
+    [
+        ("Connection refused", True),
+        ("Failed to establish a new connection", True),
+        ("Name or service not known", True),
+        ("some other failure", False),
+    ],
+)
+def test_is_opensearch_connectivity_error(message, expected):
+    assert Pipeline._is_opensearch_connectivity_error(Exception(message)) is expected
+
+
+def test_cleanup_indexed_data_suppresses_traceback_for_connectivity_error(
+    pipeline,
+    mock_chunk_indexer,
+    mock_page_indexer,
+    caplog,
+):
+    caplog.set_level(logging.DEBUG)
+    mock_chunk_indexer.delete_documents_by_source_doc_id.side_effect = Exception("Connection refused")
+
+    pipeline._cleanup_indexed_data("doc-123-test")
+
+    mock_page_indexer.delete_documents_by_source_doc_id.assert_not_called()
+    assert "Skipping verbose cleanup error log for connectivity issue" in caplog.text
+    assert not any(record.levelno >= logging.ERROR for record in caplog.records)
+
+
+def test_cleanup_indexed_data_logs_traceback_for_non_connectivity_error(
+    pipeline,
+    mock_chunk_indexer,
+    caplog,
+):
+    caplog.set_level(logging.ERROR)
+    mock_chunk_indexer.delete_documents_by_source_doc_id.side_effect = RuntimeError("boom")
+
+    pipeline._cleanup_indexed_data("doc-123-test")
+
+    assert any(
+        record.levelno == logging.ERROR
+        and record.exc_info is not None
+        and "Failed to clean up indexed data for document doc-123-test: boom" in record.getMessage()
+        for record in caplog.records
+    )

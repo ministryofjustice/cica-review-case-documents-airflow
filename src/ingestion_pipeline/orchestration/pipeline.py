@@ -128,7 +128,10 @@ class Pipeline:
                 )
                 return
 
-            logger.error(f"Failed to clean up indexed data for document {source_doc_id}: {cleanup_error}")
+            logger.error(
+                f"Failed to clean up indexed data for document {source_doc_id}: {cleanup_error}",
+                exc_info=True,
+            )
 
     @staticmethod
     def _is_opensearch_connectivity_error(error: Exception) -> bool:
