@@ -1,5 +1,7 @@
 import logging
 
+import pytest
+
 from ingestion_pipeline.custom_logging.log_context import ContextFilter, setup_logging, source_doc_id_context
 
 
@@ -67,3 +69,53 @@ def test_setup_logging_sets_root_logger(monkeypatch):
     assert handler.formatter is not None
     # Should set log level to INFO
     assert dummy_logger.level == logging.INFO
+
+
+@pytest.mark.parametrize("logger_name", ["opensearch", "opensearchpy", "urllib3"])
+def test_setup_logging_preserves_client_logger_levels_for_info_and_debug(monkeypatch, logger_name):
+    dummy_logger = logging.getLogger("test_root_debug")
+    named_logger = logging.getLogger(logger_name)
+    original_level = named_logger.level
+    original_get_logger = logging.getLogger
+
+    def fake_get_logger(name=None):
+        if name is None:
+            return dummy_logger
+        return original_get_logger(name)
+
+    monkeypatch.setattr(logging, "getLogger", fake_get_logger)
+    monkeypatch.setattr("ingestion_pipeline.custom_logging.log_context.settings.LOG_LEVEL", "DEBUG")
+    dummy_logger.handlers.clear()
+    named_logger.setLevel(logging.NOTSET)
+
+    try:
+        setup_logging()
+        assert dummy_logger.level == logging.DEBUG
+        assert named_logger.level == logging.NOTSET
+    finally:
+        named_logger.setLevel(original_level)
+
+
+@pytest.mark.parametrize("logger_name", ["opensearch", "opensearchpy", "urllib3"])
+def test_setup_logging_clamps_client_logger_levels_for_warning_and_above(monkeypatch, logger_name):
+    dummy_logger = logging.getLogger("test_root_warning")
+    named_logger = logging.getLogger(logger_name)
+    original_level = named_logger.level
+    original_get_logger = logging.getLogger
+
+    def fake_get_logger(name=None):
+        if name is None:
+            return dummy_logger
+        return original_get_logger(name)
+
+    monkeypatch.setattr(logging, "getLogger", fake_get_logger)
+    monkeypatch.setattr("ingestion_pipeline.custom_logging.log_context.settings.LOG_LEVEL", "WARNING")
+    dummy_logger.handlers.clear()
+    named_logger.setLevel(logging.NOTSET)
+
+    try:
+        setup_logging()
+        assert dummy_logger.level == logging.WARNING
+        assert named_logger.level == logging.ERROR
+    finally:
+        named_logger.setLevel(original_level)

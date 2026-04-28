@@ -51,7 +51,8 @@ def setup_logging():
     root_logger.addHandler(handler)
     root_logger.setLevel(settings.LOG_LEVEL)
 
-    # Reduce noisy network tracebacks from OpenSearch client internals.
-    logging.getLogger("opensearch").setLevel(logging.ERROR)
-    logging.getLogger("opensearchpy").setLevel(logging.ERROR)
-    logging.getLogger("urllib3").setLevel(logging.ERROR)
+    # Keep third-party network logs visible for DEBUG/INFO runs, but clamp them in quieter modes.
+    if root_logger.level >= logging.WARNING:
+        logging.getLogger("opensearch").setLevel(logging.ERROR)
+        logging.getLogger("opensearchpy").setLevel(logging.ERROR)
+        logging.getLogger("urllib3").setLevel(logging.ERROR)
