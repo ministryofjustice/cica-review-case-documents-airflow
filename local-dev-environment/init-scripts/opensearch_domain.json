@@ -1,6 +1,6 @@
 {
   "DomainName": "case-document-search-domain",
-  "EngineVersion": "OpenSearch_2.19",
+  "EngineVersion": "OpenSearch_3.3",
   "ClusterConfig": {
     "InstanceType": "t3.small.search",
     "InstanceCount": 1
