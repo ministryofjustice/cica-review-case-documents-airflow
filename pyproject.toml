@@ -37,7 +37,7 @@ dev = ["deptry>=0.23.1,<0.26", "pre-commit>=4.6.0,<5"]
 [project.optional-dependencies]
 evaluation = [
     "numpy>=2.0.0",
-    "pandas>=2.0.0",
+    "pandas>=3.0.3",
     "snowballstemmer>=2.2.0",
     "rapidfuzz>=3.0.0",
     "dateparser>=1.1.0",
