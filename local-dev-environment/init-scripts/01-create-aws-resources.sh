@@ -5,7 +5,7 @@ set -euo pipefail # Exit immediately if a command exits with a non-zero status o
 # TROUBLESHOOTING STEPS
 #
 # 1. Ensure your AWS credentials are valid and have access to the source S3 bucket/object.
-#    - Test with: aws s3 cp s3://mod-platfform-sandbox-kta-documents-bucket/26-711111/Case1_TC19_50_pages_brain_injury.pdf /tmp/test.pdf
+#    - Test with: aws s3 cp s3://mod-platform-sandbox-kta-documents-bucket/26-711111/Case1_TC19_50_pages_brain_injury.pdf /tmp/test.pdf
 #    - If this fails, check your AWS credentials and permissions.
 #
 # 2. Ensure awslocal is installed and available in the PATH.
