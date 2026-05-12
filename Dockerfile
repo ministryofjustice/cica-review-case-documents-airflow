@@ -23,7 +23,7 @@ WORKDIR /opt/analyticalplatform
 ENV PATH="/opt/analyticalplatform/.venv/bin:$PATH"
 
 # Install uv
-COPY --from=ghcr.io/astral-sh/uv:0.10.9 /uv /bin/uv 
+COPY --from=ghcr.io/astral-sh/uv:0.11.13@sha256:841c8e6fe30a8b07b4478d12d0c608cba6de66102d29d65d1cc423af86051563 /uv /bin/uv
 
 # Copy project files (still as root)
 COPY uv.lock pyproject.toml README.md ./
@@ -42,5 +42,10 @@ RUN uv venv && \
     uv sync --frozen --no-default-groups && \
     rm -rf ${UV_CACHE_DIR}
 
+# Remove uv from the final runtime image; it's only needed at build time.
+USER root
+RUN rm -f /bin/uv
+USER ${CONTAINER_UID}
+
 # Run the application as the non-root user
-CMD ["uv", "run", "python", "src/ingestion_pipeline/main.py"]
+CMD ["python", "src/ingestion_pipeline/main.py"]
