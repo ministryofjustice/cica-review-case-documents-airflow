@@ -12,4 +12,4 @@ jobs:
   codeql:
     uses: ministryofjustice/data-platform-github-actions/.github/workflows/codeql-analysis.yml@main
     with:
-      languages: python, actions
+      languages: '["python", "actions"]'
