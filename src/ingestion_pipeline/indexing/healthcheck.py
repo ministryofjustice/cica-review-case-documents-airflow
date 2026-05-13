@@ -9,15 +9,22 @@ from opensearchpy import ConnectionError, OpenSearch
 logger = logging.getLogger(__name__)
 
 
-def check_opensearch_health(proxy_url: str, timeout: int = 10, interval: float = 1.0) -> bool:
+def check_opensearch_health(proxy_url: str, timeout_seconds: int = 10, interval_seconds: float = 1.0) -> bool:
     """Checks the health of the OpenSearch cluster at the given proxy URL.
 
     Retries until healthy or timeout is reached.
 
+    All timeout values are expressed in seconds.
+
+    Defaults:
+        - timeout_seconds=10 sets the overall health-check time budget.
+        - interval_seconds=1.0 controls retry cadence and caps per-request timeout.
+        - each cluster.health call uses request_timeout=min(interval_seconds, remaining budget).
+
     Args:
         proxy_url (str): The OpenSearch proxy/base URL.
-        timeout (int): Maximum seconds to wait for health.
-        interval (float): Seconds between retries.
+        timeout_seconds (int): Maximum seconds to wait for health.
+        interval_seconds (float): Seconds between retries.
 
     Returns:
         bool: True if healthy, False otherwise.
@@ -35,7 +42,7 @@ def check_opensearch_health(proxy_url: str, timeout: int = 10, interval: float =
         use_ssl=host_entry["scheme"] == "https",
         verify_certs=False,
         ssl_assert_hostname=False,
-        timeout=1,  # Match interval to allow multiple retries within timeout budget
+        timeout=min(interval_seconds, timeout_seconds),
         max_retries=0,
         retry_on_timeout=False,
     )
@@ -44,10 +51,17 @@ def check_opensearch_health(proxy_url: str, timeout: int = 10, interval: float =
     last_status = None
     last_error: Exception | None = None
 
-    while time.time() - start < timeout:
+    while True:
+        elapsed_seconds = time.time() - start
+        if elapsed_seconds >= timeout_seconds:
+            break
+
+        remaining_budget_seconds = timeout_seconds - elapsed_seconds
+        request_timeout_seconds = max(0.001, min(interval_seconds, remaining_budget_seconds))
+
         attempts += 1
         try:
-            health = client.cluster.health()
+            health = client.cluster.health(request_timeout=request_timeout_seconds)
             status = health.get("status")
             if status in ("green", "yellow"):
                 logger.info(f"OpenSearch health check passed: status={status}, attempts={attempts}")
@@ -58,7 +72,7 @@ def check_opensearch_health(proxy_url: str, timeout: int = 10, interval: float =
             last_error = e
         except Exception as e:
             last_error = e
-        time.sleep(interval)
+        time.sleep(interval_seconds)
 
     elapsed = time.time() - start
     if last_error is not None:
