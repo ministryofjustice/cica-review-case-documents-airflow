@@ -325,9 +325,20 @@ CRITICAL: Pipeline runner encountered a fatal error for source_doc_id=xxx, case_
 
 The project uses [pytest](https://docs.pytest.org/en/stable/) to run tests see [pytest.ini](`.pytest.ini`) for test configuration and [install pytest](https://docs.pytest.org/en/stable/getting-started.html#get-started)
 
+**Important:** The full test suite includes tests in both `tests/` and `evaluation_suite/tests/`. To run all tests, first install evaluation dependencies:
+
+```
+uv sync --extra evaluation
+```
+
 To run the tests with coverage, coverage reports can be found under ```htmlcov/index.html```
 
 ```uv run pytest```
+
+To run only production tests (faster iteration without evaluation suite tests):
+
+```uv run pytest tests/
+```
 
 Alternatively and recommended use [VSCode Python Testing](https://code.visualstudio.com/docs/python/testing)
 
