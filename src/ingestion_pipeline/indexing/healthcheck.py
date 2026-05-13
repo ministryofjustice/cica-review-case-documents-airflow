@@ -28,6 +28,14 @@ def check_opensearch_health(proxy_url: str, timeout_seconds: int = 10, interval_
 
     Returns:
         bool: True if healthy, False otherwise.
+
+    Notes:
+        Authentication is handled externally:
+        - Local dev: no auth required (localhost).
+        - Port-forward: explicit credentials passed via OpenSearch proxy auth.
+        - Production (dev/uat/prod): IRSA (cross-account AWS IAM role) injected at pod level (still to be developed).
+        This function connects with certificate verification enabled; OpenSearch proxy/endpoint
+        handles credential exchange and auth enforcement.
     """
     parsed = urlparse(proxy_url)
     host_entry = {
@@ -40,8 +48,8 @@ def check_opensearch_health(proxy_url: str, timeout_seconds: int = 10, interval_
         hosts=hosts,
         http_auth=(),
         use_ssl=host_entry["scheme"] == "https",
-        verify_certs=False,
-        ssl_assert_hostname=False,
+        verify_certs=True,
+        ssl_assert_hostname=True,
         timeout=min(interval_seconds, timeout_seconds),
         max_retries=0,
         retry_on_timeout=False,
