@@ -80,7 +80,13 @@ def check_opensearch_health(proxy_url: str, timeout_seconds: int = 10, interval_
             last_error = e
         except Exception as e:
             last_error = e
-        time.sleep(interval_seconds)
+
+        # Sleep only for the time remaining in the timeout budget (recalculate after attempt)
+        elapsed_seconds = time.time() - start
+        remaining_budget_seconds = timeout_seconds - elapsed_seconds
+        sleep_duration = min(interval_seconds, remaining_budget_seconds)
+        if sleep_duration > 0:
+            time.sleep(sleep_duration)
 
     elapsed = time.time() - start
     if last_error is not None:
