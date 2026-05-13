@@ -98,11 +98,11 @@ class Pipeline:
             logger.info("Successfully finished processing document")
 
         except (TextractProcessingError, EmbeddingError, IndexingError, ChunkError) as e:
-            logger.critical(f"Pipeline failed for document: {e}")
+            logger.critical(f"Pipeline failed for document: {e}", exc_info=True)
             self._cleanup_indexed_data(source_doc_id)
             raise
         except Exception as e:
-            logger.critical(f"An unexpected error occurred in the pipeline for document: {e}")
+            logger.critical(f"An unexpected error occurred in the pipeline for document: {e}", exc_info=True)
             self._cleanup_indexed_data(source_doc_id)
             raise PipelineError(f"Unexpected pipeline failure: {str(e)}") from e
 
