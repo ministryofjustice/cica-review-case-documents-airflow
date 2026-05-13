@@ -14,6 +14,7 @@ Docker and LocalStack resources to be created:
 - [Docker Desktop](https://docs.docker.com/desktop/)
 - [LocalStack Desktop](https://docs.localstack.cloud/aws/capabilities/web-app/localstack-desktop/)
 - [uv](https://docs.astral.sh/uv/) for Python dependency management
+- LocalStack image version is pinned by default in `docker-compose.yml` to avoid auth/license regressions on newer releases. Override with `LOCALSTACK_IMAGE` in `local-dev-environment/.env` when needed.
 - **For VPN WSL users**: If you are running the local environment from behind a corporate VPN with SSL inspection, you must also set the following environment variables in your .bashrc to allow LocalStack to trust your custom certificates:
 
 ```
@@ -25,6 +26,12 @@ export LOCALSTACK_HOST_MOUNTS="/home/your_user/custom_ca_bundle.pem:/etc/ssl/cer
 This assumes you have already created the custom_ca_bundle.pem file as described in the main project README, CICA specific Windows WSL setup and confguration instructions.
 
 - Ensure your `local-dev-environment/.env` file is created and contains valid AWS credentials for the `AWS_MOD_PLATFORM_*` variables. You can copy the structure from the `local-dev-environment/.env_template` file.
+
+Optional image override example:
+
+```bash
+LOCALSTACK_IMAGE=localstack/localstack:2.3.2
+```
 
 ## Setup
 
