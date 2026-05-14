@@ -54,13 +54,13 @@ def check_opensearch_health(proxy_url: str, timeout_seconds: int = 10, interval_
         max_retries=0,
         retry_on_timeout=False,
     )
-    start = time.time()
+    start = time.monotonic()
     attempts = 0
     last_status = None
     last_error: Exception | None = None
 
     while True:
-        elapsed_seconds = time.time() - start
+        elapsed_seconds = time.monotonic() - start
         if elapsed_seconds >= timeout_seconds:
             break
 
@@ -82,13 +82,13 @@ def check_opensearch_health(proxy_url: str, timeout_seconds: int = 10, interval_
             last_error = e
 
         # Sleep only for the time remaining in the timeout budget (recalculate after attempt)
-        elapsed_seconds = time.time() - start
+        elapsed_seconds = time.monotonic() - start
         remaining_budget_seconds = timeout_seconds - elapsed_seconds
         sleep_duration = min(interval_seconds, remaining_budget_seconds)
         if sleep_duration > 0:
             time.sleep(sleep_duration)
 
-    elapsed = time.time() - start
+    elapsed = time.monotonic() - start
     if last_error is not None:
         logger.error(
             "OpenSearch health check failed after %s attempts over %.2f seconds: %s",
