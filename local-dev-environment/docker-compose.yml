@@ -65,7 +65,10 @@ services:
   opensearch-dashboards:
     container_name: opensearch-dashboards
     image: opensearchproject/opensearch-dashboards:3.3.0 # Or the version you need
-    mem_limit: 256m
+    mem_limit: 1g
+    restart: unless-stopped
+    volumes:
+      - ./opensearch_dashboards.dev.yml:/usr/share/opensearch-dashboards/config/opensearch_dashboards.yml:ro
     ports:
       - "5601:5601" # OpenSearch Dashboards UI
     environment:
@@ -73,8 +76,9 @@ services:
       # for port forwarding from host to environment instance [dev, uat, prod] use
       # - OPENSEARCH_HOSTS=http://host.docker.internal:9200
       - OPENSEARCH_HOSTS=http://opensearch:9200 # Use service name for Localstack host
-      - OPENSEARCH_USERNAME=admin # Default for LocalStack's OpenSearch
-      - OPENSEARCH_PASSWORD=really-secure-passwordAa!1
+      # Local OpenSearch in this compose has security disabled, so no auth is required
+      # - OPENSEARCH_USERNAME=admin # Default for LocalStack's OpenSearch
+      # - OPENSEARCH_PASSWORD=really-secure-passwordAa!1
       - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
     # Dashboards depends on LocalStack being up and its OpenSearch domain being ready
     depends_on:
