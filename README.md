@@ -238,6 +238,18 @@ For [local development](/local-dev-environment/README.md) these will be the defa
 
 When running the local development environment, a sample document is now automatically downloaded from a source AWS S3 bucket and placed into the localstack S3 bucket (`local-kta-documents-bucket`), making it easier to test the full pipeline.
 
+### OpenSearch Search Pipeline Behavior
+
+Hybrid search in this project relies on an index-level default search pipeline for query-time enrichment and score fusion.
+
+- The `page_chunks` index is configured with `search.default_pipeline`.
+- Because it is set at index level, requests to `POST /page_chunks/_search` do not need to include a pipeline in query DSL.
+- The default search pipeline handles query-time neural enrichment and branch score normalization/combination.
+
+You only need to set a search pipeline explicitly when overriding the index default for a specific request.
+
+For setup details (including Bedrock connector and pipeline provisioning scripts), see [local-dev-environment/README.md](./local-dev-environment/README.md).
+
 ### Logging
 
 The project has been set up to add the source document uuid (generated during ingestion) to a context var which results in all logs containing the source_doc_id for tracing purposes. 
@@ -313,9 +325,20 @@ CRITICAL: Pipeline runner encountered a fatal error for source_doc_id=xxx, case_
 
 The project uses [pytest](https://docs.pytest.org/en/stable/) to run tests see [pytest.ini](`.pytest.ini`) for test configuration and [install pytest](https://docs.pytest.org/en/stable/getting-started.html#get-started)
 
+**Important:** The full test suite includes tests in both `tests/` and `evaluation_suite/tests/`. To run all tests, first install evaluation dependencies:
+
+```
+uv sync --extra evaluation
+```
+
 To run the tests with coverage, coverage reports can be found under ```htmlcov/index.html```
 
 ```uv run pytest```
+
+To run only production tests (faster iteration without evaluation suite tests):
+
+```uv run pytest tests/
+```
 
 Alternatively and recommended use [VSCode Python Testing](https://code.visualstudio.com/docs/python/testing)
 

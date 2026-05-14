@@ -120,6 +120,25 @@ class Pipeline:
             self.chunk_indexer.delete_documents_by_source_doc_id(source_doc_id)
             self.page_indexer.delete_documents_by_source_doc_id(source_doc_id)
         except Exception as cleanup_error:
+            if self._is_opensearch_connectivity_error(cleanup_error):
+                logger.debug(
+                    "Skipping verbose cleanup error log for connectivity issue on document %s: %s",
+                    source_doc_id,
+                    cleanup_error,
+                )
+                return
+
             logger.error(
-                f"Failed to clean up indexed data for document {source_doc_id}: {cleanup_error}", exc_info=True
+                f"Failed to clean up indexed data for document {source_doc_id}: {cleanup_error}",
+                exc_info=True,
             )
+
+    @staticmethod
+    def _is_opensearch_connectivity_error(error: Exception) -> bool:
+        """Return True for expected OpenSearch connectivity failures."""
+        message = str(error)
+        return (
+            "Connection refused" in message
+            or "Failed to establish a new connection" in message
+            or "Name or service not known" in message
+        )

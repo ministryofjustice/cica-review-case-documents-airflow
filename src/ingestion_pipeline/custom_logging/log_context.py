@@ -50,3 +50,9 @@ def setup_logging():
     # Configure root logger
     root_logger.addHandler(handler)
     root_logger.setLevel(settings.LOG_LEVEL)
+
+    # Keep third-party network logs visible for DEBUG/INFO runs, but clamp them in quieter modes.
+    if root_logger.level >= logging.WARNING:
+        logging.getLogger("opensearch").setLevel(logging.ERROR)
+        logging.getLogger("opensearchpy").setLevel(logging.ERROR)
+        logging.getLogger("urllib3").setLevel(logging.ERROR)

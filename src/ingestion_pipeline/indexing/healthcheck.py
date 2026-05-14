@@ -9,18 +9,33 @@ from opensearchpy import ConnectionError, OpenSearch
 logger = logging.getLogger(__name__)
 
 
-def check_opensearch_health(proxy_url: str, timeout: int = 10, interval: float = 1.0) -> bool:
+def check_opensearch_health(proxy_url: str, timeout_seconds: int = 10, interval_seconds: float = 1.0) -> bool:
     """Checks the health of the OpenSearch cluster at the given proxy URL.
 
     Retries until healthy or timeout is reached.
 
+    All timeout values are expressed in seconds.
+
+    Defaults:
+        - timeout_seconds=10 sets the overall health-check time budget.
+        - interval_seconds=1.0 controls retry cadence and caps per-request timeout.
+        - each cluster.health call uses request_timeout=min(interval_seconds, remaining budget).
+
     Args:
         proxy_url (str): The OpenSearch proxy/base URL.
-        timeout (int): Maximum seconds to wait for health.
-        interval (float): Seconds between retries.
+        timeout_seconds (int): Maximum seconds to wait for health.
+        interval_seconds (float): Seconds between retries.
 
     Returns:
         bool: True if healthy, False otherwise.
+
+    Notes:
+        Authentication is handled externally:
+        - Local dev: no auth required (localhost).
+        - Port-forward: explicit credentials passed via OpenSearch proxy auth.
+        - Production (dev/uat/prod): IRSA (cross-account AWS IAM role) injected at pod level (still to be developed).
+        This function connects with certificate verification enabled; OpenSearch proxy/endpoint
+        handles credential exchange and auth enforcement.
     """
     parsed = urlparse(proxy_url)
     host_entry = {
@@ -33,24 +48,59 @@ def check_opensearch_health(proxy_url: str, timeout: int = 10, interval: float =
         hosts=hosts,
         http_auth=(),
         use_ssl=host_entry["scheme"] == "https",
-        verify_certs=False,
-        ssl_assert_hostname=False,
+        verify_certs=True,
+        ssl_assert_hostname=True,
+        timeout=min(interval_seconds, timeout_seconds),
+        max_retries=0,
+        retry_on_timeout=False,
     )
-    start = time.time()
-    while time.time() - start < timeout:
+    start = time.monotonic()
+    attempts = 0
+    last_status = None
+    last_error: Exception | None = None
+
+    while True:
+        elapsed_seconds = time.monotonic() - start
+        if elapsed_seconds >= timeout_seconds:
+            break
+
+        remaining_budget_seconds = timeout_seconds - elapsed_seconds
+        request_timeout_seconds = max(0.001, min(interval_seconds, remaining_budget_seconds))
+
+        attempts += 1
         try:
-            health = client.cluster.health()
+            health = client.cluster.health(request_timeout=request_timeout_seconds)
             status = health.get("status")
             if status in ("green", "yellow"):
-                logger.info(f"OpenSearch health check passed: status={status}")
+                logger.info(f"OpenSearch health check passed: status={status}, attempts={attempts}")
                 return True
-            else:
-                logger.warning(f"OpenSearch unhealthy: status={status}")
+            last_status = status
+            last_error = None
         except ConnectionError as e:
-            logger.warning(f"OpenSearch not reachable: {e}")
+            last_error = e
         except Exception as e:
-            logger.error(f"Unexpected error during OpenSearch health check: {e}")
-        time.sleep(interval)
-    elapsed = time.time() - start
-    logger.error(f"OpenSearch health check failed: timeout reached after {elapsed:.2f} seconds.")
+            last_error = e
+
+        # Sleep only for the time remaining in the timeout budget (recalculate after attempt)
+        elapsed_seconds = time.monotonic() - start
+        remaining_budget_seconds = timeout_seconds - elapsed_seconds
+        sleep_duration = min(interval_seconds, remaining_budget_seconds)
+        if sleep_duration > 0:
+            time.sleep(sleep_duration)
+
+    elapsed = time.monotonic() - start
+    if last_error is not None:
+        logger.error(
+            "OpenSearch health check failed after %s attempts over %.2f seconds: %s",
+            attempts,
+            elapsed,
+            last_error,
+        )
+    else:
+        logger.error(
+            "OpenSearch health check failed after %s attempts over %.2f seconds: status=%s",
+            attempts,
+            elapsed,
+            last_status,
+        )
     return False

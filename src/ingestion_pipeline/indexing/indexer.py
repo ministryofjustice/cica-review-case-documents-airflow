@@ -4,6 +4,7 @@ Supports a single proxy/base URL which may include the path (url prefix).
 """
 
 import logging
+from collections import Counter
 from typing import Any, List
 from urllib.parse import urlparse
 
@@ -117,21 +118,46 @@ class OpenSearchIndexer:
             success, errors = helpers.bulk(self.client, actions, raise_on_error=False, chunk_size=50)
 
             if errors:
-                logger.info(f"Deleted existing documents due to indexing errors. Errors:{errors}")
+                logger.debug("Bulk indexing errors for index %s: %s", self.index_name, errors)
                 # Clean up any partially indexed documents from this batch
                 self.delete_documents_by_source_doc_id(source_doc_id)
-                raise IndexingError(f"Failed to index all chunks: {errors}")
+                raise IndexingError(self._format_bulk_error_summary(errors))
 
             logger.info(f"Indexed {len(documents)} chunks into index {self.index_name}")
             return success, errors
         except helpers.BulkIndexError as e:
-            logger.info(f"Deleted all document chunks due to BulkIndexError during indexing. Error: {e.errors}")
+            logger.debug("BulkIndexError details for index %s: %s", self.index_name, e.errors)
             self.delete_documents_by_source_doc_id(source_doc_id)
-            raise IndexingError(f"Failed to index documents due to bulk errors: {str(e)}") from e
+            raise IndexingError(self._format_bulk_error_summary(e.errors)) from e
+        except IndexingError:
+            raise
         except Exception as e:
             logger.info(f"An unexpected exception occurred indexing removing all associated chunks: {e}")
             self.delete_documents_by_source_doc_id(source_doc_id)
             raise IndexingError(f"Failed to index: {str(e)}") from e
+
+    def _format_bulk_error_summary(self, errors: List[Any], top_n: int = 3) -> str:
+        """Create a compact summary for bulk index failures.
+
+        This avoids logging thousands of near-identical error entries while retaining
+        enough context to diagnose the failure mode.
+        """
+        grouped_errors: Counter[tuple[str, str, str]] = Counter()
+
+        for item in errors:
+            op_payload = next(iter(item.values()), {}) if isinstance(item, dict) else {}
+            status = str(op_payload.get("status", "unknown"))
+            error_payload = op_payload.get("error", {}) if isinstance(op_payload, dict) else {}
+            error_type = str(error_payload.get("type", "unknown"))
+            reason = str(error_payload.get("reason", "unknown"))
+            grouped_errors[(status, error_type, reason)] += 1
+
+        top_causes = []
+        for (status, error_type, reason), count in grouped_errors.most_common(top_n):
+            top_causes.append(f"{count}x(status={status}, type={error_type}, reason={reason})")
+
+        top_causes_text = "; ".join(top_causes) if top_causes else "unknown"
+        return f"Failed to index {len(errors)} chunk(s). Top causes: {top_causes_text}"
 
     def _generate_bulk_actions(self, documents: List[Any], id_field: str):
         """Generates OpenSearch bulk actions from a list of Pydantic models.

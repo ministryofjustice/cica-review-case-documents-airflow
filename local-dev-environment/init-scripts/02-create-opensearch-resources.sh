@@ -2,12 +2,18 @@
 set -euo pipefail
 
 echo "Starting OpenSearch index setup..."
+echo "[02] init-scripts/02-create-opensearch-resources.sh starting"
+
+if [ -f /tmp/aws_resources_failed ]; then
+    echo "INFO: Detected /tmp/aws_resources_failed. Skipping OpenSearch setup."
+    exit 0
+fi
 
 # With OPENSEARCH_ENDPOINT_STRATEGY=path, LocalStack provides a direct proxy.
 # This script now interacts directly with the OpenSearch container, bypassing
 # the need to create a LocalStack-managed AWS OpenSearch domain. It is set up
 # to allow searches requiring an analyzer and keyword searches from the chunks.
-DIRECT_OPENSEARCH_ENDPOINT="http://opensearch:9200"
+DIRECT_OPENSEARCH_ENDPOINT="${DIRECT_OPENSEARCH_ENDPOINT:-http://opensearch:9200}"
 
 # --- Step 1: Wait for the OpenSearch container to be ready ---
 echo "Waiting for OpenSearch container at ${DIRECT_OPENSEARCH_ENDPOINT} to be ready..."
@@ -123,41 +129,6 @@ EOF
     exit 1
   fi
 fi
-
-# PIPELINE_NAME="hybrid-search-pipeline"
-# if curl --silent --fail "http://${DIRECT_OPENSEARCH_ENDPOINT}/_search/pipeline/${PIPELINE_NAME}" > /dev/null; then
-#   echo "Pipeline '${PIPELINE_NAME}' already exists. Skipping creation."
-# else
-#   echo "Creating Pipeline '${PIPELINE_NAME}'..."
-#   CREATE_PIPELINE=$(curl -s -XPUT "http://${DIRECT_OPENSEARCH_ENDPOINT}/_search/pipeline/${PIPELINE_NAME}" -H 'Content-Type: application/json' --data-binary @- <<EOF
-# {
-#   "description": "Pipeline for combining k-NN and BM25 scores",
-#   "phase_results_processors": [
-#     {
-#       "normalization-processor": {
-#         "normalization": {
-#           "technique": "min_max"
-#         },
-#         "combination": {
-#           "technique": "arithmetic_mean",
-#           "parameters": {
-#             "weights": [0.5, 0.5]
-#           }
-#         }
-#       }
-#     }
-#   ]
-# }
-# EOF
-# )
-
-#   if echo "${CREATE_PIPELINE}" | grep -q '"acknowledged":true'; then
-#     echo "Pipeline '${PIPELINE_NAME}' created successfully."
-#   else
-#     echo "Failed to create pipeline '${PIPELINE_NAME}'. Response: ${CREATE_PIPELINE}"
-#     exit 1
-#   fi
-# fi
 
 # --- Create the page index in the OpenSearch container ---
 INDEX_NAME="page_metadata"

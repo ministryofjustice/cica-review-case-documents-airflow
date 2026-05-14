@@ -1,4 +1,5 @@
 import datetime
+import logging
 from unittest import mock
 
 import pytest
@@ -91,6 +92,29 @@ def test_main_creates_correct_document_metadata(
         assert metadata.case_ref == "26-711111"
         assert metadata.correspondence_type == "TC19 - ADDITIONAL INFO REQUEST"
         assert metadata.page_count is None
+
+
+@mock.patch("ingestion_pipeline.runner.build_pipeline")
+@mock.patch("ingestion_pipeline.runner.check_opensearch_health")
+def test_main_emits_traceback_metadata_on_pipeline_failure(mock_check_opensearch_health, mock_build_pipeline, caplog):
+    """Test that runner critical logs retain traceback metadata on pipeline failures."""
+    mock_pipeline = mock.Mock()
+    mock_pipeline.process_document.side_effect = RuntimeError("Pipeline error")
+    mock_build_pipeline.return_value = mock_pipeline
+    mock_check_opensearch_health.return_value = True
+
+    with caplog.at_level(logging.CRITICAL, logger="ingestion_pipeline.runner"):
+        main()
+
+    critical_records = [
+        record
+        for record in caplog.records
+        if record.levelno == logging.CRITICAL and "Pipeline runner encountered a fatal error" in record.getMessage()
+    ]
+
+    assert critical_records
+    assert critical_records[-1].exc_info is not None
+    assert critical_records[-1].exc_info[0] is RuntimeError
 
 
 @mock.patch("ingestion_pipeline.runner.build_pipeline")
