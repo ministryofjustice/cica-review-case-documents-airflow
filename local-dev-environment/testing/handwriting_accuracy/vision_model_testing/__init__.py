@@ -1,11 +1,12 @@
-"""Vision model testing for direct image-to-text OCR.
+"""Vision model testing for handwriting extraction from document page images.
 
-This package tests vision-capable LLMs (Nova Pro, Nova Lite, Claude 3.5 Sonnet)
-for extracting handwritten text directly from images, bypassing Textract.
+Supports evaluation (WER/CER against ground truth) using vision LLMs, and
+provides the LiteLLMVisionClient for production pipeline integration.
 
-Enables comparison:
-- Vision-only vs Textract
-- Vision + LLM augmentation vs Textract + LLM augmentation
+Recommended model: bedrock-claude-opus-4-6 via the MoJ LiteLLM gateway.
+Recommended prompt: v1.5-mm (best evaluated, avg WER 0.1522).
+
+See vision_model_testing/README.md for full usage and integration guidance.
 """
 
 from pathlib import Path

@@ -2,7 +2,7 @@
 
 import pytest
 from vision_model_testing.llm.base import IMAGE_MEDIA_TYPES
-from vision_model_testing.llm.clients import ClaudeVisionClient, NovaVisionClient
+from vision_model_testing.llm.clients import ClaudeVisionClient, LiteLLMVisionClient, NovaVisionClient
 from vision_model_testing.llm.response import VisionResponse
 
 
@@ -215,9 +215,90 @@ class TestClientRegistry:
 
         assert "claude-3-5-sonnet" in SUPPORTED_VISION_MODELS
 
+    def test_registry_contains_litellm_models(self):
+        """Registry should contain LiteLLM gateway models."""
+        from vision_model_testing.llm import SUPPORTED_VISION_MODELS
+
+        for model in LiteLLMVisionClient.MODEL_IDS:
+            assert model in SUPPORTED_VISION_MODELS
+
     def test_get_vision_client_unknown_model(self):
         """get_vision_client should raise for unknown models."""
         from vision_model_testing.llm import get_vision_client
 
         with pytest.raises(ValueError, match="Unknown vision model"):
             get_vision_client(model="unknown-model")
+
+
+class TestLiteLLMVisionClient:
+    """Test LiteLLM gateway vision client implementation."""
+
+    def test_model_ids_defined(self):
+        """LiteLLM client should define all expected model IDs."""
+        expected = {
+            "bedrock-claude-opus-4-6",
+            "bedrock-claude-opus-4-5",
+            "bedrock-claude-sonnet-4-5",
+            "bedrock-claude-sonnet-4-6",
+            "bedrock-qwen-qwen3-coder-30b-a3b",
+        }
+        assert set(LiteLLMVisionClient.MODEL_IDS.keys()) == expected
+
+    def test_init_raises_without_api_key(self, monkeypatch):
+        """LiteLLM client should raise ValueError if OPENAI_KEY is not set."""
+        monkeypatch.delenv("OPENAI_KEY", raising=False)
+        with pytest.raises(ValueError, match="OPENAI_KEY"):
+            LiteLLMVisionClient(model="bedrock-claude-sonnet-4-5")
+
+    def test_init_succeeds_with_api_key(self, monkeypatch):
+        """LiteLLM client should initialise when OPENAI_KEY is set."""
+        pytest.importorskip("openai")
+        monkeypatch.setenv("OPENAI_KEY", "test-key")
+        client = LiteLLMVisionClient(model="bedrock-claude-sonnet-4-5")
+        assert client.model_name == "bedrock-claude-sonnet-4-5"
+        assert client._model_id == "bedrock-claude-sonnet-4-5"
+
+    def test_extract_text_from_image(self, monkeypatch, tmp_path):
+        """LiteLLM client should call OpenAI SDK and return VisionResponse."""
+        pytest.importorskip("openai")
+        monkeypatch.setenv("OPENAI_KEY", "test-key")
+        client = LiteLLMVisionClient(model="bedrock-claude-sonnet-4-5")
+
+        # Create a tiny test image
+        image_path = tmp_path / "test.png"
+        image_path.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+
+        # Mock the OpenAI client's chat.completions.create
+        mock_usage = type("Usage", (), {"prompt_tokens": 500, "completion_tokens": 25})()
+        mock_message = type("Message", (), {"content": "Extracted text from image"})()
+        mock_choice = type("Choice", (), {"message": mock_message})()
+        mock_response = type("Response", (), {"choices": [mock_choice], "usage": mock_usage})()
+
+        client._client = type(
+            "MockClient",
+            (),
+            {
+                "chat": type(
+                    "Chat",
+                    (),
+                    {
+                        "completions": type(
+                            "Completions",
+                            (),
+                            {
+                                "create": staticmethod(lambda **kwargs: mock_response),
+                            },
+                        )(),
+                    },
+                )(),
+            },
+        )()
+
+        response = client.extract_text_from_image(image_path)
+
+        assert isinstance(response, VisionResponse)
+        assert response.extracted_text == "Extracted text from image"
+        assert response.model == "bedrock-claude-sonnet-4-5"
+        assert response.input_tokens == 500
+        assert response.output_tokens == 25
+        assert response.image_path == str(image_path)

@@ -33,6 +33,7 @@ from iam_testing.llm.clients import (
     BedrockLlamaClient,
     BedrockMistralClient,
     BedrockNovaClient,
+    LiteLLMClient,
 )
 from iam_testing.llm.prompt import DEFAULT_PROMPT
 from iam_testing.llm.response import LLMResponse
@@ -40,7 +41,7 @@ from iam_testing.llm.response import LLMResponse
 logger = logging.getLogger(__name__)
 
 # Build client registry from MODEL_IDS defined in each client class
-_CLIENT_CLASSES = [BedrockNovaClient, BedrockClaudeClient, BedrockLlamaClient, BedrockMistralClient]
+_CLIENT_CLASSES = [BedrockNovaClient, BedrockClaudeClient, BedrockLlamaClient, BedrockMistralClient, LiteLLMClient]
 CLIENT_REGISTRY: dict[str, type[BaseLLMClient]] = {model: cls for cls in _CLIENT_CLASSES for model in cls.MODEL_IDS}
 
 # Export model sets for external use
@@ -73,6 +74,7 @@ __all__ = [
     "BedrockLlamaClient",
     "BedrockMistralClient",
     "BedrockClaudeClient",
+    "LiteLLMClient",
     "SUPPORTED_MODELS",
     "CLIENT_REGISTRY",
 ]

@@ -1,34 +1,47 @@
 """Vision LLM client package for direct image-to-text extraction.
 
-Provides secure vision model access via AWS Bedrock with no data retention.
-All prompts are versioned for reproducibility.
+Provides secure vision model access via the MoJ LiteLLM gateway (recommended)
+or directly via AWS Bedrock. All prompts are versioned for reproducibility.
 
-Usage:
-    from vision_model_testing.llm import get_vision_client, VisionResponse
+Quick start (LiteLLM gateway — recommended):
+    from vision_model_testing.llm import get_vision_client
+    from pathlib import Path
 
-    client = get_vision_client(model="nova-pro")
-    response = client.extract_text_from_image(Path("image.png"))
-    print(response.extracted_text)
+    # Image only
+    client = get_vision_client(model="bedrock-claude-opus-4-6", prompt_version="v1.5")
+    response = client.extract_text_from_image(Path("page.png"))
 
-Available models:
-    Amazon Nova (multimodal, auto-enabled):
-    - nova-lite, nova-pro
+    # Image + flat OCR hint (best evaluated approach)
+    client = get_vision_client(model="bedrock-claude-opus-4-6", prompt_version="v1.5-mm")
+    response = client.extract_text_with_ocr_hint(Path("page.png"), ocr_text=ocr_text)
 
-    Anthropic Claude (multimodal, requires Bedrock access):
-    - claude-3-5-sonnet
+    # Image + structured Textract word table
+    client = get_vision_client(model="bedrock-claude-opus-4-6", prompt_version="v1.5-mm-struct2")
+    response = client.extract_text_with_structured_ocr(Path("page.png"), word_blocks=word_blocks)
+
+Recommended models:
+    LiteLLM gateway (requires OPENAI_KEY):
+    - bedrock-claude-opus-4-6  (best quality, used in evaluation)
+    - bedrock-claude-sonnet-4-6  (faster, lower cost)
+
+    Direct Bedrock (requires AWS_* env vars):
+    - nova-pro, nova-lite  (Amazon Nova, auto-enabled)
+    - claude-3-5-sonnet    (requires Bedrock model access)
+
+See README.md for full production pipeline integration guidance.
 """
 
 import logging
 
 from .base import BaseVisionClient
-from .clients import ClaudeVisionClient, NovaVisionClient
+from .clients import ClaudeVisionClient, LiteLLMVisionClient, NovaVisionClient
 from .prompt import DEFAULT_VISION_PROMPT
 from .response import VisionResponse
 
 logger = logging.getLogger(__name__)
 
 # Build client registry from MODEL_IDS defined in each client class
-_VISION_CLIENT_CLASSES = [NovaVisionClient, ClaudeVisionClient]
+_VISION_CLIENT_CLASSES = [NovaVisionClient, ClaudeVisionClient, LiteLLMVisionClient]
 VISION_CLIENT_REGISTRY: dict[str, type[BaseVisionClient]] = {
     model: cls for cls in _VISION_CLIENT_CLASSES for model in cls.MODEL_IDS
 }
@@ -66,6 +79,7 @@ __all__ = [
     "BaseVisionClient",
     "NovaVisionClient",
     "ClaudeVisionClient",
+    "LiteLLMVisionClient",
     "SUPPORTED_VISION_MODELS",
     "VISION_CLIENT_REGISTRY",
 ]
