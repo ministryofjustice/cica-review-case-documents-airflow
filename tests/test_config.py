@@ -3,7 +3,32 @@ import pytest
 from ingestion_pipeline.config import Settings
 
 
+def _disable_env_file_loading(monkeypatch):
+    """Disable .env file loading in Settings to ensure hermetic tests.
+
+    This prevents local .env files from interfering with tests that validate code defaults.
+    """
+    config = Settings.model_config.copy()
+    config["env_file"] = None
+    monkeypatch.setattr(Settings, "model_config", config)
+
+
+@pytest.fixture
+def settings_without_env_file(monkeypatch):
+    """Create Settings instance with .env file loading disabled.
+
+    This ensures hermetic tests that validate only code defaults, not local .env overrides.
+    """
+    _disable_env_file_loading(monkeypatch)
+    return Settings()
+
+
 def test_env_overrides(monkeypatch):
+    """Verify that system environment variables override defaults.
+
+    Note: This test allows .env file loading to test real-world priority order where
+    system env vars take precedence over .env file values (per pydantic-settings priority).
+    """
     monkeypatch.setenv("OPENSEARCH_PROXY_URL", "http://test:1234")
     monkeypatch.setenv("OPENSEARCH_VERIFY_CERTS", "true")
     monkeypatch.setenv("OPENSEARCH_SSL_ASSERT_HOSTNAME", "true")
@@ -15,15 +40,19 @@ def test_env_overrides(monkeypatch):
     assert settings.AWS_REGION == "us-west-2"
 
 
-def test_opensearch_tls_defaults_are_secure():
+def test_opensearch_tls_defaults_are_secure(settings_without_env_file):
     """Verify that TLS verification is enabled by default (secure-by-default posture)."""
-    settings = Settings()
-    assert settings.OPENSEARCH_VERIFY_CERTS is True
-    assert settings.OPENSEARCH_SSL_ASSERT_HOSTNAME is True
+    assert settings_without_env_file.OPENSEARCH_VERIFY_CERTS is True
+    assert settings_without_env_file.OPENSEARCH_SSL_ASSERT_HOSTNAME is True
 
 
 def test_opensearch_tls_can_be_disabled_via_env(monkeypatch):
-    """Verify that operators can opt out of TLS verification for self-signed certificate environments."""
+    """Verify that operators can opt out of TLS verification for self-signed certificate environments.
+
+    Tests system environment variable override behavior only (not .env file loading).
+    """
+    # Disable env_file loading to isolate this test to system environment variables only
+    _disable_env_file_loading(monkeypatch)
     monkeypatch.setenv("OPENSEARCH_VERIFY_CERTS", "false")
     monkeypatch.setenv("OPENSEARCH_SSL_ASSERT_HOSTNAME", "false")
     settings = Settings()
@@ -32,6 +61,11 @@ def test_opensearch_tls_can_be_disabled_via_env(monkeypatch):
 
 
 def test_initializer_override():
+    """Verify that initializer arguments override defaults.
+
+    Note: This test allows .env file loading because it validates that direct initializer
+    arguments take precedence (highest priority), regardless of other config sources.
+    """
     settings = Settings(OPENSEARCH_PROXY_URL="http://init:9999", AWS_REGION="ap-south-1")
     assert settings.OPENSEARCH_PROXY_URL == "http://init:9999"
     assert settings.AWS_REGION == "ap-south-1"
