@@ -95,6 +95,26 @@ def test_healthcheck_https_port_default(mock_opensearch, mock_time):
     assert hosts[0]["scheme"] == "https"
 
 
+def test_healthcheck_passes_tls_options(mock_opensearch, mock_time):
+    client = mock.Mock()
+    client.cluster.health.return_value = {"status": "green"}
+    mock_opensearch.return_value = client
+    mock_time.monotonic.side_effect = [0, 0.5]
+    mock_time.sleep.return_value = None
+
+    assert (
+        healthcheck.check_opensearch_health(
+            "https://example.com",
+            verify_certs=True,
+            ssl_assert_hostname=True,
+        )
+        is True
+    )
+    _, kwargs = mock_opensearch.call_args
+    assert kwargs["verify_certs"] is True
+    assert kwargs["ssl_assert_hostname"] is True
+
+
 def test_healthcheck_request_timeout_uses_remaining_budget(mock_opensearch, mock_time):
     client = mock.Mock()
     client.cluster.health.return_value = {"status": "green"}

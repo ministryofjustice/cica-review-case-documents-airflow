@@ -9,7 +9,13 @@ from opensearchpy import ConnectionError, OpenSearch
 logger = logging.getLogger(__name__)
 
 
-def check_opensearch_health(proxy_url: str, timeout_seconds: int = 10, interval_seconds: float = 1.0) -> bool:
+def check_opensearch_health(
+    proxy_url: str,
+    timeout_seconds: int = 10,
+    interval_seconds: float = 1.0,
+    verify_certs: bool = True,
+    ssl_assert_hostname: bool = True,
+) -> bool:
     """Checks the health of the OpenSearch cluster at the given proxy URL.
 
     Retries until healthy or timeout is reached.
@@ -25,6 +31,10 @@ def check_opensearch_health(proxy_url: str, timeout_seconds: int = 10, interval_
         proxy_url (str): The OpenSearch proxy/base URL.
         timeout_seconds (int): Maximum seconds to wait for health.
         interval_seconds (float): Seconds between retries.
+        verify_certs (bool): Whether to verify TLS certificates. Defaults to True.
+            Set to False only for development environments with self-signed certificates.
+        ssl_assert_hostname (bool): Whether to assert the hostname in TLS certificates. Defaults to True.
+            Set to False only for development environments with self-signed certificates.
 
     Returns:
         bool: True if healthy, False otherwise.
@@ -32,7 +42,7 @@ def check_opensearch_health(proxy_url: str, timeout_seconds: int = 10, interval_
     Notes:
        - This function performs a connectivity/health check against the configured OpenSearch endpoint.
        - It does not manage application credentials directly.
-       - TLS certificate verification is enabled.
+       - TLS behavior is configurable via verify_certs and ssl_assert_hostname.
        - Authentication and authorization must be configured and enforced outside this function.
     """
     parsed = urlparse(proxy_url)
@@ -46,8 +56,8 @@ def check_opensearch_health(proxy_url: str, timeout_seconds: int = 10, interval_
         hosts=hosts,
         http_auth=(),
         use_ssl=host_entry["scheme"] == "https",
-        verify_certs=True,
-        ssl_assert_hostname=True,
+        verify_certs=verify_certs,
+        ssl_assert_hostname=ssl_assert_hostname,
         timeout=min(interval_seconds, timeout_seconds),
         max_retries=0,
         retry_on_timeout=False,

@@ -5,10 +5,30 @@ from ingestion_pipeline.config import Settings
 
 def test_env_overrides(monkeypatch):
     monkeypatch.setenv("OPENSEARCH_PROXY_URL", "http://test:1234")
+    monkeypatch.setenv("OPENSEARCH_VERIFY_CERTS", "true")
+    monkeypatch.setenv("OPENSEARCH_SSL_ASSERT_HOSTNAME", "true")
     monkeypatch.setenv("AWS_REGION", "us-west-2")
     settings = Settings()
     assert settings.OPENSEARCH_PROXY_URL == "http://test:1234"
+    assert settings.OPENSEARCH_VERIFY_CERTS is True
+    assert settings.OPENSEARCH_SSL_ASSERT_HOSTNAME is True
     assert settings.AWS_REGION == "us-west-2"
+
+
+def test_opensearch_tls_defaults_are_secure():
+    """Verify that TLS verification is enabled by default (secure-by-default posture)."""
+    settings = Settings()
+    assert settings.OPENSEARCH_VERIFY_CERTS is True
+    assert settings.OPENSEARCH_SSL_ASSERT_HOSTNAME is True
+
+
+def test_opensearch_tls_can_be_disabled_via_env(monkeypatch):
+    """Verify that operators can opt out of TLS verification for self-signed certificate environments."""
+    monkeypatch.setenv("OPENSEARCH_VERIFY_CERTS", "false")
+    monkeypatch.setenv("OPENSEARCH_SSL_ASSERT_HOSTNAME", "false")
+    settings = Settings()
+    assert settings.OPENSEARCH_VERIFY_CERTS is False
+    assert settings.OPENSEARCH_SSL_ASSERT_HOSTNAME is False
 
 
 def test_initializer_override():

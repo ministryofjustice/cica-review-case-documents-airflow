@@ -53,6 +53,8 @@ class Settings(BaseSettings):  # type: ignore
     # Example (localstack):
     #   OPENSEARCH_PROXY_URL="http://localhost:9200"
     OPENSEARCH_PROXY_URL: str = "http://localhost:9200"
+    OPENSEARCH_VERIFY_CERTS: bool = True
+    OPENSEARCH_SSL_ASSERT_HOSTNAME: bool = True
     OPENSEARCH_CHUNK_INDEX_NAME: str = "page_chunks"
     OPENSEARCH_PAGE_METADATA_INDEX_NAME: str = "page_metadata"
 

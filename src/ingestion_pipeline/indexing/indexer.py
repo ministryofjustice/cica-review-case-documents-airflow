@@ -31,6 +31,8 @@ class OpenSearchIndexer:
         *,  # Enforce keyword arguments
         index_name: str,
         proxy_url: str,
+        verify_certs: bool = True,
+        ssl_assert_hostname: bool = True,
     ):
         """Initialize the indexer connection using a single proxy URL.
 
@@ -38,6 +40,10 @@ class OpenSearchIndexer:
             proxy_url (str): The full proxy/base URL for OpenSearch, which may include the path (url prefix).
                 Example: 'http://proxy:8080' or 'https://proxy:9200/opensearch'
             index_name (str): The name of the OpenSearch index to which documents will be indexed.
+            verify_certs (bool): Whether to verify TLS certificates. Defaults to True.
+                Set to False only for development environments with self-signed certificates.
+            ssl_assert_hostname (bool): Whether to assert the hostname in TLS certificates. Defaults to True.
+                Set to False only for development environments with self-signed certificates.
 
         Raises:
             ValueError: If the index name is empty.
@@ -72,8 +78,8 @@ class OpenSearchIndexer:
             hosts=hosts,
             http_auth=(),
             use_ssl=host_entry["scheme"] == "https",
-            verify_certs=False,
-            ssl_assert_hostname=False,
+            verify_certs=verify_certs,
+            ssl_assert_hostname=ssl_assert_hostname,
             timeout=30,
         )
 
