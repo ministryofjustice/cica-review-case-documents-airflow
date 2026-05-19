@@ -15,7 +15,8 @@ Docker and LocalStack resources to be created:
 - [LocalStack Desktop](https://docs.localstack.cloud/aws/capabilities/web-app/localstack-desktop/)
 - [uv](https://docs.astral.sh/uv/) for Python dependency management
 - LocalStack image version is pinned by default in `docker-compose.yml` to avoid auth/license regressions on newer releases. Override with `LOCALSTACK_IMAGE` in `local-dev-environment/.env` when needed.
-- **For VPN WSL users**: If you are running the local environment from behind a corporate VPN with SSL inspection, you must also set the following environment variables in your .bashrc to allow LocalStack to trust your custom certificates:
+- **For VPN WSL users**: If you are running the local environment from behind a corporate VPN with SSL inspection, and encounter any SSL issues then set the following environment variables in your .bashrc to allow LocalStack to trust your custom certificates:
+- /local-dev-environment/.env variables set, note the AWS_MOD_PLATFORM_* variables will require daily rotation, and a docker rebuild will be necessary for running queries
 
 ```
 # Ensures LocalStack and its internal services trust the custom CA

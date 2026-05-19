@@ -337,7 +337,8 @@ To run the tests with coverage, coverage reports can be found under ```htmlcov/i
 
 To run only production tests (faster iteration without evaluation suite tests):
 
-```uv run pytest tests/
+```
+uv run pytest tests/
 ```
 
 Alternatively and recommended use [VSCode Python Testing](https://code.visualstudio.com/docs/python/testing)
