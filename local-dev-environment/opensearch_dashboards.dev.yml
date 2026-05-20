@@ -1,0 +1,6 @@
+# Development-only OpenSearch Dashboards overrides to reduce background polling load.
+server.host: "0.0.0.0"
+
+uiSettings:
+  overrides:
+    "timepicker:refreshIntervalDefaults": '{"pause": true, "value": 60000}'

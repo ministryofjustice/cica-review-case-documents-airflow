@@ -45,10 +45,14 @@ def build_pipeline() -> Pipeline:
     chunk_indexer = OpenSearchIndexer(
         index_name=settings.OPENSEARCH_CHUNK_INDEX_NAME,
         proxy_url=settings.OPENSEARCH_PROXY_URL,
+        verify_certs=settings.OPENSEARCH_VERIFY_CERTS,
+        ssl_assert_hostname=settings.OPENSEARCH_SSL_ASSERT_HOSTNAME,
     )
     page_indexer = OpenSearchIndexer(
         index_name=settings.OPENSEARCH_PAGE_METADATA_INDEX_NAME,
         proxy_url=settings.OPENSEARCH_PROXY_URL,
+        verify_certs=settings.OPENSEARCH_VERIFY_CERTS,
+        ssl_assert_hostname=settings.OPENSEARCH_SSL_ASSERT_HOSTNAME,
     )
 
     image_converter = ImageConverter()

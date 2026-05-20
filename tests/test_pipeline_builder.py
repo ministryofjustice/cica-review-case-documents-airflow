@@ -29,6 +29,8 @@ def patch_external_dependencies():
         mock_settings.OPENSEARCH_CHUNK_INDEX_NAME = "test-chunk-index"
         mock_settings.OPENSEARCH_PAGE_METADATA_INDEX_NAME = "test-page-index"
         mock_settings.OPENSEARCH_PROXY_URL = "http://test-proxy"
+        mock_settings.OPENSEARCH_VERIFY_CERTS = True
+        mock_settings.OPENSEARCH_SSL_ASSERT_HOSTNAME = True
         mock_settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET = "test-source-bucket"
         mock_settings.AWS_CICA_S3_PAGE_BUCKET = "test-page-bucket"
         mock_settings.LOCAL_DEVELOPMENT_MODE = False
@@ -66,10 +68,16 @@ def test_build_pipeline_wires_up_pipeline_correctly(patch_external_dependencies)
     patch_external_dependencies["TextractProcessor"].assert_called_once()
     patch_external_dependencies["EmbeddingGenerator"].assert_called_once()
     patch_external_dependencies["OpenSearchIndexer"].assert_any_call(
-        index_name="test-chunk-index", proxy_url="http://test-proxy"
+        index_name="test-chunk-index",
+        proxy_url="http://test-proxy",
+        verify_certs=True,
+        ssl_assert_hostname=True,
     )
     patch_external_dependencies["OpenSearchIndexer"].assert_any_call(
-        index_name="test-page-index", proxy_url="http://test-proxy"
+        index_name="test-page-index",
+        proxy_url="http://test-proxy",
+        verify_certs=True,
+        ssl_assert_hostname=True,
     )
 
 

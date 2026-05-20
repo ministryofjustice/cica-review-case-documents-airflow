@@ -72,8 +72,8 @@ def test_indexer_initialization_success(mock_opensearch_client):
         hosts=[{"host": "test_host", "port": 9200, "scheme": "http"}],
         http_auth=(),
         use_ssl=False,
-        verify_certs=False,
-        ssl_assert_hostname=False,
+        verify_certs=True,
+        ssl_assert_hostname=True,
         timeout=30,
     )
 
@@ -129,19 +129,13 @@ def test_index_documents_with_partial_failures(mock_helpers_bulk, mock_opensearc
     indexer.client.indices = MagicMock()
     indexer.client.indices.exists.return_value = True
 
-    import re
-
-    expected_message = (
-        "Failed to index: Failed to index all chunks: "
-        "[{'index': {'error': {'reason': 'Test error'}}}, "
-        "{'index': {'error': {'reason': 'Another error'}}}]"
-    )
-
-    with pytest.raises(
-        IndexingError,
-        match=re.escape(expected_message),
-    ):
+    with pytest.raises(IndexingError) as exc_info:
         indexer.index_documents(sample_documents)
+
+    message = str(exc_info.value)
+    assert message.startswith("Failed to index 2 chunk(s). Top causes:")
+    assert "reason=Test error" in message
+    assert "reason=Another error" in message
 
 
 def test_index_documents_raises_on_bulk_exception(mock_helpers_bulk, mock_opensearch_client, sample_documents):
@@ -154,8 +148,10 @@ def test_index_documents_raises_on_bulk_exception(mock_helpers_bulk, mock_opense
     indexer.client.delete_by_query.return_value = {"deleted": 0}
     indexer.client.indices = MagicMock()
     indexer.client.indices.exists.return_value = True
-    with pytest.raises(IndexingError, match="Failed to index documents due to bulk errors:"):
+    with pytest.raises(IndexingError) as exc_info:
         indexer.index_documents(sample_documents)
+
+    assert str(exc_info.value).startswith("Failed to index 1 chunk(s). Top causes:")
 
 
 def test_generate_bulk_actions_missing_id_field_raises_error(mock_opensearch_client):
@@ -216,8 +212,8 @@ def test_indexer_initialization_with_https_scheme(mock_opensearch_client):
         hosts=[{"host": "secure_host", "port": 443, "scheme": "https"}],
         http_auth=(),
         use_ssl=True,
-        verify_certs=False,
-        ssl_assert_hostname=False,
+        verify_certs=True,
+        ssl_assert_hostname=True,
         timeout=30,
     )
     assert indexer.index_name == "secure_index"
@@ -249,8 +245,8 @@ def test_indexer_initialization_with_http_scheme_no_port(mock_opensearch_client)
         hosts=[{"host": "http_host", "port": 80, "scheme": "http"}],
         http_auth=(),
         use_ssl=False,
-        verify_certs=False,
-        ssl_assert_hostname=False,
+        verify_certs=True,
+        ssl_assert_hostname=True,
         timeout=30,
     )
     assert indexer.index_name == "http_index"
@@ -263,11 +259,29 @@ def test_indexer_initialization_with_https_scheme_and_port(mock_opensearch_clien
         hosts=[{"host": "secure_host", "port": 9201, "scheme": "https"}],
         http_auth=(),
         use_ssl=True,
+        verify_certs=True,
+        ssl_assert_hostname=True,
+        timeout=30,
+    )
+    assert indexer.index_name == "secure_index"
+
+
+def test_indexer_initialization_explicit_tls_disabled(mock_opensearch_client):
+    """Tests that verify_certs=False/ssl_assert_hostname=False are forwarded to the OpenSearch client."""
+    OpenSearchIndexer(
+        index_name="test_index",
+        proxy_url="https://secure_host:9201",
+        verify_certs=False,
+        ssl_assert_hostname=False,
+    )
+    mock_opensearch_client.assert_called_once_with(
+        hosts=[{"host": "secure_host", "port": 9201, "scheme": "https"}],
+        http_auth=(),
+        use_ssl=True,
         verify_certs=False,
         ssl_assert_hostname=False,
         timeout=30,
     )
-    assert indexer.index_name == "secure_index"
 
 
 def test_index_documents_with_document_page(mock_helpers_bulk, mock_opensearch_client):

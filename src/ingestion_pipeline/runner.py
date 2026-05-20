@@ -54,7 +54,11 @@ def main():
         logger.warning("Running in LOCAL_DEVELOPMENT_MODE. Ensure your S3 URI is accessible in LocalStack.")
 
     logger.info("Pipeline runner started.")
-    if not check_opensearch_health(settings.OPENSEARCH_PROXY_URL):
+    if not check_opensearch_health(
+        settings.OPENSEARCH_PROXY_URL,
+        verify_certs=settings.OPENSEARCH_VERIFY_CERTS,
+        ssl_assert_hostname=settings.OPENSEARCH_SSL_ASSERT_HOSTNAME,
+    ):
         logger.critical("OpenSearch health check failed. Exiting pipeline runner.")
         return
 
