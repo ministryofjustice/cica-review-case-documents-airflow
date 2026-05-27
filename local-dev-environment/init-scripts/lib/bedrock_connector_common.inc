@@ -329,21 +329,6 @@ bedrock_upsert_search_pipeline() {
         }
       }
     }
-  ],
-  "phase_results_processors": [
-    {
-      "normalization-processor": {
-        "normalization": {
-          "technique": "min_max"
-        },
-        "combination": {
-          "technique": "arithmetic_mean",
-          "parameters": {
-            "weights": [0.6, 0.2, 0.2]
-          }
-        }
-      }
-    }
   ]
 }
 JSON

@@ -253,32 +253,8 @@ When `BEDROCK_ENABLE_INGEST_PIPELINE=false`:
 
 ### Hybrid search score fusion
 
-Hybrid result normalization and branch score combination are configured in the default search pipeline created by [03-setup-bedrock-connector-neural.sh](./init-scripts/03-setup-bedrock-connector-neural.sh), not in [02-create-opensearch-resources.sh](./init-scripts/02-create-opensearch-resources.sh).
-
-### Hybrid query tuning options (quick guidance)
-
-If you want stable behavior without deep tuning, use this order of controls:
-
-1. Branch weights in the search pipeline (primary control)
-2. Candidate depth (`k` on `neural`, `pagination_depth` on `hybrid`)
-3. Per-query boosts (secondary, optional)
-
-Recommended starting point:
-
-- Keep normalization enabled (`min_max` + `arithmetic_mean`)
-- Use moderate lexical boosts (for example: `match_phrase.boost=3`, `match.boost=1.5`)
-- Use larger semantic candidate pool (for example: `neural.k=40`, `hybrid.pagination_depth=20`)
-
-Suggested operating modes:
-
-- Balanced (default): pipeline weights `[0.6, 0.2, 0.2]`
-- Precision-first lexical: try `[0.5, 0.3, 0.2]`
-- Recall/semantic-first: try `[0.5, 0.2, 0.3]`
-
-Notes:
-
-- Boosts are still valid with normalization, but mainly influence ranking within each branch.
-- Weights are the main lever for balancing lexical vs semantic contribution after normalization.
+The default search pipeline currently configures query-time neural enrichment (`neural_query_enricher`) only.
+Hybrid-score normalization and branch score-combination processors are intentionally not configured at this time.
 
 ## Python Environment Setup
 

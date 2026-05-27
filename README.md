@@ -240,11 +240,11 @@ When running the local development environment, a sample document is now automat
 
 ### OpenSearch Search Pipeline Behavior
 
-Hybrid search in this project relies on an index-level default search pipeline for query-time enrichment and score fusion.
+Hybrid search in this project relies on an index-level default search pipeline for query-time neural enrichment.
 
 - The `page_chunks` index is configured with `search.default_pipeline`.
 - Because it is set at index level, requests to `POST /page_chunks/_search` do not need to include a pipeline in query DSL.
-- The default search pipeline handles query-time neural enrichment and branch score normalization/combination.
+- The default search pipeline currently configures `neural_query_enricher` only.
 
 You only need to set a search pipeline explicitly when overriding the index default for a specific request.
 
