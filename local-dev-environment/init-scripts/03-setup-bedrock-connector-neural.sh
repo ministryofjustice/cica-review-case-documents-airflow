@@ -89,6 +89,8 @@ BEDROCK_ML_SETTINGS_JSON='{
     "plugins.ml_commons.only_run_on_ml_node": false,
     "plugins.ml_commons.allow_registering_model_via_url": true,
     "plugins.ml_commons.native_memory_threshold": 99,
+    "plugins.ml_commons.max_ml_task_per_node": 10,
+    "plugins.ml_commons.ml_task_timeout_in_seconds": 10,
     "plugins.ml_commons.trusted_connector_endpoints_regex": ["'"${BEDROCK_ENDPOINTS_REGEX}"'"]
   }
 }'
