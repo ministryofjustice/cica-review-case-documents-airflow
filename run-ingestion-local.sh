@@ -1,5 +1,18 @@
 #!/bin/bash
 
+if [[ ! -f .env ]]; then
+    echo "ERROR: .env file not found in the current directory."
+    echo "Run setup-local-dev-wsl.sh from the repository root first."
+    exit 1
+fi
+
+# Guard against unresolved template placeholders like KEY=<value>.
+if grep -qE '^[A-Za-z_][A-Za-z0-9_]*=<[^>]+>$' .env; then
+    echo "ERROR: .env contains unresolved template placeholders."
+    echo "Replace placeholder values (e.g. <mod_platform_access_key_id>) and rerun."
+    exit 1
+fi
+
 set -a
 source .env
 set +a
@@ -23,12 +36,17 @@ fi
 
 # Check if --log-to-file flag is provided
 if [[ "$1" == "--log-to-file" ]]; then
-    echo "Logging output to debug.log..."
-    rm -f debug.log
-    uv run src/ingestion_pipeline/runner.py > debug.log 2>&1
-    echo "Complete. View output: cat debug.log"
+    timestamp=$(date +"%Y%m%d_%H%M%S")
+    logfile="debug_${timestamp}.log"
+    
+    echo "Logging output to $logfile..."
+    rm -f "$logfile"
+    
+    uv run src/ingestion_pipeline/runner.py > "$logfile" 2>&1
+    
+    echo "Complete. View output: cat $logfile"
 else
-    echo "Running with terminal output. Use --log-to-file to redirect to debug.log"
+    echo "Running with terminal output. Use --log-to-file to redirect to a timestamped log file"
     uv run src/ingestion_pipeline/runner.py
 fi
 
