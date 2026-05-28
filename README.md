@@ -48,9 +48,21 @@ The repository comes with the following preset files:
 
 See [CICA specific Windows WSL setup and confguration instructions](#windows-wsl-setup-instructions) instructions if developing on Windows
 
+If developing in WSL, keep this repository in your WSL Linux home directory (for example, `/home/your-user/projects/...`) rather than under `/mnt/c`. This gives better performance and avoids common permission and Docker bind-mount issues.
+
 See [MOJ specific MacOS setup and confguration instructions](#mac-setup-instructions) instructions if developing on a Mac
 
 If using VSCode install the Microsoft Python extensions, Python Debugger, Python, Pylance, Python Environments
+
+### WSL Ubuntu quick setup script
+
+For local development on WSL Ubuntu, run the guided bootstrap script from the repository root:
+
+```bash
+./setup-local-dev-wsl.sh
+```
+
+This script checks required tooling, prompts for placeholder values from `.env_template` files, ignores commented-out variables, and can create/update both `.env` files.
 
 ### Environment/package management
 

@@ -10,6 +10,8 @@ Docker and LocalStack resources to be created:
 
 ## Pre-requisites
 
+If developing in WSL, keep this repository in your WSL Linux home directory (for example, `/home/your-user/projects/...`) rather than under `/mnt/c`. This gives better performance and avoids common permission and Docker bind-mount issues.
+
 - [Docker](https://docs.docker.com/get-started/get-docker/)
 - [Docker Desktop](https://docs.docker.com/desktop/)
 - [LocalStack Desktop](https://docs.localstack.cloud/aws/capabilities/web-app/localstack-desktop/)
@@ -32,6 +34,14 @@ Optional image override example:
 
 ```bash
 LOCALSTACK_IMAGE=localstack/localstack:2.3.2
+```
+
+### WSL Ubuntu bootstrap helper
+
+From the repository root, you can run the guided setup script to validate local tooling and generate `.env` files from templates:
+
+```bash
+./setup-local-dev-wsl.sh
 ```
 
 ## Setup
