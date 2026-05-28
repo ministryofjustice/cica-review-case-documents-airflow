@@ -106,7 +106,7 @@ To ingest documents into OpenSearch, run the ingestion pipeline from the project
 
 ```bash
 cd ..
-bash run_locally_with_dot_env.sh
+bash run-ingestion-local.sh
 ```
 
 This will process a sample document and index the chunks into OpenSearch. After ingestion, you can create an [index pattern](https://docs.opensearch.org/latest/dashboards/management/index-patterns/) named `page_chunks` and start searching. See the [quickstart](https://docs.opensearch.org/latest/dashboards/quickstart/) for more details.
