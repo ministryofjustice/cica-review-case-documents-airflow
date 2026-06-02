@@ -64,7 +64,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./init-scripts/lib/bedrock_connector_common.inc
 source "${SCRIPT_DIR}/init-scripts/lib/bedrock_connector_common.inc"
 
-OPENSEARCH_ENDPOINT="${OPENSEARCH_ENDPOINT:-http://127.0.0.1:9200}"
+OPENSEARCH_ENDPOINT="${OPENSEARCH_ENDPOINT:-http://127.0.0.1:9300}"
 BEDROCK_REGION="${BEDROCK_REGION:-eu-west-2}"
 BEDROCK_EMBED_MODEL="${BEDROCK_EMBED_MODEL:-${BEDROCK_MODEL_ID:-amazon.titan-embed-text-v2:0}}"
 TARGET_INDEX="${TARGET_INDEX:-page_chunks}"
@@ -73,6 +73,7 @@ BEDROCK_MODEL_NAME="${MODEL_NAME:-bedrock-titan-embed-text-v2}"
 BEDROCK_PIPELINE_NAME="${INGEST_PIPELINE_NAME:-bedrock-embedding-pipeline}"
 BEDROCK_SEARCH_PIPELINE_NAME="${SEARCH_PIPELINE_NAME:-bedrock-neural-search-pipeline}"
 BEDROCK_ENABLE_INGEST_PIPELINE="${BEDROCK_ENABLE_INGEST_PIPELINE:-true}"
+BEDROCK_FORCE_RECREATE_CONNECTOR="${FORCE_RECREATE_CONNECTOR:-${BEDROCK_FORCE_RECREATE_CONNECTOR:-false}}"
 BEDROCK_TARGET_INDEX="${TARGET_INDEX}"
 BEDROCK_OPENSEARCH_ENDPOINT="${OPENSEARCH_ENDPOINT}"
 CONFIRM_OVERWRITE="${CONFIRM_OVERWRITE:-prompt}"
@@ -135,7 +136,7 @@ ensure_ml_settings() {
     "plugins.ml_commons.max_ml_task_per_node": 10,
     "plugins.ml_commons.ml_task_timeout_in_seconds": 10,
     "plugins.ml_commons.trusted_connector_endpoints_regex": [
-      "^https://bedrock-runtime\\.${BEDROCK_REGION}\\.amazonaws\\.com/.*$"
+      "^https://bedrock-runtime[.]${BEDROCK_REGION}[.]amazonaws[.]com/.*$"
     ]
   }
 }

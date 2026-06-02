@@ -10,11 +10,11 @@ services:
     volumes:
       - ./opensearch_dashboards.dev.yml:/usr/share/opensearch-dashboards/config/opensearch_dashboards.yml
     ports:
-      - "5601:5601" # OpenSearch Dashboards UI
+      - "5603:5601" # OpenSearch Dashboards UI
     environment:
       # These credentials apply to Dashboards connecting to LocalStack's OpenSearch
       # for port forwarding from host to environment instance [dev, uat, prod] use
-      - OPENSEARCH_HOSTS=http://host.docker.internal:9200
+      - OPENSEARCH_HOSTS=http://host.docker.internal:9300
       # OPENSEARCH_HOSTS=http://opensearch:9200 # Use service name for Localstack host
       # Dev OpenSearch doesn't require authentication - leave USERNAME/PASSWORD empty
       # - OPENSEARCH_USERNAME=admin # Default for LocalStack's OpenSearch
