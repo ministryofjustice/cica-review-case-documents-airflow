@@ -10,6 +10,6 @@ on: [pull_request]
 
 jobs:
   codeql:
-    uses: ministryofjustice/data-platform-github-actions/.github/workflows/codeql-analysis.yml@main
+    uses: ministryofjustice/data-platform-github-actions/.github/workflows/codeql-analysis.yml@078037621080098635691c669d30330087880fa8 #v3.5.1
     with:
       languages: '["python", "actions"]'
