@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pandas as pd
 
-from evaluation_suite.search_evaluation import search_looper
+from evaluation_suite.search_evaluation.query import search_looper
 
 
 def sample_hits():
@@ -179,8 +179,8 @@ def test_run_search_loop_returns_empty_df_when_file_not_found():
     assert result.empty
 
 
-@patch("evaluation_suite.search_evaluation.search_looper.local_search_client")
-@patch("evaluation_suite.search_evaluation.search_looper.settings")
+@patch("evaluation_suite.search_evaluation.query.search_looper.local_search_client")
+@patch("evaluation_suite.search_evaluation.query.search_looper.settings")
 def test_run_search_loop_returns_dataframe_with_results(mock_settings, mock_local_search, tmp_path):
     """Test run_search_loop returns DataFrame with correct columns on success."""
     mock_settings.SCORE_FILTER = 0
@@ -205,8 +205,8 @@ def test_run_search_loop_returns_dataframe_with_results(mock_settings, mock_loca
     assert "total_results" in result.columns
 
 
-@patch("evaluation_suite.search_evaluation.search_looper.local_search_client")
-@patch("evaluation_suite.search_evaluation.search_looper.settings")
+@patch("evaluation_suite.search_evaluation.query.search_looper.local_search_client")
+@patch("evaluation_suite.search_evaluation.query.search_looper.settings")
 def test_run_search_loop_filters_hits_by_score(mock_settings, mock_local_search, tmp_path):
     """Test run_search_loop filters hits below SCORE_FILTER threshold."""
     mock_settings.SCORE_FILTER = 6.0
@@ -229,8 +229,8 @@ def test_run_search_loop_filters_hits_by_score(mock_settings, mock_local_search,
     assert "c1" in result["all_chunk_ids"].iloc[0]
 
 
-@patch("evaluation_suite.search_evaluation.search_looper.local_search_client")
-@patch("evaluation_suite.search_evaluation.search_looper.settings")
+@patch("evaluation_suite.search_evaluation.query.search_looper.local_search_client")
+@patch("evaluation_suite.search_evaluation.query.search_looper.settings")
 def test_run_search_loop_skips_empty_search_terms(mock_settings, mock_local_search, tmp_path):
     """Test run_search_loop skips rows with empty search terms."""
     mock_settings.SCORE_FILTER = 0
@@ -259,8 +259,8 @@ def test_run_search_loop_skips_empty_search_terms(mock_settings, mock_local_sear
     assert result["search_term"].iloc[0] == "fracture"
 
 
-@patch("evaluation_suite.search_evaluation.search_looper.local_search_client")
-@patch("evaluation_suite.search_evaluation.search_looper.settings")
+@patch("evaluation_suite.search_evaluation.query.search_looper.local_search_client")
+@patch("evaluation_suite.search_evaluation.query.search_looper.settings")
 def test_run_search_loop_handles_search_exception(mock_settings, mock_local_search, tmp_path):
     """Test run_search_loop handles search exceptions gracefully and continues."""
     mock_settings.SCORE_FILTER = 0
@@ -291,8 +291,8 @@ def test_run_search_loop_handles_search_exception(mock_settings, mock_local_sear
     assert result["total_results"].iloc[1] == 0
 
 
-@patch("evaluation_suite.search_evaluation.search_looper.local_search_client")
-@patch("evaluation_suite.search_evaluation.search_looper.settings")
+@patch("evaluation_suite.search_evaluation.query.search_looper.local_search_client")
+@patch("evaluation_suite.search_evaluation.query.search_looper.settings")
 def test_run_search_loop_adds_index_column(mock_settings, mock_local_search, tmp_path):
     """Test run_search_loop adds 1-based index column to results."""
     mock_settings.SCORE_FILTER = 0
@@ -321,8 +321,8 @@ def test_run_search_loop_adds_index_column(mock_settings, mock_local_search, tmp
     assert result["index"].tolist() == [1, 2]
 
 
-@patch("evaluation_suite.search_evaluation.search_looper.local_search_client")
-@patch("evaluation_suite.search_evaluation.search_looper.settings")
+@patch("evaluation_suite.search_evaluation.query.search_looper.local_search_client")
+@patch("evaluation_suite.search_evaluation.query.search_looper.settings")
 def test_run_search_loop_multiple_terms(mock_settings, mock_local_search, tmp_path):
     """Test run_search_loop processes multiple search terms correctly."""
     mock_settings.SCORE_FILTER = 0

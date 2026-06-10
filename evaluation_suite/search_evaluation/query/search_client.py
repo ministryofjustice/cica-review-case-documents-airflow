@@ -4,7 +4,7 @@ This module provides the search execution layer used by the evaluation pipeline.
 Query building logic lives in search_query_builder.py.
 
 For ad-hoc exploration, run this module directly editing the search term in the __main__ block.:
-    python -m evaluation_suite.search_evaluation.search_client
+    python -m evaluation_suite.search_evaluation.query.search_client
 """
 
 import logging
@@ -14,40 +14,66 @@ from pathlib import Path
 import xlsxwriter
 
 from evaluation_suite.search_evaluation import evaluation_settings as eval_settings
-from evaluation_suite.search_evaluation.evaluation_config import get_active_search_type
 from evaluation_suite.search_evaluation.opensearch_client import (
     CHUNK_INDEX_NAME,
     OpenSearchConnectionError,
     get_opensearch_client,
 )
-from evaluation_suite.search_evaluation.search_query_builder import apply_adaptive_score_filter, create_hybrid_query
+from evaluation_suite.search_evaluation.query.search_query_builder import (
+    apply_adaptive_score_filter,
+    create_hybrid_query,
+)
+from evaluation_suite.search_evaluation.query.search_type_config import DEFAULT_SEARCH_TYPE
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingGenerator
 
-SCRIPT_DIR = Path(__file__).resolve().parent
+# Package root (search_evaluation/); this module lives in the query/ subpackage.
+SCRIPT_DIR = Path(__file__).resolve().parent.parent
 
 logger = logging.getLogger("search_client")
 
+# In-memory cache of query embeddings, keyed by search term. Identical terms are
+# searched repeatedly across search types and boost configurations during
+# evaluation; caching avoids regenerating the same embedding each time.
+_embedding_cache: dict[str, list[float]] = {}
 
-def local_search_client(search_term: str) -> list[dict]:
-    """Execute a hybrid search on the local OpenSearch instance and return the hits.
+
+def _get_query_embedding(search_term: str) -> list[float]:
+    """Return the embedding for a search term, using the in-memory cache."""
+    cached = _embedding_cache.get(search_term)
+    if cached is not None:
+        logger.debug(f"Using cached embedding for search term: '{search_term}'")
+        return cached
+
+    embedding_generator = EmbeddingGenerator(settings.BEDROCK_EMBEDDING_MODEL_ID)
+    embedding = embedding_generator.generate_embedding(search_term)
+    _embedding_cache[search_term] = embedding
+    logger.debug(f"Generated embedding for search term: '{search_term}'")
+    return embedding
+
+
+def local_search_client(search_term: str, search_type: str = DEFAULT_SEARCH_TYPE) -> list[dict]:
+    """Execute a search on the local OpenSearch instance and return the hits.
 
     Args:
         search_term: The search term to query.
+        search_type: The search type to use (defaults to the frontend default,
+            ``hybrid-dates``). See ``search_type_config.SearchType``.
 
     Returns:
         List of search hits from OpenSearch.
     """
     try:
-        embedding_generator = EmbeddingGenerator(settings.BEDROCK_EMBEDDING_MODEL_ID)
-        embedding = embedding_generator.generate_embedding(search_term)
-        logger.debug(f"Generated embedding for search term: '{search_term}'")
+        embedding = _get_query_embedding(search_term)
 
         client = get_opensearch_client()
 
-        search_query = create_hybrid_query(search_term, embedding, result_size=eval_settings.RESULT_SIZE)
+        search_query = create_hybrid_query(
+            search_term, embedding, result_size=eval_settings.RESULT_SIZE, search_type=search_type
+        )
         logger.debug(
-            f"Hybrid search: '{search_term}', result_size={eval_settings.RESULT_SIZE}, index='{CHUNK_INDEX_NAME}'"
+            f"Search: '{search_term}', type='{search_type}', "
+            f"result_size={eval_settings.RESULT_SIZE}, index='{CHUNK_INDEX_NAME}'"
         )
         response = client.search(index=CHUNK_INDEX_NAME, body=search_query)
 
@@ -77,6 +103,7 @@ def write_hits_to_xlsx(
     search_term: str,
     score_filter: float = eval_settings.SCORE_FILTER,
     output_dir: Path | None = None,
+    search_type: str = DEFAULT_SEARCH_TYPE,
 ) -> None:
     """Write the search hits to an Excel file, with additive semantic fallback.
 
@@ -88,6 +115,7 @@ def write_hits_to_xlsx(
         search_term: The search term used (written into the spreadsheet header).
         score_filter: Score threshold to apply. Defaults to SCORE_FILTER setting.
         output_dir: Directory to write the Excel file. Defaults to output/single-search-results/<date>/.
+        search_type: The search type used (written into the spreadsheet header).
     """
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     date_str = datetime.now().strftime("%Y-%m-%d")
@@ -103,8 +131,8 @@ def write_hits_to_xlsx(
     initial_search_results = len(filtered_hits) - semantic_added
     adaptive_filter_used = semantic_added > 0
 
-    # Get active search type from config
-    search_type_str = get_active_search_type()
+    # Search type used for this run (shown in the spreadsheet header).
+    search_type_str = search_type
 
     # Write search parameters in the first row
     worksheet.write(0, 0, "Search term:")
@@ -160,5 +188,6 @@ def write_hits_to_xlsx(
 
 if __name__ == "__main__":
     _search_term = "gaba"  # Change this to explore a different term
-    _hits = local_search_client(_search_term)
-    write_hits_to_xlsx(_hits, search_term=_search_term)
+    _search_type = DEFAULT_SEARCH_TYPE  # Change this to explore a different search type
+    _hits = local_search_client(_search_term, search_type=_search_type)
+    write_hits_to_xlsx(_hits, search_term=_search_term, search_type=_search_type)

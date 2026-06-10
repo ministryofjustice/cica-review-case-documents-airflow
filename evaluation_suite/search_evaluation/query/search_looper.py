@@ -13,10 +13,11 @@ import pandas as pd
 
 # Import module to access settings dynamically (supports runtime overrides)
 from evaluation_suite.search_evaluation import evaluation_settings as settings
-from evaluation_suite.search_evaluation.search_client import count_term_occurrences, local_search_client
+from evaluation_suite.search_evaluation.query.search_client import count_term_occurrences, local_search_client
 
 # --- Configuration ---
-SCRIPT_DIR = Path(__file__).resolve().parent
+# Package root (search_evaluation/); this module lives in the query/ subpackage.
+SCRIPT_DIR = Path(__file__).resolve().parent.parent
 INPUT_FILE_NAME = "search_terms.csv"  # Change this to use a different input file
 INPUT_FILE = SCRIPT_DIR.parent / "testing_docs" / INPUT_FILE_NAME
 
