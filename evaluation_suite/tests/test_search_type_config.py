@@ -79,7 +79,7 @@ def test_query_dsl_config_defaults_match_frontend():
     config = QueryDslConfig()
     assert config.lexical_boost == 20.0
     assert config.neural_boost == 4.0
-    assert config.date_boost == 1.0
+    assert config.date_boost == 4.0
     assert config.min_score == 0.0
 
 

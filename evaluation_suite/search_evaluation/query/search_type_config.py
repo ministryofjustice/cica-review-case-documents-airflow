@@ -1,14 +1,15 @@
-"""Search type configuration mirroring frontend PR #209.
+"""Search type configuration mirroring the frontend hybrid search DSL.
 
 This module defines the search types and query DSL configuration used by the
 evaluation suite so that evaluation searches match what users experience in the
 frontend.
 
-Frontend reference (PR #209, branch ``feat-hybrid-search-with-search-type-url-toggles``):
-- ``api/search/constants/searchTypes.js`` — the ``SEARCH_TYPES`` enum, the
-  ``DEFAULT_SEARCH_TYPE`` and the ``resolveSearchType`` helper.
-- ``api/DAL/utils/buildQueryJson/`` — the query DSL builders and their default
-  boosts (lexical=20, date=1, neural=4).
+Frontend reference (``api/search/constants/searchTypes.js`` and
+``api/DAL/utils/buildQueryJson/``):
+- ``searchTypes.js`` — the ``SEARCH_TYPES`` enum, ``DEFAULT_SEARCH_TYPE``, and
+  the ``resolveSearchType`` helper.
+- ``buildQueryJson/`` — the query DSL builders and their default boosts
+  (lexical=20, date=4, neural=4).
 
 Only ``hybrid`` and ``hybrid-dates`` are fully implemented at this stage. The
 remaining types are defined so the plumbing is in place, but the query builder
@@ -64,15 +65,15 @@ class QueryDslConfig:
             ``lexicalBoost``, default 20).
         neural_boost: Boost applied to the vector ANN clause (frontend
             ``neuralBoost``, default 4).
-        date_boost: Boost applied to each date ``match_phrase`` clause (frontend
-            ``dateBoost``, default 1).
+        date_boost: Boost applied to the grouped date ``match_phrase`` clause (frontend
+            ``dateBoost``, default 4).
         min_score: Optional OpenSearch ``min_score`` cut-off. 0 disables it so
             the evaluation can apply its own downstream score filtering.
     """
 
     lexical_boost: float = 20.0
     neural_boost: float = 4.0
-    date_boost: float = 1.0
+    date_boost: float = 4.0
     min_score: float = 0.0
 
     @classmethod
@@ -97,7 +98,7 @@ class QueryDslConfig:
 def resolve_search_type(value: str | None, session: dict | None = None) -> str:
     """Resolve a requested search type to a valid value, mirroring the frontend.
 
-    Mirrors ``resolveSearchType`` from PR #209:
+    Mirrors the frontend ``resolveSearchType`` helper:
     1. If ``value`` is not a usable non-empty string, return the default.
     2. Trim and lowercase it; if it is a known search type, use it.
     3. Otherwise fall back to ``session.featureFlags.type`` if that is valid.

@@ -1,10 +1,10 @@
 """Unit tests for search_query_builder.py.
 
-The query DSL mirrors frontend PR #209: a keyword ``match`` clause (lexicalBoost),
-a vector ANN clause (neuralBoost) pre-scoped to the case, optional date
-``match_phrase`` clauses (dateBoost) for the ``*-dates`` types, all combined in
-``bool.should`` with ``minimum_should_match: 1`` and a ``bool.filter`` ``term`` on
-``case_ref``.
+The query DSL mirrors the frontend hybrid search: a keyword ``match`` clause
+(lexicalBoost), a vector ANN clause (neuralBoost) pre-scoped to the case, and
+for ``*-dates`` types a grouped ``bool.should`` of date ``match_phrase`` variants
+(single dateBoost applied to the group), all combined in ``bool.should`` with
+``minimum_should_match: 1`` and a ``bool.filter`` ``term`` on ``case_ref``.
 """
 
 from unittest.mock import patch
@@ -48,7 +48,7 @@ def sample_hits():
 
 
 def default_config():
-    """A QueryDslConfig with the frontend-aligned defaults."""
+    """A fixed QueryDslConfig for test isolation (explicit values, not production defaults)."""
     return QueryDslConfig(lexical_boost=20.0, neural_boost=4.0, date_boost=1.0, min_score=0.0)
 
 
@@ -165,7 +165,7 @@ def test_create_hybrid_query_adds_min_score_when_configured():
 
 @patch("evaluation_suite.search_evaluation.query.search_query_builder.extract_dates_for_search")
 def test_create_hybrid_dates_query_adds_date_clauses(mock_extract_dates):
-    """hybrid-dates adds a match_phrase clause per detected date variant."""
+    """hybrid-dates groups date variants in a nested bool.should with a single dateBoost."""
     mock_extract_dates.return_value = ["12/05/2021", "2021-05-12"]
 
     query = search_query_builder.create_hybrid_query(
@@ -173,9 +173,13 @@ def test_create_hybrid_dates_query_adds_date_clauses(mock_extract_dates):
     )
 
     should = query["query"]["bool"]["should"]
-    date_clauses = [c for c in should if "match_phrase" in c]
-    assert len(date_clauses) == 2
-    assert all(c["match_phrase"]["chunk_text"]["boost"] == 1.0 for c in date_clauses)
+    # Date variants are grouped in a single nested bool clause, not individual match_phrase clauses.
+    date_group = next(c for c in should if "bool" in c and "should" in c["bool"])
+    inner_clauses = date_group["bool"]["should"]
+    assert len(inner_clauses) == 2
+    assert all("match_phrase" in c for c in inner_clauses)
+    assert date_group["bool"]["minimum_should_match"] == 1
+    assert date_group["bool"]["boost"] == 1.0  # date_boost from default_config()
     assert query["query"]["bool"]["minimum_should_match"] == 1
 
 
