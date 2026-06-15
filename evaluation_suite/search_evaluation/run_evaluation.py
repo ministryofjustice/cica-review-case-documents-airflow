@@ -29,7 +29,7 @@ from evaluation_suite.search_evaluation.evaluation_reporting import (
 from evaluation_suite.search_evaluation.evaluation_settings import apply_overrides, reset_settings
 from evaluation_suite.search_evaluation.opensearch_client import check_opensearch_health
 from evaluation_suite.search_evaluation.relevance_scoring import evaluate_relevance
-from evaluation_suite.search_evaluation.search_looper import run_search_loop
+from evaluation_suite.search_evaluation.query.search_looper import run_search_loop
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("run_evaluation")

@@ -86,11 +86,12 @@ def _build_hybrid_query(
     if config.lexical_boost > 0:
         should.append({"match": {"chunk_text": {"query": query_text, "boost": config.lexical_boost}}})
 
-    # Date clauses (frontend dateBoost) — only for the *-dates search types.
+    # Date clauses (frontend dateBoost) — only for the *-dates search types, and
+    # only when DATE_FORMAT_DETECTION is enabled in evaluation_settings.
     # Grouped in a nested bool.should so all variants share a single dateBoost,
     # matching the frontend: { bool: { should: matchPhraseClauses,
     #                                  minimum_should_match: 1, boost: dateBoost } }
-    if include_dates:
+    if include_dates and eval_settings.DATE_FORMAT_DETECTION:
         date_variants = [
             {"match_phrase": {"chunk_text": date}}
             for date in extract_dates_for_search(query_text)

@@ -208,6 +208,22 @@ def test_create_hybrid_query_plain_hybrid_does_not_extract_dates(mock_extract_da
     mock_extract_dates.assert_not_called()
 
 
+@patch("evaluation_suite.search_evaluation.query.search_query_builder.eval_settings")
+@patch("evaluation_suite.search_evaluation.query.search_query_builder.extract_dates_for_search")
+def test_create_hybrid_dates_query_skips_dates_when_detection_disabled(mock_extract_dates, mock_settings):
+    """hybrid-dates produces no date clauses when DATE_FORMAT_DETECTION is False."""
+    mock_settings.DATE_FORMAT_DETECTION = False
+    mock_settings.CASE_FILTER = eval_settings.CASE_FILTER
+
+    query = search_query_builder.create_hybrid_query(
+        "12/05/2021", [0.1, 0.2], result_size=5, search_type=SearchType.HYBRID_DATES, config=default_config()
+    )
+
+    mock_extract_dates.assert_not_called()
+    keys = _clause_keys(query["query"]["bool"]["should"])
+    assert not any(k == "bool" for k in keys), "No date group expected when detection is disabled"
+
+
 # --- Tests for create_hybrid_query: unimplemented search types ---
 
 
