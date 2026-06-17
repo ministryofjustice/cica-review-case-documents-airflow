@@ -19,9 +19,9 @@ For programmatic override (e.g., optimization), use:
 # Set boost to 0 to disable a search type, or >0 to enable and weight it.
 # Higher boost = more weight in the combined search score.
 #
-# Defaults mirror the frontend query DSL: lexical (keyword) match = 20,
-# neural (vector) = 4. ANALYSER/FUZZY/WILDCARD are not part of the frontend
-# hybrid DSL; they are retained at 0 for relevance-method selection and ablation.
+# Frontend-style defaults: keyword = 20, vector = 4.
+# ANALYSER/FUZZY/WILDCARD are not used to build the OpenSearch query.
+# They are only used by evaluation term-checking logic.
 
 KEYWORD_BOOST = 20  # Lexical keyword match on chunk_text (frontend lexicalBoost)
 ANALYSER_BOOST = 0  # English analyzer (stemming, stopwords) - not in frontend hybrid DSL

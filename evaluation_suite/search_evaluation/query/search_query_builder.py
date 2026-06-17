@@ -79,6 +79,10 @@ def _build_hybrid_query(
 
     Returns:
         OpenSearch query dict.
+
+    Raises:
+        ValueError: If no scoring clauses are enabled (would otherwise become a
+            filter-only match-all query within the case).
     """
     should: list[dict] = []
 
@@ -123,12 +127,17 @@ def _build_hybrid_query(
             }
         )
 
+    if not should:
+        raise ValueError(
+            "Hybrid query has no scoring clauses enabled. Set lexical_boost and/or "
+            "neural_boost > 0, or enable date variants for *-dates searches."
+        )
+
     bool_query: dict = {
         "should": should,
         "filter": [{"term": {"case_ref": eval_settings.CASE_FILTER}}],
     }
-    if should:
-        bool_query["minimum_should_match"] = 1
+    bool_query["minimum_should_match"] = 1
 
     query_body: dict = {
         "size": result_size,
@@ -170,6 +179,7 @@ def create_hybrid_query(
         OpenSearch query dict.
 
     Raises:
+        ValueError: If the resolved search type produces no scoring clauses.
         NotImplementedError: If ``search_type`` is valid but not yet implemented.
     """
     resolved_type = resolve_search_type(search_type)

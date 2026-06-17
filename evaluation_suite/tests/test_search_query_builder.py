@@ -143,6 +143,16 @@ def test_create_hybrid_query_omits_neural_clause_when_neural_boost_zero():
     assert "match" in keys
 
 
+def test_create_hybrid_query_raises_when_all_scoring_clauses_disabled():
+    """Fail fast when hybrid would become filter-only due to zero boosts and no vector."""
+    config = QueryDslConfig(lexical_boost=0.0, neural_boost=0.0, date_boost=1.0, min_score=0.0)
+
+    with pytest.raises(ValueError, match="no scoring clauses enabled"):
+        search_query_builder.create_hybrid_query(
+            "fracture", [], result_size=5, search_type=SearchType.HYBRID, config=config
+        )
+
+
 def test_create_hybrid_query_adds_min_score_when_configured():
     """min_score is added to the query body only when configured > 0."""
     with_min = search_query_builder.create_hybrid_query(
@@ -196,6 +206,18 @@ def test_create_hybrid_dates_query_without_dates_has_no_date_clauses(mock_extrac
     assert "match_phrase" not in keys
     assert "match" in keys
     assert "knn" in keys
+
+
+@patch("evaluation_suite.search_evaluation.query.search_query_builder.extract_dates_for_search")
+def test_create_hybrid_dates_query_raises_when_all_scoring_clauses_disabled(mock_extract_dates):
+    """Fail fast when hybrid-dates has zero boosts and no detected date variants."""
+    mock_extract_dates.return_value = []
+    config = QueryDslConfig(lexical_boost=0.0, neural_boost=0.0, date_boost=1.0, min_score=0.0)
+
+    with pytest.raises(ValueError, match="no scoring clauses enabled"):
+        search_query_builder.create_hybrid_query(
+            "no date", [], result_size=5, search_type=SearchType.HYBRID_DATES, config=config
+        )
 
 
 @patch("evaluation_suite.search_evaluation.query.search_query_builder.extract_dates_for_search")
