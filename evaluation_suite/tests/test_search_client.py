@@ -4,7 +4,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from evaluation_suite.search_evaluation import search_client
+from evaluation_suite.search_evaluation.query import search_client
+
+
+@pytest.fixture(autouse=True)
+def _clear_embedding_cache():
+    """Clear the module-level embedding cache so tests are order-independent."""
+    search_client._embedding_cache.clear()
+    yield
+    search_client._embedding_cache.clear()
 
 
 def sample_hits():
@@ -76,9 +84,9 @@ def test_count_term_occurrences_both_empty():
     assert search_client.count_term_occurrences("", "") == 0
 
 
-@patch("evaluation_suite.search_evaluation.search_client.get_opensearch_client")
-@patch("evaluation_suite.search_evaluation.search_client.EmbeddingGenerator")
-@patch("evaluation_suite.search_evaluation.search_client.eval_settings")
+@patch("evaluation_suite.search_evaluation.query.search_client.get_opensearch_client")
+@patch("evaluation_suite.search_evaluation.query.search_client.EmbeddingGenerator")
+@patch("evaluation_suite.search_evaluation.query.search_client.eval_settings")
 def test_local_search_client_raises_on_general_exception(mock_settings, mock_embedding_gen, mock_get_client):
     """Test local_search_client raises on unexpected exceptions."""
     mock_settings.RESULT_SIZE = 5
@@ -88,8 +96,8 @@ def test_local_search_client_raises_on_general_exception(mock_settings, mock_emb
         search_client.local_search_client("fracture")
 
 
-@patch("evaluation_suite.search_evaluation.search_client.get_opensearch_client")
-@patch("evaluation_suite.search_evaluation.search_client.EmbeddingGenerator")
+@patch("evaluation_suite.search_evaluation.query.search_client.get_opensearch_client")
+@patch("evaluation_suite.search_evaluation.query.search_client.EmbeddingGenerator")
 def test_local_search_client_returns_hits(mock_embedding_gen, mock_get_client):
     """Test local_search_client returns hits from OpenSearch."""
     from evaluation_suite.search_evaluation import evaluation_settings as eval_settings
@@ -116,8 +124,24 @@ def test_local_search_client_returns_hits(mock_embedding_gen, mock_get_client):
     assert hits[0]["_id"] == "c1"
 
 
-@patch("evaluation_suite.search_evaluation.search_client.get_opensearch_client")
-@patch("evaluation_suite.search_evaluation.search_client.EmbeddingGenerator")
+@patch("evaluation_suite.search_evaluation.query.search_client.get_opensearch_client")
+@patch("evaluation_suite.search_evaluation.query.search_client.EmbeddingGenerator")
+def test_local_search_client_caches_embeddings(mock_embedding_gen, mock_get_client):
+    """Repeated searches for the same term reuse the cached embedding."""
+    mock_embedding_gen.return_value.generate_embedding.return_value = [0.1, 0.2]
+    mock_client = MagicMock()
+    mock_client.search.return_value = {"hits": {"hits": sample_hits()}}
+    mock_get_client.return_value = mock_client
+
+    search_client.local_search_client("fracture")
+    search_client.local_search_client("fracture")
+
+    # The embedding generator should only be invoked once for the repeated term.
+    assert mock_embedding_gen.return_value.generate_embedding.call_count == 1
+
+
+@patch("evaluation_suite.search_evaluation.query.search_client.get_opensearch_client")
+@patch("evaluation_suite.search_evaluation.query.search_client.EmbeddingGenerator")
 def test_local_search_client_raises_on_connection_error(mock_embedding_gen, mock_get_client):
     """Test local_search_client raises when OpenSearch connection fails."""
     from evaluation_suite.search_evaluation.opensearch_client import OpenSearchConnectionError

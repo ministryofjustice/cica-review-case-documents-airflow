@@ -1,8 +1,19 @@
-"""Unit tests for search_query_builder.py."""
+"""Unit tests for search_query_builder.py.
+
+The query DSL mirrors the frontend hybrid search: a keyword ``match`` clause
+(lexicalBoost), a vector ANN clause (neuralBoost) pre-scoped to the case, and
+for ``*-dates`` types a grouped ``bool.should`` of date ``match_phrase`` variants
+(single dateBoost applied to the group), all combined in ``bool.should`` with
+``minimum_should_match: 1`` and a ``bool.filter`` ``term`` on ``case_ref``.
+"""
 
 from unittest.mock import patch
 
-from evaluation_suite.search_evaluation import search_query_builder
+import pytest
+
+from evaluation_suite.search_evaluation import evaluation_settings as eval_settings
+from evaluation_suite.search_evaluation.query import search_query_builder
+from evaluation_suite.search_evaluation.query.search_type_config import QueryDslConfig, SearchType
 
 
 def sample_hits():
@@ -36,136 +47,243 @@ def sample_hits():
     ]
 
 
-# --- Tests for _build_hybrid_clauses ---
+def default_config():
+    """A fixed QueryDslConfig for test isolation (explicit values, not production defaults)."""
+    return QueryDslConfig(lexical_boost=20.0, neural_boost=4.0, date_boost=1.0, min_score=0.0)
 
 
-@patch("evaluation_suite.search_evaluation.search_query_builder.eval_settings")
-def test_build_hybrid_clauses_all_boosts_active(mock_settings):
-    """Test _build_hybrid_clauses returns all clauses when all boosts are active."""
-    mock_settings.KEYWORD_BOOST = 1.0
-    mock_settings.ANALYSER_BOOST = 1.0
-    mock_settings.FUZZY_BOOST = 1.0
-    mock_settings.WILDCARD_BOOST = 1.0
-    mock_settings.SEMANTIC_BOOST = 1.0
-    mock_settings.FUZZINESS = "AUTO"
-    mock_settings.MAX_EXPANSIONS = 10
-    mock_settings.PREFIX_LENGTH = 1
-
-    clauses = search_query_builder._build_hybrid_clauses("test", [0.1, 0.2], result_size=5)
-    clause_keys = [list(c.keys())[0] for c in clauses]
-
-    assert "match" in clause_keys
-    assert "fuzzy" in clause_keys
-    assert "wildcard" in clause_keys
-    assert "knn" in clause_keys
-    assert len(clauses) == 5
+def _clause_keys(clauses):
+    return [next(iter(c.keys())) for c in clauses]
 
 
-@patch("evaluation_suite.search_evaluation.search_query_builder.eval_settings")
-def test_build_hybrid_clauses_all_boosts_zero(mock_settings):
-    """Test _build_hybrid_clauses returns empty list when all boosts are zero."""
-    mock_settings.KEYWORD_BOOST = 0
-    mock_settings.ANALYSER_BOOST = 0
-    mock_settings.FUZZY_BOOST = 0
-    mock_settings.WILDCARD_BOOST = 0
-    mock_settings.SEMANTIC_BOOST = 0
-
-    clauses = search_query_builder._build_hybrid_clauses("test", [0.1, 0.2], result_size=5)
-    assert clauses == []
+# --- Tests for create_hybrid_query: hybrid (keyword + vector, no dates) ---
 
 
-@patch("evaluation_suite.search_evaluation.search_query_builder.eval_settings")
-def test_build_hybrid_clauses_keyword_only(mock_settings):
-    """Test _build_hybrid_clauses returns only keyword clause when only KEYWORD_BOOST is set."""
-    mock_settings.KEYWORD_BOOST = 1.0
-    mock_settings.ANALYSER_BOOST = 0
-    mock_settings.FUZZY_BOOST = 0
-    mock_settings.WILDCARD_BOOST = 0
-    mock_settings.SEMANTIC_BOOST = 0
+def test_create_hybrid_query_has_keyword_and_neural_clauses():
+    """Hybrid query combines a keyword match clause and a vector ANN clause."""
+    query = search_query_builder.create_hybrid_query(
+        "fracture", [0.1, 0.2], result_size=5, search_type=SearchType.HYBRID, config=default_config()
+    )
 
-    clauses = search_query_builder._build_hybrid_clauses("test", [0.1, 0.2], result_size=5)
-    assert len(clauses) == 1
-    assert "match" in clauses[0]
-
-
-# --- Tests for create_hybrid_query ---
+    should = query["query"]["bool"]["should"]
+    keys = _clause_keys(should)
+    assert "match" in keys
+    assert "knn" in keys
+    assert all(key != "match_phrase" for key in keys)  # no date clauses for plain hybrid
 
 
-@patch("evaluation_suite.search_evaluation.search_query_builder.eval_settings")
-@patch("evaluation_suite.search_evaluation.search_query_builder.extract_dates_for_search")
-def test_create_hybrid_query_with_dates(mock_extract_dates, mock_settings):
-    """Test create_hybrid_query uses match_phrase only when dates are detected."""
-    mock_settings.DATE_FORMAT_DETECTION = True
+def test_create_hybrid_query_keyword_clause_uses_lexical_boost():
+    """The keyword match clause is boosted by the configured lexical boost."""
+    query = search_query_builder.create_hybrid_query(
+        "fracture", [0.1, 0.2], result_size=5, search_type=SearchType.HYBRID, config=default_config()
+    )
+
+    match_clause = next(c for c in query["query"]["bool"]["should"] if "match" in c)
+    assert match_clause["match"]["chunk_text"]["query"] == "fracture"
+    assert match_clause["match"]["chunk_text"]["boost"] == 20.0
+
+
+def test_create_hybrid_query_neural_clause_uses_neural_boost_and_filter():
+    """The ANN clause carries the vector, k, neural boost, and a case filter."""
+    query = search_query_builder.create_hybrid_query(
+        "fracture", [0.1, 0.2], result_size=7, search_type=SearchType.HYBRID, config=default_config()
+    )
+
+    knn_clause = next(c for c in query["query"]["bool"]["should"] if "knn" in c)["knn"]["embedding"]
+    assert knn_clause["vector"] == [0.1, 0.2]
+    assert knn_clause["k"] == 7
+    assert knn_clause["boost"] == 4.0
+    assert knn_clause["filter"] == {"term": {"case_ref": eval_settings.CASE_FILTER}}
+
+
+def test_create_hybrid_query_uses_bool_filter_list_for_case_ref():
+    """Case scoping uses bool.filter (a list of term clauses), not bool.must."""
+    query = search_query_builder.create_hybrid_query(
+        "fracture", [0.1, 0.2], result_size=5, search_type=SearchType.HYBRID, config=default_config()
+    )
+
+    bool_query = query["query"]["bool"]
+    assert "must" not in bool_query
+    assert bool_query["filter"] == [{"term": {"case_ref": eval_settings.CASE_FILTER}}]
+    assert bool_query["minimum_should_match"] == 1
+
+
+def test_create_hybrid_query_contains_source_fields_and_size():
+    """The query always includes the expected _source fields and size."""
+    query = search_query_builder.create_hybrid_query(
+        "fracture", [0.1, 0.2], result_size=5, search_type=SearchType.HYBRID, config=default_config()
+    )
+
+    assert query["size"] == 5
+    for field in ("document_id", "page_number", "chunk_text", "case_ref"):
+        assert field in query["_source"]
+
+
+def test_create_hybrid_query_omits_keyword_clause_when_lexical_boost_zero():
+    """A zero lexical boost disables the keyword clause (ablation support)."""
+    config = QueryDslConfig(lexical_boost=0.0, neural_boost=4.0, date_boost=1.0, min_score=0.0)
+    query = search_query_builder.create_hybrid_query(
+        "fracture", [0.1, 0.2], result_size=5, search_type=SearchType.HYBRID, config=config
+    )
+
+    keys = _clause_keys(query["query"]["bool"]["should"])
+    assert "match" not in keys
+    assert "knn" in keys
+
+
+def test_create_hybrid_query_omits_neural_clause_when_neural_boost_zero():
+    """A zero neural boost disables the ANN clause (ablation support)."""
+    config = QueryDslConfig(lexical_boost=20.0, neural_boost=0.0, date_boost=1.0, min_score=0.0)
+    query = search_query_builder.create_hybrid_query(
+        "fracture", [0.1, 0.2], result_size=5, search_type=SearchType.HYBRID, config=config
+    )
+
+    keys = _clause_keys(query["query"]["bool"]["should"])
+    assert "knn" not in keys
+    assert "match" in keys
+
+
+def test_create_hybrid_query_raises_when_all_scoring_clauses_disabled():
+    """Fail fast when hybrid would become filter-only due to zero boosts and no vector."""
+    config = QueryDslConfig(lexical_boost=0.0, neural_boost=0.0, date_boost=1.0, min_score=0.0)
+
+    with pytest.raises(ValueError, match="no scoring clauses enabled"):
+        search_query_builder.create_hybrid_query(
+            "fracture", [], result_size=5, search_type=SearchType.HYBRID, config=config
+        )
+
+
+def test_create_hybrid_query_adds_min_score_when_configured():
+    """min_score is added to the query body only when configured > 0."""
+    with_min = search_query_builder.create_hybrid_query(
+        "fracture",
+        [0.1, 0.2],
+        result_size=5,
+        search_type=SearchType.HYBRID,
+        config=QueryDslConfig(lexical_boost=20.0, neural_boost=4.0, date_boost=1.0, min_score=0.3),
+    )
+    without_min = search_query_builder.create_hybrid_query(
+        "fracture", [0.1, 0.2], result_size=5, search_type=SearchType.HYBRID, config=default_config()
+    )
+
+    assert with_min["min_score"] == 0.3
+    assert "min_score" not in without_min
+
+
+# --- Tests for create_hybrid_query: hybrid-dates (adds date match_phrase) ---
+
+
+@patch("evaluation_suite.search_evaluation.query.search_query_builder.extract_dates_for_search")
+def test_create_hybrid_dates_query_adds_date_clauses(mock_extract_dates):
+    """hybrid-dates groups date variants in a nested bool.should with a single dateBoost."""
     mock_extract_dates.return_value = ["12/05/2021", "2021-05-12"]
 
-    query = search_query_builder.create_hybrid_query("12/05/2021", [0.1, 0.2], result_size=5)
+    query = search_query_builder.create_hybrid_query(
+        "12/05/2021", [0.1, 0.2], result_size=5, search_type=SearchType.HYBRID_DATES, config=default_config()
+    )
 
-    assert "bool" in query["query"]
-    clauses = query["query"]["bool"]["should"]
-    assert all("match_phrase" in c for c in clauses)
-    assert query["query"]["bool"].get("minimum_should_match") == 1
+    should = query["query"]["bool"]["should"]
+    # Date variants are grouped in a single nested bool clause, not individual match_phrase clauses.
+    date_group = next(c for c in should if "bool" in c and "should" in c["bool"])
+    inner_clauses = date_group["bool"]["should"]
+    assert len(inner_clauses) == 2
+    assert all("match_phrase" in c for c in inner_clauses)
+    assert date_group["bool"]["minimum_should_match"] == 1
+    assert date_group["bool"]["boost"] == 1.0  # date_boost from default_config()
+    assert query["query"]["bool"]["minimum_should_match"] == 1
 
 
-@patch("evaluation_suite.search_evaluation.search_query_builder.eval_settings")
-@patch("evaluation_suite.search_evaluation.search_query_builder.extract_dates_for_search")
-def test_create_hybrid_query_no_dates(mock_extract_dates, mock_settings):
-    """Test create_hybrid_query uses hybrid clauses when no dates detected."""
-    mock_settings.DATE_FORMAT_DETECTION = True
-    mock_settings.KEYWORD_BOOST = 1.0
-    mock_settings.ANALYSER_BOOST = 0
-    mock_settings.FUZZY_BOOST = 0
-    mock_settings.WILDCARD_BOOST = 0
-    mock_settings.SEMANTIC_BOOST = 0
+@patch("evaluation_suite.search_evaluation.query.search_query_builder.extract_dates_for_search")
+def test_create_hybrid_dates_query_without_dates_has_no_date_clauses(mock_extract_dates):
+    """hybrid-dates with no detected dates produces no match_phrase clauses."""
     mock_extract_dates.return_value = []
 
-    query = search_query_builder.create_hybrid_query("fracture", [0.1, 0.2], result_size=5)
+    query = search_query_builder.create_hybrid_query(
+        "fracture", [0.1, 0.2], result_size=5, search_type=SearchType.HYBRID_DATES, config=default_config()
+    )
 
-    assert "bool" in query["query"]
-    clauses = query["query"]["bool"]["should"]
-    assert any("match" in c for c in clauses)
-    assert "minimum_should_match" not in query["query"]["bool"]
+    keys = _clause_keys(query["query"]["bool"]["should"])
+    assert "match_phrase" not in keys
+    assert "match" in keys
+    assert "knn" in keys
 
 
-@patch("evaluation_suite.search_evaluation.search_query_builder.eval_settings")
-@patch("evaluation_suite.search_evaluation.search_query_builder.extract_dates_for_search")
-def test_create_hybrid_query_date_detection_disabled(mock_extract_dates, mock_settings):
-    """Test create_hybrid_query skips date detection when DATE_FORMAT_DETECTION is False."""
-    mock_settings.DATE_FORMAT_DETECTION = False
-    mock_settings.KEYWORD_BOOST = 1.0
-    mock_settings.ANALYSER_BOOST = 0
-    mock_settings.FUZZY_BOOST = 0
-    mock_settings.WILDCARD_BOOST = 0
-    mock_settings.SEMANTIC_BOOST = 0
+@patch("evaluation_suite.search_evaluation.query.search_query_builder.extract_dates_for_search")
+def test_create_hybrid_dates_query_raises_when_all_scoring_clauses_disabled(mock_extract_dates):
+    """Fail fast when hybrid-dates has zero boosts and no detected date variants."""
+    mock_extract_dates.return_value = []
+    config = QueryDslConfig(lexical_boost=0.0, neural_boost=0.0, date_boost=1.0, min_score=0.0)
 
-    search_query_builder.create_hybrid_query("12/05/2021", [0.1, 0.2], result_size=5)
+    with pytest.raises(ValueError, match="no scoring clauses enabled"):
+        search_query_builder.create_hybrid_query(
+            "no date", [], result_size=5, search_type=SearchType.HYBRID_DATES, config=config
+        )
+
+
+@patch("evaluation_suite.search_evaluation.query.search_query_builder.extract_dates_for_search")
+def test_create_hybrid_query_plain_hybrid_does_not_extract_dates(mock_extract_dates):
+    """Plain hybrid never runs date extraction (dates are a *-dates feature)."""
+    search_query_builder.create_hybrid_query(
+        "12/05/2021", [0.1, 0.2], result_size=5, search_type=SearchType.HYBRID, config=default_config()
+    )
 
     mock_extract_dates.assert_not_called()
 
 
-@patch("evaluation_suite.search_evaluation.search_query_builder.eval_settings")
-@patch("evaluation_suite.search_evaluation.search_query_builder.extract_dates_for_search")
-def test_create_hybrid_query_contains_source_fields(mock_extract_dates, mock_settings):
-    """Test create_hybrid_query always includes correct _source fields."""
+@patch("evaluation_suite.search_evaluation.query.search_query_builder.eval_settings")
+@patch("evaluation_suite.search_evaluation.query.search_query_builder.extract_dates_for_search")
+def test_create_hybrid_dates_query_skips_dates_when_detection_disabled(mock_extract_dates, mock_settings):
+    """hybrid-dates produces no date clauses when DATE_FORMAT_DETECTION is False."""
     mock_settings.DATE_FORMAT_DETECTION = False
-    mock_settings.KEYWORD_BOOST = 1.0
-    mock_settings.ANALYSER_BOOST = 0
-    mock_settings.FUZZY_BOOST = 0
-    mock_settings.WILDCARD_BOOST = 0
-    mock_settings.SEMANTIC_BOOST = 0
+    mock_settings.CASE_FILTER = eval_settings.CASE_FILTER
 
-    query = search_query_builder.create_hybrid_query("fracture", [0.1, 0.2], result_size=5)
+    query = search_query_builder.create_hybrid_query(
+        "12/05/2021", [0.1, 0.2], result_size=5, search_type=SearchType.HYBRID_DATES, config=default_config()
+    )
 
-    assert "_source" in query
-    assert "chunk_text" in query["_source"]
-    assert "document_id" in query["_source"]
-    assert "page_number" in query["_source"]
-    assert "case_ref" in query["_source"]
+    mock_extract_dates.assert_not_called()
+    keys = _clause_keys(query["query"]["bool"]["should"])
+    assert not any(k == "bool" for k in keys), "No date group expected when detection is disabled"
+
+
+# --- Tests for create_hybrid_query: unimplemented search types ---
+
+
+@pytest.mark.parametrize(
+    "search_type",
+    [SearchType.KEYWORD, SearchType.KEYWORD_DATES, SearchType.SEMANTIC],
+)
+def test_create_hybrid_query_raises_for_unimplemented_types(search_type):
+    """Defined-but-unimplemented search types raise NotImplementedError."""
+    with pytest.raises(NotImplementedError, match="not yet implemented"):
+        search_query_builder.create_hybrid_query(
+            "fracture", [0.1, 0.2], result_size=5, search_type=search_type, config=default_config()
+        )
+
+
+def test_create_hybrid_query_invalid_type_falls_back_to_default():
+    """An invalid search type resolves to the default (hybrid-dates) and builds."""
+    query = search_query_builder.create_hybrid_query(
+        "fracture", [0.1, 0.2], result_size=5, search_type="not-a-real-type", config=default_config()
+    )
+
+    assert "bool" in query["query"]
+
+
+def test_create_hybrid_query_defaults_to_settings_config():
+    """When no config is passed, defaults are sourced from evaluation_settings."""
+    query = search_query_builder.create_hybrid_query(
+        "fracture", [0.1, 0.2], result_size=5, search_type=SearchType.HYBRID
+    )
+
+    match_clause = next(c for c in query["query"]["bool"]["should"] if "match" in c)
+    assert match_clause["match"]["chunk_text"]["boost"] == eval_settings.KEYWORD_BOOST
 
 
 # --- Tests for apply_adaptive_score_filter ---
 
 
-@patch("evaluation_suite.search_evaluation.search_query_builder.eval_settings")
+@patch("evaluation_suite.search_evaluation.query.search_query_builder.eval_settings")
 def test_apply_adaptive_score_filter_above_threshold(mock_settings):
     """Test apply_adaptive_score_filter returns only hits above threshold."""
     mock_settings.ADAPTIVE_SCORE_FILTER = False
@@ -181,7 +299,7 @@ def test_apply_adaptive_score_filter_above_threshold(mock_settings):
     assert semantic_added == 0
 
 
-@patch("evaluation_suite.search_evaluation.search_query_builder.eval_settings")
+@patch("evaluation_suite.search_evaluation.query.search_query_builder.eval_settings")
 def test_apply_adaptive_score_filter_no_hits_above_threshold(mock_settings):
     """Test apply_adaptive_score_filter returns empty when no hits above threshold."""
     mock_settings.ADAPTIVE_SCORE_FILTER = False
@@ -193,7 +311,7 @@ def test_apply_adaptive_score_filter_no_hits_above_threshold(mock_settings):
     assert semantic_added == 0
 
 
-@patch("evaluation_suite.search_evaluation.search_query_builder.eval_settings")
+@patch("evaluation_suite.search_evaluation.query.search_query_builder.eval_settings")
 def test_apply_adaptive_score_filter_fallback_adds_semantic(mock_settings):
     """Test apply_adaptive_score_filter supplements with semantic hits when below MIN_RESULTS."""
     mock_settings.ADAPTIVE_SCORE_FILTER = True
@@ -208,7 +326,7 @@ def test_apply_adaptive_score_filter_fallback_adds_semantic(mock_settings):
     assert any(h["_id"] == "c1" for h in filtered)
 
 
-@patch("evaluation_suite.search_evaluation.search_query_builder.eval_settings")
+@patch("evaluation_suite.search_evaluation.query.search_query_builder.eval_settings")
 def test_apply_adaptive_score_filter_no_duplicates_in_fallback(mock_settings):
     """Test apply_adaptive_score_filter does not add duplicate hits in fallback."""
     mock_settings.ADAPTIVE_SCORE_FILTER = True

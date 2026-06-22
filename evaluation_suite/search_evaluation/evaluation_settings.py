@@ -18,18 +18,24 @@ For programmatic override (e.g., optimization), use:
 # =============================================================================
 # Set boost to 0 to disable a search type, or >0 to enable and weight it.
 # Higher boost = more weight in the combined search score.
+#
+# Frontend-style defaults: keyword = 20, vector = 4.
+# ANALYSER/FUZZY/WILDCARD are not used to build the OpenSearch query.
+# They are only used by evaluation term-checking logic.
 
-KEYWORD_BOOST = 1.2  # Exact keyword matching
-ANALYSER_BOOST = 0  # English analyzer (stemming, stopwords)
-SEMANTIC_BOOST = 0  # Vector/embedding similarity search
-FUZZY_BOOST = 0  # Fuzzy matching (typo tolerance)
-WILDCARD_BOOST = 0  # Wildcard pattern matching
+KEYWORD_BOOST = 20  # Lexical keyword match on chunk_text (frontend lexicalBoost)
+ANALYSER_BOOST = 0  # English analyzer (stemming, stopwords) - not in frontend hybrid DSL
+SEMANTIC_BOOST = 4  # Vector/embedding ANN similarity (frontend neuralBoost)
+FUZZY_BOOST = 0  # Fuzzy matching (typo tolerance) - not in frontend hybrid DSL
+WILDCARD_BOOST = 0  # Wildcard pattern matching - not in frontend hybrid DSL
 
 # =============================================================================
 # SEARCH PARAMETERS
 # =============================================================================
 
-RESULT_SIZE = 40  # Number of results to retrieve per search
+RESULT_SIZE = 40  # Number of results to retrieve per search (also the ANN k)
+MIN_SCORE = 0.0  # OpenSearch query-level min_score (frontend min_score). 0 disables it
+# so the evaluation applies its own downstream score filtering (SCORE_FILTER below).
 SCORE_FILTER = 0.57  # Minimum score threshold for initial results
 
 # Additive semantic fallback - supplements initial results when too few
@@ -58,7 +64,7 @@ FUZZY_MATCH_THRESHOLD = 85  # Similarity threshold for fuzzy term matching (0-10
 # match_phrase queries with multiple format variants (e.g., "20-Jul-21" also
 # searches for "20 July 2021", "20/07/2021", etc.)
 
-DATE_FORMAT_DETECTION = True  # Enable/disable date format detection
+DATE_FORMAT_DETECTION = True  # Enable/disable date format detection (used by *-dates search types)
 
 # =============================================================================
 # EXPECTED CHUNK GENERATION
@@ -79,7 +85,7 @@ OPENSEARCH_BATCH_SIZE = 1000  # Number of documents per scroll batch
 OPENSEARCH_TIMEOUT = 30  # Client request timeout in seconds
 OPENSEARCH_MAX_RETRIES = 3  # Maximum number of retries for transient failures
 OPENSEARCH_RETRY_BACKOFF_FACTOR = 0.1  # Exponential backoff factor for retries
-DATE_QUERY_BOOST = 2.0  # Boost multiplier for exact date phrase queries
+DATE_QUERY_BOOST = 4.0  # Boost for exact date phrase queries (frontend dateBoost = 4)
 
 # =============================================================================
 # CASE FILTERING
@@ -114,6 +120,7 @@ _DEFAULTS = {
     "FUZZY_BOOST": FUZZY_BOOST,
     "WILDCARD_BOOST": WILDCARD_BOOST,
     "RESULT_SIZE": RESULT_SIZE,
+    "MIN_SCORE": MIN_SCORE,
     "SCORE_FILTER": SCORE_FILTER,
     "ADAPTIVE_SCORE_FILTER": ADAPTIVE_SCORE_FILTER,
     "MIN_RESULTS_BEFORE_FALLBACK": MIN_RESULTS_BEFORE_FALLBACK,

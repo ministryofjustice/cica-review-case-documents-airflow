@@ -1,6 +1,6 @@
 """Unit tests for date_formats.py."""
 
-from evaluation_suite.search_evaluation import date_formats
+from evaluation_suite.search_evaluation.query import date_formats
 
 
 def test_is_date_search_true_for_various_formats():
