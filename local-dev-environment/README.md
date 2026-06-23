@@ -10,13 +10,15 @@ Docker and LocalStack resources to be created:
 
 ## Pre-requisites
 
+If developing in WSL, keep this repository in your WSL Linux home directory (for example, `/home/your-user/projects/...`) rather than under `/mnt/c`. This gives better performance and avoids common permission and Docker bind-mount issues.
+
 - [Docker](https://docs.docker.com/get-started/get-docker/)
 - [Docker Desktop](https://docs.docker.com/desktop/)
 - [LocalStack Desktop](https://docs.localstack.cloud/aws/capabilities/web-app/localstack-desktop/)
 - [uv](https://docs.astral.sh/uv/) for Python dependency management
 - LocalStack image version is pinned by default in `docker-compose.yml` to avoid auth/license regressions on newer releases. Override with `LOCALSTACK_IMAGE` in `local-dev-environment/.env` when needed.
 - **For VPN WSL users**: If you are running the local environment from behind a corporate VPN with SSL inspection, and encounter any SSL issues then set the following environment variables in your .bashrc to allow LocalStack to trust your custom certificates:
-- /local-dev-environment/.env variables set, note the AWS_MOD_PLATFORM_* variables will require daily rotation, and a docker rebuild will be necessary for running queries
+- /local-dev-environment/.env variables set, note the AWS_MOD_PLATFORM_* variables will require daily rotation. You can refresh connector credentials without a full Docker rebuild by rerunning the Bedrock setup script with `BEDROCK_FORCE_RECREATE_CONNECTOR=true`.
 
 ```
 # Ensures LocalStack and its internal services trust the custom CA
@@ -32,6 +34,14 @@ Optional image override example:
 
 ```bash
 LOCALSTACK_IMAGE=localstack/localstack:2.3.2
+```
+
+### WSL Ubuntu bootstrap helper
+
+From the repository root, you can run the guided setup script to validate local tooling and generate `.env` files from templates:
+
+```bash
+./setup-local-dev-wsl.sh
 ```
 
 ## Setup
@@ -106,7 +116,7 @@ To ingest documents into OpenSearch, run the ingestion pipeline from the project
 
 ```bash
 cd ..
-bash run_locally_with_dot_env.sh
+bash run-ingestion-local.sh
 ```
 
 This will process a sample document and index the chunks into OpenSearch. After ingestion, you can create an [index pattern](https://docs.opensearch.org/latest/dashboards/management/index-patterns/) named `page_chunks` and start searching. See the [quickstart](https://docs.opensearch.org/latest/dashboards/quickstart/) for more details.
@@ -125,6 +135,27 @@ Both setup entrypoints now reuse shared helper functions in [init-scripts/lib/be
 - Port-forward flow: [setup-bedrock-connector-portforward.sh](./setup-bedrock-connector-portforward.sh)
 
 For maintenance, update connector/model/pipeline logic in the shared helper first, then keep entrypoint scripts focused on environment-specific auth and bootstrapping.
+
+### Rotating AWS credentials without rebuilding
+
+When `AWS_MOD_PLATFORM_*` credentials expire, you do not need to rebuild the full local environment.
+
+1. Update `local-dev-environment/.env` with fresh `AWS_MOD_PLATFORM_ACCESS_KEY_ID`, `AWS_MOD_PLATFORM_SECRET_ACCESS_KEY`, and `AWS_MOD_PLATFORM_SESSION_TOKEN`.
+2. Restart only LocalStack:
+
+```bash
+cd local-dev-environment
+docker compose restart localstack
+```
+
+3. Force connector/model recreation so OpenSearch stores fresh Bedrock credentials:
+
+```bash
+docker exec -e BEDROCK_FORCE_RECREATE_CONNECTOR=true -it localstack-main \
+        bash /etc/localstack/init/ready.d/03-setup-bedrock-connector-neural.sh
+```
+
+This refreshes connector/model auth without recreating OpenSearch indexes.
 
 For the port-forward setup script, `CONFIRM_OVERWRITE` controls behavior when existing pipelines or index settings are found:
 
@@ -147,6 +178,64 @@ Credential handling considerations:
 - Stop the port-forward session when setup is complete.
 
 This is a temporary operational workaround to configure a remote OpenSearch instance through a local port-forward.
+
+If credentials backing the connector have rotated, force recreation during port-forward setup with either of these flags:
+
+- `FORCE_RECREATE_CONNECTOR=true`
+- `BEDROCK_FORCE_RECREATE_CONNECTOR=true`
+
+Example:
+
+```bash
+FORCE_RECREATE_CONNECTOR=true CONFIRM_OVERWRITE=true ./setup-bedrock-connector-portforward.sh
+```
+
+### Port-forward index setup helper
+
+To create or recreate `page_chunks` and `page_metadata` mappings against a port-forwarded OpenSearch instance, use:
+
+```bash
+./setup-opensearch-indexes-portforward.sh
+```
+
+Overwrite behavior is controlled with `CONFIRM_OVERWRITE`:
+
+- `prompt` (default): ask before deleting/recreating indexes
+- `true`: recreate existing indexes without prompting
+- `false`: keep existing indexes and skip creation
+
+### Troubleshooting Bedrock setup
+
+1. Error: `The security token included in the request is expired`
+
+This means the connector is using stale temporary AWS credentials.
+
+For local-only setup:
+
+```bash
+cd local-dev-environment
+docker compose restart localstack
+docker exec -e BEDROCK_FORCE_RECREATE_CONNECTOR=true -it localstack-main \
+        bash /etc/localstack/init/ready.d/03-setup-bedrock-connector-neural.sh
+```
+
+For port-forward setup:
+
+```bash
+FORCE_RECREATE_CONNECTOR=true CONFIRM_OVERWRITE=true ./setup-bedrock-connector-portforward.sh
+```
+
+2. Model state remains `PARTIALLY_DEPLOYED`
+
+On small or limited-node dev clusters this can be normal. If search works, this state can be acceptable.
+
+Check model state:
+
+```bash
+curl -s http://127.0.0.1:9300/_plugins/_ml/models/<MODEL_ID> | jq '.model_state'
+```
+
+If state stays `PARTIALLY_DEPLOYED` but queries succeed, proceed. If queries fail, re-run setup with force recreate and verify index search pipeline settings.
 
 ### Ingest-time embedding toggle
 

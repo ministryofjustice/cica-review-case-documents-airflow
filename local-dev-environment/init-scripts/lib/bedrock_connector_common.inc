@@ -13,6 +13,29 @@ bedrock_extract_json_field() {
   echo "$json" | grep -o "\"${key}\":\"[^\"]*\"" | head -n1 | cut -d'"' -f4 || true
 }
 
+bedrock_best_effort_request() {
+  local method="$1"
+  local path="$2"
+  local body="${3:-}"
+
+  local response status resp_body
+  if [[ -n "${body}" ]]; then
+    response="$(curl -sS -X "${method}" "${BEDROCK_OPENSEARCH_ENDPOINT}${path}" "${BEDROCK_AUTH_ARGS[@]}" -H "Content-Type: application/json" -d "${body}" -w $'\n%{http_code}')"
+  else
+    response="$(curl -sS -X "${method}" "${BEDROCK_OPENSEARCH_ENDPOINT}${path}" "${BEDROCK_AUTH_ARGS[@]}" -H "Content-Type: application/json" -w $'\n%{http_code}')"
+  fi
+
+  status="$(echo "${response}" | tail -n1)"
+  resp_body="$(echo "${response}" | sed '$d')"
+
+  if [[ "${status}" -lt 200 || "${status}" -ge 300 ]]; then
+    bedrock_log "WARNING: ${method} ${path} returned HTTP ${status}. Continuing."
+    if [[ -n "${resp_body}" ]]; then
+      echo "${resp_body}" >&2
+    fi
+  fi
+}
+
 bedrock_os_request() {
   local method="$1"
   local path="$2"
@@ -144,6 +167,28 @@ JSON
   bedrock_extract_json_field "${search_response}" "_id"
 }
 
+bedrock_force_recreate_connector_and_model_if_needed() {
+  local connector_id="$1"
+  local model_id="$2"
+
+  if [[ "${BEDROCK_FORCE_RECREATE_CONNECTOR:-false}" != "true" ]]; then
+    return 0
+  fi
+
+  bedrock_log "BEDROCK_FORCE_RECREATE_CONNECTOR=true, recreating connector/model credentials"
+
+  if [[ -n "${model_id}" ]]; then
+    bedrock_log "Removing existing model ${model_id}"
+    bedrock_best_effort_request POST "/_plugins/_ml/models/${model_id}/_undeploy"
+    bedrock_os_request DELETE "/_plugins/_ml/models/${model_id}" >/dev/null
+  fi
+
+  if [[ -n "${connector_id}" ]]; then
+    bedrock_log "Removing existing connector ${connector_id}"
+    bedrock_os_request DELETE "/_plugins/_ml/connectors/${connector_id}" >/dev/null
+  fi
+}
+
 bedrock_wait_for_task_completion() {
   local task_id="$1"
   local action_label="$2"
@@ -255,21 +300,6 @@ bedrock_upsert_search_pipeline() {
         }
       }
     }
-  ],
-  "phase_results_processors": [
-    {
-      "normalization-processor": {
-        "normalization": {
-          "technique": "min_max"
-        },
-        "combination": {
-          "technique": "arithmetic_mean",
-          "parameters": {
-            "weights": [0.6, 0.2, 0.2]
-          }
-        }
-      }
-    }
   ]
 }
 JSON
@@ -314,6 +344,15 @@ bedrock_prepare_model() {
   local connector_id model_id
 
   connector_id="$(bedrock_get_connector_id_by_name)"
+  model_id="$(bedrock_get_model_id_by_name)"
+
+  bedrock_force_recreate_connector_and_model_if_needed "${connector_id}" "${model_id}"
+
+  if [[ "${BEDROCK_FORCE_RECREATE_CONNECTOR:-false}" == "true" ]]; then
+    connector_id=""
+    model_id=""
+  fi
+
   if [[ -z "${connector_id}" ]]; then
     connector_id="$(bedrock_create_connector "${connector_credential_block}")"
     bedrock_log "Created connector: ${connector_id}"
@@ -321,7 +360,6 @@ bedrock_prepare_model() {
     bedrock_log "Reusing connector: ${connector_id}"
   fi
 
-  model_id="$(bedrock_get_model_id_by_name)"
   if [[ -z "${model_id}" ]]; then
     model_id="$(bedrock_register_model "${connector_id}")"
     bedrock_log "Registered model: ${model_id}"
