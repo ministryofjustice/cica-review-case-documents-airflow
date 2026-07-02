@@ -5,10 +5,10 @@ Tests the run_optimization function and two-phase optimization strategy.
 
 from unittest.mock import MagicMock, patch
 
-from evaluation_suite.search_evaluation.optimization_engine import run_optimization
+from evaluation_suite.search_evaluation.optimization.optimization_engine import run_optimization
 
 
-@patch("evaluation_suite.search_evaluation.optimization_engine.optuna.create_study")
+@patch("evaluation_suite.search_evaluation.optimization.optimization_engine.optuna.create_study")
 def test_run_optimization_creates_study(mock_create_study):
     """Test that run_optimization creates a study and runs optimization."""
     mock_study = MagicMock()
@@ -40,9 +40,12 @@ def test_run_optimization_two_phase_calls_both_phases(monkeypatch):
         def optimize(self, *a, **kw):
             called.append(kw.get("n_trials"))
 
-    monkeypatch.setattr("evaluation_suite.search_evaluation.optimization_engine.TPESampler", lambda seed: None)
     monkeypatch.setattr(
-        "evaluation_suite.search_evaluation.optimization_engine.optuna.create_study", lambda **kwargs: DummyStudy()
+        "evaluation_suite.search_evaluation.optimization.optimization_engine.TPESampler", lambda seed: None
+    )
+    monkeypatch.setattr(
+        "evaluation_suite.search_evaluation.optimization.optimization_engine.optuna.create_study",
+        lambda **kwargs: DummyStudy(),
     )
     run_optimization(n_trials=4, study_name="dummy", two_phase=True)
     assert called == [2, 2]
@@ -63,9 +66,12 @@ def test_run_optimization_single_phase(monkeypatch):
         def optimize(self, *a, **kw):
             called.append(kw.get("n_trials"))
 
-    monkeypatch.setattr("evaluation_suite.search_evaluation.optimization_engine.TPESampler", lambda seed: None)
     monkeypatch.setattr(
-        "evaluation_suite.search_evaluation.optimization_engine.optuna.create_study", lambda **kwargs: DummyStudy()
+        "evaluation_suite.search_evaluation.optimization.optimization_engine.TPESampler", lambda seed: None
+    )
+    monkeypatch.setattr(
+        "evaluation_suite.search_evaluation.optimization.optimization_engine.optuna.create_study",
+        lambda **kwargs: DummyStudy(),
     )
     run_optimization(n_trials=3, study_name="dummy", two_phase=False)
     assert called == [3]
@@ -87,9 +93,12 @@ def test_run_optimization_uses_default_n_trials(monkeypatch):
             n_trials = kw.get("n_trials")
             called.append(n_trials)
 
-    monkeypatch.setattr("evaluation_suite.search_evaluation.optimization_engine.TPESampler", lambda seed: None)
     monkeypatch.setattr(
-        "evaluation_suite.search_evaluation.optimization_engine.optuna.create_study", lambda **kwargs: DummyStudy()
+        "evaluation_suite.search_evaluation.optimization.optimization_engine.TPESampler", lambda seed: None
+    )
+    monkeypatch.setattr(
+        "evaluation_suite.search_evaluation.optimization.optimization_engine.optuna.create_study",
+        lambda **kwargs: DummyStudy(),
     )
 
     # Run with n_trials=None (should use default)
@@ -123,7 +132,7 @@ def test_run_optimization_two_phase_splits_trials():
 
     try:
         # Mock the modules
-        import evaluation_suite.search_evaluation.optimization_engine as engine
+        import evaluation_suite.search_evaluation.optimization.optimization_engine as engine
 
         engine.TPESampler = lambda seed: None
         engine.optuna.create_study = lambda **kwargs: DummyStudy()
@@ -160,8 +169,12 @@ def test_run_optimization_generates_study_name_if_not_provided(monkeypatch):
     def mock_create_study(**kwargs):
         return DummyStudy(**kwargs)
 
-    monkeypatch.setattr("evaluation_suite.search_evaluation.optimization_engine.TPESampler", lambda seed: None)
-    monkeypatch.setattr("evaluation_suite.search_evaluation.optimization_engine.optuna.create_study", mock_create_study)
+    monkeypatch.setattr(
+        "evaluation_suite.search_evaluation.optimization.optimization_engine.TPESampler", lambda seed: None
+    )
+    monkeypatch.setattr(
+        "evaluation_suite.search_evaluation.optimization.optimization_engine.optuna.create_study", mock_create_study
+    )
 
     # Run without specifying study_name
     run_optimization(n_trials=1, study_name=None, two_phase=False)
@@ -171,7 +184,7 @@ def test_run_optimization_generates_study_name_if_not_provided(monkeypatch):
     assert "search_optimization_" in created_studies[0].study_name
 
 
-@patch("evaluation_suite.search_evaluation.optimization_engine.optuna.create_study")
+@patch("evaluation_suite.search_evaluation.optimization.optimization_engine.optuna.create_study")
 def test_run_optimization_connection_error_exits(mock_create_study):
     """Test that ConnectionError during optimization causes SystemExit."""
     mock_study = MagicMock()

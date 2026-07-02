@@ -100,34 +100,60 @@ def get_active_search_type() -> str:
     return methods[0] if methods else "exact"
 
 
-def get_search_config(timestamp: str | None = None, csv_metadata: dict | None = None) -> dict:
+def _resolve_chunking_strategy() -> str:
+    """Return the ingestion pipeline's configured chunking strategy.
+
+    Sourced from the ingestion pipeline settings (the chunker actually used to
+    build the index) rather than a placeholder, so the comparison log can
+    attribute metric changes to the chunking strategy used for the corpus.
+    Falls back to ``"unknown"`` if the ingestion settings cannot be imported.
+    """
+    try:
+        from ingestion_pipeline.config import settings as ingestion_settings
+
+        return ingestion_settings.DOCUMENT_CHUNKING_STRATEGY
+    except Exception:  # pragma: no cover - defensive; ingestion config is normally importable
+        return "unknown"
+
+
+def get_search_config(
+    timestamp: str | None = None,
+    num_chunks_indexed: int | None = None,
+    chunking_strategy: str | None = None,
+) -> dict:
     """Get the current search configuration as a dictionary.
+
+    The fields mirror the parts of the query that actually vary between runs of
+    the hybrid / hybrid-dates DSL, plus the context needed to compare runs in
+    the cumulative log (which case, which corpus, which chunking strategy).
 
     Args:
         timestamp: Optional timestamp string. If None, generates current timestamp.
-        csv_metadata: Optional metadata dict from search_terms.csv header.
+        num_chunks_indexed: Number of chunks in the index at run time (corpus
+            size). Recorded so precision/recall can be interpreted and so a
+            corpus change is visible in the comparison log.
+        chunking_strategy: Chunking strategy used to build the corpus. Defaults
+            to the ingestion pipeline's configured strategy.
 
     Returns:
-        Dictionary containing all search configuration parameters.
+        Dictionary containing the search configuration parameters.
     """
     if timestamp is None:
         timestamp = get_timestamp()
-
-    csv_metadata = csv_metadata or {}
+    if chunking_strategy is None:
+        chunking_strategy = _resolve_chunking_strategy()
 
     return {
         "search_type": get_active_search_type(),
+        "case_filter": settings.CASE_FILTER,
         "score_filter": settings.SCORE_FILTER,
+        "min_score": settings.MIN_SCORE,
         "result_size": settings.RESULT_SIZE,
         "keyword_boost": settings.KEYWORD_BOOST,
-        "analyser_boost": settings.ANALYSER_BOOST,
         "semantic_boost": settings.SEMANTIC_BOOST,
-        "fuzzy_boost": settings.FUZZY_BOOST,
-        "wildcard_boost": settings.WILDCARD_BOOST,
-        "fuzziness": settings.FUZZINESS,
-        "max_expansions": settings.MAX_EXPANSIONS,
-        "chunks_generated_with_date_variants": csv_metadata.get("chunks_generated_with_date_variants", False),
-        "chunks_generated_with_stemming": csv_metadata.get("chunks_generated_with_stemming", False),
-        "chunking_strategy": csv_metadata.get("chunking_strategy", ""),
+        "date_boost": settings.DATE_QUERY_BOOST,
+        "date_format_detection": settings.DATE_FORMAT_DETECTION,
+        "chunking_strategy": chunking_strategy,
+        "num_chunks_indexed": num_chunks_indexed,
         "timestamp": timestamp,
     }

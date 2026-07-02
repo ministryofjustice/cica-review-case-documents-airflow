@@ -4,14 +4,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from evaluation_suite.search_evaluation.chunks_loader import (
+from evaluation_suite.search_evaluation.opensearch.chunks_loader import (
     get_chunk_details_from_opensearch,
     load_all_chunks_from_opensearch,
 )
-from evaluation_suite.search_evaluation.opensearch_client import OpenSearchConnectionError
+from evaluation_suite.search_evaluation.opensearch.opensearch_client import OpenSearchConnectionError
 
 
-@patch("evaluation_suite.search_evaluation.chunks_loader.get_opensearch_client")
+@patch("evaluation_suite.search_evaluation.opensearch.chunks_loader.get_opensearch_client")
 def test_load_all_chunks_success(mock_get_client):
     """Test successful loading of all chunks from OpenSearch with mocked client."""
     mock_client = MagicMock()
@@ -37,7 +37,7 @@ def test_load_all_chunks_success(mock_get_client):
     assert chunks == {"chunk1": "text1", "chunk2": "text2"}
 
 
-@patch("evaluation_suite.search_evaluation.chunks_loader.get_opensearch_client")
+@patch("evaluation_suite.search_evaluation.opensearch.chunks_loader.get_opensearch_client")
 def test_load_all_chunks_empty_index(mock_get_client):
     """Test loading chunks from an empty OpenSearch index."""
     mock_client = MagicMock()
@@ -48,7 +48,7 @@ def test_load_all_chunks_empty_index(mock_get_client):
     assert chunks == {}
 
 
-@patch("evaluation_suite.search_evaluation.chunks_loader.get_opensearch_client")
+@patch("evaluation_suite.search_evaluation.opensearch.chunks_loader.get_opensearch_client")
 def test_load_all_chunks_opensearch_connection_error(mock_get_client):
     """Test handling of OpenSearch connection error when loading chunks."""
     mock_get_client.side_effect = OpenSearchConnectionError(
@@ -58,7 +58,7 @@ def test_load_all_chunks_opensearch_connection_error(mock_get_client):
         load_all_chunks_from_opensearch()
 
 
-@patch("evaluation_suite.search_evaluation.chunks_loader.get_opensearch_client")
+@patch("evaluation_suite.search_evaluation.opensearch.chunks_loader.get_opensearch_client")
 def test_load_all_chunks_generic_exception(mock_get_client):
     """Test handling of generic exception when loading chunks."""
     mock_client = MagicMock()
@@ -68,7 +68,7 @@ def test_load_all_chunks_generic_exception(mock_get_client):
         load_all_chunks_from_opensearch()
 
 
-@patch("evaluation_suite.search_evaluation.chunks_loader.get_opensearch_client")
+@patch("evaluation_suite.search_evaluation.opensearch.chunks_loader.get_opensearch_client")
 def test_get_chunk_details_success(mock_get_client):
     """Test successful retrieval of chunk details from OpenSearch with mocked client."""
     mock_client = MagicMock()
@@ -93,7 +93,7 @@ def test_get_chunk_details_success(mock_get_client):
     ]
 
 
-@patch("evaluation_suite.search_evaluation.chunks_loader.get_opensearch_client")
+@patch("evaluation_suite.search_evaluation.opensearch.chunks_loader.get_opensearch_client")
 def test_get_chunk_details_opensearch_connection_error(mock_get_client):
     """Test handling of OpenSearch connection error when retrieving chunk details."""
     mock_get_client.side_effect = OpenSearchConnectionError(
@@ -103,7 +103,7 @@ def test_get_chunk_details_opensearch_connection_error(mock_get_client):
         get_chunk_details_from_opensearch()
 
 
-@patch("evaluation_suite.search_evaluation.chunks_loader.get_opensearch_client")
+@patch("evaluation_suite.search_evaluation.opensearch.chunks_loader.get_opensearch_client")
 def test_get_chunk_details_generic_exception(mock_get_client):
     """Test handling of generic exception when retrieving chunk details."""
     mock_client = MagicMock()
@@ -111,3 +111,37 @@ def test_get_chunk_details_generic_exception(mock_get_client):
     mock_client.search.side_effect = Exception("Something went wrong")
     with pytest.raises(Exception):
         get_chunk_details_from_opensearch()
+
+
+@patch("evaluation_suite.search_evaluation.opensearch.chunks_loader.eval_settings")
+@patch("evaluation_suite.search_evaluation.opensearch.chunks_loader.get_opensearch_client")
+def test_get_chunk_details_uses_provided_case_ref(mock_get_client, mock_settings):
+    """When case_ref is provided it overrides eval_settings.CASE_FILTER in the query."""
+    mock_settings.CASE_FILTER = "26-711111"
+    mock_client = MagicMock()
+    mock_get_client.return_value = mock_client
+    mock_client.search.return_value = {"_scroll_id": "s1", "hits": {"hits": []}}
+    mock_client.scroll.return_value = {"_scroll_id": "s1", "hits": {"hits": []}}
+
+    get_chunk_details_from_opensearch(case_ref="26-700001")
+
+    _, call_kwargs = mock_client.search.call_args
+    term_filter = call_kwargs["body"]["query"]["bool"]["filter"]["term"]
+    assert term_filter["case_ref"] == "26-700001"
+
+
+@patch("evaluation_suite.search_evaluation.opensearch.chunks_loader.eval_settings")
+@patch("evaluation_suite.search_evaluation.opensearch.chunks_loader.get_opensearch_client")
+def test_get_chunk_details_falls_back_to_settings(mock_get_client, mock_settings):
+    """When case_ref is omitted, eval_settings.CASE_FILTER is used in the query."""
+    mock_settings.CASE_FILTER = "26-711111"
+    mock_client = MagicMock()
+    mock_get_client.return_value = mock_client
+    mock_client.search.return_value = {"_scroll_id": "s1", "hits": {"hits": []}}
+    mock_client.scroll.return_value = {"_scroll_id": "s1", "hits": {"hits": []}}
+
+    get_chunk_details_from_opensearch()
+
+    _, call_kwargs = mock_client.search.call_args
+    term_filter = call_kwargs["body"]["query"]["bool"]["filter"]["term"]
+    assert term_filter["case_ref"] == "26-711111"

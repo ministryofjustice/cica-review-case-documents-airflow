@@ -16,7 +16,8 @@ import optuna
 logger = logging.getLogger("optimization_results")
 
 # Output directory for optimization results
-_SCRIPT_DIR = Path(__file__).resolve().parent
+# Package root (search_evaluation/); this module lives in the optimization/ subpackage.
+_SCRIPT_DIR = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = _SCRIPT_DIR / "output" / "optimization"
 
 

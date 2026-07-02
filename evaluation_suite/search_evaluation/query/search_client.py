@@ -14,7 +14,7 @@ from pathlib import Path
 import xlsxwriter
 
 from evaluation_suite.search_evaluation import evaluation_settings as eval_settings
-from evaluation_suite.search_evaluation.opensearch_client import (
+from evaluation_suite.search_evaluation.opensearch.opensearch_client import (
     CHUNK_INDEX_NAME,
     OpenSearchConnectionError,
     get_opensearch_client,
@@ -24,6 +24,7 @@ from evaluation_suite.search_evaluation.query.search_query_builder import (
     create_hybrid_query,
 )
 from evaluation_suite.search_evaluation.query.search_type_config import DEFAULT_SEARCH_TYPE
+from evaluation_suite.search_evaluation.relevance.term_matching import filter_stop_words
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingGenerator
 
@@ -64,12 +65,22 @@ def local_search_client(search_term: str, search_type: str = DEFAULT_SEARCH_TYPE
         List of search hits from OpenSearch.
     """
     try:
+        # Embedding is always generated from the full original term so the
+        # vector search component is unaffected by keyword preprocessing.
         embedding = _get_query_embedding(search_term)
+
+        # Optionally strip stop words from the keyword portion of the query.
+        query_term = search_term
+        if eval_settings.STRIP_QUERY_STOP_WORDS:
+            filtered_words = filter_stop_words(search_term.split())
+            if filtered_words:  # fall back to original if every word is a stop word
+                query_term = " ".join(filtered_words)
+                logger.debug("Stop words stripped: '%s' → '%s'", search_term, query_term)
 
         client = get_opensearch_client()
 
         search_query = create_hybrid_query(
-            search_term, embedding, result_size=eval_settings.RESULT_SIZE, search_type=search_type
+            query_term, embedding, result_size=eval_settings.RESULT_SIZE, search_type=search_type
         )
         logger.debug(
             f"Search: '{search_term}', type='{search_type}', "

@@ -5,7 +5,7 @@ Tests calculate_chunk_match() for various edge cases in precision/recall calcula
 
 import pandas as pd
 
-from evaluation_suite.search_evaluation.chunk_metrics import calculate_chunk_match, safe_int
+from evaluation_suite.search_evaluation.relevance.chunk_metrics import calculate_chunk_match, safe_int
 
 
 class TestCalculateChunkMatch:
@@ -16,9 +16,10 @@ class TestCalculateChunkMatch:
         row = pd.Series({"expected_chunk_id": "chunk1", "all_chunk_ids": "chunk1"})
         result = calculate_chunk_match(row)
 
-        assert result["precision"] == 100.0
-        assert result["recall"] == 100.0
-        assert result["chunk_match_percentage"] == 100.0
+        assert result["precision_at_10"] == 100.0
+        assert result["recall_at_10"] == 100.0
+        assert result["precision_at_20"] == 100.0
+        assert result["recall_at_20"] == 100.0
         assert result["missing_chunk_ids"] == ""
 
     def test_perfect_match_multiple_chunks(self):
@@ -26,8 +27,8 @@ class TestCalculateChunkMatch:
         row = pd.Series({"expected_chunk_id": "chunk1, chunk2, chunk3", "all_chunk_ids": "chunk1, chunk2, chunk3"})
         result = calculate_chunk_match(row)
 
-        assert result["precision"] == 100.0
-        assert result["recall"] == 100.0
+        assert result["precision_at_10"] == 100.0
+        assert result["recall_at_10"] == 100.0
         assert result["missing_chunk_ids"] == ""
 
     def test_partial_recall(self):
@@ -36,9 +37,9 @@ class TestCalculateChunkMatch:
         result = calculate_chunk_match(row)
 
         # 2 of 3 expected found = 66.67% recall
-        assert result["recall"] == 66.67
+        assert result["recall_at_10"] == 66.67
         # 2 of 2 found are expected = 100% precision
-        assert result["precision"] == 100.0
+        assert result["precision_at_10"] == 100.0
         assert result["missing_chunk_ids"] == "chunk3"
 
     def test_low_precision_high_recall(self):
@@ -47,9 +48,9 @@ class TestCalculateChunkMatch:
         result = calculate_chunk_match(row)
 
         # 1 of 1 expected found = 100% recall
-        assert result["recall"] == 100.0
+        assert result["recall_at_10"] == 100.0
         # 1 of 5 found are expected = 20% precision
-        assert result["precision"] == 20.0
+        assert result["precision_at_10"] == 20.0
         assert result["missing_chunk_ids"] == ""
 
     def test_no_expected_with_results_false_positives(self):
@@ -57,9 +58,9 @@ class TestCalculateChunkMatch:
         row = pd.Series({"expected_chunk_id": "", "all_chunk_ids": "chunk1, chunk2, chunk3"})
         result = calculate_chunk_match(row)
 
-        assert result["precision"] == 0.0
-        assert result["recall"] is None  # Undefined when no expected
-        assert result["chunk_match_percentage"] is None
+        assert result["precision_at_10"] == 0.0
+        assert result["recall_at_10"] is None  # Undefined when no expected
+        assert result["recall_at_20"] is None
         assert result["missing_chunk_ids"] == ""
 
     def test_no_expected_no_results_correct_rejection(self):
@@ -67,9 +68,10 @@ class TestCalculateChunkMatch:
         row = pd.Series({"expected_chunk_id": "", "all_chunk_ids": ""})
         result = calculate_chunk_match(row)
 
-        assert result["precision"] == 100.0
-        assert result["recall"] == 100.0
-        assert result["chunk_match_percentage"] == 100.0
+        assert result["precision_at_10"] == 100.0
+        assert result["recall_at_10"] == 100.0
+        assert result["precision_at_20"] == 100.0
+        assert result["recall_at_20"] == 100.0
         assert result["missing_chunk_ids"] == ""
 
     def test_expected_but_no_results(self):
@@ -78,9 +80,9 @@ class TestCalculateChunkMatch:
         result = calculate_chunk_match(row)
 
         # 0 of 2 expected found = 0% recall
-        assert result["recall"] == 0.0
+        assert result["recall_at_10"] == 0.0
         # No results found = 0% precision (0/0 edge case handled as 0)
-        assert result["precision"] == 0.0
+        assert result["precision_at_10"] == 0.0
         assert "chunk1" in result["missing_chunk_ids"]
         assert "chunk2" in result["missing_chunk_ids"]
 
@@ -90,9 +92,9 @@ class TestCalculateChunkMatch:
         result = calculate_chunk_match(row)
 
         # 0 of 2 expected found = 0% recall
-        assert result["recall"] == 0.0
+        assert result["recall_at_10"] == 0.0
         # 0 of 2 found are expected = 0% precision
-        assert result["precision"] == 0.0
+        assert result["precision_at_10"] == 0.0
         assert "chunk1" in result["missing_chunk_ids"]
         assert "chunk2" in result["missing_chunk_ids"]
 
@@ -101,8 +103,21 @@ class TestCalculateChunkMatch:
         row = pd.Series({"expected_chunk_id": "  chunk1 ,  chunk2  ", "all_chunk_ids": "chunk1,   chunk2"})
         result = calculate_chunk_match(row)
 
-        assert result["precision"] == 100.0
-        assert result["recall"] == 100.0
+        assert result["precision_at_10"] == 100.0
+        assert result["recall_at_10"] == 100.0
+
+    def test_top_k_truncation_limits_precision(self):
+        """Only the top-k results count toward precision/recall."""
+        found = ", ".join(f"chunk{i}" for i in range(1, 13))  # chunk1..chunk12
+        # Expected chunk sits at rank 11 (outside the top-10 cutoff).
+        row = pd.Series({"expected_chunk_id": "chunk11", "all_chunk_ids": found})
+        result = calculate_chunk_match(row)
+
+        # Not in top-10 -> recall@10 is 0, but present in top-20 -> recall@20 100.
+        assert result["recall_at_10"] == 0.0
+        assert result["recall_at_20"] == 100.0
+        # Found somewhere in the result set -> not reported as missing.
+        assert result["missing_chunk_ids"] == ""
 
     def test_handles_nan_values(self):
         """Handles NaN/None values gracefully."""
@@ -110,8 +125,8 @@ class TestCalculateChunkMatch:
         result = calculate_chunk_match(row)
 
         # None converts to "None" string, which is treated as empty after strip
-        assert result["precision"] == 100.0  # Correct rejection
-        assert result["recall"] == 100.0
+        assert result["precision_at_10"] == 100.0  # Correct rejection
+        assert result["recall_at_10"] == 100.0
 
 
 class TestSafeInt:

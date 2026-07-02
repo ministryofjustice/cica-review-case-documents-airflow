@@ -4,7 +4,7 @@ import json
 import logging
 from unittest.mock import MagicMock, patch
 
-import evaluation_suite.search_evaluation.optimization_results as optimization_results
+import evaluation_suite.search_evaluation.optimization.optimization_results as optimization_results
 
 
 def test_round_params_rounds_floats():

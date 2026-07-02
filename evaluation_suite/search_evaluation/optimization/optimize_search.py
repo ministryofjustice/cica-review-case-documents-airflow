@@ -5,7 +5,7 @@ This script uses Optuna to find the optimal combination of search boosts
 that maximizes the optimization score from the evaluation framework.
 
 Usage:
-    python -m evaluation_suite.search_evaluation.optimize_search
+    python -m evaluation_suite.search_evaluation.optimization.optimize_search
 
 The script will:
 1. Phase 1: Coarse search with step=0.3 to explore the parameter space
@@ -22,9 +22,9 @@ import warnings
 import optuna
 
 from evaluation_suite.search_evaluation import evaluation_settings as eval_settings
-from evaluation_suite.search_evaluation.opensearch_client import check_opensearch_health
-from evaluation_suite.search_evaluation.optimization_engine import run_optimization
-from evaluation_suite.search_evaluation.optimization_results import OUTPUT_DIR, print_summary, save_results
+from evaluation_suite.search_evaluation.opensearch.opensearch_client import check_opensearch_health
+from evaluation_suite.search_evaluation.optimization.optimization_engine import run_optimization
+from evaluation_suite.search_evaluation.optimization.optimization_results import OUTPUT_DIR, print_summary, save_results
 
 # Suppress Optuna UserWarnings about step size not dividing range evenly
 warnings.filterwarnings(
@@ -123,13 +123,13 @@ def cli_main() -> None:
         epilog="""
 Examples:
   # Run 30 trials with two-phase optimization (default)
-  python -m evaluation_suite.search_evaluation.optimize_search
+  python -m evaluation_suite.search_evaluation.optimization.optimize_search
 
   # Run 50 trials
-  python -m evaluation_suite.search_evaluation.optimize_search --n-trials 50
+  python -m evaluation_suite.search_evaluation.optimization.optimize_search --n-trials 50
 
   # Run single-phase optimization
-  python -m evaluation_suite.search_evaluation.optimize_search --single-phase
+  python -m evaluation_suite.search_evaluation.optimization.optimize_search --single-phase
         """,
     )
     parser.add_argument(

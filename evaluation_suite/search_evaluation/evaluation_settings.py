@@ -33,7 +33,7 @@ WILDCARD_BOOST = 0  # Wildcard pattern matching - not in frontend hybrid DSL
 # SEARCH PARAMETERS
 # =============================================================================
 
-RESULT_SIZE = 40  # Number of results to retrieve per search (also the ANN k)
+RESULT_SIZE = 100  # Number of results to retrieve per search (also the ANN k)
 MIN_SCORE = 0.0  # OpenSearch query-level min_score (frontend min_score). 0 disables it
 # so the evaluation applies its own downstream score filtering (SCORE_FILTER below).
 SCORE_FILTER = 0.57  # Minimum score threshold for initial results
@@ -48,6 +48,11 @@ MAX_SEMANTIC_RESULTS = 10  # Maximum semantic results to add as supplement
 FUZZINESS = "Auto"  # "Auto", "0", "1", "2" - Auto chooses based on term length
 MAX_EXPANSIONS = 50  # Maximum fuzzy term expansions
 PREFIX_LENGTH = 2  # Number of initial characters that must match exactly
+
+# Query preprocessing
+STRIP_QUERY_STOP_WORDS = False  # Strip stop words from the keyword portion of search queries
+# before sending to OpenSearch. The vector embedding is always
+# generated from the full original term for semantic fidelity.
 
 # =============================================================================
 # TERM MATCHING SETTINGS
@@ -129,6 +134,7 @@ _DEFAULTS = {
     "FUZZINESS": FUZZINESS,
     "MAX_EXPANSIONS": MAX_EXPANSIONS,
     "PREFIX_LENGTH": PREFIX_LENGTH,
+    "STRIP_QUERY_STOP_WORDS": STRIP_QUERY_STOP_WORDS,
     "FUZZY_MATCH_THRESHOLD": FUZZY_MATCH_THRESHOLD,
     "DATE_FORMAT_DETECTION": DATE_FORMAT_DETECTION,
     "EXP_CHUNK_DATE_VARIANTS": EXP_CHUNK_DATE_VARIANTS,

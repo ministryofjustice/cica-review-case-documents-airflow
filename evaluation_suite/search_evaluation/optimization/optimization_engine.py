@@ -12,8 +12,8 @@ from optuna.samplers import TPESampler
 from optuna.trial import FrozenTrial
 
 from evaluation_suite.search_evaluation import evaluation_settings as eval_settings
-from evaluation_suite.search_evaluation.optimization_objective import create_objective
-from evaluation_suite.search_evaluation.optimization_results import OUTPUT_DIR
+from evaluation_suite.search_evaluation.optimization.optimization_objective import create_objective
+from evaluation_suite.search_evaluation.optimization.optimization_results import OUTPUT_DIR
 
 logger = logging.getLogger("optimization_engine")
 

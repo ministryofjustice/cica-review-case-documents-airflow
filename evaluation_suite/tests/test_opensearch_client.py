@@ -4,12 +4,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from evaluation_suite.search_evaluation import opensearch_client
+from evaluation_suite.search_evaluation.opensearch import opensearch_client
 
 
-@patch("evaluation_suite.search_evaluation.opensearch_client.evaluation_settings")
-@patch("evaluation_suite.search_evaluation.opensearch_client.OpenSearch")
-@patch("evaluation_suite.search_evaluation.opensearch_client.settings")
+@patch("evaluation_suite.search_evaluation.opensearch.opensearch_client.evaluation_settings")
+@patch("evaluation_suite.search_evaluation.opensearch.opensearch_client.OpenSearch")
+@patch("evaluation_suite.search_evaluation.opensearch.opensearch_client.settings")
 def test_get_opensearch_client_returns_client(mock_settings, mock_OpenSearch, mock_eval_settings):
     """Test that get_opensearch_client returns an OpenSearch client with retry configuration."""
     mock_settings.OPENSEARCH_PROXY_URL = "http://localhost:9200"
@@ -32,7 +32,7 @@ def test_get_opensearch_client_returns_client(mock_settings, mock_OpenSearch, mo
     assert result == client
 
 
-@patch("evaluation_suite.search_evaluation.opensearch_client.get_opensearch_client")
+@patch("evaluation_suite.search_evaluation.opensearch.opensearch_client.get_opensearch_client")
 def test_check_opensearch_health_success(mock_get_client):
     """Test that check_opensearch_health successfully checks health when OpenSearch is reachable."""
     mock_client = MagicMock()
@@ -44,7 +44,7 @@ def test_check_opensearch_health_success(mock_get_client):
     mock_client.cluster.health.assert_called_once()
 
 
-@patch("evaluation_suite.search_evaluation.opensearch_client.get_opensearch_client")
+@patch("evaluation_suite.search_evaluation.opensearch.opensearch_client.get_opensearch_client")
 def test_check_opensearch_health_connection_error(mock_get_client):
     """Test that check_opensearch_health raises ConnectionError with a clear message when OpenSearch is unreachable."""
     mock_client = MagicMock()

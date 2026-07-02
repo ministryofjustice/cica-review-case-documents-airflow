@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from evaluation_suite.search_evaluation.evaluation_config import EVALUATION_LOG_FILE
-from evaluation_suite.search_evaluation.evaluation_models import EvaluationSummary
+from evaluation_suite.search_evaluation.pipeline_config import EVALUATION_LOG_FILE
+from evaluation_suite.search_evaluation.relevance.evaluation_models import EvaluationSummary
 
 logger = logging.getLogger("evaluation_reporting")
 

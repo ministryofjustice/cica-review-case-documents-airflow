@@ -4,9 +4,9 @@ This package contains modules for evaluating and optimizing OpenSearch
 configurations for the CICA document review system.
 
 Modules:
-    run_evaluation: Main entry point for evaluation
+    run_single_evaluation: Main entry point for evaluation
     evaluation_settings: Configuration constants
-    evaluation_config: Path and config management
+    pipeline_config: Path and config management
     opensearch_client: Shared OpenSearch client factory
     search_client: OpenSearch query execution and Excel export
     search_query_builder: OpenSearch query construction and score filtering

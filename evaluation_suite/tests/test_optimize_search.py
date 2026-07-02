@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-import evaluation_suite.search_evaluation.optimize_search as optimize_search
+import evaluation_suite.search_evaluation.optimization.optimize_search as optimize_search
 
 
 def test_main_two_phase(monkeypatch):

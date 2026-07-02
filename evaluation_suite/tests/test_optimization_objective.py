@@ -7,13 +7,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from evaluation_suite.search_evaluation.optimization_objective import (
+from evaluation_suite.search_evaluation.optimization.optimization_objective import (
     OptimizationObjective,
     create_objective,
 )
 
 
-@patch("evaluation_suite.search_evaluation.optimization_objective.run_evaluation")
+@patch("evaluation_suite.search_evaluation.optimization.optimization_objective.run_evaluation")
 def test_objective_returns_score(mock_run_evaluation):
     """Test that the objective function returns the optimization score."""
     mock_summary = {"optimization_score": 42.0}
@@ -26,7 +26,7 @@ def test_objective_returns_score(mock_run_evaluation):
     assert score == 42.0
 
 
-@patch("evaluation_suite.search_evaluation.optimization_objective.run_evaluation")
+@patch("evaluation_suite.search_evaluation.optimization.optimization_objective.run_evaluation")
 def test_objective_handles_none_result(mock_run_evaluation):
     """Test that the objective function returns -1000.0 if run_evaluation returns None."""
     mock_run_evaluation.return_value = None
@@ -38,7 +38,7 @@ def test_objective_handles_none_result(mock_run_evaluation):
     assert score == -1000.0
 
 
-@patch("evaluation_suite.search_evaluation.optimization_objective.run_evaluation")
+@patch("evaluation_suite.search_evaluation.optimization.optimization_objective.run_evaluation")
 def test_objective_handles_exception(mock_run_evaluation):
     """Test that the objective function returns -1000.0 if an exception occurs."""
     mock_run_evaluation.side_effect = Exception("Test error")
@@ -50,7 +50,7 @@ def test_objective_handles_exception(mock_run_evaluation):
     assert score == -1000.0
 
 
-@patch("evaluation_suite.search_evaluation.optimization_objective.run_evaluation")
+@patch("evaluation_suite.search_evaluation.optimization.optimization_objective.run_evaluation")
 def test_objective_reraises_connection_error(mock_run_evaluation):
     """Test that ConnectionError propagates (stops optimization)."""
     mock_run_evaluation.side_effect = ConnectionError("OpenSearch is not reachable")
@@ -91,7 +91,7 @@ def test_create_objective_with_different_steps():
     assert objective_fine.step == 0.05
 
 
-@patch("evaluation_suite.search_evaluation.optimization_objective.run_evaluation")
+@patch("evaluation_suite.search_evaluation.optimization.optimization_objective.run_evaluation")
 def test_objective_extracts_score_from_dataclass(mock_run_evaluation):
     """Test that the objective extracts optimization_score from EvaluationSummary dataclass."""
     # Create a mock summary object with optimization_score attribute
@@ -108,7 +108,7 @@ def test_objective_extracts_score_from_dataclass(mock_run_evaluation):
     assert score == 75.5
 
 
-@patch("evaluation_suite.search_evaluation.optimization_objective.run_evaluation")
+@patch("evaluation_suite.search_evaluation.optimization.optimization_objective.run_evaluation")
 def test_objective_rounds_parameters_to_precision(mock_run_evaluation):
     """Test that parameters are rounded to OPTIMIZATION_PRECISION (4 decimal places)."""
     mock_summary = {"optimization_score": 50.0}
@@ -116,8 +116,8 @@ def test_objective_rounds_parameters_to_precision(mock_run_evaluation):
 
     objective = create_objective(step=0.1)
     trial = MagicMock()
-    # Suggest floats that would need rounding
-    trial.suggest_float = MagicMock(side_effect=[1.23456789, 2.13579246, 3.97531234, 4.11111111, 5.99999999])
+    # Suggest floats that would need rounding — one per active parameter (3)
+    trial.suggest_float = MagicMock(side_effect=[1.23456789, 2.13579246, 3.97531234])
     trial.number = 1
 
     # Call the objective - it should round the values

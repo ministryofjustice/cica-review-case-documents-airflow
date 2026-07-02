@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pandas as pd
 
-from evaluation_suite.search_evaluation import relevance_scoring
+from evaluation_suite.search_evaluation.relevance import relevance_scoring
 
 
 def test_evaluation_summary_to_dict():
@@ -15,19 +15,26 @@ def test_evaluation_summary_to_dict():
         result_rate=0.8,
         avg_chunks_returned=2.5,
         queries_with_expected_chunk=7,
-        avg_precision=0.7,
-        avg_recall=0.6,
-        avg_f1_score=0.65,
-        avg_acceptable_term_based_precision=0.75,
+        avg_precision_at_10=0.7,
+        avg_precision_at_20=0.65,
+        avg_recall_at_10=0.6,
+        avg_recall_at_20=0.7,
+        avg_f1_at_10=0.65,
+        avg_f1_at_20=0.67,
+        avg_term_based_precision_at_10=0.8,
+        avg_term_based_precision_at_20=0.75,
+        avg_acceptable_term_based_precision_at_10=0.75,
+        avg_acceptable_term_based_precision_at_20=0.7,
         optimization_score=0.1234,
     )
     d = summary.to_dict()
     assert d["total_queries"] == 10
     assert d["optimization_score"] == 0.1234
-    assert "avg_f1_score" in d
+    assert "avg_f1_at_10" in d
+    assert "avg_acceptable_term_based_precision_at_20" in d
 
 
-@patch("evaluation_suite.search_evaluation.relevance_scoring.load_all_chunks_from_opensearch")
+@patch("evaluation_suite.search_evaluation.relevance.relevance_scoring.load_all_chunks_from_opensearch")
 def test_load_chunk_lookup_returns_dict(mock_load):
     """Test load_chunk_lookup returns a dict from loader."""
     mock_load.return_value = {"chunk1": "text1", "chunk2": "text2"}
@@ -35,38 +42,40 @@ def test_load_chunk_lookup_returns_dict(mock_load):
     assert lookup == {"chunk1": "text1", "chunk2": "text2"}
 
 
-@patch("evaluation_suite.search_evaluation.relevance_scoring.load_chunk_lookup")
-@patch("evaluation_suite.search_evaluation.relevance_scoring.get_active_search_types")
-@patch("evaluation_suite.search_evaluation.relevance_scoring.get_active_search_type")
-@patch("evaluation_suite.search_evaluation.relevance_scoring.check_terms_in_chunks")
-@patch("evaluation_suite.search_evaluation.chunk_metrics.calculate_chunk_match")
+@patch("evaluation_suite.search_evaluation.relevance.relevance_scoring.generate_acceptable_terms")
+@patch("evaluation_suite.search_evaluation.relevance.relevance_scoring.load_chunk_lookup")
+@patch("evaluation_suite.search_evaluation.relevance.relevance_scoring.get_active_search_types")
+@patch("evaluation_suite.search_evaluation.relevance.relevance_scoring.get_active_search_type")
+@patch("evaluation_suite.search_evaluation.relevance.relevance_scoring.check_terms_in_chunks")
 def test_evaluate_relevance_returns_summary(
-    mock_calculate_chunk_match,
     mock_check_terms_in_chunks,
     mock_get_active_search_type,
     mock_get_active_search_types,
     mock_load_chunk_lookup,
+    mock_generate_acceptable_terms,
 ):
     """Test evaluate_relevance returns DataFrame and summary."""
     mock_load_chunk_lookup.return_value = {"c1": "text"}
     mock_get_active_search_types.return_value = ["exact"]
     mock_get_active_search_type.return_value = "text"
+    mock_generate_acceptable_terms.return_value = "synonym"
     mock_check_terms_in_chunks.return_value = {
         "chunks_with_search_term": 1,
         "chunks_with_acceptable": 1,
         "chunks_with_any_term": 1,
     }
-    mock_calculate_chunk_match.return_value = pd.Series({"precision": 1.0, "recall": 1.0, "missing_chunk_ids": ""})
 
     df = pd.DataFrame(
         {
+            # Pre-populated expected/acceptable values are preserved, so the
+            # ground-truth + synonym generators are not exercised here.
             "search_term": ["test"],
             "expected_chunk_id": ["c1"],
-            "all_chunk_ids": [["c1"]],
+            "acceptable_terms": ["test"],
+            "all_chunk_ids": ["c1"],
             "manual_identifications": [1],
             "total_term_frequency": [1],
             "total_results": [1],
-            "acceptable_terms": ["test"],
         }
     )
     output_df, summary = relevance_scoring.evaluate_relevance(df)
@@ -74,7 +83,9 @@ def test_evaluate_relevance_returns_summary(
     assert isinstance(summary, relevance_scoring.EvaluationSummary)
     assert summary.total_queries == 1
     assert output_df.shape[0] == 1
-    assert "precision" in output_df.columns
+    assert "precision_at_10" in output_df.columns
+    assert "query_type" in output_df.columns
+    assert "acceptable_term_based_precision_at_20" in output_df.columns
 
 
 def test_evaluate_relevance_empty_df():
@@ -89,9 +100,14 @@ def test_calculate_summary_stats_basic():
     """Test _calculate_summary_stats returns correct EvaluationSummary."""
     df = pd.DataFrame(
         {
-            "precision": [1.0, 0.5],
-            "recall": [0.8, 0.2],
-            "acceptable_term_based_precision": [100, 50],
+            "precision_at_10": [1.0, 0.5],
+            "recall_at_10": [0.8, 0.2],
+            "precision_at_20": [1.0, 0.5],
+            "recall_at_20": [0.8, 0.2],
+            "term_based_precision_at_10": [100, 50],
+            "term_based_precision_at_20": [100, 50],
+            "acceptable_term_based_precision_at_10": [100, 50],
+            "acceptable_term_based_precision_at_20": [100, 50],
             "total_results": [2, 2],
             "expected_chunk_id": ["c1", ""],
         }
@@ -99,6 +115,7 @@ def test_calculate_summary_stats_basic():
     summary = relevance_scoring._calculate_summary_stats(df)
     assert isinstance(summary, relevance_scoring.EvaluationSummary)
     assert summary.total_queries == 2
-    assert summary.avg_precision == 0.75
-    assert summary.avg_recall == 0.5
-    assert summary.avg_f1_score > 0
+    assert summary.avg_precision_at_10 == 0.75
+    assert summary.avg_recall_at_10 == 0.5
+    assert summary.avg_f1_at_10 > 0
+    assert summary.avg_acceptable_term_based_precision_at_10 == 75.0

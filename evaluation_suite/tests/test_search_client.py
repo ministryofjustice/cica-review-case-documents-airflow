@@ -144,7 +144,7 @@ def test_local_search_client_caches_embeddings(mock_embedding_gen, mock_get_clie
 @patch("evaluation_suite.search_evaluation.query.search_client.EmbeddingGenerator")
 def test_local_search_client_raises_on_connection_error(mock_embedding_gen, mock_get_client):
     """Test local_search_client raises when OpenSearch connection fails."""
-    from evaluation_suite.search_evaluation.opensearch_client import OpenSearchConnectionError
+    from evaluation_suite.search_evaluation.opensearch.opensearch_client import OpenSearchConnectionError
 
     mock_embedding_gen.return_value.generate_embedding.return_value = [0.1, 0.2]
     # opensearchpy ConnectionError requires (message, error, info) args
@@ -154,3 +154,63 @@ def test_local_search_client_raises_on_connection_error(mock_embedding_gen, mock
 
     with pytest.raises(OpenSearchConnectionError):
         search_client.local_search_client("fracture")
+
+
+# --- Tests for STRIP_QUERY_STOP_WORDS ---
+
+
+@patch("evaluation_suite.search_evaluation.query.search_client.get_opensearch_client")
+@patch("evaluation_suite.search_evaluation.query.search_client.create_hybrid_query")
+@patch("evaluation_suite.search_evaluation.query.search_client.EmbeddingGenerator")
+def test_strip_query_stop_words_filters_keyword_term(mock_embedding_gen, mock_create_query, mock_get_client):
+    """When STRIP_QUERY_STOP_WORDS is True, stop words are removed from the keyword query term."""
+    from evaluation_suite.search_evaluation import evaluation_settings as eval_settings
+
+    mock_embedding_gen.return_value.generate_embedding.return_value = [0.1, 0.2]
+    mock_create_query.return_value = {"query": {}}
+    mock_get_client.return_value.search.return_value = {"hits": {"hits": []}}
+
+    with patch.object(eval_settings, "STRIP_QUERY_STOP_WORDS", True):
+        search_client.local_search_client("injury of the knee")
+
+    # "of" and "the" are stop words; "injury" and "knee" should remain
+    keyword_term_used = mock_create_query.call_args[0][0]
+    assert keyword_term_used == "injury knee"
+    # Embedding must be generated from the ORIGINAL term for semantic fidelity
+    mock_embedding_gen.return_value.generate_embedding.assert_called_once_with("injury of the knee")
+
+
+@patch("evaluation_suite.search_evaluation.query.search_client.get_opensearch_client")
+@patch("evaluation_suite.search_evaluation.query.search_client.create_hybrid_query")
+@patch("evaluation_suite.search_evaluation.query.search_client.EmbeddingGenerator")
+def test_strip_query_stop_words_falls_back_when_all_stop_words(mock_embedding_gen, mock_create_query, mock_get_client):
+    """When filtering would empty the term entirely, the original term is used unchanged."""
+    from evaluation_suite.search_evaluation import evaluation_settings as eval_settings
+
+    mock_embedding_gen.return_value.generate_embedding.return_value = [0.1, 0.2]
+    mock_create_query.return_value = {"query": {}}
+    mock_get_client.return_value.search.return_value = {"hits": {"hits": []}}
+
+    with patch.object(eval_settings, "STRIP_QUERY_STOP_WORDS", True):
+        search_client.local_search_client("is it")  # both are stop words
+
+    keyword_term_used = mock_create_query.call_args[0][0]
+    assert keyword_term_used == "is it"  # original preserved
+
+
+@patch("evaluation_suite.search_evaluation.query.search_client.get_opensearch_client")
+@patch("evaluation_suite.search_evaluation.query.search_client.create_hybrid_query")
+@patch("evaluation_suite.search_evaluation.query.search_client.EmbeddingGenerator")
+def test_strip_query_stop_words_disabled_by_default(mock_embedding_gen, mock_create_query, mock_get_client):
+    """When STRIP_QUERY_STOP_WORDS is False (default) the query term is passed unchanged."""
+    from evaluation_suite.search_evaluation import evaluation_settings as eval_settings
+
+    mock_embedding_gen.return_value.generate_embedding.return_value = [0.1, 0.2]
+    mock_create_query.return_value = {"query": {}}
+    mock_get_client.return_value.search.return_value = {"hits": {"hits": []}}
+
+    with patch.object(eval_settings, "STRIP_QUERY_STOP_WORDS", False):
+        search_client.local_search_client("injury of the knee")
+
+    keyword_term_used = mock_create_query.call_args[0][0]
+    assert keyword_term_used == "injury of the knee"

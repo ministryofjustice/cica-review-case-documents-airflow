@@ -11,7 +11,7 @@ from typing import Any, Callable
 import optuna
 
 from evaluation_suite.search_evaluation import evaluation_settings as eval_settings
-from evaluation_suite.search_evaluation.run_evaluation import run_evaluation
+from evaluation_suite.search_evaluation.run_single_evaluation import run_evaluation
 
 logger = logging.getLogger("optimization_objective")
 
@@ -77,6 +77,16 @@ class OptimizationObjective:
     def _suggest_parameters(self, trial: optuna.Trial) -> dict[str, float]:
         """Suggest parameter values for this trial.
 
+        Only the three boosts that are active in the hybrid query DSL are tuned.
+        Each name maps directly to the corresponding field in QueryDslConfig:
+          KEYWORD_BOOST  -> config.lexical_boost  (multi_match on chunk_text)
+          SEMANTIC_BOOST -> config.neural_boost   (knn vector ANN clause)
+          DATE_QUERY_BOOST -> config.date_boost   (match_phrase date variants)
+
+        ANALYSER_BOOST, FUZZY_BOOST, and WILDCARD_BOOST are not part of the
+        frontend hybrid DSL and have no effect on search results. Re-enable
+        them here if those search types are activated in the query builder.
+
         Args:
             trial: Optuna trial object.
 
@@ -84,11 +94,12 @@ class OptimizationObjective:
             Dictionary of suggested parameter values.
         """
         return {
-            "KEYWORD_BOOST": trial.suggest_float("KEYWORD_BOOST", *BOOST_RANGE, step=self.step),
-            "ANALYSER_BOOST": trial.suggest_float("ANALYSER_BOOST", *BOOST_RANGE, step=self.step),
-            "SEMANTIC_BOOST": trial.suggest_float("SEMANTIC_BOOST", *BOOST_RANGE, step=self.step),
-            "FUZZY_BOOST": trial.suggest_float("FUZZY_BOOST", *BOOST_RANGE, step=self.step),
-            "WILDCARD_BOOST": trial.suggest_float("WILDCARD_BOOST", *BOOST_RANGE, step=self.step),
+            "KEYWORD_BOOST": trial.suggest_float("KEYWORD_BOOST", *BOOST_RANGE, step=self.step),  # lexical_boost
+            "SEMANTIC_BOOST": trial.suggest_float("SEMANTIC_BOOST", *BOOST_RANGE, step=self.step),  # neural_boost
+            "DATE_QUERY_BOOST": trial.suggest_float("DATE_QUERY_BOOST", *BOOST_RANGE, step=self.step),  # date_boost
+            # "ANALYSER_BOOST": trial.suggest_float("ANALYSER_BOOST", *BOOST_RANGE, step=self.step),
+            # "FUZZY_BOOST":    trial.suggest_float("FUZZY_BOOST",    *BOOST_RANGE, step=self.step),
+            # "WILDCARD_BOOST": trial.suggest_float("WILDCARD_BOOST", *BOOST_RANGE, step=self.step),
         }
 
     def _validate_parameters(self, params: dict[str, float]) -> bool:

@@ -22,6 +22,12 @@ tests/chunking/data/redacted_retrieve_from_s3/
 tests/chunking/test_integration_layout_table_chunking.py
 logs/
 output
+*.local.md
 local-dev-environment/output
 local-dev-environment/testing/output
 local-dev-environment/testing/handwriting_accuracy/data
+# Caseworker Word document summaries 
+evaluation_suite/testing_docs/cases/**/*.docx
+evaluation_suite/testing_docs/cases/**/*.csv
+evaluation_suite/testing_docs/*.docx
+/.textract_cache/

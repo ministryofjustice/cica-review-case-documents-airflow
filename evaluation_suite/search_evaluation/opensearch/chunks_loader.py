@@ -7,7 +7,7 @@ them as a lookup dictionary for the relevance scoring process.
 import logging
 
 from evaluation_suite.search_evaluation import evaluation_settings as eval_settings
-from evaluation_suite.search_evaluation.opensearch_client import (
+from evaluation_suite.search_evaluation.opensearch.opensearch_client import (
     CHUNK_INDEX_NAME,
     OpenSearchConnectionError,
     get_opensearch_client,
@@ -97,10 +97,15 @@ def load_all_chunks_from_opensearch() -> dict[str, str]:
         raise
 
 
-def get_chunk_details_from_opensearch() -> list[dict]:
+def get_chunk_details_from_opensearch(case_ref: str | None = None) -> list[dict]:
     """Fetch all chunks with full details from OpenSearch.
 
-    Restricts results to the case specified in CASE_FILTER.
+    Restricts results to *case_ref* when provided; otherwise falls back to
+    :data:`evaluation_settings.CASE_FILTER`, preserving single-case behaviour.
+
+    Args:
+        case_ref: Optional case reference to filter chunks by.  When ``None``
+            the value of ``eval_settings.CASE_FILTER`` is used instead.
 
     Returns:
         List of dictionaries with chunk_id, chunk_text, page_number, case_ref.
@@ -108,8 +113,9 @@ def get_chunk_details_from_opensearch() -> list[dict]:
     try:
         client = get_opensearch_client()
 
+        effective_case_ref = case_ref if case_ref is not None else eval_settings.CASE_FILTER
         # Build query with case filter (always required)
-        query_body = {"bool": {"must": {"match_all": {}}, "filter": {"term": {"case_ref": eval_settings.CASE_FILTER}}}}
+        query_body = {"bool": {"must": {"match_all": {}}, "filter": {"term": {"case_ref": effective_case_ref}}}}
 
         chunks: list[dict] = []
         scroll_timeout = "2m"

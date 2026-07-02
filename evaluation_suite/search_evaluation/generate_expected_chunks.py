@@ -7,12 +7,12 @@ from pathlib import Path
 
 import snowballstemmer
 
-from evaluation_suite.search_evaluation.chunks_loader import get_chunk_details_from_opensearch
-from evaluation_suite.search_evaluation.query.date_formats import extract_dates_for_search, is_date_search
 from evaluation_suite.search_evaluation.evaluation_settings import (
     EXP_CHUNK_DATE_VARIANTS,
     EXP_CHUNK_USE_STEMMING,
 )
+from evaluation_suite.search_evaluation.opensearch.chunks_loader import get_chunk_details_from_opensearch
+from evaluation_suite.search_evaluation.query.date_formats import extract_dates_for_search, is_date_search
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 TESTING_DIR = SCRIPT_DIR.parent
@@ -222,6 +222,56 @@ def generate_expected_chunks() -> None:
     )
 
     logger.info(f"Updated {OUTPUT_FILE}")
+
+
+def generate_expected_chunks_for_case(case_ref: str, csv_path: Path) -> None:
+    """Generate expected chunks for a single case and update its CSV.
+
+    Equivalent to :func:`generate_expected_chunks` but scoped to one case:
+    chunks are loaded from OpenSearch filtered to *case_ref* and the results
+    are written to *csv_path* rather than the global ``search_terms.csv``.
+
+    Args:
+        case_ref: Case reference used to filter OpenSearch chunks
+            (e.g. ``"26-700001"``).
+        csv_path: Path to the CSV file containing search terms for this case.
+            The file must already exist; it is read, updated in-place, and
+            written back with ``expected_chunk_id`` and ``expected_page_number``
+            columns populated.
+    """
+    if not csv_path.exists():
+        logger.error("CSV not found: %s", csv_path)
+        return
+
+    fieldnames, rows = _read_csv_file(csv_path)
+    if not fieldnames:
+        logger.error("CSV has no headers: %s", csv_path)
+        return
+
+    logger.info("Case '%s': loading chunks from OpenSearch...", case_ref)
+    all_chunks = get_chunk_details_from_opensearch(case_ref=case_ref)
+
+    if not all_chunks:
+        logger.error("Case '%s': no chunks found in OpenSearch", case_ref)
+        return
+
+    logger.info("Case '%s': %d chunks, %d search terms.", case_ref, len(all_chunks), len(rows))
+    updated_rows = _process_search_terms(
+        rows,
+        all_chunks,
+        use_date_variants=EXP_CHUNK_DATE_VARIANTS,
+        use_stemming=EXP_CHUNK_USE_STEMMING,
+    )
+
+    _write_csv_file(
+        csv_path,
+        fieldnames,
+        updated_rows,
+        use_date_variants=EXP_CHUNK_DATE_VARIANTS,
+        use_stemming=EXP_CHUNK_USE_STEMMING,
+        chunking_strategy=CHUNKING_STRATEGY,
+    )
+    logger.info("Case '%s': updated %s", case_ref, csv_path)
 
 
 def main() -> None:

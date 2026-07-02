@@ -1,0 +1,30 @@
+# Predetermined query template (ground-truth-free evaluation)
+#
+# This file defines search queries to evaluate WITHOUT expected chunk IDs.
+# Relevance is judged automatically (keyword-matching + LLM), so you do NOT
+# need to list expected pages or chunk IDs.
+#
+# Columns:
+#   query                  (required) The search term/phrase/sentence to run.
+#   acceptable_terms       (optional) Pipe-separated synonyms/related terms. A result
+#                          is counted relevant by the keyword judge if the query OR any
+#                          acceptable term matches (via exact/stemmed/fuzzy matching).
+#   query_type             (optional) keyword | phrase | sentence. If blank, inferred
+#                          from word count (1=keyword, 2-4=phrase, 5+=sentence).
+#   category               (optional) medical | date | person | general. Used for
+#                          per-category metric breakdowns. If blank, treated as general.
+#   notes                  (optional) Free-text note for humans; ignored by the evaluator.
+#
+# Notes:
+# - Use a pipe (|) to separate acceptable_terms so commas can appear within a term.
+# - Leading/trailing spaces are trimmed.
+# - Lines starting with # are ignored.
+query,acceptable_terms,query_type,category,notes
+brain,skull|subdural haemorrhage|craniotomy|haemorrhage|head|mind,keyword,medical,
+injury,injured|hurt|wound|damage|injuries,keyword,medical,
+brain injury,head trauma|TBI|cerebral|cranial|head injury,phrase,medical,
+mental health,psychological|cognitive|wellbeing|CMHT,phrase,medical,
+when was the patient first assessed,initial assessment|first appointment|date of assessment,sentence,general,Tests semantic retrieval
+12/03/2024,12 March 2024|12th March 2024|2024-03-12|March 2024,keyword,date,Date in multiple formats
+Dr Smith,Doctor Smith|consultant Smith|Smith,phrase,person,
+treatment plan,therapy|rehabilitation|care plan|management plan,phrase,medical,
