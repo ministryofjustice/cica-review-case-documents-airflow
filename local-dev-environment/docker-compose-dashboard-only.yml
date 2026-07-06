@@ -1,7 +1,7 @@
 services:
   opensearch-dashboard-only:
     container_name: opensearch-dashboard-only
-    image: opensearchproject/opensearch-dashboards:3.3.0 # Or the version you need
+    image: opensearchproject/opensearch-dashboards:3.5.0 # Or the version you need
     mem_limit: 1g
     restart: unless-stopped
     extra_hosts:
