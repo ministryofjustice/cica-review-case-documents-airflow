@@ -24,6 +24,16 @@ until curl --silent --fail "${DIRECT_OPENSEARCH_ENDPOINT}/_cluster/health?wait_f
 done
 echo -e "\nOpenSearch container is ready!"
 
+# Export a common OPENSEARCH_ENDPOINT and source shared template helper
+OPENSEARCH_ENDPOINT="${DIRECT_OPENSEARCH_ENDPOINT}"
+export OPENSEARCH_ENDPOINT
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "${SCRIPT_DIR}/lib/opensearch_templates.inc" ]; then
+    # shellcheck source=./lib/opensearch_templates.inc
+    source "${SCRIPT_DIR}/lib/opensearch_templates.inc"
+    opensearch_apply_templates || echo "Warning: failed to apply index templates"
+fi
+
 # --- Step 2: Create the index directly in the OpenSearch container ---
 INDEX_NAME="page_chunks"
 # No auth needed due to DISABLE_SECURITY_PLUGIN=true
