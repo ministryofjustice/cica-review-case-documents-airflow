@@ -95,13 +95,15 @@ prompt_env_value() {
     while [[ -z "${user_value}" ]]; do
         if is_secret_key "${key}"; then
             if [[ -n "${current_value}" ]]; then
-                read -rsp "Value for ${key} (${placeholder}) [press Enter to keep current env value]: " user_value
+                echo "Secret value required for: ${key} (${placeholder}) [press Enter to keep current env value]"
+                read -rsp "> " user_value
                 echo ""
                 if [[ -z "${user_value}" ]]; then
                     user_value="${current_value}"
                 fi
             else
-                read -rsp "Value for ${key} (${placeholder}): " user_value
+                echo "Secret value required for: ${key} (${placeholder})"
+                read -rsp "> " user_value
                 echo ""
             fi
         else
