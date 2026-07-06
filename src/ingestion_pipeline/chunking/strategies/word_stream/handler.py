@@ -20,6 +20,8 @@ logger = logging.getLogger(__name__)
 class TextractorWordStreamDocumentChunker(ChunkStrategy):
     """Chunk documents using Textractor reading-order words from get_text_and_words()."""
 
+    _STANDALONE_PAGE_FOOTER_RE = re.compile(r"(?im)^\s*page\s+\d+[\).,:;]?\s+of\s+\d+[\).,:;]?\s*$")
+
     def __init__(self, config: Optional[WordStreamChunkingConfig] = None):
         """Initializes the TextractorWordStreamDocumentChunker.
 
@@ -81,6 +83,7 @@ class TextractorWordStreamDocumentChunker(ChunkStrategy):
         """Normalize text for lightweight chunk/page consistency checks."""
         if not isinstance(text, str):
             return ""
+        text = TextractorWordStreamDocumentChunker._STANDALONE_PAGE_FOOTER_RE.sub(" ", text)
         return re.sub(r"\s+", " ", text).strip()
 
     def _validate_text_consistency(
