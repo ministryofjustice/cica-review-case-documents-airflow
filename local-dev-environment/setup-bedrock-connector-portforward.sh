@@ -73,6 +73,7 @@ BEDROCK_MODEL_NAME="${MODEL_NAME:-bedrock-titan-embed-text-v2}"
 BEDROCK_PIPELINE_NAME="${INGEST_PIPELINE_NAME:-bedrock-embedding-pipeline}"
 BEDROCK_SEARCH_PIPELINE_NAME="${SEARCH_PIPELINE_NAME:-bedrock-neural-search-pipeline}"
 BEDROCK_ENABLE_INGEST_PIPELINE="${BEDROCK_ENABLE_INGEST_PIPELINE:-true}"
+BEDROCK_FORCE_RECREATE_CONNECTOR="${FORCE_RECREATE_CONNECTOR:-${BEDROCK_FORCE_RECREATE_CONNECTOR:-false}}"
 BEDROCK_TARGET_INDEX="${TARGET_INDEX}"
 BEDROCK_OPENSEARCH_ENDPOINT="${OPENSEARCH_ENDPOINT}"
 CONFIRM_OVERWRITE="${CONFIRM_OVERWRITE:-prompt}"
@@ -135,7 +136,7 @@ ensure_ml_settings() {
     "plugins.ml_commons.max_ml_task_per_node": 10,
     "plugins.ml_commons.ml_task_timeout_in_seconds": 10,
     "plugins.ml_commons.trusted_connector_endpoints_regex": [
-      "^https://bedrock-runtime\\.${BEDROCK_REGION}\\.amazonaws\\.com/.*$"
+      "^https://bedrock-runtime[.]${BEDROCK_REGION}[.]amazonaws[.]com/.*$"
     ]
   }
 }
