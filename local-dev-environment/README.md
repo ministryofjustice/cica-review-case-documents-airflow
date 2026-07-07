@@ -22,7 +22,7 @@ Optional image override example:
 LOCALSTACK_IMAGE=localstack/localstack:2.3.2
 ```
 
-- Ensure `local-dev-environment/.env` variables are set; note the AWS_MOD_PLATFORM_* variables will require daily rotation. You can refresh connector credentials without a full Docker rebuild by rerunning the Bedrock setup script with `BEDROCK_FORCE_RECREATE_CONNECTOR=true`.
+ - Ensure `local-dev-environment/.env` variables are set; note the `AWS_MOD_PLATFORM_*` variables will require daily rotation. You can refresh connector credentials without a full Docker rebuild by rerunning the Bedrock setup script with `BEDROCK_FORCE_RECREATE_CONNECTOR=true`.
 
 ### For VPN WSL users
 
