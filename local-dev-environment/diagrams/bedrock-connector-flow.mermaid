@@ -1,0 +1,25 @@
+flowchart TD
+    A["Start: portforward script"] --> B["Init vars and auth args"]
+    B --> C["main()"]
+    C --> D["load_role_arn()"]
+    D --> E{"Role ARN already set?"}
+    E -->|Yes| F["wait_for_index()"]
+    E -->|No| G["Prompt for role ARN or Kubernetes secret"]
+    G --> F
+
+    F --> H{"Index reachable?"}
+    H -->|No| X["Fail and exit"]
+    H -->|Yes| I["ensure_ml_settings()"]
+
+    I --> J["confirm_overwrite_if_needed()"]
+    J --> K{"Proceed?"}
+    K -->|No| X
+    K -->|Yes| L["bedrock_prepare_model()"]
+
+    L --> M{"Enable ingest pipeline?"}
+    M -->|Yes| N["upsert ingest pipeline"]
+    M -->|No| O["Skip ingest pipeline"]
+    N --> P["upsert search pipeline"]
+    O --> P
+    P --> Q["set index default pipelines"]
+    Q --> R["Done"]
