@@ -33,7 +33,7 @@ docker compose up -d --force-recreate
 To force connector/model recreation (for rotated credentials):
 
 ```bash
-docker exec -e BEDROCK_FORCE_RECREATE_CONNECTOR=true -it localstack-main \
+ docker compose exec -e BEDROCK_FORCE_RECREATE_CONNECTOR=true localstack \
   bash /etc/localstack/init/ready.d/03-setup-bedrock-connector-neural.sh
 ```
 
@@ -113,7 +113,7 @@ Fix (LocalStack):
 
 ```bash
 docker compose restart localstack
-docker exec -e BEDROCK_FORCE_RECREATE_CONNECTOR=true -it localstack-main \
+docker compose exec -e BEDROCK_FORCE_RECREATE_CONNECTOR=true localstack \
   bash /etc/localstack/init/ready.d/03-setup-bedrock-connector-neural.sh
 ```
 

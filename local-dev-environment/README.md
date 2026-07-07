@@ -32,7 +32,7 @@ If you are running the local environment from behind a corporate VPN with SSL in
 export LOCALSTACK_REQUESTS_CA_BUNDLE="/home/your_user/custom_ca_bundle.pem"
 export LOCALSTACK_HOST_MOUNTS="/home/your_user/custom_ca_bundle.pem:/etc/ssl/certs/custom_ca_bundle.pem"
 ```
-This assumes you have already created the custom_ca_bundle.pem file as described in the main project README, CICA specific Windows WSL setup and confguration instructions.
+This assumes you have already created the custom_ca_bundle.pem file as described in the main project README, CICA specific Windows WSL setup and configuration instructions.
 
 ## Setup
 
@@ -143,7 +143,7 @@ docker compose restart localstack
 3. Force connector/model recreation so OpenSearch stores fresh Bedrock credentials:
 
 ```bash
-docker exec -e BEDROCK_FORCE_RECREATE_CONNECTOR=true -it localstack-main \
+docker compose exec -e BEDROCK_FORCE_RECREATE_CONNECTOR=true localstack \
         bash /etc/localstack/init/ready.d/03-setup-bedrock-connector-neural.sh
 ```
 
@@ -207,7 +207,7 @@ For local-only setup:
 ```bash
 cd local-dev-environment
 docker compose restart localstack
-docker exec -e BEDROCK_FORCE_RECREATE_CONNECTOR=true -it localstack-main \
+docker compose exec -e BEDROCK_FORCE_RECREATE_CONNECTOR=true localstack \
         bash /etc/localstack/init/ready.d/03-setup-bedrock-connector-neural.sh
 ```
 
