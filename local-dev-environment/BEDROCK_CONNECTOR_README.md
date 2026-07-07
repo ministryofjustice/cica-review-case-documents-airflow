@@ -90,7 +90,7 @@ Expected: request processors include `neural_query_enricher`.
 Check index default pipelines:
 
 ```bash
-curl -s http://127.0.0.1:9200/page_chunks/_settings | jq '.page_chunks.settings.index | {default_pipeline, search_default_pipeline: (."search.default_pipeline" // .search.default_pipeline)}'
+curl -s http://127.0.0.1:9200/page_chunks/_settings | jq '.page_chunks.settings.index | {default_pipeline, search_default_pipeline: ."search.default_pipeline"}'
 ```
 
 Check model state:
