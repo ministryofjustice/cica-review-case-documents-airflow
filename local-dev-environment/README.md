@@ -224,7 +224,7 @@ On small or limited-node dev clusters this can be normal. If search works, this 
 Check model state:
 
 ```bash
-curl -s http://127.0.0.1:9300/_plugins/_ml/models/<MODEL_ID> | jq '.model_state'
+curl -s http://127.0.0.1:9200/_plugins/_ml/models/<MODEL_ID> | jq '.model_state'
 ```
 
 If state stays `PARTIALLY_DEPLOYED` but queries succeed, proceed. If queries fail, re-run setup with force recreate and verify index search pipeline settings.
