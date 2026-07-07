@@ -208,13 +208,25 @@ bedrock_force_recreate_connector_and_model_if_needed() {
 
   if [[ -n "${model_id}" ]]; then
     bedrock_log "Removing existing model ${model_id}"
-    bedrock_best_effort_request POST "/_plugins/_ml/models/${model_id}/_undeploy"
-    bedrock_os_request DELETE "/_plugins/_ml/models/${model_id}" >/dev/null
+    # Best-effort undeploy; if a task is returned, wait for it before deleting.
+     local undeploy_response undeploy_status undeploy_body undeploy_task_id
+     undeploy_response="$(curl -sS -X POST "${BEDROCK_OPENSEARCH_ENDPOINT}/_plugins/_ml/models/${model_id}/_undeploy" "${BEDROCK_AUTH_ARGS[@]}" -H "Content-Type: application/json" -w $'\n%{http_code}' || true)"
+
+     undeploy_status="$(echo "${undeploy_response}" | tail -n1)"
+     undeploy_body="$(echo "${undeploy_response}" | sed '$d')"
+
+     if [[ "${undeploy_status}" =~ ^[0-9]+$ ]] && [[ "${undeploy_status}" -ge 200 && "${undeploy_status}" -lt 300 ]]; then
+       undeploy_task_id="$(bedrock_extract_json_field "${undeploy_body}" "task_id")"
+       if [[ -n "${undeploy_task_id}" ]]; then
+         bedrock_wait_for_task_completion "${undeploy_task_id}" "Model undeploy" >/dev/null
+       fi
+     fi
+     bedrock_best_effort_request DELETE "/_plugins/_ml/models/${model_id}"
   fi
 
   if [[ -n "${connector_id}" ]]; then
     bedrock_log "Removing existing connector ${connector_id}"
-    bedrock_os_request DELETE "/_plugins/_ml/connectors/${connector_id}" >/dev/null
+    bedrock_best_effort_request DELETE "/_plugins/_ml/connectors/${connector_id}"
   fi
 }
 
