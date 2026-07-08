@@ -24,105 +24,27 @@ until curl --silent --fail "${DIRECT_OPENSEARCH_ENDPOINT}/_cluster/health?wait_f
 done
 echo -e "\nOpenSearch container is ready!"
 
+# Export a common OPENSEARCH_ENDPOINT and source shared template helper
+OPENSEARCH_ENDPOINT="${DIRECT_OPENSEARCH_ENDPOINT}"
+export OPENSEARCH_ENDPOINT
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "${SCRIPT_DIR}/lib/opensearch_templates.inc" ]; then
+    # shellcheck source=./lib/opensearch_templates.inc
+    source "${SCRIPT_DIR}/lib/opensearch_templates.inc"
+else
+  echo "ERROR: Missing shared template helper at ${SCRIPT_DIR}/lib/opensearch_templates.inc"
+  exit 1
+fi
+opensearch_apply_templates
+
 # --- Step 2: Create the index directly in the OpenSearch container ---
 INDEX_NAME="page_chunks"
 # No auth needed due to DISABLE_SECURITY_PLUGIN=true
 if curl --silent --fail -I "${DIRECT_OPENSEARCH_ENDPOINT}/${INDEX_NAME}" > /dev/null; then
   echo "Index '${INDEX_NAME}' already exists. Skipping creation."
 else
-  echo "Creating index '${INDEX_NAME}'..."
-  CREATE_RESPONSE=$(curl -s -XPUT "${DIRECT_OPENSEARCH_ENDPOINT}/${INDEX_NAME}" -H 'Content-Type: application/json' --data-binary @- <<EOF
-{
-    "settings": {
-        "index.knn": true
-    },
-    "mappings": {
-        "properties": {
-            "chunk_id": {
-                "type": "keyword"
-            },
-            "source_doc_id": {
-                "type": "keyword"
-            },
-            "chunk_text": {
-                "type": "text",
-                "fields": {
-                    "english": {
-                        "type": "text",
-                        "analyzer": "english"
-                    }
-                }
-            },
-            "embedding": {
-                "type": "knn_vector",
-                "dimension": 1024,
-                "method": {
-                    "name": "hnsw",
-                    "space_type": "cosinesimil",
-                    "engine": "faiss",
-                    "parameters": {
-                        "ef_construction": 128,
-                        "m": 24
-                    }
-                }
-            },
-            "source_file_name": {
-                "type": "keyword"
-            },
-            "page_id": {
-                "type": "keyword",
-                "index": false
-            },
-            "case_ref": {
-                "type": "keyword"
-            },
-            "correspondence_type": {
-                "type": "keyword"
-            },
-            "received_date": {
-                "type": "date",
-                "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis||yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
-            },
-            "page_count": {
-                "type": "integer"
-            },
-            "page_number": {
-                "type": "integer"
-            },
-            "chunk_index": {
-                "type": "integer"
-            },
-            "chunk_type": {
-                "type": "keyword"
-            },
-            "confidence": {
-                "type": "float"
-            },
-            "geometry": {
-                "properties": {
-                    "bounding_box": {
-                        "properties": {
-                            "top": {
-                                "type": "float"
-                            },
-                            "left": {
-                                "type": "float"
-                            },
-                            "width": {
-                                "type": "float"
-                            },
-                            "height": {
-                                "type": "float"
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-EOF
-)
+  echo "Creating index '${INDEX_NAME}' from templates..."
+  CREATE_RESPONSE=$(curl -s -XPUT "${DIRECT_OPENSEARCH_ENDPOINT}/${INDEX_NAME}" -H 'Content-Type: application/json' --data-binary '{}')
   echo "Index creation response: ${CREATE_RESPONSE}"
   if [[ ! $(echo "${CREATE_RESPONSE}" | grep '"acknowledged":true') ]]; then
     echo "Error: Index creation not acknowledged."
@@ -135,59 +57,8 @@ INDEX_NAME="page_metadata"
 if curl --silent --fail -I "${DIRECT_OPENSEARCH_ENDPOINT}/${INDEX_NAME}" > /dev/null; then
   echo "Index '${INDEX_NAME}' already exists. Skipping creation."
 else
-  echo "Creating index '${INDEX_NAME}'..."
-  CREATE_RESPONSE=$(curl -s -XPUT "${DIRECT_OPENSEARCH_ENDPOINT}/${INDEX_NAME}" -H 'Content-Type: application/json' --data-binary @- <<EOF
-{
-    
-    "mappings": {
-        "properties": {
-            "page_id": {
-                "type": "keyword"
-            },
-            "source_doc_id": {
-                "type": "keyword"
-            },
-            "page_text": {
-                "type": "keyword",
-                "index": false
-            },
-            "source_file_name": {
-                "type": "keyword",
-                "index": false
-            },
-            "s3_page_image_uri": {
-                "type": "keyword",
-                "index": false
-            },
-            "case_ref": {
-                "type": "keyword",
-                "index": false
-            },
-            "correspondence_type": {
-                "type": "keyword",
-                "index": false
-            },
-            "received_date": {
-                "type": "date",
-                "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis||yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
-            },
-            "page_count": {
-                "type": "integer",
-                "index": false
-            },
-            "page_number": {
-                "type": "integer",
-                "index": false
-            },
-            "geometry": {
-                "type": "object",
-                "enabled": false
-            }
-        }
-    }
-}
-EOF
-)
+  echo "Creating index '${INDEX_NAME}' from templates..."
+  CREATE_RESPONSE=$(curl -s -XPUT "${DIRECT_OPENSEARCH_ENDPOINT}/${INDEX_NAME}" -H 'Content-Type: application/json' --data-binary '{}')
 
   if echo "${CREATE_RESPONSE}" | grep -q '"acknowledged":true'; then
     echo "Index '${INDEX_NAME}' created successfully."
