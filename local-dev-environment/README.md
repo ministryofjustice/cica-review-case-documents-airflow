@@ -126,6 +126,7 @@ This will process a sample document and index the chunks into OpenSearch. After 
 ## Bedrock Connector Notes
 
 For a focused setup and troubleshooting guide, see [BEDROCK_CONNECTOR_README.md](./BEDROCK_CONNECTOR_README.md).
+For index template/index creation workflow and shard/replica guidance, see [OPENSEARCH_INDEXES_README.md](./OPENSEARCH_INDEXES_README.md).
 
 Bedrock connector setup is managed in [03-setup-bedrock-connector-neural.sh](./init-scripts/03-setup-bedrock-connector-neural.sh).
 
@@ -172,6 +173,11 @@ For the port-forward setup script, `CONFIRM_OVERWRITE` controls behavior when ex
 The port-forward setup script is intended for manual, local execution only:
 
 - Run `kubectl port-forward` first on the same machine where the script runs (loopback binding expected, for example `127.0.0.1:9200`).
+
+```
+kubectl port-forward service/opensearch-<service> 9200:8080 --namespace <namespace>
+```
+
 - Do not use this workflow on shared hosts or jump boxes.
 - Required local tools include `curl`, `kubectl`, and `base64`.
 
