@@ -16,14 +16,9 @@ bedrock_extract_json_field() {
 bedrock_best_effort_request() {
   local method="$1"
   local path="$2"
-  local body="${3:-}"
 
   local response status resp_body
-  if [[ -n "${body}" ]]; then
-    response="$(curl -sS -X "${method}" "${BEDROCK_OPENSEARCH_ENDPOINT}${path}" "${BEDROCK_AUTH_ARGS[@]}" -H "Content-Type: application/json" -d "${body}" -w $'\n%{http_code}' || true)"
-  else
-    response="$(curl -sS -X "${method}" "${BEDROCK_OPENSEARCH_ENDPOINT}${path}" "${BEDROCK_AUTH_ARGS[@]}" -H "Content-Type: application/json" -w $'\n%{http_code}' || true)"
-  fi
+  response="$(curl -sS -X "${method}" "${BEDROCK_OPENSEARCH_ENDPOINT}${path}" "${BEDROCK_AUTH_ARGS[@]}" -H "Content-Type: application/json" -w $'\n%{http_code}' || true)"
 
   status="$(echo "${response}" | tail -n1)"
   resp_body="$(echo "${response}" | sed '$d')"
