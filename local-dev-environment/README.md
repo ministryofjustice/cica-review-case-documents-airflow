@@ -174,9 +174,9 @@ The port-forward setup script is intended for manual, local execution only:
 
 - Run `kubectl port-forward` first on the same machine where the script runs (loopback binding expected, for example `127.0.0.1:9200`).
 
-```
-kubectl port-forward service/opensearch-<service> 9200:8080 --namespace <namespace>
-```
+   ```bash
+   kubectl port-forward service/opensearch-<service> 9200:8080 --namespace <namespace>
+   ```
 
 - Do not use this workflow on shared hosts or jump boxes.
 - Required local tools include `curl`, `kubectl`, and `base64`.

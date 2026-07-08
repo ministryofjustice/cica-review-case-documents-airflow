@@ -40,9 +40,9 @@ To force connector/model recreation (for rotated credentials):
 ## Port-forward setup
 
 1. Start a local port-forward to OpenSearch (loopback binding expected, for example `127.0.0.1:9200`).
-```
-kubectl port-forward service/opensearch-<service> 9200:8080 --namespace <namespace>
-```
+   ```bash
+   kubectl port-forward service/opensearch-<service> 9200:8080 --namespace <namespace>
+   ```
 
 
 2. Run setup:
