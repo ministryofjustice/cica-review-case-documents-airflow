@@ -57,7 +57,7 @@ Notes:
 
 When changing template settings that must apply to existing indexes (for example shard count), run with `CONFIRM_OVERWRITE=true`.
 
-After recreating indexes, rerun `setup-bedrock-connector-portforward.sh` for the same environment so the `default_pipeline` and `search.default_pipeline` settings are reattached. 
+After recreating indexes, rerun `setup-bedrock-connector-portforward.sh` for the same environment so the `default_pipeline` and `search.default_pipeline` settings are reattached.
 
 To re-ingest documents into OpenSearch, run the ingestion pipeline from the project root:
 
@@ -77,6 +77,8 @@ Until a production environment exists, keep DEV and UAT aligned.
 5. Verify settings in both environments.
 
 ## Verification commands
+
+These commands assume `jq` is installed.
 
 Check template definitions:
 

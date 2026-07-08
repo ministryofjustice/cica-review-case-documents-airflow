@@ -50,11 +50,19 @@ fi
 
 wait_for_cluster() {
   log "Waiting for OpenSearch at ${OPENSEARCH_ENDPOINT}"
+  local status
   for _ in $(seq 1 60); do
-    if curl --silent --fail "${OPENSEARCH_ENDPOINT}/_cluster/health?wait_for_status=yellow" "${AUTH_ARGS[@]}" >/dev/null 2>&1; then
-      log "OpenSearch is ready"
-      return 0
-    fi
+    status="$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 2 --max-time 10 \
+       "${OPENSEARCH_ENDPOINT}/_cluster/health?wait_for_status=yellow&timeout=5s" "${AUTH_ARGS[@]}" || true)"
+     case "${status}" in
+       200)
+         log "OpenSearch is ready"
+         return 0
+         ;;
+       401|403)
+         fail "Authentication/authorization failed (HTTP ${status}) while checking cluster health"
+         ;;
+     esac
     sleep 5
   done
 
