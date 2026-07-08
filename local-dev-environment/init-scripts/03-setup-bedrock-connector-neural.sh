@@ -51,6 +51,7 @@ BEDROCK_MODEL_NAME="bedrock-titan-embed-text-v2"
 BEDROCK_PIPELINE_NAME="bedrock-embedding-pipeline"
 BEDROCK_SEARCH_PIPELINE_NAME="bedrock-neural-search-pipeline"
 BEDROCK_ENABLE_INGEST_PIPELINE="${BEDROCK_ENABLE_INGEST_PIPELINE:-false}"
+BEDROCK_FORCE_RECREATE_CONNECTOR="${BEDROCK_FORCE_RECREATE_CONNECTOR:-false}"
 BEDROCK_TARGET_INDEX="page_chunks"
 BEDROCK_OPENSEARCH_ENDPOINT="${DIRECT_OPENSEARCH_ENDPOINT}"
 BEDROCK_AUTH_ARGS=()
@@ -83,15 +84,8 @@ fi
 # Restrict ML Commons connector endpoints to Bedrock runtime for the configured region.
 # This aligns with the port-forward workflow security posture and prevents accidental
 # exposure to arbitrary endpoints, even in local development.
-BEDROCK_ENDPOINTS_REGEX="^https://bedrock-runtime\\.${BEDROCK_REGION}\\.amazonaws\\.com/.*$"
-BEDROCK_ML_SETTINGS_JSON='{
-  "persistent": {
-    "plugins.ml_commons.only_run_on_ml_node": false,
-    "plugins.ml_commons.allow_registering_model_via_url": true,
-    "plugins.ml_commons.native_memory_threshold": 99,
-    "plugins.ml_commons.trusted_connector_endpoints_regex": ["'"${BEDROCK_ENDPOINTS_REGEX}"'"]
-  }
-}'
+BEDROCK_ENDPOINTS_REGEX="^https://bedrock-runtime[.]${BEDROCK_REGION}[.]amazonaws[.]com/.*$"
+BEDROCK_ML_SETTINGS_JSON="$(bedrock_build_ml_settings_json "${BEDROCK_ENDPOINTS_REGEX}" true)"
 
 bedrock_wait_for_index "${BEDROCK_TARGET_INDEX}"
 bedrock_ensure_ml_settings "${BEDROCK_ML_SETTINGS_JSON}"

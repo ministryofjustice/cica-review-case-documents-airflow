@@ -15,24 +15,24 @@ Docker and LocalStack resources to be created:
 - [LocalStack Desktop](https://docs.localstack.cloud/aws/capabilities/web-app/localstack-desktop/)
 - [uv](https://docs.astral.sh/uv/) for Python dependency management
 - LocalStack image version is pinned by default in `docker-compose.yml` to avoid auth/license regressions on newer releases. Override with `LOCALSTACK_IMAGE` in `local-dev-environment/.env` when needed.
-- **For VPN WSL users**: If you are running the local environment from behind a corporate VPN with SSL inspection, and encounter any SSL issues then set the following environment variables in your .bashrc to allow LocalStack to trust your custom certificates:
-- /local-dev-environment/.env variables set, note the AWS_MOD_PLATFORM_* variables will require daily rotation, and a docker rebuild will be necessary for running queries
-
-```
-# Ensures LocalStack and its internal services trust the custom CA
-export LOCALSTACK_REQUESTS_CA_BUNDLE="/home/your_user/custom_ca_bundle.pem"
-export LOCALSTACK_HOST_MOUNTS="/home/your_user/custom_ca_bundle.pem:/etc/ssl/certs/custom_ca_bundle.pem"
-```
-
-This assumes you have already created the custom_ca_bundle.pem file as described in the main project README, CICA specific Windows WSL setup and confguration instructions.
-
-- Ensure your `local-dev-environment/.env` file is created and contains valid AWS credentials for the `AWS_MOD_PLATFORM_*` variables. You can copy the structure from the `local-dev-environment/.env_template` file.
 
 Optional image override example:
 
 ```bash
 LOCALSTACK_IMAGE=localstack/localstack:2.3.2
 ```
+
+ - Ensure `local-dev-environment/.env` variables are set; note the `AWS_MOD_PLATFORM_*` variables will require daily rotation. You can refresh connector credentials without a full Docker rebuild by rerunning the Bedrock setup script with `BEDROCK_FORCE_RECREATE_CONNECTOR=true`.
+
+### For VPN WSL users
+
+If you are running the local environment from behind a corporate VPN with SSL inspection, and encounter SSL certificate issues, you may need to set the following environment variables in your .bashrc to allow LocalStack to trust your custom certificates:
+```
+# Ensures LocalStack and its internal services trust the custom CA
+export LOCALSTACK_REQUESTS_CA_BUNDLE="/home/your_user/custom_ca_bundle.pem"
+export LOCALSTACK_HOST_MOUNTS="/home/your_user/custom_ca_bundle.pem:/etc/ssl/certs/custom_ca_bundle.pem"
+```
+This assumes you have already created the custom_ca_bundle.pem file as described in the main project README, CICA specific Windows WSL setup and configuration instructions.
 
 ## Setup
 
@@ -113,6 +113,8 @@ This will process a sample document and index the chunks into OpenSearch. After 
 
 ## Bedrock Connector Notes
 
+For a focused setup and troubleshooting guide, see [BEDROCK_CONNECTOR_README.md](./BEDROCK_CONNECTOR_README.md).
+
 Bedrock connector setup is managed in [03-setup-bedrock-connector-neural.sh](./init-scripts/03-setup-bedrock-connector-neural.sh).
 
 Canonical explanation of search pipeline behavior (including when requests do or do not need to specify a pipeline explicitly) is documented in [../README.md](../README.md#opensearch-search-pipeline-behavior).
@@ -125,6 +127,27 @@ Both setup entrypoints now reuse shared helper functions in [init-scripts/lib/be
 - Port-forward flow: [setup-bedrock-connector-portforward.sh](./setup-bedrock-connector-portforward.sh)
 
 For maintenance, update connector/model/pipeline logic in the shared helper first, then keep entrypoint scripts focused on environment-specific auth and bootstrapping.
+
+### Rotating AWS credentials without rebuilding
+
+When `AWS_MOD_PLATFORM_*` credentials expire, you do not need to rebuild the full local environment.
+
+1. Update `local-dev-environment/.env` with fresh `AWS_MOD_PLATFORM_ACCESS_KEY_ID`, `AWS_MOD_PLATFORM_SECRET_ACCESS_KEY`, and `AWS_MOD_PLATFORM_SESSION_TOKEN`.
+2. Restart only LocalStack:
+
+```bash
+cd local-dev-environment
+docker compose restart localstack
+```
+
+3. Force connector/model recreation so OpenSearch stores fresh Bedrock credentials:
+
+```bash
+docker compose exec -e BEDROCK_FORCE_RECREATE_CONNECTOR=true localstack \
+        bash /etc/localstack/init/ready.d/03-setup-bedrock-connector-neural.sh
+```
+
+This refreshes connector/model auth without recreating OpenSearch indexes.
 
 For the port-forward setup script, `CONFIRM_OVERWRITE` controls behavior when existing pipelines or index settings are found:
 
@@ -148,6 +171,64 @@ Credential handling considerations:
 
 This is a temporary operational workaround to configure a remote OpenSearch instance through a local port-forward.
 
+If credentials backing the connector have rotated, force recreation during port-forward setup with either of these flags:
+
+- `FORCE_RECREATE_CONNECTOR=true`
+- `BEDROCK_FORCE_RECREATE_CONNECTOR=true`
+
+Example:
+
+```bash
+FORCE_RECREATE_CONNECTOR=true CONFIRM_OVERWRITE=true ./setup-bedrock-connector-portforward.sh
+```
+
+### Port-forward index setup helper
+
+To create or recreate `page_chunks` and `page_metadata` mappings against a port-forwarded OpenSearch instance, use:
+
+```bash
+./setup-opensearch-indexes-portforward.sh
+```
+
+Overwrite behavior is controlled with `CONFIRM_OVERWRITE`:
+
+- `prompt` (default): ask before deleting/recreating indexes
+- `true`: recreate existing indexes without prompting
+- `false`: keep existing indexes and skip creation
+
+### Troubleshooting Bedrock setup
+
+1. Error: `The security token included in the request is expired`
+
+This means the connector is using stale temporary AWS credentials.
+
+For local-only setup:
+
+```bash
+cd local-dev-environment
+docker compose restart localstack
+docker compose exec -e BEDROCK_FORCE_RECREATE_CONNECTOR=true localstack \
+        bash /etc/localstack/init/ready.d/03-setup-bedrock-connector-neural.sh
+```
+
+For port-forward setup:
+
+```bash
+FORCE_RECREATE_CONNECTOR=true CONFIRM_OVERWRITE=true ./setup-bedrock-connector-portforward.sh
+```
+
+2. Model state remains `PARTIALLY_DEPLOYED`
+
+On small or limited-node dev clusters this can be normal. If search works, this state can be acceptable.
+
+Check model state:
+
+```bash
+curl -s http://127.0.0.1:9200/_plugins/_ml/models/<MODEL_ID> | jq '.model_state'
+```
+
+If state stays `PARTIALLY_DEPLOYED` but queries succeed, proceed. If queries fail, re-run setup with force recreate and verify index search pipeline settings.
+
 ### Ingest-time embedding toggle
 
 Use `BEDROCK_ENABLE_INGEST_PIPELINE` to control whether OpenSearch generates embeddings at index time:
@@ -166,32 +247,8 @@ When `BEDROCK_ENABLE_INGEST_PIPELINE=false`:
 
 ### Hybrid search score fusion
 
-Hybrid result normalization and branch score combination are configured in the default search pipeline created by [03-setup-bedrock-connector-neural.sh](./init-scripts/03-setup-bedrock-connector-neural.sh), not in [02-create-opensearch-resources.sh](./init-scripts/02-create-opensearch-resources.sh).
-
-### Hybrid query tuning options (quick guidance)
-
-If you want stable behavior without deep tuning, use this order of controls:
-
-1. Branch weights in the search pipeline (primary control)
-2. Candidate depth (`k` on `neural`, `pagination_depth` on `hybrid`)
-3. Per-query boosts (secondary, optional)
-
-Recommended starting point:
-
-- Keep normalization enabled (`min_max` + `arithmetic_mean`)
-- Use moderate lexical boosts (for example: `match_phrase.boost=3`, `match.boost=1.5`)
-- Use larger semantic candidate pool (for example: `neural.k=40`, `hybrid.pagination_depth=20`)
-
-Suggested operating modes:
-
-- Balanced (default): pipeline weights `[0.6, 0.2, 0.2]`
-- Precision-first lexical: try `[0.5, 0.3, 0.2]`
-- Recall/semantic-first: try `[0.5, 0.2, 0.3]`
-
-Notes:
-
-- Boosts are still valid with normalization, but mainly influence ranking within each branch.
-- Weights are the main lever for balancing lexical vs semantic contribution after normalization.
+The default search pipeline currently configures query-time neural enrichment (`neural_query_enricher`) only.
+Hybrid-score normalization and branch score-combination processors are intentionally not configured at this time.
 
 ## Python Environment Setup
 
