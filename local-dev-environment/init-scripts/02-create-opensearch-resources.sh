@@ -46,7 +46,7 @@ else
   echo "Creating index '${INDEX_NAME}' from templates..."
   CREATE_RESPONSE=$(curl -s -XPUT "${DIRECT_OPENSEARCH_ENDPOINT}/${INDEX_NAME}" -H 'Content-Type: application/json' --data-binary '{}')
   echo "Index creation response: ${CREATE_RESPONSE}"
-  if [[ ! $(echo "${CREATE_RESPONSE}" | grep '"acknowledged":true') ]]; then
+  if ! echo "${CREATE_RESPONSE}" | grep -q '"acknowledged":true'; then
     echo "Error: Index creation not acknowledged."
     exit 1
   fi

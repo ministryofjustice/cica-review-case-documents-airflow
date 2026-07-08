@@ -121,5 +121,5 @@ If simulation returns null values:
 ```bash
 curl -s http://127.0.0.1:9200/_index_template | jq '.index_templates[].name'
 curl -s http://127.0.0.1:9200/_template/page_chunks* | jq
-
+```
 

@@ -20,7 +20,8 @@ set -euo pipefail
 #   OPENSEARCH_NUMBER_OF_SHARDS=2 OPENSEARCH_NUMBER_OF_REPLICAS=1 ./setup-opensearch-indexes-portforward.sh
 #
 # Notes:
-# - These values are consumed by init-scripts/lib/opensearch_templates.inc.
+# - Default values are resolved in init-scripts/lib/opensearch_templates.inc.
+# - These variables can be set here to override those defaults per run.
 # - They only affect newly created indexes (recreate with CONFIRM_OVERWRITE=true to apply changes).
 
 log() { echo "[opensearch-index-setup] $*" >&2; }
@@ -38,15 +39,13 @@ OPENSEARCH_USERNAME="${OPENSEARCH_USERNAME:-}"
 OPENSEARCH_PASSWORD="${OPENSEARCH_PASSWORD:-}"
 OPENSEARCH_BEARER_TOKEN="${OPENSEARCH_BEARER_TOKEN:-}"
 
-# Default index topology (can be overridden via env vars)
-OPENSEARCH_NUMBER_OF_SHARDS="${OPENSEARCH_NUMBER_OF_SHARDS:-2}"
-OPENSEARCH_NUMBER_OF_REPLICAS="${OPENSEARCH_NUMBER_OF_REPLICAS:-1}"
-
 AUTH_ARGS=()
 if [[ -n "${OPENSEARCH_BEARER_TOKEN}" ]]; then
   AUTH_ARGS+=( -H "Authorization: Bearer ${OPENSEARCH_BEARER_TOKEN}" )
-elif [[ -n "${OPENSEARCH_USERNAME}" || -n "${OPENSEARCH_PASSWORD}" ]]; then
+elif [[ -n "${OPENSEARCH_USERNAME}" && -n "${OPENSEARCH_PASSWORD}" ]]; then
   AUTH_ARGS+=( -u "${OPENSEARCH_USERNAME}:${OPENSEARCH_PASSWORD}" )
+elif [[ -n "${OPENSEARCH_USERNAME}" || -n "${OPENSEARCH_PASSWORD}" ]]; then
+   fail "Both OPENSEARCH_USERNAME and OPENSEARCH_PASSWORD must be set when using basic auth"
 fi
 
 wait_for_cluster() {
