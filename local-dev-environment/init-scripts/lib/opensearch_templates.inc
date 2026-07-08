@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Shared helper: create OpenSearch index templates for local/dev use
-set -euo pipefail
 
 opensearch_log() { echo "[opensearch-templates] $*" >&2; }
 opensearch_fail() { echo "[opensearch-templates][ERROR] $*" >&2; exit 1; }
@@ -9,8 +8,10 @@ opensearch_prepare_auth_args() {
   AUTH_ARGS=()
   if [[ -n "${OPENSEARCH_BEARER_TOKEN:-}" ]]; then
     AUTH_ARGS+=( -H "Authorization: Bearer ${OPENSEARCH_BEARER_TOKEN}" )
-  elif [[ -n "${OPENSEARCH_USERNAME:-}" || -n "${OPENSEARCH_PASSWORD:-}" ]]; then
+  elif [[ -n "${OPENSEARCH_USERNAME:-}" && -n "${OPENSEARCH_PASSWORD:-}" ]]; then
     AUTH_ARGS+=( -u "${OPENSEARCH_USERNAME}:${OPENSEARCH_PASSWORD}" )
+  elif [[ -n "${OPENSEARCH_USERNAME:-}" || -n "${OPENSEARCH_PASSWORD:-}" ]]; then
+     opensearch_fail "Both OPENSEARCH_USERNAME and OPENSEARCH_PASSWORD must be set when using basic auth"
   fi
 }
 
@@ -32,9 +33,15 @@ opensearch_put_template() {
   echo "${resp_body}"
 }
 
+opensearch_resolve_index_topology() {
+  OPENSEARCH_RESOLVED_NUMBER_OF_SHARDS="${OPENSEARCH_NUMBER_OF_SHARDS:-2}"
+  OPENSEARCH_RESOLVED_NUMBER_OF_REPLICAS="${OPENSEARCH_NUMBER_OF_REPLICAS:-1}"
+
+  [[ "${OPENSEARCH_RESOLVED_NUMBER_OF_SHARDS}" =~ ^[0-9]+$ ]] || opensearch_fail "OPENSEARCH_NUMBER_OF_SHARDS must be an integer (got: ${OPENSEARCH_RESOLVED_NUMBER_OF_SHARDS})"
+  [[ "${OPENSEARCH_RESOLVED_NUMBER_OF_REPLICAS}" =~ ^[0-9]+$ ]] || opensearch_fail "OPENSEARCH_NUMBER_OF_REPLICAS must be an integer (got: ${OPENSEARCH_RESOLVED_NUMBER_OF_REPLICAS})"
+}
+
 opensearch_create_page_chunks_template() {
-  local number_of_shards="${OPENSEARCH_NUMBER_OF_SHARDS:-1}"
-  local number_of_replicas="${OPENSEARCH_NUMBER_OF_REPLICAS:-1}"
   local pipeline_field=''
   if [[ -n "${OPENSEARCH_DEFAULT_PIPELINE:-}" ]]; then
     pipeline_field=",\n        \"index.default_pipeline\": \"${OPENSEARCH_DEFAULT_PIPELINE}\""
@@ -45,8 +52,8 @@ opensearch_create_page_chunks_template() {
   "index_patterns": ["page_chunks*"],
   "template": {
     "settings": {
-      "number_of_shards": ${number_of_shards},
-      "number_of_replicas": ${number_of_replicas},
+      "number_of_shards": ${OPENSEARCH_RESOLVED_NUMBER_OF_SHARDS},
+      "number_of_replicas": ${OPENSEARCH_RESOLVED_NUMBER_OF_REPLICAS},
       "index.knn": true${pipeline_field}
     },
     "mappings": {
@@ -97,16 +104,13 @@ JSON
 }
 
 opensearch_create_page_metadata_template() {
-  local number_of_shards="${OPENSEARCH_NUMBER_OF_SHARDS:-1}"
-  local number_of_replicas="${OPENSEARCH_NUMBER_OF_REPLICAS:-1}"
-
   read -r -d '' body <<JSON || true
 {
   "index_patterns": ["page_metadata*"],
   "template": {
     "settings": {
-      "number_of_shards": ${number_of_shards},
-      "number_of_replicas": ${number_of_replicas}
+      "number_of_shards": ${OPENSEARCH_RESOLVED_NUMBER_OF_SHARDS},
+      "number_of_replicas": ${OPENSEARCH_RESOLVED_NUMBER_OF_REPLICAS}
     },
     "mappings": {
       "properties": {
@@ -135,8 +139,8 @@ opensearch_apply_templates() {
   : "Ensure OPENSEARCH_ENDPOINT is set"
   [[ -n "${OPENSEARCH_ENDPOINT:-}" ]] || opensearch_fail "OPENSEARCH_ENDPOINT is not set"
   opensearch_prepare_auth_args
+  opensearch_resolve_index_topology
   opensearch_create_page_chunks_template
   opensearch_create_page_metadata_template
 }
 
-return 0
