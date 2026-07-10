@@ -141,6 +141,17 @@ Both setup entrypoints now reuse shared helper functions in [init-scripts/lib/be
 
 For maintenance, update connector/model/pipeline logic in the shared helper first, then keep entrypoint scripts focused on environment-specific auth and bootstrapping.
 
+### LocalStack index setup
+
+To recreate `page_chunks` and `page_metadata` in LocalStack after changing a template, run:
+
+```bash
+docker compose exec -e CONFIRM_OVERWRITE=true localstack \
+        bash /etc/localstack/init/ready.d/02-create-opensearch-resources.sh
+```
+
+If you set `CONFIRM_OVERWRITE=prompt`, the script prompts when run interactively; otherwise the default is to keep existing indexes so normal container startup remains non-destructive.
+
 ### Rotating AWS credentials without rebuilding
 
 When `AWS_MOD_PLATFORM_*` credentials expire, you do not need to rebuild the full local environment.
