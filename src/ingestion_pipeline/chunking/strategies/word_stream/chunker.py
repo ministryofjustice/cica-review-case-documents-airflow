@@ -38,6 +38,7 @@ class TextractorWordStreamChunker:
     """Chunker that uses Textractor's reading-order word stream as source of truth."""
 
     _MULTI_SPACE_RE = re.compile(r"\s+")
+    _PAGE_FOOTER_NUMBER_RE = re.compile(r"^\d+[\).,:;]?$")
 
     def __init__(self, config: Optional[WordStreamChunkingConfig] = None):
         """Initialize with optional configuration."""
@@ -62,6 +63,10 @@ class TextractorWordStreamChunker:
         if not words:
             return []
 
+        words = self._filter_standalone_page_footer_words(words)
+        if not words:
+            return []
+
         chunks: List[DocumentChunk] = []
         state = WordChunkState()
         chunk_index = chunk_index_start
@@ -80,8 +85,9 @@ class TextractorWordStreamChunker:
 
             gap_reason = self._get_gap_reason(state.prev_bottom, word_bbox)
             if gap_reason and state.tokens:
-                chunk_index = self._emit_chunk(chunks, state, page_number, metadata, chunk_index, gap_reason)
-                state.reset()
+                if state.word_count > 1:
+                    chunk_index = self._emit_chunk(chunks, state, page_number, metadata, chunk_index, gap_reason)
+                    state.reset()
 
             if state.tokens and (state.word_count + word_count) > self.config.max_words:
                 chunk_index = self._split_or_emit_at_hard_max(chunks, state, page_number, metadata, chunk_index)
@@ -107,6 +113,10 @@ class TextractorWordStreamChunker:
                         should_close = False
                         reason = None
 
+                if should_close and state.word_count <= 1:
+                    should_close = False
+                    reason = None
+
                 if should_close and reason == "sentence_boundary":
                     chunk_index = self._emit_chunk(chunks, state, page_number, metadata, chunk_index, reason)
                     state.reset()
@@ -119,9 +129,79 @@ class TextractorWordStreamChunker:
             i += 1
 
         if state.tokens:
-            self._emit_chunk(chunks, state, page_number, metadata, chunk_index, "final_chunk")
+            if state.word_count == 1 and chunks:
+                self._append_state_to_last_chunk(chunks[-1], state)
+            else:
+                self._emit_chunk(chunks, state, page_number, metadata, chunk_index, "final_chunk")
 
         return chunks
+
+    def _append_state_to_last_chunk(self, last_chunk: DocumentChunk, state: WordChunkState) -> None:
+        """Append remaining state tokens/bboxes to an existing chunk to avoid singleton chunks."""
+        if not state.tokens or not state.bboxes:
+            return
+
+        appended_text = self._normalize_chunk_text(state.tokens)
+        if not appended_text:
+            return
+
+        merged_text = self._normalize_chunk_text([last_chunk.chunk_text, appended_text])
+        existing_bbox = last_chunk.bounding_box.to_textractor_bbox()
+        merged_bbox = combine_bounding_boxes([existing_bbox, *state.bboxes])
+
+        last_chunk.chunk_text = merged_text
+        last_chunk.bounding_box = last_chunk.bounding_box.from_textractor_bbox(merged_bbox)
+
+    def _filter_standalone_page_footer_words(self, words: List[Word]) -> List[Word]:
+        """Remove standalone footer lines matching pattern: Page X of Y."""
+        filtered_words: List[Word] = []
+        i = 0
+        n = len(words)
+
+        while i < n:
+            footer_span = self._match_page_footer_span(words, i)
+            if footer_span == 0:
+                filtered_words.append(words[i])
+                i += 1
+                continue
+            i += footer_span
+
+        return filtered_words
+
+    def _match_page_footer_span(self, words: List[Word], index: int) -> int:
+        """Return footer token span length when words[index:] starts with standalone Page X of Y."""
+        if index + 3 >= len(words):
+            return 0
+
+        tokens = [self._normalize_word_text(getattr(words[index + offset], "text", "")) for offset in range(4)]
+        if not tokens[0] or not tokens[1] or not tokens[2] or not tokens[3]:
+            return 0
+
+        is_footer_pattern = (
+            tokens[0].lower() == "page"
+            and tokens[2].lower() == "of"
+            and bool(self._PAGE_FOOTER_NUMBER_RE.fullmatch(tokens[1]))
+            and bool(self._PAGE_FOOTER_NUMBER_RE.fullmatch(tokens[3]))
+        )
+        if not is_footer_pattern:
+            return 0
+
+        current_bbox = getattr(words[index], "bbox", None)
+        next_bbox = getattr(words[index + 3], "bbox", None)
+        if current_bbox is None or next_bbox is None:
+            return 0
+
+        if index > 0:
+            prev_bbox = getattr(words[index - 1], "bbox", None)
+            if prev_bbox is not None and abs(prev_bbox.y - current_bbox.y) < 0.001:
+                return 0
+
+        if index + 4 < len(words):
+            after_bbox = getattr(words[index + 4], "bbox", None)
+            if after_bbox is not None and abs(after_bbox.y - next_bbox.y) < 0.001:
+                return 0
+
+        return 4
 
     @staticmethod
     def _normalize_word_text(text: str) -> str:
@@ -239,6 +319,9 @@ class TextractorWordStreamChunker:
         """Prefer backward sentence split at hard max, else force-close current state."""
         split_at = self._find_backward_split(state.tokens)
         if split_at is None:
+            if state.word_count <= 1:
+                return chunk_index
+
             chunk_index = self._emit_chunk(
                 chunks,
                 state,

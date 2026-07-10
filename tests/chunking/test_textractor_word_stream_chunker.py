@@ -224,6 +224,131 @@ def test_lookahead_gap_break_does_not_skip_or_duplicate_words(sample_metadata):
     assert chunk_tokens == ["w1", "w2", "w3", "w4.", "w5", "w6."]
 
 
+def test_removes_standalone_page_footer_line(sample_metadata):
+    config = WordStreamChunkingConfig(min_words=1, max_words=100, max_vertical_gap_ratio=0.05, normalize_spacing=True)
+    chunker = TextractorWordStreamChunker(config=config)
+
+    words = [
+        create_mock_word("Alpha", 0.10),
+        create_mock_word("content.", 0.10),
+        create_mock_word("Page", 0.92),
+        create_mock_word("17", 0.92),
+        create_mock_word("of", 0.92),
+        create_mock_word("49", 0.92),
+    ]
+
+    chunks = chunker.chunk_page(words=words, page_number=1, metadata=sample_metadata)
+
+    assert len(chunks) == 1
+    assert chunks[0].chunk_text == "Alpha content."
+
+
+def test_keeps_inline_page_x_of_y_phrase(sample_metadata):
+    config = WordStreamChunkingConfig(min_words=1, max_words=100, max_vertical_gap_ratio=0.05, normalize_spacing=True)
+    chunker = TextractorWordStreamChunker(config=config)
+
+    words = [
+        create_mock_word("Refer", 0.10),
+        create_mock_word("to", 0.10),
+        create_mock_word("Page", 0.10),
+        create_mock_word("3", 0.10),
+        create_mock_word("of", 0.10),
+        create_mock_word("10", 0.10),
+        create_mock_word("for", 0.10),
+        create_mock_word("details.", 0.10),
+    ]
+
+    chunks = chunker.chunk_page(words=words, page_number=1, metadata=sample_metadata)
+
+    assert len(chunks) == 1
+    assert chunks[0].chunk_text == "Refer to Page 3 of 10 for details."
+
+
+def test_handler_consistency_check_ignores_standalone_page_footer(sample_metadata):
+    config = WordStreamChunkingConfig(min_words=1, max_words=100, max_vertical_gap_ratio=0.05, normalize_spacing=True)
+    handler = TextractorWordStreamDocumentChunker(config=config)
+
+    page = MagicMock()
+    page.page_num = 1
+    page.get_text_and_words.return_value = (
+        "Hello world.\nPage 17 of 49",
+        [
+            create_mock_word("Hello", 0.10),
+            create_mock_word("world.", 0.10),
+            create_mock_word("Page", 0.92),
+            create_mock_word("17", 0.92),
+            create_mock_word("of", 0.92),
+            create_mock_word("49", 0.92),
+        ],
+    )
+
+    doc = MagicMock()
+    doc.pages = [page]
+    doc.response = {"Blocks": [{"BlockType": "WORD"}]}
+
+    processed = handler.chunk(doc, sample_metadata)
+
+    assert len(processed.chunks) == 1
+    assert processed.chunks[0].chunk_text == "Hello world."
+
+
+def test_does_not_create_single_word_chunk_at_page_end(sample_metadata):
+    config = WordStreamChunkingConfig(min_words=1, max_words=100, max_vertical_gap_ratio=0.05, normalize_spacing=True)
+    chunker = TextractorWordStreamChunker(config=config)
+
+    words = [
+        create_mock_word("Alpha", 0.10),
+        create_mock_word("beta.", 0.10),
+        create_mock_word("Z", 0.95),
+    ]
+
+    chunks = chunker.chunk_page(words=words, page_number=1, metadata=sample_metadata)
+
+    assert len(chunks) == 1
+    assert chunks[0].chunk_text == "Alpha beta. Z"
+
+
+def test_carries_single_word_fragment_into_next_chunk(sample_metadata):
+    config = WordStreamChunkingConfig(min_words=1, max_words=100, max_vertical_gap_ratio=0.05, normalize_spacing=True)
+    chunker = TextractorWordStreamChunker(config=config)
+
+    words = [
+        create_mock_word("A", 0.10),
+        create_mock_word("proper", 0.30),
+        create_mock_word("chunk.", 0.30),
+    ]
+
+    chunks = chunker.chunk_page(words=words, page_number=1, metadata=sample_metadata)
+
+    assert len(chunks) == 1
+    assert chunks[0].chunk_text == "A proper chunk."
+
+
+def test_handler_consistency_check_with_single_word_page_tail(sample_metadata):
+    config = WordStreamChunkingConfig(min_words=1, max_words=100, max_vertical_gap_ratio=0.05, normalize_spacing=True)
+    handler = TextractorWordStreamDocumentChunker(config=config)
+
+    page = MagicMock()
+    page.page_num = 1
+    page.get_text_and_words.return_value = (
+        "Alpha beta.\nZ",
+        [
+            create_mock_word("Alpha", 0.10),
+            create_mock_word("beta.", 0.10),
+            create_mock_word("Z", 0.95),
+        ],
+    )
+
+    doc = MagicMock()
+    doc.pages = [page]
+    doc.response = {"Blocks": [{"BlockType": "WORD"}]}
+
+    processed = handler.chunk(doc, sample_metadata)
+
+    assert len(processed.chunks) == 1
+    assert processed.chunks[0].chunk_text == "Alpha beta. Z"
+
+
 def test_wordstream_config_from_settings_uses_wordstream_prefixed_fields():
     settings_obj = SimpleNamespace(
         SENTENCE_CHUNKER_MIN_WORDS=1,

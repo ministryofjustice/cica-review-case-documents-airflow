@@ -8,11 +8,11 @@ from pathlib import Path
 import snowballstemmer
 
 from evaluation_suite.search_evaluation.chunks_loader import get_chunk_details_from_opensearch
-from evaluation_suite.search_evaluation.query.date_formats import extract_dates_for_search, is_date_search
 from evaluation_suite.search_evaluation.evaluation_settings import (
     EXP_CHUNK_DATE_VARIANTS,
     EXP_CHUNK_USE_STEMMING,
 )
+from evaluation_suite.search_evaluation.query.date_formats import extract_dates_for_search, is_date_search
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 TESTING_DIR = SCRIPT_DIR.parent
