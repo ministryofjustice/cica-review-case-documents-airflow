@@ -4,6 +4,8 @@ set -euo pipefail
 echo "Starting OpenSearch index setup..."
 echo "[02] init-scripts/02-create-opensearch-resources.sh starting"
 
+CONFIRM_OVERWRITE="${CONFIRM_OVERWRITE:-false}"
+
 if [ -f /tmp/aws_resources_failed ]; then
     echo "INFO: Detected /tmp/aws_resources_failed. Skipping OpenSearch setup."
     exit 0
@@ -37,12 +39,48 @@ else
 fi
 opensearch_apply_templates
 
+confirm_overwrite_if_needed() {
+  local index_name="$1"
+
+  if ! curl --silent --fail -I "${DIRECT_OPENSEARCH_ENDPOINT}/${index_name}" > /dev/null; then
+    return 0
+  fi
+
+  case "${CONFIRM_OVERWRITE}" in
+    true)
+      echo "Deleting existing index '${index_name}' because CONFIRM_OVERWRITE=true"
+      curl --silent --fail -XDELETE "${DIRECT_OPENSEARCH_ENDPOINT}/${index_name}" > /dev/null
+      ;;
+    false)
+      echo "Index '${index_name}' already exists. Skipping creation because CONFIRM_OVERWRITE=false"
+      return 1
+      ;;
+    prompt)
+      if [ ! -t 0 ]; then
+        echo "ERROR: Index '${index_name}' already exists. Re-run with CONFIRM_OVERWRITE=true or CONFIRM_OVERWRITE=false"
+        exit 1
+      fi
+
+      read -r -p "Index '${index_name}' already exists. Recreate it? [y/N]: " reply
+      if [[ "${reply}" =~ ^[Yy]$ ]]; then
+        echo "Deleting existing index '${index_name}' after confirmation"
+        curl --silent --fail -XDELETE "${DIRECT_OPENSEARCH_ENDPOINT}/${index_name}" > /dev/null
+      else
+        echo "Index '${index_name}' already exists. Skipping creation."
+        return 1
+      fi
+      ;;
+    *)
+      echo "ERROR: Unsupported CONFIRM_OVERWRITE value: ${CONFIRM_OVERWRITE}"
+      exit 1
+      ;;
+  esac
+}
+
 # --- Step 2: Create the index directly in the OpenSearch container ---
 INDEX_NAME="page_chunks"
 # No auth needed due to DISABLE_SECURITY_PLUGIN=true
-if curl --silent --fail -I "${DIRECT_OPENSEARCH_ENDPOINT}/${INDEX_NAME}" > /dev/null; then
-  echo "Index '${INDEX_NAME}' already exists. Skipping creation."
-else
+if confirm_overwrite_if_needed "${INDEX_NAME}"; then
   echo "Creating index '${INDEX_NAME}' from templates..."
   CREATE_RESPONSE=$(curl -s -XPUT "${DIRECT_OPENSEARCH_ENDPOINT}/${INDEX_NAME}" -H 'Content-Type: application/json' --data-binary '{}')
   echo "Index creation response: ${CREATE_RESPONSE}"
@@ -54,9 +92,7 @@ fi
 
 # --- Create the page index in the OpenSearch container ---
 INDEX_NAME="page_metadata"
-if curl --silent --fail -I "${DIRECT_OPENSEARCH_ENDPOINT}/${INDEX_NAME}" > /dev/null; then
-  echo "Index '${INDEX_NAME}' already exists. Skipping creation."
-else
+if confirm_overwrite_if_needed "${INDEX_NAME}"; then
   echo "Creating index '${INDEX_NAME}' from templates..."
   CREATE_RESPONSE=$(curl -s -XPUT "${DIRECT_OPENSEARCH_ENDPOINT}/${INDEX_NAME}" -H 'Content-Type: application/json' --data-binary '{}')
 

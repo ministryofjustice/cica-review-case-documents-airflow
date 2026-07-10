@@ -30,7 +30,23 @@ Shard and replica settings are controlled by environment variables consumed by t
 - `OPENSEARCH_NUMBER_OF_SHARDS` (default: `2`)
 - `OPENSEARCH_NUMBER_OF_REPLICAS` (default: `1`)
 
-Default/current non-prod example:
+
+## Recreating indexes
+
+### Local stack
+
+```bash
+docker compose exec -e CONFIRM_OVERWRITE=true localstack \
+  bash /etc/localstack/init/ready.d/02-create-opensearch-resources.sh
+```
+
+Use `CONFIRM_OVERWRITE=true` when you want to delete and recreate the existing indexes so template changes are applied. The LocalStack init script defaults to keeping existing indexes on boot.
+Note if you delete and recreate existing indexes you will need to recreate the [Bedrock connector](/local-dev-environment/BEDROCK_CONNECTOR_README.md).
+And if you have not enabled persistant storage within the [docker compose file](/local-dev-environment/docker-compose.yml) you will need to re-ingest 
+the case documents.
+
+
+Default/current non-prod port-forwarding example:
 
 ```bash
 OPENSEARCH_NUMBER_OF_SHARDS=2 OPENSEARCH_NUMBER_OF_REPLICAS=1 \
@@ -48,6 +64,12 @@ Notes:
 - For semantic search, shard topology can affect kNN recall/latency characteristics.
 
 ## Recreate behavior
+
+`init-scripts/02-create-opensearch-resources.sh` supports:
+
+- `CONFIRM_OVERWRITE=false` (default): do not recreate existing indexes
+- `CONFIRM_OVERWRITE=true`: delete and recreate existing indexes
+- `CONFIRM_OVERWRITE=prompt`: asks before deleting/recreating indexes when run interactively
 
 `setup-opensearch-indexes-portforward.sh` supports:
 
