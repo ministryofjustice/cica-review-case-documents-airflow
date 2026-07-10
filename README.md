@@ -250,6 +250,17 @@ You only need to set a search pipeline explicitly when overriding the index defa
 
 For setup details (including Bedrock connector and pipeline provisioning scripts), see [local-dev-environment/README.md](./local-dev-environment/README.md).
 
+### OpenSearch Index Topology Policy
+
+To reduce relevance and performance surprises for semantic search, keep index topology intentional and environment-aware:
+
+- Treat index templates as the single source of truth for mappings and index settings.
+- Keep `page_chunks` shard/replica settings aligned between UAT and the target production shape.
+- If production does not yet exist, use a shared non-trivial topology (more than one shard) across DEV and UAT for parity testing.
+- Recreate indexes when changing primary shard count, because shard count changes are not applied in-place.
+
+Index setup workflow, shard/replica configuration, and verification commands are documented in [local-dev-environment/OPENSEARCH_INDEXES_README.md](./local-dev-environment/OPENSEARCH_INDEXES_README.md).
+
 ### Logging
 
 The project has been set up to add the source document uuid (generated during ingestion) to a context var which results in all logs containing the source_doc_id for tracing purposes. 
