@@ -73,7 +73,12 @@ class TextractorWordStreamDocumentChunker(ChunkStrategy):
             metadata=metadata,
             chunk_index_start=chunk_index_start,
         )
-        self._validate_text_consistency(page_text_from_source, page_chunks, page.page_num)
+
+        # Reconstruct page text from filtered words to match what chunker actually processed
+        filtered_words = self.chunker._filter_standalone_page_footer_words(words)
+        filtered_page_text = self._reconstruct_text_from_words(filtered_words)
+
+        self._validate_text_consistency(filtered_page_text, page_chunks, page.page_num)
         return page_chunks
 
     @staticmethod
@@ -82,6 +87,18 @@ class TextractorWordStreamDocumentChunker(ChunkStrategy):
         if not isinstance(text, str):
             return ""
         return re.sub(r"\s+", " ", text).strip()
+
+    @staticmethod
+    def _reconstruct_text_from_words(words: List[Word]) -> str:
+        """Reconstruct page text from word objects."""
+        if not words:
+            return ""
+        word_texts = []
+        for word in words:
+            text = getattr(word, "text", "")
+            if text:
+                word_texts.append(text)
+        return " ".join(word_texts)
 
     def _validate_text_consistency(
         self, page_text_from_source: str, page_chunks: List[DocumentChunk], page_num: int
