@@ -54,6 +54,7 @@ evaluation = [
 ]
 
 [tool.uv]
+native-tls = true
 default-groups = ["test", "dev"]
 
 [tool.hatch.metadata]
@@ -76,17 +77,18 @@ include = ["src/ingestion_pipeline"]
 known_first_party = ["ingestion_pipeline", "evaluation_suite"]
 
 [tool.deptry.per_rule_ignores]
-# numpy is declared in the 'evaluation' optional dependency group
-DEP002 = ["numpy"]
-# pytest is correctly a dev/test dependency, ignore it being imported in test files
-DEP004 = ["pytest"]
+# numpy is declared in the 'evaluation' optional dependency group; en-core-sci-lg is loaded via spacy.load()
+DEP002 = ["numpy", "en-core-sci-lg"]
+# pytest and moto are correctly dev/test dependencies, ignore them being imported in test files
+DEP004 = ["pytest", "moto"]
 
 [tool.deptry.package_module_name_map]
 snowballstemmer = "snowballstemmer"
 rapidfuzz = "rapidfuzz"
 dateparser = "dateparser"
 optuna = "optuna"
-scispacy = "scispacy"
+python-docx = "docx"
+scispacy = "spacy"
 en-core-sci-lg = "en_core_sci_lg"
 pytest-mock = "pytest_mock"
 pytest-cov = "pytest_cov"

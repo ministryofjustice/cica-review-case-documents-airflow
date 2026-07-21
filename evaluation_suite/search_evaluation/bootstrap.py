@@ -112,6 +112,8 @@ def _check_index_state(configured_strategy: str, case_ref: str | None = None) ->
             )
     except (json.JSONDecodeError, OSError) as exc:
         logger.warning("Could not read index state file: %s", exc)
+
+
 # (Titan = 1024) and the kNN method configured on the index.
 _EMBEDDING_DIMENSION = 1024
 
@@ -279,6 +281,7 @@ def bootstrap_opensearch(index_if_empty: bool = True, case_ref: str | None = Non
 
     try:
         from ingestion_pipeline.config import settings as ingestion_settings
+
         configured_strategy = ingestion_settings.DOCUMENT_CHUNKING_STRATEGY
     except Exception:  # pragma: no cover
         configured_strategy = "unknown"
@@ -293,15 +296,13 @@ def bootstrap_opensearch(index_if_empty: bool = True, case_ref: str | None = Non
         # Force a refresh so freshly indexed documents are searchable/countable
         # immediately, rather than waiting for the periodic refresh interval.
         client.indices.refresh(index=CHUNK_INDEX_NAME)
-        chunk_count = (
-            count_indexed_chunks_for_case(case_ref, client)
-            if case_ref
-            else count_indexed_chunks(client)
-        )
+        chunk_count = count_indexed_chunks_for_case(case_ref, client) if case_ref else count_indexed_chunks(client)
         _write_index_state(configured_strategy, chunk_count, case_ref)
     else:
         ref_label = case_ref or eval_settings.CASE_FILTER
-        logger.info(f"Case '{ref_label}' already has {chunk_count} chunks in '{CHUNK_INDEX_NAME}' - skipping ingestion.")
+        logger.info(
+            f"Case '{ref_label}' already has {chunk_count} chunks in '{CHUNK_INDEX_NAME}' - skipping ingestion."
+        )
         _check_index_state(configured_strategy, case_ref)
 
     return chunk_count

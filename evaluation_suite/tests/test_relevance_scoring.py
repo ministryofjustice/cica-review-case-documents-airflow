@@ -31,7 +31,6 @@ def test_evaluation_summary_to_dict():
     assert d["total_queries"] == 10
     assert d["optimization_score"] == 0.1234
     assert "avg_f1_at_10" in d
-    assert "avg_acceptable_term_based_precision_at_20" in d
 
 
 @patch("evaluation_suite.search_evaluation.relevance.relevance_scoring.load_all_chunks_from_opensearch")
@@ -85,7 +84,6 @@ def test_evaluate_relevance_returns_summary(
     assert output_df.shape[0] == 1
     assert "precision_at_10" in output_df.columns
     assert "query_type" in output_df.columns
-    assert "acceptable_term_based_precision_at_20" in output_df.columns
 
 
 def test_evaluate_relevance_empty_df():

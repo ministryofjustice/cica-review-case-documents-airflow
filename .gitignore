@@ -30,4 +30,7 @@ local-dev-environment/testing/handwriting_accuracy/data
 evaluation_suite/testing_docs/cases/**/*.docx
 evaluation_suite/testing_docs/cases/**/*.csv
 evaluation_suite/testing_docs/*.docx
-/.textract_cache/
+.textract_cache/
+evaluation_suite/AUTOMATED_EVALUATION_PLAN.local.md
+evaluation_suite/testing_docs/cases/
+evaluation_suite/testing_docs/search_terms_source.docx

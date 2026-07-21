@@ -31,7 +31,7 @@ repos:
       - id: deptry
         name: deptry
         description: deptry is a command line tool to check for issues with dependencies...
-        language: python
+        language: system
         entry: .venv/bin/deptry
         # if running on Windows, use: .venv/Scripts/deptry.exe
         # Not recommended, use WSL instead.
@@ -39,15 +39,13 @@ repos:
         types: [python]
         always_run: true
         pass_filenames: false
-        additional_dependencies:
-          - deptry
         stages: [pre-commit, pre-push]
 
   - repo: local
     hooks:
       - id: pytest
         name: pytest
-        entry: uv run pytest --cov=src --cov=tests --cov-report=term-missing
+        entry: uv run --no-sync pytest --cov=src --cov=tests --cov-report=term-missing
         language: system
         types: [python]
         pass_filenames: false
