@@ -11,6 +11,8 @@ permissions: {}
 jobs:
   scan-container:
     permissions:
+      actions: read
+      security-events: write
       contents: read
       id-token: write
       pull-requests: write
