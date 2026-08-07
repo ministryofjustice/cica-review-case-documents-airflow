@@ -10,7 +10,7 @@ dependencies = [
     "pydantic-settings>=2.14.2,<3.0.0",
     "pydantic>=2.13.4,<3.0.0",
     "amazon-textract-textractor>=1.9.2,<2.0.0",
-    "boto3>=1.43.62,<2.0.0",
+    "boto3>=1.43.64,<2.0.0",
     "amazon-textract-caller>=0.2.4,<0.3.0",
     "pdf2image>=1.17.0",
 ]
@@ -40,7 +40,7 @@ evaluation = [
     "pandas>=3.0.5",
     "snowballstemmer>=3.1.1",
     "rapidfuzz>=3.0.0",
-    "dateparser>=1.4.1",
+    "dateparser>=1.4.2",
     "optuna>=4.9.0",
     "xlsxwriter>=3.2.0",
 ]
