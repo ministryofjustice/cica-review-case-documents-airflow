@@ -1,17 +1,20 @@
 # OpenSearch Indexes Runbook
 
-This runbook documents how `page_chunks` and `page_metadata` indexes are created, configured, and validated across local and port-forward workflows.
+- [Flow Diagram](/local-dev-environment/diagrams/opensearch-index-creation-flow.mermaid)
+
+This guide outlines how `page_chunks` and `page_metadata` indexes are created, configured, and validated across local and port-forward workflows.
+It should be read in conjunction with the [RUNBOOKS](../runbooks/RUNBOOK.md).
 
 ## Source of truth
 
 Index settings and mappings are defined in:
 
-- `init-scripts/lib/opensearch_templates.inc`
+- [`init-scripts/lib/opensearch_templates.inc`](/local-dev-environment/init-scripts/lib/opensearch_templates.inc)
 
-These templates are applied by both setup entrypoints before index creation:
+These templates are applied by both the local development and remote port forwarding setup entrypoints before index creation:
 
-- LocalStack init flow: `init-scripts/02-create-opensearch-resources.sh`
-- Port-forward flow: `setup-opensearch-indexes-portforward.sh`
+- LocalStack init flow: [`init-scripts/02-create-opensearch-resources.sh`](/local-dev-environment/init-scripts/02-create-opensearch-resources.sh)
+- Port-forward flow: [`setup-opensearch-indexes-portforward.sh`](/local-dev-environment/setup-opensearch-indexes-portforward.sh)
 
 Indexes are then created with an empty payload (`{}`) so template settings/mappings are applied consistently.
 
@@ -30,23 +33,25 @@ Shard and replica settings are controlled by environment variables consumed by t
 - `OPENSEARCH_NUMBER_OF_SHARDS` (default: `2`)
 - `OPENSEARCH_NUMBER_OF_REPLICAS` (default: `1`)
 
-
 ## Recreating indexes
 
 ### Local stack
+
+The following command assumes 
+- Docker is running
+- you have already spun up your local development environment
 
 ```bash
 docker compose exec -e CONFIRM_OVERWRITE=true localstack \
   bash /etc/localstack/init/ready.d/02-create-opensearch-resources.sh
 ```
 
-Use `CONFIRM_OVERWRITE=true` when you want to delete and recreate the existing indexes so template changes are applied. The LocalStack init script defaults to keeping existing indexes on boot.
-Note if you delete and recreate existing indexes you will need to recreate the [Bedrock connector](/local-dev-environment/BEDROCK_CONNECTOR_README.md).
-And if you have not enabled persistant storage within the [docker compose file](/local-dev-environment/docker-compose.yml) you will need to re-ingest 
-the case documents.
+Use `CONFIRM_OVERWRITE=true` when you want to delete and recreate the existing indexes so template changes are applied. 
 
+**Note**: If you delete and recreate existing indexes you will need to recreate the [Bedrock connector](/local-dev-environment/BEDROCK_CONNECTOR_README.md).
+And if you have not enabled persistent storage within the [docker compose file](/local-dev-environment/docker-compose.yml) you will need to re-ingest the case documents, see the [RUNBOOK](/runbooks/RUNBOOK.md) for more information.
 
-Default/current non-prod port-forwarding example:
+### Remote port-forwarding example DEV/UAT:
 
 ```bash
 OPENSEARCH_NUMBER_OF_SHARDS=2 OPENSEARCH_NUMBER_OF_REPLICAS=1 \
@@ -128,22 +133,5 @@ curl -s -X POST http://127.0.0.1:9200/_index_template/_simulate_index/page_chunk
 
 ## Troubleshooting
 
-### Template missing (404)
-
-If `/_index_template/page_chunks_template` returns 404:
-
-- The template has not been applied in that environment.
-- Re-run index setup script with the correct endpoint and credentials.
-
-### Simulate output shows null shard/replica
-
-If simulation returns null values:
-
-- No matching composable template may be applied.
-- Check both composable and legacy templates:
-
-```bash
-curl -s http://127.0.0.1:9200/_index_template | jq '.index_templates[].name'
-curl -s http://127.0.0.1:9200/_template/page_chunks* | jq
-```
+For symptom-to-fix troubleshooting steps (including missing templates and simulation output checks), see [/docs/TROUBLESHOOTING.md](/docs/TROUBLESHOOTING.md).
 

@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Usage:
 # 1) Start port-forward to the OpenSearch proxy on localhost:9200
-# 2) Optionally export BEDROCK_ROLE_ARN directly, or let the script prompt for Kubernetes secret details
+# 2) Optionally export BEDROCK_ROLE_ARN directly, or let the script prompt for Kubernetes secret details (RECOMMENDED)
 # 3) Optionally set CONFIRM_OVERWRITE=true to skip overwrite prompts
 # 4) Run this script and answer any prompts for missing values
 #
@@ -11,7 +11,8 @@ set -euo pipefail
 #   export BEDROCK_ROLE_ARN="arn:aws:iam::123456789012:role/cica-bedrock-connector-role"
 #   ./setup-bedrock-connector-portforward.sh
 #
-# Or:
+# Or: (RECOMMENDED)
+#   Select the namespace you have port forwarded to dev or uat
 #   export K8S_NAMESPACE="cica-review-case-documents-dev"
 #   export K8S_SECRET_NAME="cica-review-case-documents-bedrock-connector"
 #   ./setup-bedrock-connector-portforward.sh
@@ -73,7 +74,7 @@ BEDROCK_MODEL_NAME="${MODEL_NAME:-bedrock-titan-embed-text-v2}"
 BEDROCK_PIPELINE_NAME="${INGEST_PIPELINE_NAME:-bedrock-embedding-pipeline}"
 BEDROCK_SEARCH_PIPELINE_NAME="${SEARCH_PIPELINE_NAME:-bedrock-neural-search-pipeline}"
 BEDROCK_ENABLE_INGEST_PIPELINE="${BEDROCK_ENABLE_INGEST_PIPELINE:-true}"
-BEDROCK_FORCE_RECREATE_CONNECTOR="${FORCE_RECREATE_CONNECTOR:-${BEDROCK_FORCE_RECREATE_CONNECTOR:-false}}"
+BEDROCK_FORCE_RECREATE_CONNECTOR="${BEDROCK_FORCE_RECREATE_CONNECTOR:-false}"
 BEDROCK_TARGET_INDEX="${TARGET_INDEX}"
 BEDROCK_OPENSEARCH_ENDPOINT="${OPENSEARCH_ENDPOINT}"
 CONFIRM_OVERWRITE="${CONFIRM_OVERWRITE:-prompt}"
