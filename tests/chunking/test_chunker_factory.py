@@ -21,6 +21,41 @@ def test_factory_returns_textractor_word_stream_chunker():
     assert isinstance(chunker, TextractorWordStreamDocumentChunker)
 
 
+def test_factory_logs_textractor_word_stream_chunker_config(caplog):
+    with caplog.at_level("INFO"):
+        get_chunk_strategy("textractor-word-stream")
+
+    assert "ChunkStrategy settings for textractor-word-stream" in caplog.text
+    assert "\nWORDSTREAM_CHUNKER_MIN_WORDS=80" not in caplog.text
+    assert "WORDSTREAM_CHUNKER_MIN_WORDS=" in caplog.text
+    assert "WORDSTREAM_CHUNKER_MAX_WORDS=" in caplog.text
+    assert "WORDSTREAM_CHUNKER_MAX_VERTICAL_GAP_RATIO=" in caplog.text
+    assert "WORDSTREAM_CHUNKER_FORWARD_LOOKAHEAD_WORDS=" in caplog.text
+    assert "WORDSTREAM_CHUNKER_BACKWARD_SCAN_WORDS=" in caplog.text
+
+
+def test_factory_logs_layout_chunker_config(caplog):
+    with caplog.at_level("INFO"):
+        get_chunk_strategy("layout")
+
+    assert "ChunkStrategy settings for layout" in caplog.text
+    assert "\nLAYOUT_CHUNKER_MIN_WORDS=80" not in caplog.text
+    assert "LAYOUT_CHUNKING_MAXIMUM_CHUNK_SIZE=" in caplog.text
+    assert "LAYOUT_CHUNKING_Y_TOLERANCE_RATIO=" in caplog.text
+    assert "LAYOUT_CHUNKING_MAX_VERTICAL_GAP=" in caplog.text
+    assert "LAYOUT_CHUNKING_LINE_CHUNK_CHAR_LIMIT=" in caplog.text
+
+
+def test_factory_logs_linear_sentence_splitter_chunker_config(caplog):
+    with caplog.at_level("INFO"):
+        get_chunk_strategy("linear-sentence-splitter")
+
+    assert "ChunkStrategy settings for linear-sentence-splitter" in caplog.text
+    assert "SENTENCE_CHUNKER_MIN_WORDS=80" in caplog.text
+    assert "SENTENCE_CHUNKER_MAX_WORDS=120" in caplog.text
+    assert "SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO=0.05" in caplog.text
+
+
 def test_factory_explicit_type_line_normalization():
     chunker = get_chunk_strategy("linear-sentence-splitter")
     assert isinstance(chunker, LineBasedDocumentChunker)

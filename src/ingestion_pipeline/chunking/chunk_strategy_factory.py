@@ -19,6 +19,12 @@ ALLOWED_CHUNKER_TYPES = {"layout", "linear-sentence-splitter", "textractor-word-
 logger = logging.getLogger(__name__)
 
 
+def _log_chunker_settings(chunker_type: str, setting_values: dict[str, object]) -> None:
+    """Log the active chunker settings in key=value form using setting names."""
+    config_summary = " ".join(f"{key}={value}" for key, value in setting_values.items())
+    logger.info("ChunkStrategy settings for %s: %s", chunker_type, config_summary)
+
+
 def get_chunk_strategy(chunker_type: str) -> ChunkStrategy:
     """Factory function to return the desired ChunkStrategy implementation.
 
@@ -45,6 +51,15 @@ def get_chunk_strategy(chunker_type: str) -> ChunkStrategy:
             max_vertical_gap=settings.LAYOUT_CHUNKING_MAX_VERTICAL_GAP,
             line_chunk_char_limit=settings.LAYOUT_CHUNKING_LINE_CHUNK_CHAR_LIMIT,
         )
+        _log_chunker_settings(
+            chunker_type,
+            {
+                "LAYOUT_CHUNKING_MAXIMUM_CHUNK_SIZE": settings.LAYOUT_CHUNKING_MAXIMUM_CHUNK_SIZE,
+                "LAYOUT_CHUNKING_Y_TOLERANCE_RATIO": settings.LAYOUT_CHUNKING_Y_TOLERANCE_RATIO,
+                "LAYOUT_CHUNKING_MAX_VERTICAL_GAP": settings.LAYOUT_CHUNKING_MAX_VERTICAL_GAP,
+                "LAYOUT_CHUNKING_LINE_CHUNK_CHAR_LIMIT": settings.LAYOUT_CHUNKING_LINE_CHUNK_CHAR_LIMIT,
+            },
+        )
 
         layout_text_strategy = LayoutTextChunkingStrategy(chunking_config)
         layout_table_strategy = LayoutTableChunkingStrategy(chunking_config)
@@ -64,9 +79,27 @@ def get_chunk_strategy(chunker_type: str) -> ChunkStrategy:
         return TextractLayoutDocumentChunker(strategy_handlers=strategy_handlers, config=chunking_config)
     elif chunker_type == "linear-sentence-splitter":
         line_chunking_config = LineSentenceChunkingConfig.from_settings(settings)
+        _log_chunker_settings(
+            chunker_type,
+            {
+                "SENTENCE_CHUNKER_MIN_WORDS": settings.SENTENCE_CHUNKER_MIN_WORDS,
+                "SENTENCE_CHUNKER_MAX_WORDS": settings.SENTENCE_CHUNKER_MAX_WORDS,
+                "SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO": settings.SENTENCE_CHUNKER_MAX_VERTICAL_GAP_RATIO,
+            },
+        )
         return LineBasedDocumentChunker(config=line_chunking_config)
     elif chunker_type == "textractor-word-stream":
         word_stream_config = WordStreamChunkingConfig.from_settings(settings)
+        _log_chunker_settings(
+            chunker_type,
+            {
+                "WORDSTREAM_CHUNKER_MIN_WORDS": settings.WORDSTREAM_CHUNKER_MIN_WORDS,
+                "WORDSTREAM_CHUNKER_MAX_WORDS": settings.WORDSTREAM_CHUNKER_MAX_WORDS,
+                "WORDSTREAM_CHUNKER_MAX_VERTICAL_GAP_RATIO": settings.WORDSTREAM_CHUNKER_MAX_VERTICAL_GAP_RATIO,
+                "WORDSTREAM_CHUNKER_FORWARD_LOOKAHEAD_WORDS": settings.WORDSTREAM_CHUNKER_FORWARD_LOOKAHEAD_WORDS,
+                "WORDSTREAM_CHUNKER_BACKWARD_SCAN_WORDS": settings.WORDSTREAM_CHUNKER_BACKWARD_SCAN_WORDS,
+            },
+        )
         return TextractorWordStreamDocumentChunker(config=word_stream_config)
 
     raise RuntimeError("Unreachable code: chunker_type guard should prevent this path.")

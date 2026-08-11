@@ -8,6 +8,10 @@ from opensearchpy import ConnectionError, OpenSearch
 
 logger = logging.getLogger(__name__)
 
+# Keep retry loops quiet; this module logs a concise final failure summary.
+logging.getLogger("opensearch").setLevel(logging.ERROR)
+logging.getLogger("urllib3").setLevel(logging.ERROR)
+
 
 def check_opensearch_health(
     proxy_url: str,
@@ -18,7 +22,8 @@ def check_opensearch_health(
 ) -> bool:
     """Checks the health of the OpenSearch cluster at the given proxy URL.
 
-    Retries until healthy or timeout is reached.
+    Retries until healthy or timeout is reached. Cluster is considered healthy when
+    status is "green" (all shards allocated) or "yellow" (local development/recovering/temporarily unavailable shards).
 
     All timeout values are expressed in seconds.
 
@@ -37,10 +42,11 @@ def check_opensearch_health(
             Set to False only for development environments with self-signed certificates.
 
     Returns:
-        bool: True if healthy, False otherwise.
+        bool: True if cluster is healthy (green or yellow status), False otherwise.
 
     Notes:
-       - This function performs a connectivity/health check against the configured OpenSearch endpoint.
+       - This function queries the cluster health API to verify the cluster state.
+       - Returns False if cluster status is "red" (unavailable) or unreachable.
        - It does not manage application credentials directly.
        - TLS behavior is configurable via verify_certs and ssl_assert_hostname.
        - Authentication and authorization must be configured and enforced outside this function.
@@ -78,11 +84,11 @@ def check_opensearch_health(
         attempts += 1
         try:
             health = client.cluster.health(request_timeout=request_timeout_seconds)
-            status = health.get("status")
-            if status in ("green", "yellow"):
-                logger.info(f"OpenSearch health check passed: status={status}, attempts={attempts}")
+            cluster_status = health.get("status")
+            if cluster_status in ["green", "yellow"]:
+                logger.info(f"OpenSearch health check passed: status={cluster_status}, attempts={attempts}")
                 return True
-            last_status = status
+            last_status = f"cluster status: {cluster_status}"
             last_error = None
         except ConnectionError as e:
             last_error = e
