@@ -243,3 +243,120 @@ def test_wordstream_config_from_settings_uses_wordstream_prefixed_fields():
     assert config.max_vertical_gap_ratio == 0.05
     assert config.forward_lookahead_words == 8
     assert config.backward_scan_words == 20
+
+
+def test_all_printed_words_page_contains_handwriting_false(sample_metadata):
+    """When all words are PRINTED, page_contains_handwriting should be False."""
+    from textractor.data.constants import TextTypes
+
+    config = WordStreamChunkingConfig(min_words=2, max_words=100, max_vertical_gap_ratio=0.05, normalize_spacing=True)
+    chunker = TextractorWordStreamChunker(config=config)
+
+    words = [
+        create_mock_word("Hello", 0.1),
+        create_mock_word("world.", 0.1),
+    ]
+    for w in words:
+        w.text_type = TextTypes.PRINTED
+
+    chunks = chunker.chunk_page(words=words, page_number=1, metadata=sample_metadata, page_contains_handwriting=False)
+
+    assert len(chunks) == 1
+    assert chunks[0].page_contains_handwriting is False
+
+
+def test_handwriting_word_page_contains_handwriting_true(sample_metadata):
+    """When at least one word is HANDWRITING, page_contains_handwriting should be True."""
+    from textractor.data.constants import TextTypes
+
+    config = WordStreamChunkingConfig(min_words=2, max_words=100, max_vertical_gap_ratio=0.05, normalize_spacing=True)
+    chunker = TextractorWordStreamChunker(config=config)
+
+    words = [
+        create_mock_word("Hello", 0.1),
+        create_mock_word("world.", 0.1),
+    ]
+    words[0].text_type = TextTypes.PRINTED
+    words[1].text_type = TextTypes.HANDWRITING
+
+    chunks = chunker.chunk_page(words=words, page_number=1, metadata=sample_metadata, page_contains_handwriting=True)
+
+    assert len(chunks) == 1
+    assert chunks[0].page_contains_handwriting is True
+
+
+def test_mixed_words_all_chunks_flagged(sample_metadata):
+    """When a page has mixed text types, all chunks from that page should be flagged."""
+    from textractor.data.constants import TextTypes
+
+    config = WordStreamChunkingConfig(min_words=2, max_words=100, max_vertical_gap_ratio=0.05, normalize_spacing=True)
+    chunker = TextractorWordStreamChunker(config=config)
+
+    words = [
+        create_mock_word("First", 0.1),
+        create_mock_word("sentence.", 0.1),
+        create_mock_word("Second", 0.12),
+        create_mock_word("sentence.", 0.12),
+    ]
+    # Only one word is handwritten
+    words[0].text_type = TextTypes.PRINTED
+    words[1].text_type = TextTypes.PRINTED
+    words[2].text_type = TextTypes.HANDWRITING
+    words[3].text_type = TextTypes.PRINTED
+
+    chunks = chunker.chunk_page(words=words, page_number=1, metadata=sample_metadata, page_contains_handwriting=True)
+
+    assert len(chunks) == 2
+    assert all(chunk.page_contains_handwriting is True for chunk in chunks)
+
+
+def test_handler_detects_handwriting_from_words(sample_metadata):
+    """Handler should detect handwriting at page level and propagate to chunks."""
+    from textractor.data.constants import TextTypes
+
+    config = WordStreamChunkingConfig(min_words=1, max_words=100, max_vertical_gap_ratio=0.05, normalize_spacing=True)
+    handler = TextractorWordStreamDocumentChunker(config=config)
+
+    word1 = create_mock_word("Hello", 0.1)
+    word1.text_type = TextTypes.PRINTED
+    word2 = create_mock_word("world.", 0.1)
+    word2.text_type = TextTypes.HANDWRITING
+
+    page = MagicMock()
+    page.page_num = 1
+    page.get_text_and_words.return_value = ("Hello world.", [word1, word2])
+
+    doc = MagicMock()
+    doc.pages = [page]
+    doc.response = {"Blocks": [{"BlockType": "WORD"}]}
+
+    processed = handler.chunk(doc, sample_metadata)
+
+    assert len(processed.chunks) == 1
+    assert processed.chunks[0].page_contains_handwriting is True
+
+
+def test_handler_no_handwriting_words(sample_metadata):
+    """Handler should set page_contains_handwriting=False when all words are printed."""
+    from textractor.data.constants import TextTypes
+
+    config = WordStreamChunkingConfig(min_words=1, max_words=100, max_vertical_gap_ratio=0.05, normalize_spacing=True)
+    handler = TextractorWordStreamDocumentChunker(config=config)
+
+    word1 = create_mock_word("Hello", 0.1)
+    word1.text_type = TextTypes.PRINTED
+    word2 = create_mock_word("world.", 0.1)
+    word2.text_type = TextTypes.PRINTED
+
+    page = MagicMock()
+    page.page_num = 1
+    page.get_text_and_words.return_value = ("Hello world.", [word1, word2])
+
+    doc = MagicMock()
+    doc.pages = [page]
+    doc.response = {"Blocks": [{"BlockType": "WORD"}]}
+
+    processed = handler.chunk(doc, sample_metadata)
+
+    assert len(processed.chunks) == 1
+    assert processed.chunks[0].page_contains_handwriting is False

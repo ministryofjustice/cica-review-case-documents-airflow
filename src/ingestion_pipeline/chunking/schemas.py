@@ -94,6 +94,7 @@ class DocumentChunk(BaseModel):
     case_ref: str
     received_date: datetime
     correspondence_type: str
+    page_contains_handwriting: bool = False
 
     @computed_field
     @property
@@ -139,6 +140,7 @@ class DocumentChunk(BaseModel):
         combined_bbox: BoundingBox,
         layout_type: str,
         confidence: float | None,
+        page_contains_handwriting: bool = False,
     ) -> "DocumentChunk":
         """Creates a DocumentChunk from layout_type and confidence, not a Layout block.
 
@@ -150,6 +152,7 @@ class DocumentChunk(BaseModel):
             combined_bbox (BoundingBox): The combined bounding box for the chunk.
             layout_type (str): The type of the chunk (e.g., "LINE_SENTENCE_CHUNK").
             confidence (float | None): The confidence score for the chunk, or None if not available.
+            page_contains_handwriting (bool): Whether any word on the page is handwritten. Defaults to False.
 
         Returns:
             DocumentChunk: The created DocumentChunk instance.
@@ -172,6 +175,7 @@ class DocumentChunk(BaseModel):
             case_ref=metadata.case_ref,
             received_date=metadata.received_date,
             correspondence_type=metadata.correspondence_type,
+            page_contains_handwriting=page_contains_handwriting,
         )
 
 

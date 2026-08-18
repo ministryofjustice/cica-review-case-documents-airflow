@@ -4,6 +4,7 @@ import logging
 import re
 from typing import List, Optional
 
+from textractor.data.constants import TextTypes
 from textractor.entities.document import Document
 from textractor.entities.word import Word
 
@@ -67,14 +68,44 @@ class TextractorWordStreamDocumentChunker(ChunkStrategy):
             logger.info("Page %s has no words, skipping", page.page_num)
             return []
 
+        page_contains_handwriting = self._detect_handwriting(words)
+        if page_contains_handwriting:
+            logger.debug("Page %s flagged as containing handwriting", page.page_num)
+
         page_chunks = self.chunker.chunk_page(
             words=words,
             page_number=page.page_num,
             metadata=metadata,
             chunk_index_start=chunk_index_start,
+            page_contains_handwriting=page_contains_handwriting,
         )
         self._validate_text_consistency(page_text_from_source, page_chunks, page.page_num)
         return page_chunks
+
+    @staticmethod
+    def _detect_handwriting(words: List[Word]) -> bool:
+        """Determine whether any word on the page is handwritten.
+
+        Args:
+            words: The list of Word entities from a page.
+
+        Returns:
+            True if at least one word has text_type == TextTypes.HANDWRITING.
+        """
+        handwriting_detected = False
+        for word in words:
+            if getattr(word, "text_type", None) == TextTypes.HANDWRITING:
+                word_text = getattr(word, "text", "")
+                word_bbox = getattr(word, "bbox", None)
+                logger.debug(
+                    "Handwriting detected: word='%s' bbox=%s",
+                    word_text,
+                    f"(x={word_bbox.x:.4f}, y={word_bbox.y:.4f}, w={word_bbox.width:.4f}, h={word_bbox.height:.4f})"
+                    if word_bbox
+                    else "None",
+                )
+                handwriting_detected = True
+        return handwriting_detected
 
     @staticmethod
     def _normalize_text_for_consistency_check(text: str) -> str:
