@@ -51,9 +51,10 @@ fi
 wait_for_cluster() {
   log "Waiting for OpenSearch at ${OPENSEARCH_ENDPOINT}"
   local status
-  for _ in $(seq 1 60); do
-    status="$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 2 --max-time 10 \
-       "${OPENSEARCH_ENDPOINT}/_cluster/health?wait_for_status=yellow&timeout=5s" "${AUTH_ARGS[@]}" || true)"
+  local max_attempts=12
+  for _ in $(seq 1 "${max_attempts}"); do
+    status="$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 2 --max-time 5 \
+       "${OPENSEARCH_ENDPOINT}/_cluster/health?wait_for_status=yellow&timeout=3s" "${AUTH_ARGS[@]}" || true)"
      case "${status}" in
        200)
          log "OpenSearch is ready"
@@ -62,11 +63,14 @@ wait_for_cluster() {
        401|403)
          fail "Authentication/authorization failed (HTTP ${status}) while checking cluster health"
          ;;
+       000)
+         fail "Cannot connect to ${OPENSEARCH_ENDPOINT}. Is the port-forward running?"
+         ;;
      esac
     sleep 5
   done
 
-  fail "Timed out waiting for OpenSearch cluster health"
+  fail "Timed out after ${max_attempts} attempts waiting for OpenSearch cluster health"
 }
 
 # Source shared template helper (if present) and apply templates so new indices use correct defaults
