@@ -1,0 +1,35 @@
+flowchart TD
+    A["Start: choose index setup path"] --> B{"LocalStack or port-forward?"}
+
+    B -->|LocalStack| C["02-create-opensearch-resources.sh"]
+    B -->|Port-forward| D["setup-opensearch-indexes-portforward.sh"]
+
+    C --> E{"AWS resource failure sentinel present?"}
+    E -->|Yes| X["Skip setup and exit"]
+    E -->|No| F["Wait for OpenSearch container health"]
+    F --> G["Load shared templates helper"]
+    G --> H["Apply page_chunks/page_metadata templates"]
+    H --> I{"Index exists?"}
+    I -->|No| J["Create index from {} so template applies"]
+    I -->|Yes| K{"CONFIRM_OVERWRITE"}
+    K -->|false default| L["Keep existing index and skip creation"]
+    K -->|true| M["Delete index"]
+    K -->|prompt interactive| N{"User confirms recreate?"}
+    K -->|prompt non-interactive or invalid| Y["Fail and exit"]
+    N -->|No| L
+    N -->|Yes| M
+    M --> J
+    J --> O["Repeat for both indexes"]
+    O --> P["Touch /tmp/opensearch_index_ready"]
+    P --> Q["Done"]
+
+    D --> R["Init endpoint, auth, overwrite mode"]
+    R --> S["Wait for cluster health"]
+    S --> T["Load shared templates helper"]
+    T --> U["Apply page_chunks/page_metadata templates"]
+    U --> V["confirm_overwrite_if_needed()"]
+    V --> W{"Proceed?"}
+    W -->|No| Z["Keep existing indexes or fail if non-interactive prompt"]
+    W -->|Yes| AA["Delete existing indexes only when CONFIRM_OVERWRITE=true"]
+    AA --> AB["Create missing indexes from {} so template applies"]
+    AB --> Q

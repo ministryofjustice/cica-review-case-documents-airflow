@@ -1,8 +1,10 @@
 # Line-by-Line Sentence-Aware Chunker
 
+> **Deprecated:** Superseded by the WordStream chunker implementation in `src/ingestion_pipeline/chunking/strategies/word_stream/`.
+
 ## Overview
 
-The `LineSentenceChunker` is a new deterministic chunking algorithm that operates directly on Textract LINE blocks (not LAYOUT blocks). It prioritizes sentence integrity and vertical proximity, addressing issues with the layout-based chunking approach.
+The `LineSentenceChunker` was a deterministic chunking algorithm that operated directly on Textract LINE blocks (not LAYOUT blocks). It prioritized sentence integrity and vertical proximity, addressing issues with the layout-based chunking approach.
 
 ## Key Features
 

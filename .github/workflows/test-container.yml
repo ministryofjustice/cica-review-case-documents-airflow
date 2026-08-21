@@ -1,10 +1,7 @@
 ---
 name: Test Container
 
-on:
-  pull_request:
-    branches:
-      - main
+on: [pull_request]
 
 permissions: {}
 

@@ -1,7 +1,0 @@
-# quinn-proto CVE-2026-31812 - Published: 2026-03-10
-# Severity: HIGH
-# uv rust dependnecy 
-# Installed Version:  0.11.12
-# Fixed Version: 0.11.14
-# Review 19/03/2026
-CVE-2026-31812

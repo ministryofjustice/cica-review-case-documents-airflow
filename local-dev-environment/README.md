@@ -1,20 +1,22 @@
-# Localstack local developer environment
+# LocalStack Local Development Environment
 
-Docker and LocalStack resources to be created:
+This directory contains Docker and LocalStack resources used to run a local development environment.
 
-- [Localstack](https://www.localstack.cloud/)
+Provisioned resources include:
+
+- [LocalStack](https://www.localstack.cloud/)
 - [OpenSearch](https://docs.localstack.cloud/aws/services/opensearch/)
 - [OpenSearch Dashboard](https://docs.opensearch.org/docs/latest/dashboards/)
-- OpenSearch Index: `page_chunks`, [create-opensearch-resources.sh](./init-scripts/create-opensearch-resources.sh)
-- AWS resources, [create-aws-resources.sh](./init-scripts/create-aws-resources.sh)
+- OpenSearch indexes (`page_chunks`, `page_metadata`) via [02-create-opensearch-resources.sh](./init-scripts/02-create-opensearch-resources.sh)
+- AWS resources via [01-create-aws-resources.sh](./init-scripts/01-create-aws-resources.sh)
 
-## Pre-requisites
+## Prerequisites
 
 - [Docker](https://docs.docker.com/get-started/get-docker/)
 - [Docker Desktop](https://docs.docker.com/desktop/)
 - [LocalStack Desktop](https://docs.localstack.cloud/aws/capabilities/web-app/localstack-desktop/)
 - [uv](https://docs.astral.sh/uv/) for Python dependency management
-- LocalStack image version is pinned by default in `docker-compose.yml` to avoid auth/license regressions on newer releases. Override with `LOCALSTACK_IMAGE` in `local-dev-environment/.env` when needed.
+- LocalStack image version is pinned by default in `docker-compose.yml` to avoid auth or license regressions on newer releases. Override with `LOCALSTACK_IMAGE` in `local-dev-environment/.env` when needed.
 
 Optional image override example:
 
@@ -22,45 +24,33 @@ Optional image override example:
 LOCALSTACK_IMAGE=localstack/localstack:2.3.2
 ```
 
- - Ensure `local-dev-environment/.env` variables are set; note the `AWS_MOD_PLATFORM_*` variables will require daily rotation. You can refresh connector credentials without a full Docker rebuild by rerunning the Bedrock setup script with `BEDROCK_FORCE_RECREATE_CONNECTOR=true`.
+Ensure `local-dev-environment/.env` variables are set. The `AWS_MOD_PLATFORM_*` variables require daily rotation. You can refresh connector credentials without a full Docker rebuild by rerunning the Bedrock setup script with `BEDROCK_FORCE_RECREATE_CONNECTOR=true`.
 
 ### For VPN WSL users
 
-If you are running the local environment from behind a corporate VPN with SSL inspection, and encounter SSL certificate issues, you may need to set the following environment variables in your .bashrc to allow LocalStack to trust your custom certificates:
+If you are running the local environment behind a corporate VPN with SSL inspection and encounter certificate issues, you may need to set these environment variables in `.bashrc`:
 ```
 # Ensures LocalStack and its internal services trust the custom CA
 export LOCALSTACK_REQUESTS_CA_BUNDLE="/home/your_user/custom_ca_bundle.pem"
 export LOCALSTACK_HOST_MOUNTS="/home/your_user/custom_ca_bundle.pem:/etc/ssl/certs/custom_ca_bundle.pem"
 ```
-This assumes you have already created the custom_ca_bundle.pem file as described in the main project README, CICA specific Windows WSL setup and configuration instructions.
-
- - Ensure `local-dev-environment/.env` variables are set; note the `AWS_MOD_PLATFORM_*` variables will require daily rotation. You can refresh connector credentials without a full Docker rebuild by rerunning the Bedrock setup script with `BEDROCK_FORCE_RECREATE_CONNECTOR=true`.
-
-### For VPN WSL users
-
-If you are running the local environment from behind a corporate VPN with SSL inspection, and encounter SSL certificate issues, you may need to set the following environment variables in your .bashrc to allow LocalStack to trust your custom certificates:
-```
-# Ensures LocalStack and its internal services trust the custom CA
-export LOCALSTACK_REQUESTS_CA_BUNDLE="/home/your_user/custom_ca_bundle.pem"
-export LOCALSTACK_HOST_MOUNTS="/home/your_user/custom_ca_bundle.pem:/etc/ssl/certs/custom_ca_bundle.pem"
-```
-This assumes you have already created the custom_ca_bundle.pem file as described in the main project README, CICA specific Windows WSL setup and configuration instructions.
+This assumes `custom_ca_bundle.pem` has already been created as described in the project README and WSL setup guidance.
 
 ## Setup
 
-Navigate into the local-dev-environment folder
+Navigate into the local-dev-environment folder:
 
 ```bash
 cd cica-review-case-documents-airflow/local-dev-environment
 ```
 
-and run
+Then run:
 
 ```bash
 docker compose up -d --force-recreate
 ```
 
-You should see
+You should see:
 
 ```
 :~/cica-review-case-documents-airflow/local-dev-environment$ docker compose up -d --force-recreate
@@ -72,11 +62,11 @@ You should see
  ✔ Container opensearch-dashboards       Started   
 ```
 
-View the localstack logs
+View the LocalStack logs:
 
-``docker  logs localstack-main -f``
+`docker logs localstack-main -f`
 
-Look for
+Look for:
 
 ```
 Waiting for OpenSearch domain to be created...
@@ -88,7 +78,7 @@ DOMAIN_ENDPOINT: case-document-search-domain.eu-west-2.opensearch.localhost.loca
 Waiting for OpenSearch to be ready...
 ```
 
-There may be a short delay whilst the domain spins up then you should see
+There may be a short delay while the domain spins up. Then you should see:
 
 ```
 OpenSearch is ready! Creating index 'case-documents'...
@@ -100,15 +90,15 @@ Ready.
 
 ```
 
-The environment is then ready to be used. OpenSearch is accessible at `http://localhost:9200`.
+The environment is then ready to use. OpenSearch is accessible at `http://localhost:9200`.
 
 ## Docker Desktop
 
 If Docker Desktop has been installed you can view, pause, stop, run and view logs for the environment and the individual containers from within the Docker Desktop UI (recommended).
 
-## Opensearch Dashboard
+## OpenSearch Dashboard
 
-Navigate to http://127.0.0.1:5601/ to view the OpenSearch dashboard.
+Navigate to `http://127.0.0.1:5601/` to view OpenSearch Dashboard.
 
 Navigate to [indices](http://127.0.0.1:5601/app/opensearch_index_management_dashboards#/indices?from=0&search=&showDataStreams=false&size=20&sortDirection=desc&sortField=index) to view the `page_chunks` index.
 
@@ -130,7 +120,7 @@ For index template/index creation workflow and shard/replica guidance, see [OPEN
 
 Bedrock connector setup is managed in [03-setup-bedrock-connector-neural.sh](./init-scripts/03-setup-bedrock-connector-neural.sh).
 
-Canonical explanation of search pipeline behavior (including when requests do or do not need to specify a pipeline explicitly) is documented in [../README.md](../README.md#opensearch-search-pipeline-behavior).
+Canonical search pipeline behavior is documented in [BEDROCK_CONNECTOR_README.md](./BEDROCK_CONNECTOR_README.md#current-behavior).
 
 ### Shared setup implementation
 
@@ -139,7 +129,7 @@ Both setup entrypoints now reuse shared helper functions in [init-scripts/lib/be
 - LocalStack init flow: [03-setup-bedrock-connector-neural.sh](./init-scripts/03-setup-bedrock-connector-neural.sh)
 - Port-forward flow: [setup-bedrock-connector-portforward.sh](./setup-bedrock-connector-portforward.sh)
 
-For maintenance, update connector/model/pipeline logic in the shared helper first, then keep entrypoint scripts focused on environment-specific auth and bootstrapping.
+For maintenance, update connector, model, and pipeline logic in the shared helper first, then keep entrypoint scripts focused on environment-specific auth and bootstrapping.
 
 ### LocalStack index setup
 
@@ -150,7 +140,7 @@ docker compose exec -e CONFIRM_OVERWRITE=true localstack \
         bash /etc/localstack/init/ready.d/02-create-opensearch-resources.sh
 ```
 
-If you set `CONFIRM_OVERWRITE=prompt`, the script prompts when run interactively; otherwise the default is to keep existing indexes so normal container startup remains non-destructive.
+If you set `CONFIRM_OVERWRITE=prompt`, the script prompts when run interactively. Otherwise, the default is to keep existing indexes so normal container startup remains non-destructive.
 
 ### Rotating AWS credentials without rebuilding
 
@@ -164,14 +154,14 @@ cd local-dev-environment
 docker compose restart localstack
 ```
 
-3. Force connector/model recreation so OpenSearch stores fresh Bedrock credentials:
+3. Force connector and model recreation so OpenSearch stores fresh Bedrock credentials:
 
 ```bash
 docker compose exec -e BEDROCK_FORCE_RECREATE_CONNECTOR=true localstack \
         bash /etc/localstack/init/ready.d/03-setup-bedrock-connector-neural.sh
 ```
 
-This refreshes connector/model auth without recreating OpenSearch indexes.
+This refreshes connector and model auth without recreating OpenSearch indexes.
 
 For the port-forward setup script, `CONFIRM_OVERWRITE` controls behavior when existing pipelines or index settings are found:
 
@@ -200,15 +190,14 @@ Credential handling considerations:
 
 This is a temporary operational workaround to configure a remote OpenSearch instance through a local port-forward.
 
-If credentials backing the connector have rotated, force recreation during port-forward setup with either of these flags:
+If credentials backing the connector have rotated, force recreation during port-forward setup with the following flag:
 
-- `FORCE_RECREATE_CONNECTOR=true`
 - `BEDROCK_FORCE_RECREATE_CONNECTOR=true`
 
 Example:
 
 ```bash
-FORCE_RECREATE_CONNECTOR=true CONFIRM_OVERWRITE=true ./setup-bedrock-connector-portforward.sh
+BEDROCK_FORCE_RECREATE_CONNECTOR=true CONFIRM_OVERWRITE=true ./setup-bedrock-connector-portforward.sh
 ```
 
 ### Port-forward index setup helper
@@ -243,7 +232,7 @@ docker compose exec -e BEDROCK_FORCE_RECREATE_CONNECTOR=true localstack \
 For port-forward setup:
 
 ```bash
-FORCE_RECREATE_CONNECTOR=true CONFIRM_OVERWRITE=true ./setup-bedrock-connector-portforward.sh
+BEDROCK_FORCE_RECREATE_CONNECTOR=true CONFIRM_OVERWRITE=true ./setup-bedrock-connector-portforward.sh
 ```
 
 2. Model state remains `PARTIALLY_DEPLOYED`

@@ -1,7 +1,8 @@
-# Bedrock Connector Runbook
+# Bedrock Connector Guide
 
-This runbook documents how to set up and maintain the [Bedrock connector](https://docs.opensearch.org/latest/ml-commons-plugin/remote-models/connectors/) and related OpenSearch pipelines for this repository.
+This guide documents the [Bedrock connector](https://docs.opensearch.org/latest/ml-commons-plugin/remote-models/connectors/) and related OpenSearch pipelines for this repository.
 - [Flow Diagram](/local-dev-environment/diagrams/bedrock-connector-flow.mermaid)
+- See the [Runbooks](/runbooks/RUNBOOK.md) for initial setup and working with local and remote environments.
 
 ## Current behavior
 
@@ -22,44 +23,42 @@ Shared implementation:
 
 When changing connector/model/pipeline behavior, update the shared library first and keep entrypoint scripts focused on environment-specific bootstrapping and auth.
 
-## LocalStack setup
+## Connector recreation
 
-From `local-dev-environment`:
+You will need to recreate the connector for
+- AWS key rotation (local development only)
+- after recreating the indexes
+- making changes to the connector
 
+### Local dev environment
+From the repo root directory
 ```bash
-docker compose up -d --force-recreate
-```
+cd local-dev-environment/
 
-To force connector/model recreation (for rotated credentials):
-
-```bash
- docker compose exec -e BEDROCK_FORCE_RECREATE_CONNECTOR=true localstack \
+docker compose exec -e BEDROCK_FORCE_RECREATE_CONNECTOR=true localstack \
   bash /etc/localstack/init/ready.d/03-setup-bedrock-connector-neural.sh
 ```
 
-## Port-forward setup
-
-1. Start a local port-forward to OpenSearch (loopback binding expected, for example `127.0.0.1:9200`).
-   ```bash
-   kubectl port-forward service/opensearch-<service> 9200:8080 --namespace <namespace>
-   ```
-
-
-2. Run setup:
-
+### Remote port forwarded environment DEV/UAT
+From the repo root directory
 ```bash
-./setup-bedrock-connector-portforward.sh
+cd local-dev-environment/
+
+BEDROCK_FORCE_RECREATE_CONNECTOR=true CONFIRM_OVERWRITE=true ./setup-bedrock-connector-portforward.sh
 ```
 
-Optional flags:
+And follow the usage instructions within the [script](/local-dev-environment/setup-bedrock-connector-portforward.sh).
 
-- `FORCE_RECREATE_CONNECTOR=true` or `BEDROCK_FORCE_RECREATE_CONNECTOR=true` to force connector/model recreation
+
+## Optional flags:
+
+- `BEDROCK_FORCE_RECREATE_CONNECTOR=true` to force connector/model recreation
 - `CONFIRM_OVERWRITE=true` to skip interactive overwrite prompts
 
 Example:
 
 ```bash
-FORCE_RECREATE_CONNECTOR=true CONFIRM_OVERWRITE=true ./setup-bedrock-connector-portforward.sh
+BEDROCK_FORCE_RECREATE_CONNECTOR=true CONFIRM_OVERWRITE=true ./setup-bedrock-connector-portforward.sh
 ```
 
 ## Confirm overwrite behavior
@@ -108,25 +107,7 @@ curl -s http://127.0.0.1:9200/_plugins/_ml/models/<MODEL_ID> | jq '.model_state'
 
 ## Troubleshooting
 
-### Expired AWS security token
-
-Symptom:
-
-- `The security token included in the request is expired`
-
-Fix (LocalStack):
-
-```bash
-docker compose restart localstack
-docker compose exec -e BEDROCK_FORCE_RECREATE_CONNECTOR=true localstack \
-  bash /etc/localstack/init/ready.d/03-setup-bedrock-connector-neural.sh
-```
-
-Fix (port-forward):
-
-```bash
-FORCE_RECREATE_CONNECTOR=true CONFIRM_OVERWRITE=true ./setup-bedrock-connector-portforward.sh
-```
+For symptom-to-fix troubleshooting steps (including expired AWS token handling), see [/docs/TROUBLESHOOTING.md](/docs/TROUBLESHOOTING.md).
 
 ## Security notes
 

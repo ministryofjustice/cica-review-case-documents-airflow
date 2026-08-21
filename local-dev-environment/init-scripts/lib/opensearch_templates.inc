@@ -60,7 +60,13 @@ opensearch_create_page_chunks_template() {
       "properties": {
         "chunk_id": { "type": "keyword" },
         "source_doc_id": { "type": "keyword" },
-        "chunk_text": { "type": "text", "fields": { "english": { "type": "text", "analyzer": "english" } } },
+        "chunk_text": {
+          "type": "text",
+          "analyzer": "stop",
+          "fields": {
+            "english": { "type": "text", "analyzer": "english" }
+          }
+        },
         "embedding": {
           "type": "knn_vector",
           "dimension": 1024,
