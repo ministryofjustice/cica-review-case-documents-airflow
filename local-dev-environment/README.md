@@ -34,6 +34,18 @@ export LOCALSTACK_HOST_MOUNTS="/home/your_user/custom_ca_bundle.pem:/etc/ssl/cer
 ```
 This assumes you have already created the custom_ca_bundle.pem file as described in the main project README, CICA specific Windows WSL setup and configuration instructions.
 
+ - Ensure `local-dev-environment/.env` variables are set; note the `AWS_MOD_PLATFORM_*` variables will require daily rotation. You can refresh connector credentials without a full Docker rebuild by rerunning the Bedrock setup script with `BEDROCK_FORCE_RECREATE_CONNECTOR=true`.
+
+### For VPN WSL users
+
+If you are running the local environment from behind a corporate VPN with SSL inspection, and encounter SSL certificate issues, you may need to set the following environment variables in your .bashrc to allow LocalStack to trust your custom certificates:
+```
+# Ensures LocalStack and its internal services trust the custom CA
+export LOCALSTACK_REQUESTS_CA_BUNDLE="/home/your_user/custom_ca_bundle.pem"
+export LOCALSTACK_HOST_MOUNTS="/home/your_user/custom_ca_bundle.pem:/etc/ssl/certs/custom_ca_bundle.pem"
+```
+This assumes you have already created the custom_ca_bundle.pem file as described in the main project README, CICA specific Windows WSL setup and configuration instructions.
+
 ## Setup
 
 Navigate into the local-dev-environment folder
@@ -114,6 +126,7 @@ This will process a sample document and index the chunks into OpenSearch. After 
 ## Bedrock Connector Notes
 
 For a focused setup and troubleshooting guide, see [BEDROCK_CONNECTOR_README.md](./BEDROCK_CONNECTOR_README.md).
+For index template/index creation workflow and shard/replica guidance, see [OPENSEARCH_INDEXES_README.md](./OPENSEARCH_INDEXES_README.md).
 
 Bedrock connector setup is managed in [03-setup-bedrock-connector-neural.sh](./init-scripts/03-setup-bedrock-connector-neural.sh).
 
@@ -127,6 +140,17 @@ Both setup entrypoints now reuse shared helper functions in [init-scripts/lib/be
 - Port-forward flow: [setup-bedrock-connector-portforward.sh](./setup-bedrock-connector-portforward.sh)
 
 For maintenance, update connector/model/pipeline logic in the shared helper first, then keep entrypoint scripts focused on environment-specific auth and bootstrapping.
+
+### LocalStack index setup
+
+To recreate `page_chunks` and `page_metadata` in LocalStack after changing a template, run:
+
+```bash
+docker compose exec -e CONFIRM_OVERWRITE=true localstack \
+        bash /etc/localstack/init/ready.d/02-create-opensearch-resources.sh
+```
+
+If you set `CONFIRM_OVERWRITE=prompt`, the script prompts when run interactively; otherwise the default is to keep existing indexes so normal container startup remains non-destructive.
 
 ### Rotating AWS credentials without rebuilding
 
@@ -160,6 +184,11 @@ For the port-forward setup script, `CONFIRM_OVERWRITE` controls behavior when ex
 The port-forward setup script is intended for manual, local execution only:
 
 - Run `kubectl port-forward` first on the same machine where the script runs (loopback binding expected, for example `127.0.0.1:9200`).
+
+   ```bash
+   kubectl port-forward service/opensearch-<service> 9200:8080 --namespace <namespace>
+   ```
+
 - Do not use this workflow on shared hosts or jump boxes.
 - Required local tools include `curl`, `kubectl`, and `base64`.
 
