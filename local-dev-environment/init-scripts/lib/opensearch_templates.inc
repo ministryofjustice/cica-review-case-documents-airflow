@@ -87,6 +87,7 @@ opensearch_create_page_chunks_template() {
         "chunk_index": { "type": "integer" },
         "chunk_type": { "type": "keyword" },
         "confidence": { "type": "float" },
+        "page_contains_handwriting": { "type": "boolean" },
         "geometry": {
           "properties": {
             "bounding_box": {

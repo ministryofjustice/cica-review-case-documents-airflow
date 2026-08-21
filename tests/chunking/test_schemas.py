@@ -115,3 +115,49 @@ def test_generate_chunk_id_with_minimal_metadata(mock_identifier_cls):
 
     chunk_id = DocumentChunk._generate_chunk_id(metadata, page_num=1, chunk_index=0)
     assert chunk_id == "uuid-minimal"
+
+
+@mock.patch("ingestion_pipeline.chunking.schemas.DocumentIdentifier")
+def test_page_contains_handwriting_defaults_to_false(mock_identifier_cls):
+    mock_identifier = mock_identifier_cls.return_value
+    mock_identifier.generate_uuid.return_value = "uuid-hw-test"
+
+    metadata = make_metadata()
+    bbox = BoundingBox(x=0.1, y=0.2, width=0.5, height=0.3)
+
+    chunk = DocumentChunk.create_chunk(
+        page_number=1,
+        metadata=metadata,
+        chunk_index=0,
+        chunk_text="Some text.",
+        combined_bbox=bbox,
+        layout_type="TEXTRACT_WORD_STREAM_CHUNK",
+        confidence=None,
+    )
+
+    assert chunk.page_contains_handwriting is False
+    assert "page_contains_handwriting" in chunk.model_dump()
+    assert chunk.model_dump()["page_contains_handwriting"] is False
+
+
+@mock.patch("ingestion_pipeline.chunking.schemas.DocumentIdentifier")
+def test_page_contains_handwriting_set_to_true(mock_identifier_cls):
+    mock_identifier = mock_identifier_cls.return_value
+    mock_identifier.generate_uuid.return_value = "uuid-hw-true"
+
+    metadata = make_metadata()
+    bbox = BoundingBox(x=0.1, y=0.2, width=0.5, height=0.3)
+
+    chunk = DocumentChunk.create_chunk(
+        page_number=1,
+        metadata=metadata,
+        chunk_index=0,
+        chunk_text="Handwritten text.",
+        combined_bbox=bbox,
+        layout_type="TEXTRACT_WORD_STREAM_CHUNK",
+        confidence=None,
+        page_contains_handwriting=True,
+    )
+
+    assert chunk.page_contains_handwriting is True
+    assert chunk.model_dump()["page_contains_handwriting"] is True

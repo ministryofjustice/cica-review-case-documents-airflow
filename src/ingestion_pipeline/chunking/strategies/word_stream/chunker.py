@@ -50,6 +50,7 @@ class TextractorWordStreamChunker:
         page_number: int,
         metadata: DocumentMetadata,
         chunk_index_start: int = 0,
+        page_contains_handwriting: bool = False,
     ) -> List[DocumentChunk]:
         """Chunk a page's ordered words into sentence-aware chunks.
 
@@ -58,6 +59,7 @@ class TextractorWordStreamChunker:
             page_number: The page number (1-based).
             metadata: Document metadata.
             chunk_index_start: Starting index for chunk numbering.
+            page_contains_handwriting: Whether any word on the page is handwritten.
         """
         if not words:
             return []
@@ -80,11 +82,15 @@ class TextractorWordStreamChunker:
 
             gap_reason = self._get_gap_reason(state.prev_bottom, word_bbox)
             if gap_reason and state.tokens:
-                chunk_index = self._emit_chunk(chunks, state, page_number, metadata, chunk_index, gap_reason)
+                chunk_index = self._emit_chunk(
+                    chunks, state, page_number, metadata, chunk_index, gap_reason, page_contains_handwriting
+                )
                 state.reset()
 
             if state.tokens and (state.word_count + word_count) > self.config.max_words:
-                chunk_index = self._split_or_emit_at_hard_max(chunks, state, page_number, metadata, chunk_index)
+                chunk_index = self._split_or_emit_at_hard_max(
+                    chunks, state, page_number, metadata, chunk_index, page_contains_handwriting
+                )
 
             state.tokens.append(word_text)
             state.bboxes.append(word_bbox)
@@ -108,18 +114,26 @@ class TextractorWordStreamChunker:
                         reason = None
 
                 if should_close and reason == "sentence_boundary":
-                    chunk_index = self._emit_chunk(chunks, state, page_number, metadata, chunk_index, reason)
+                    chunk_index = self._emit_chunk(
+                        chunks, state, page_number, metadata, chunk_index, reason, page_contains_handwriting
+                    )
                     state.reset()
                 elif should_close and reason == "hard_max":
-                    chunk_index = self._split_or_emit_at_hard_max(chunks, state, page_number, metadata, chunk_index)
+                    chunk_index = self._split_or_emit_at_hard_max(
+                        chunks, state, page_number, metadata, chunk_index, page_contains_handwriting
+                    )
                 elif should_close and reason and reason.startswith("lookahead_vertical_gap"):
-                    chunk_index = self._emit_chunk(chunks, state, page_number, metadata, chunk_index, reason)
+                    chunk_index = self._emit_chunk(
+                        chunks, state, page_number, metadata, chunk_index, reason, page_contains_handwriting
+                    )
                     state.reset()
 
             i += 1
 
         if state.tokens:
-            self._emit_chunk(chunks, state, page_number, metadata, chunk_index, "final_chunk")
+            self._emit_chunk(
+                chunks, state, page_number, metadata, chunk_index, "final_chunk", page_contains_handwriting
+            )
 
         return chunks
 
@@ -235,6 +249,7 @@ class TextractorWordStreamChunker:
         page_number: int,
         metadata: DocumentMetadata,
         chunk_index: int,
+        page_contains_handwriting: bool = False,
     ) -> int:
         """Prefer backward sentence split at hard max, else force-close current state."""
         split_at = self._find_backward_split(state.tokens)
@@ -246,6 +261,7 @@ class TextractorWordStreamChunker:
                 metadata,
                 chunk_index,
                 f"would_exceed_max_words current_words={state.word_count} max_words={self.config.max_words}",
+                page_contains_handwriting,
             )
             state.reset()
             return chunk_index
@@ -263,6 +279,7 @@ class TextractorWordStreamChunker:
             metadata,
             chunk_index,
             "backward_sentence_boundary",
+            page_contains_handwriting,
         )
 
         state.tokens = state.tokens[split_at:]
@@ -282,6 +299,7 @@ class TextractorWordStreamChunker:
         metadata: DocumentMetadata,
         chunk_index: int,
         reason: str,
+        page_contains_handwriting: bool = False,
     ) -> int:
         """Create and append one chunk, returning the next chunk index."""
         chunk_text = self._normalize_chunk_text(state.tokens)
@@ -302,6 +320,7 @@ class TextractorWordStreamChunker:
             combined_bbox=combined_bbox,
             layout_type="TEXTRACT_WORD_STREAM_CHUNK",
             confidence=None,
+            page_contains_handwriting=page_contains_handwriting,
         )
         chunks.append(chunk)
         return chunk_index + 1
