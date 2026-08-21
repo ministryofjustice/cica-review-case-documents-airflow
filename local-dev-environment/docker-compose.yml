@@ -1,7 +1,7 @@
 services:
   opensearch:
     container_name: opensearch
-    image: opensearchproject/opensearch:3.3.0
+    image: opensearchproject/opensearch:3.5.0
     environment:
       - node.name=opensearch
       - cluster.name=opensearch-docker-cluster
@@ -60,7 +60,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 15
-      start_period: 60s # Allow READY init scripts to complete before healthcheck failures count
+      start_period: 360s # Allow READY init scripts to complete before healthcheck failures count
 
   opensearch-dashboards:
     container_name: opensearch-dashboards
