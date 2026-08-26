@@ -131,6 +131,7 @@ opensearch_create_page_metadata_template() {
         "received_date": { "type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis||yyyy-MM-dd'T'HH:mm:ss.SSSSSS" },
         "page_count": { "type": "integer", "index": false },
         "page_number": { "type": "integer", "index": false },
+        "page_contains_handwriting": { "type": "boolean" },
         "geometry": { "type": "object", "enabled": false }
       }
     }

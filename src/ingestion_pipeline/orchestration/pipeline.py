@@ -1,9 +1,10 @@
 """Orchestration pipeline for chunking and indexing documents."""
 
 import logging
+from typing import List
 
 from ingestion_pipeline.chunking.chunk_strategy import ChunkError, ChunkStrategy
-from ingestion_pipeline.chunking.schemas import DocumentMetadata
+from ingestion_pipeline.chunking.schemas import DocumentChunk, DocumentMetadata, DocumentPage
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingError, EmbeddingGenerator
 from ingestion_pipeline.indexing.indexer import IndexingError, OpenSearchIndexer
@@ -80,24 +81,31 @@ class Pipeline:
 
             updated_metadata = document_metadata.model_copy(update={"page_count": document.num_pages})
 
-            # Index page metadata here
+            # Create page metadata records (images uploaded, DocumentPage objects constructed)
             page_documents = self.page_processor.process(document, updated_metadata)
-            self.page_indexer.index_documents(page_documents, id_field="page_id")
 
+            # Chunk the document (handwriting detection happens here per page)
             processed_data = self.chunker.chunk(document, updated_metadata)
             if not processed_data.chunks:
-                logger.warning("No chunks were generated. Skipping embedding and indexing.")
+                logger.warning("No chunks were generated. Indexing page metadata with defaults.")
+                self.page_indexer.index_documents(page_documents, id_field="page_id")
                 return
 
+            # Propagate handwriting flags from chunks to page metadata
+            self._propagate_handwriting_flags(page_documents, processed_data.chunks)
+
+            # Generate embeddings
             logger.info(f"Generating embeddings for {len(processed_data.chunks)} chunks")
             for chunk in processed_data.chunks:
                 chunk.embedding = self.embedding_generator.generate_embedding(chunk.chunk_text)
             logger.info(f"Finished generating embeddings for {len(processed_data.chunks)} chunks")
 
+            # Index chunks first, then page metadata
             self.chunk_indexer.index_documents(processed_data.chunks)
+            self.page_indexer.index_documents(page_documents, id_field="page_id")
             logger.info("Successfully finished processing document")
 
-        except (TextractProcessingError, EmbeddingError, IndexingError, ChunkError) as e:
+        except (TextractProcessingError, EmbeddingError, IndexingError, ChunkError, PipelineError) as e:
             logger.critical(f"Pipeline failed for document: {e}", exc_info=True)
             self._cleanup_indexed_data(source_doc_id)
             raise
@@ -142,3 +150,40 @@ class Pipeline:
             or "Failed to establish a new connection" in message
             or "Name or service not known" in message
         )
+
+    @staticmethod
+    def _propagate_handwriting_flags(
+        page_documents: List[DocumentPage],
+        chunks: List[DocumentChunk],
+    ) -> None:
+        """Set page_contains_handwriting on DocumentPage objects using chunk data.
+
+        For each page, if any chunk on that page has page_contains_handwriting=True,
+        the corresponding DocumentPage is updated to True.
+
+        Raises PipelineError if any chunk references a page_number that has no
+        corresponding DocumentPage, as this indicates a data integrity violation.
+
+        Args:
+            page_documents: List of DocumentPage objects to update in place.
+            chunks: List of DocumentChunk objects containing handwriting flags.
+
+        Raises:
+            PipelineError: If a chunk references a page_number not in page_documents.
+        """
+        page_num_set = {page_doc.page_num for page_doc in page_documents}
+
+        pages_with_handwriting: set[int] = set()
+        for chunk in chunks:
+            if chunk.page_number not in page_num_set:
+                raise PipelineError(
+                    f"Chunk '{chunk.chunk_id}' references page_number={chunk.page_number} "
+                    f"which has no corresponding DocumentPage (source_doc_id={chunk.source_doc_id}). "
+                    f"Available page numbers: {sorted(page_num_set)}"
+                )
+            if chunk.page_contains_handwriting:
+                pages_with_handwriting.add(chunk.page_number)
+
+        for page_doc in page_documents:
+            if page_doc.page_num in pages_with_handwriting:
+                page_doc.page_contains_handwriting = True
