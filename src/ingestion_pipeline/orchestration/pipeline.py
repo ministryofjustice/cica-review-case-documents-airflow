@@ -88,6 +88,7 @@ class Pipeline:
             processed_data = self.chunker.chunk(document, updated_metadata)
             if not processed_data.chunks:
                 logger.warning("No chunks were generated. Indexing page metadata with defaults.")
+                self.chunk_indexer.delete_documents_by_source_doc_id(source_doc_id)
                 self.page_indexer.index_documents(page_documents, id_field="page_id")
                 return
 
