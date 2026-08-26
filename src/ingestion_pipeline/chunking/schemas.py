@@ -192,6 +192,9 @@ class DocumentPage(BaseModel):
     page_height: float
     received_date: datetime
     correspondence_type: str = Field(..., description="Type of correspondence.")
+    page_contains_handwriting: bool = Field(
+        default=False, description="Whether any word on this page was classified as handwritten."
+    )
 
 
 class ProcessedDocument(BaseModel):
