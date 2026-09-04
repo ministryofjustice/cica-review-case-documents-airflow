@@ -5,7 +5,7 @@ from unittest import mock
 
 from textractor.entities.bbox import BoundingBox
 
-from ingestion_pipeline.chunking.schemas import DocumentBoundingBox, DocumentChunk, DocumentMetadata
+from ingestion_pipeline.chunking.schemas import DocumentBoundingBox, DocumentChunk, DocumentMetadata, DocumentPage
 
 
 def test_to_textractor_bbox_returns_correct_bbox():
@@ -161,3 +161,88 @@ def test_page_contains_handwriting_set_to_true(mock_identifier_cls):
 
     assert chunk.page_contains_handwriting is True
     assert chunk.model_dump()["page_contains_handwriting"] is True
+
+
+# --- Tests for DocumentPage.page_contains_handwriting ---
+
+
+def test_document_page_handwriting_defaults_to_false():
+    page = DocumentPage(
+        source_doc_id="doc-123",
+        source_file_name="test-doc.pdf",
+        case_ref="26-711111",
+        page_num=1,
+        page_count=3,
+        page_id="page-uuid-1",
+        s3_page_image_s3_uri="s3://bucket/page1.png",
+        text="Some OCR text",
+        page_width=612.0,
+        page_height=792.0,
+        received_date=datetime.datetime.fromisoformat("2024-01-01"),
+        correspondence_type="Letter",
+    )
+
+    assert page.page_contains_handwriting is False
+
+
+def test_document_page_handwriting_set_to_true():
+    page = DocumentPage(
+        source_doc_id="doc-123",
+        source_file_name="test-doc.pdf",
+        case_ref="26-711111",
+        page_num=1,
+        page_count=3,
+        page_id="page-uuid-1",
+        s3_page_image_s3_uri="s3://bucket/page1.png",
+        text="Some OCR text",
+        page_width=612.0,
+        page_height=792.0,
+        received_date=datetime.datetime.fromisoformat("2024-01-01"),
+        correspondence_type="Letter",
+        page_contains_handwriting=True,
+    )
+
+    assert page.page_contains_handwriting is True
+
+
+def test_document_page_handwriting_in_model_dump():
+    page = DocumentPage(
+        source_doc_id="doc-123",
+        source_file_name="test-doc.pdf",
+        case_ref="26-711111",
+        page_num=1,
+        page_count=3,
+        page_id="page-uuid-1",
+        s3_page_image_s3_uri="s3://bucket/page1.png",
+        text="Some OCR text",
+        page_width=612.0,
+        page_height=792.0,
+        received_date=datetime.datetime.fromisoformat("2024-01-01"),
+        correspondence_type="Letter",
+    )
+
+    dump = page.model_dump()
+    assert "page_contains_handwriting" in dump
+    assert dump["page_contains_handwriting"] is False
+
+
+def test_document_page_handwriting_can_be_updated_after_construction():
+    page = DocumentPage(
+        source_doc_id="doc-123",
+        source_file_name="test-doc.pdf",
+        case_ref="26-711111",
+        page_num=1,
+        page_count=3,
+        page_id="page-uuid-1",
+        s3_page_image_s3_uri="s3://bucket/page1.png",
+        text="Some OCR text",
+        page_width=612.0,
+        page_height=792.0,
+        received_date=datetime.datetime.fromisoformat("2024-01-01"),
+        correspondence_type="Letter",
+    )
+
+    assert page.page_contains_handwriting is False
+    page.page_contains_handwriting = True
+    assert page.page_contains_handwriting is True
+    assert page.model_dump()["page_contains_handwriting"] is True

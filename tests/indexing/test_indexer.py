@@ -289,6 +289,8 @@ def test_index_documents_with_document_page(mock_helpers_bulk, mock_opensearch_c
     sample_pages = [
         DocumentPage(
             source_doc_id="doc1",
+            source_file_name="test-document.pdf",
+            case_ref="26-711111",
             page_num=1,
             page_id="page1",
             text="Page 1 text",
@@ -301,6 +303,8 @@ def test_index_documents_with_document_page(mock_helpers_bulk, mock_opensearch_c
         ),
         DocumentPage(
             source_doc_id="doc1",
+            source_file_name="test-document.pdf",
+            case_ref="26-711111",
             page_num=2,
             page_id="page2",
             text="Page 2 text",

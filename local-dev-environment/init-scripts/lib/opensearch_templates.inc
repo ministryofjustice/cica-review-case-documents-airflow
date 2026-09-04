@@ -123,15 +123,17 @@ opensearch_create_page_metadata_template() {
       "properties": {
         "page_id": { "type": "keyword" },
         "source_doc_id": { "type": "keyword" },
-        "page_text": { "type": "keyword", "index": false },
         "source_file_name": { "type": "keyword", "index": false },
-        "s3_page_image_uri": { "type": "keyword", "index": false },
-        "case_ref": { "type": "keyword", "index": false },
+        "case_ref": { "type": "keyword" },
+        "text": { "type": "keyword", "index": false },
+        "s3_page_image_s3_uri": { "type": "keyword", "index": false },
         "correspondence_type": { "type": "keyword", "index": false },
         "received_date": { "type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis||yyyy-MM-dd'T'HH:mm:ss.SSSSSS" },
         "page_count": { "type": "integer", "index": false },
-        "page_number": { "type": "integer", "index": false },
-        "geometry": { "type": "object", "enabled": false }
+        "page_num": { "type": "integer", "index": false },
+        "page_width": { "type": "float", "index": false },
+        "page_height": { "type": "float", "index": false },
+        "page_contains_handwriting": { "type": "boolean" }
       }
     }
   }

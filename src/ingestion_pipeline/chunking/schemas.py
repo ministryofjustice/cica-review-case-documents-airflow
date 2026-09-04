@@ -183,6 +183,8 @@ class DocumentPage(BaseModel):
     """Represents a single page's metadata for indexing."""
 
     source_doc_id: str = Field(..., description="The unique ID of the source document.")
+    source_file_name: str = Field(..., description="Original filename of the source document.")
+    case_ref: str = Field(..., description="Case reference identifier.")
     page_num: int = Field(..., description="The page number (1-based).")
     page_count: int = Field(..., description="Total number of pages in the document.")
     page_id: str = Field(..., description="UUID for the index.")
@@ -192,6 +194,9 @@ class DocumentPage(BaseModel):
     page_height: float
     received_date: datetime
     correspondence_type: str = Field(..., description="Type of correspondence.")
+    page_contains_handwriting: bool = Field(
+        default=False, description="Whether any word on this page was classified as handwritten."
+    )
 
 
 class ProcessedDocument(BaseModel):

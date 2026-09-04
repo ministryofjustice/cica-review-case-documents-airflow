@@ -44,6 +44,8 @@ class DocumentPageFactory:
         """
         return DocumentPage(
             source_doc_id=metadata.source_doc_id,
+            source_file_name=metadata.source_file_name,
+            case_ref=metadata.case_ref,
             page_num=page.page_num,
             page_id=DocumentIdentifier(
                 source_file_name=metadata.source_file_name,
