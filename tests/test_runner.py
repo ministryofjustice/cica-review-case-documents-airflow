@@ -5,8 +5,8 @@ from unittest import mock
 import pytest
 
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
+from ingestion_pipeline.errors import DlqCategory, EmptyTextractResponseError, PipelineError, ZeroChunksError
 from ingestion_pipeline.orchestration.document_source import DocumentJob
-from ingestion_pipeline.orchestration.pipeline import ProcessingOutcome
 from ingestion_pipeline.runner import main, process_document_job, run_batch
 
 """Tests for the pipeline runner module."""
@@ -41,16 +41,17 @@ def _make_job(
 
 
 def test_process_document_job_success_builds_metadata_and_runs_pipeline():
-    """A valid job runs the pipeline and returns a successful result."""
+    """A valid job runs the pipeline and, on a clean return, reports success."""
     pipeline = mock.Mock()
-    pipeline.process_document.return_value = ProcessingOutcome.INDEXED
+    pipeline.process_document.return_value = None
     job = _make_job()
 
     result = process_document_job(job, pipeline)
 
     assert result.success is True
-    assert result.outcome is ProcessingOutcome.INDEXED
     assert result.error is None
+    assert result.category is None
+    assert result.retryable is None
     assert result.source_doc_id
     pipeline.process_document.assert_called_once()
 
@@ -63,7 +64,7 @@ def test_process_document_job_success_builds_metadata_and_runs_pipeline():
 
 
 def test_process_document_job_invalid_uri_is_contained():
-    """An invalid S3 URI is caught and reported as a failed result, not raised."""
+    """An invalid S3 URI is caught and reported as an unexpected, non-retryable failure."""
     pipeline = mock.Mock()
     job = _make_job(s3_uri="s3://test-kta-documents-bucket/not-a-case-ref/file.pdf", case_ref="not-a-case-ref")
 
@@ -71,13 +72,15 @@ def test_process_document_job_invalid_uri_is_contained():
 
     assert result.success is False
     assert isinstance(result.error, ValueError)
+    assert result.category is DlqCategory.UNEXPECTED
+    assert result.retryable is False
     pipeline.process_document.assert_not_called()
 
 
-def test_process_document_job_contains_pipeline_exception(caplog):
-    """A pipeline failure is contained and the traceback metadata is preserved."""
+def test_process_document_job_contains_unexpected_exception(caplog):
+    """An unexpected (non-PipelineError) failure is contained and classified UNEXPECTED."""
     pipeline = mock.Mock()
-    pipeline.process_document.side_effect = RuntimeError("Pipeline error")
+    pipeline.process_document.side_effect = RuntimeError("boom")
     job = _make_job()
 
     with caplog.at_level(logging.CRITICAL, logger="ingestion_pipeline.runner"):
@@ -85,46 +88,48 @@ def test_process_document_job_contains_pipeline_exception(caplog):
 
     assert result.success is False
     assert isinstance(result.error, RuntimeError)
+    assert result.category is DlqCategory.UNEXPECTED
+    assert result.retryable is False
 
     critical_records = [
         record
         for record in caplog.records
-        if record.levelno == logging.CRITICAL and "Pipeline runner encountered a fatal error" in record.getMessage()
+        if record.levelno == logging.CRITICAL
+        and "Pipeline runner encountered an unexpected error" in record.getMessage()
     ]
     assert critical_records
     assert critical_records[-1].exc_info is not None
     assert critical_records[-1].exc_info[0] is RuntimeError
 
 
-def test_process_document_job_no_document_is_not_success(caplog):
-    """A NO_DOCUMENT outcome indexed nothing, so it is not reported as a success."""
+@pytest.mark.parametrize(
+    ("exception", "expected_category"),
+    [
+        (
+            EmptyTextractResponseError("no document", source_doc_id="d", case_ref="c", s3_uri="s"),
+            DlqCategory.EMPTY_TEXTRACT_RESPONSE,
+        ),
+        (
+            ZeroChunksError("no chunks", source_doc_id="d", case_ref="c", s3_uri="s"),
+            DlqCategory.ZERO_CHUNKS_EXTRACTED_FROM_DOCUMENT,
+        ),
+    ],
+)
+def test_process_document_job_pipeline_error_is_not_success(caplog, exception, expected_category):
+    """A classified PipelineError is contained, recorded with its category, and not a success."""
     pipeline = mock.Mock()
-    pipeline.process_document.return_value = ProcessingOutcome.NO_DOCUMENT
+    pipeline.process_document.side_effect = exception
     job = _make_job()
 
     with caplog.at_level(logging.ERROR, logger="ingestion_pipeline.runner"):
         result = process_document_job(job, pipeline)
 
     assert result.success is False
-    assert result.outcome is ProcessingOutcome.NO_DOCUMENT
-    assert result.error is None
+    assert result.error is exception
+    assert result.category is expected_category
+    assert result.retryable is False
     pipeline.process_document.assert_called_once()
-    assert any("produced no indexed chunks" in record.getMessage() for record in caplog.records)
-
-
-def test_process_document_job_no_chunks_is_not_success(caplog):
-    """A NO_CHUNKS outcome indexed no searchable chunks, so it is not a success."""
-    pipeline = mock.Mock()
-    pipeline.process_document.return_value = ProcessingOutcome.NO_CHUNKS
-    job = _make_job()
-
-    with caplog.at_level(logging.ERROR, logger="ingestion_pipeline.runner"):
-        result = process_document_job(job, pipeline)
-
-    assert result.success is False
-    assert result.outcome is ProcessingOutcome.NO_CHUNKS
-    assert result.error is None
-    assert any("produced no indexed chunks" in record.getMessage() for record in caplog.records)
+    assert any("not acknowledging" in record.getMessage() for record in caplog.records)
 
 
 def test_process_document_job_resets_log_context():
@@ -132,6 +137,7 @@ def test_process_document_job_resets_log_context():
     from ingestion_pipeline.custom_logging.log_context import source_doc_id_context
 
     pipeline = mock.Mock()
+    pipeline.process_document.return_value = None
     process_document_job(_make_job(), pipeline)
 
     assert source_doc_id_context.get() is None
@@ -153,6 +159,7 @@ def test_run_batch_empty_returns_no_results():
 
 def test_run_batch_processes_all_and_acknowledges_only_successes():
     pipeline = mock.Mock()
+    pipeline.process_document.return_value = None
     source = mock.Mock()
 
     good = _make_job()
@@ -171,10 +178,17 @@ def test_run_batch_processes_all_and_acknowledges_only_successes():
     assert source.acknowledge.call_args.args[0] is good
 
 
-def test_run_batch_does_not_acknowledge_no_document_outcome():
-    """A NO_DOCUMENT outcome indexed nothing and must not be acknowledged."""
+@pytest.mark.parametrize(
+    "exception",
+    [
+        EmptyTextractResponseError("no document", source_doc_id="d", case_ref="c", s3_uri="s"),
+        ZeroChunksError("no chunks", source_doc_id="d", case_ref="c", s3_uri="s"),
+    ],
+)
+def test_run_batch_does_not_acknowledge_pipeline_failure(exception):
+    """A terminal PipelineError leaves the job unacknowledged so SQS can redrive it."""
     pipeline = mock.Mock()
-    pipeline.process_document.return_value = ProcessingOutcome.NO_DOCUMENT
+    pipeline.process_document.side_effect = exception
     source = mock.Mock()
 
     job = _make_job()
@@ -183,23 +197,7 @@ def test_run_batch_does_not_acknowledge_no_document_outcome():
 
     assert len(results) == 1
     assert results[0].success is False
-    assert results[0].outcome is ProcessingOutcome.NO_DOCUMENT
-    source.acknowledge.assert_not_called()
-
-
-def test_run_batch_does_not_acknowledge_no_chunks_outcome():
-    """A NO_CHUNKS outcome indexed no searchable chunks and must not be acknowledged."""
-    pipeline = mock.Mock()
-    pipeline.process_document.return_value = ProcessingOutcome.NO_CHUNKS
-    source = mock.Mock()
-
-    job = _make_job()
-
-    results = run_batch([job], pipeline, source)
-
-    assert len(results) == 1
-    assert results[0].success is False
-    assert results[0].outcome is ProcessingOutcome.NO_CHUNKS
+    assert isinstance(results[0].error, PipelineError)
     source.acknowledge.assert_not_called()
 
 
@@ -212,6 +210,7 @@ def test_run_batch_does_not_acknowledge_no_chunks_outcome():
 def test_main_successful_execution(mock_check_opensearch_health, mock_build_pipeline, mock_source_cls):
     """Main builds the pipeline once, fetches a batch, and processes it."""
     mock_pipeline = mock.Mock()
+    mock_pipeline.process_document.return_value = None
     mock_build_pipeline.return_value = mock_pipeline
     mock_check_opensearch_health.return_value = True
 
@@ -250,6 +249,7 @@ def test_opensearch_health_check_failure_returns(
 def test_main_creates_correct_document_metadata(mock_check_opensearch_health, mock_build_pipeline, mock_source_cls):
     """Main feeds correctly-populated DocumentMetadata into the pipeline."""
     mock_pipeline = mock.Mock()
+    mock_pipeline.process_document.return_value = None
     mock_build_pipeline.return_value = mock_pipeline
     mock_check_opensearch_health.return_value = True
 

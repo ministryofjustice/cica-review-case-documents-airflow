@@ -16,9 +16,10 @@ from dataclasses import dataclass
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.custom_logging.log_context import setup_logging, source_doc_id_context
+from ingestion_pipeline.errors import DlqCategory, PipelineError
 from ingestion_pipeline.indexing.healthcheck import check_opensearch_health
 from ingestion_pipeline.orchestration.document_source import DocumentJob, DocumentSource, SqsDocumentSource
-from ingestion_pipeline.orchestration.pipeline import Pipeline, ProcessingOutcome
+from ingestion_pipeline.orchestration.pipeline import Pipeline
 from ingestion_pipeline.pipeline_builder import build_pipeline
 from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
 
@@ -30,17 +31,20 @@ logger = logging.getLogger(__name__)
 class DocumentResult:
     """Outcome of processing a single document in the batch.
 
-    ``success`` reflects whether the job should be acknowledged (removed from the
-    source). It is True only when the pipeline indexed searchable chunks
-    (``INDEXED``); outcomes that indexed no chunks (``NO_DOCUMENT``, ``NO_CHUNKS``)
-    are not successes and require investigation.
+    The pipeline contract is "succeed or raise". ``success`` is True only when
+    ``process_document`` returned without raising, in which case the job is
+    acknowledged (removed from the source). On any failure ``success`` is False,
+    the job is left unacknowledged so SQS can redrive it toward the DLQ, and
+    ``error``/``category``/``retryable`` capture the classification for the future
+    metadata-index / DLQ-enrichment seam.
     """
 
     job: DocumentJob
     source_doc_id: str
     success: bool
-    outcome: ProcessingOutcome | None = None
     error: Exception | None = None
+    category: DlqCategory | None = None
+    retryable: bool | None = None
 
 
 # /\d{2}[-][78]d{5}/gm
@@ -123,28 +127,46 @@ def process_document_job(job: DocumentJob, pipeline: Pipeline) -> DocumentResult
         document_metadata = build_document_metadata(job, source_doc_id)
         logger.info(f"Document metadata prepared: file={document_metadata.source_file_name}, case_ref={job.case_ref}")
 
-        outcome = pipeline.process_document(document_metadata=document_metadata)
+        # Succeed-or-raise: a normal return means the document was fully indexed.
+        pipeline.process_document(document_metadata=document_metadata)
 
-        if not outcome.indexed_chunks:
-            # No searchable chunks were indexed for this document (Textract returned
-            # nothing, or the document produced no chunks). Both cases warrant
-            # investigation, so do not acknowledge the job as a success: leave it for
-            # the source to redrive/surface rather than silently dropping it.
-            logger.error(
-                f"Document {job.source_file_s3_uri} produced no indexed chunks (outcome={outcome.value}); "
-                f"this requires investigation. Not acknowledging this job."
-            )
-            return DocumentResult(job=job, source_doc_id=source_doc_id, success=False, outcome=outcome)
-
-        logger.info(f"Finished processing document {job.source_file_s3_uri} (outcome={outcome.value})")
-        return DocumentResult(job=job, source_doc_id=source_doc_id, success=True, outcome=outcome)
+        logger.info(f"Finished processing document {job.source_file_s3_uri}")
+        return DocumentResult(job=job, source_doc_id=source_doc_id, success=True)
+    except PipelineError as exc:
+        # Classified pipeline failure. The pipeline has already cleaned up its side
+        # effects; here we only record the outcome. The job is NOT acknowledged, so
+        # SQS will redrive it toward the DLQ.
+        # TODO: write an enriched failure record to the OpenSearch metadata/status
+        #   index using exc.failure_context() (additional to SQS redrive + DLQ).
+        logger.error(
+            f"Document {job.source_file_s3_uri} failed with {type(exc).__name__} "
+            f"(category={exc.category.value}, retryable={exc.retryable}); not acknowledging. Details: {exc}",
+            exc_info=True,
+        )
+        return DocumentResult(
+            job=job,
+            source_doc_id=source_doc_id,
+            success=False,
+            error=exc,
+            category=exc.category,
+            retryable=exc.retryable,
+        )
     except Exception as exc:
+        # Unclassified/unexpected failure (e.g. invalid S3 URI before the pipeline
+        # runs). Treated as a non-retryable, unexpected failure; not acknowledged.
         logger.critical(
-            f"Pipeline runner encountered a fatal error for source_doc_id={source_doc_id}, "
+            f"Pipeline runner encountered an unexpected error for source_doc_id={source_doc_id}, "
             f"case_ref={job.case_ref}, s3_uri={job.source_file_s3_uri}: {type(exc).__name__}: {exc}",
             exc_info=True,
         )
-        return DocumentResult(job=job, source_doc_id=source_doc_id, success=False, error=exc)
+        return DocumentResult(
+            job=job,
+            source_doc_id=source_doc_id,
+            success=False,
+            error=exc,
+            category=DlqCategory.UNEXPECTED,
+            retryable=False,
+        )
     finally:
         source_doc_id_context.reset(token)
 

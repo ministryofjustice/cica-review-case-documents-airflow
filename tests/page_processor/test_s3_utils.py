@@ -51,3 +51,38 @@ def test_delete_files_from_s3_with_error(caplog):
     keys = ["a", "b"]
     s3_utils.delete_files_from_s3(s3_client, "bucket", keys)
     assert "Failed to delete b from bucket bucket" in caplog.text
+
+
+def test_delete_prefix_from_s3_deletes_all_matching_objects():
+    s3_client = Mock()
+    paginator = Mock()
+    s3_client.get_paginator.return_value = paginator
+    # Two pages of results to exercise pagination handling.
+    paginator.paginate.return_value = [
+        {"Contents": [{"Key": "case/doc/pages/1.png"}, {"Key": "case/doc/pages/2.png"}]},
+        {"Contents": [{"Key": "case/doc/pages/3.png"}]},
+    ]
+
+    deleted = s3_utils.delete_prefix_from_s3(s3_client, "bucket", "case/doc/pages/")
+
+    assert deleted == 3
+    s3_client.get_paginator.assert_called_once_with("list_objects_v2")
+    paginator.paginate.assert_called_once_with(Bucket="bucket", Prefix="case/doc/pages/")
+    assert s3_client.delete_objects.call_count == 2
+    s3_client.delete_objects.assert_any_call(
+        Bucket="bucket",
+        Delete={"Objects": [{"Key": "case/doc/pages/1.png"}, {"Key": "case/doc/pages/2.png"}]},
+    )
+
+
+def test_delete_prefix_from_s3_handles_empty_prefix():
+    s3_client = Mock()
+    paginator = Mock()
+    s3_client.get_paginator.return_value = paginator
+    # No Contents key when the prefix matches nothing.
+    paginator.paginate.return_value = [{}]
+
+    deleted = s3_utils.delete_prefix_from_s3(s3_client, "bucket", "case/doc/pages/")
+
+    assert deleted == 0
+    s3_client.delete_objects.assert_not_called()
