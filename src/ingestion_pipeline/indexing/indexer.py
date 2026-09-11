@@ -11,11 +11,20 @@ from urllib.parse import urlparse
 from opensearchpy import OpenSearch, helpers
 from opensearchpy.exceptions import ConflictError
 
+from ingestion_pipeline.errors import DlqCategory, PipelineError
+
 logger = logging.getLogger(__name__)
 
 
-class IndexingError(Exception):
-    """Custom exception for indexing failures."""
+class IndexingError(PipelineError):
+    """Custom exception for indexing failures.
+
+    Indexing failures are typically transient (OpenSearch connectivity, bulk
+    rejections), so this is retryable.
+    """
+
+    category = DlqCategory.INDEXING_FAILED
+    retryable = True
 
 
 class OpenSearchIndexer:

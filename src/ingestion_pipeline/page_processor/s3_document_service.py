@@ -7,6 +7,7 @@ from typing import Any, List
 
 from ingestion_pipeline.page_processor.s3_utils import (
     delete_files_from_s3,
+    delete_prefix_from_s3,
     download_file_from_s3,
     upload_file_to_s3_with_retry,
 )
@@ -85,6 +86,11 @@ class S3DocumentService:
             case_ref (str): The case reference identifier.
             source_doc_id (str): The source document identifier.
 
+        Raises:
+            RuntimeError: If uploading any image fails. Cleanup of any images already
+                uploaded is the caller's responsibility via :meth:`delete_page_images`,
+                which removes everything under the document's page prefix.
+
         Returns:
             List[PageImageUploadResult]: A list of results for the uploaded page images.
         """
@@ -92,7 +98,7 @@ class S3DocumentService:
             f"Uploading {len(images)} page images to S3 as {IMAGE_FORMAT} format. "
             f"To bucket='{self.page_bucket}', CaseRef='{case_ref}'"
         )
-        results = []
+        results: List[PageImageUploadResult] = []
         for i, image in enumerate(images, start=1):
             buf = io.BytesIO()
             image.save(buf, format=IMAGE_FORMAT)
@@ -119,6 +125,19 @@ class S3DocumentService:
         except Exception as e:
             raise RuntimeError(f"Failed to upload image to S3. Bucket='{self.page_bucket}', Key='{s3_key}'.") from e
 
+    @staticmethod
+    def page_image_prefix(case_ref: str, source_doc_id: str) -> str:
+        """Return the S3 key prefix under which a document's page images are stored.
+
+        Args:
+            case_ref (str): The case reference identifier.
+            source_doc_id (str): The source document identifier.
+
+        Returns:
+            str: The page-image prefix, e.g. ``"26-711111/<uuid>/pages/"``.
+        """
+        return f"{case_ref}/{source_doc_id}/pages/"
+
     def delete_images(self, s3_keys: List[str]) -> None:
         """Deletes images from S3 based on the provided list of S3 keys.
 
@@ -133,3 +152,31 @@ class S3DocumentService:
             delete_files_from_s3(self.s3_client, self.page_bucket, s3_keys)
         except Exception as e:
             raise RuntimeError(f"Failed to delete images from S3. Bucket='{self.page_bucket}', Keys={s3_keys}.") from e
+
+    def delete_page_images(self, case_ref: str, source_doc_id: str) -> int:
+        """Delete all page images for a document by removing everything under its prefix.
+
+        Removes every object under ``{case_ref}/{source_doc_id}/pages/`` in the page
+        bucket. Because the prefix is deterministic and unique per document, this
+        cleans up all images regardless of how many were uploaded, so a partial or
+        interrupted upload leaves nothing behind. This is invariant to the number of
+        images and to concurrent/sequential upload strategies.
+
+        Args:
+            case_ref (str): The case reference identifier.
+            source_doc_id (str): The source document identifier.
+
+        Returns:
+            int: The number of objects deleted.
+
+        Raises:
+            RuntimeError: If the deletion fails.
+        """
+        prefix = self.page_image_prefix(case_ref, source_doc_id)
+        try:
+            logger.info(f"Deleting all page images under prefix. Bucket='{self.page_bucket}', Prefix='{prefix}'.")
+            return delete_prefix_from_s3(self.s3_client, self.page_bucket, prefix)
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to delete page images by prefix from S3. Bucket='{self.page_bucket}', Prefix='{prefix}'."
+            ) from e

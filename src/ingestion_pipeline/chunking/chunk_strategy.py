@@ -9,10 +9,14 @@ from abc import ABC, abstractmethod
 from textractor.entities.document import Document
 
 from ingestion_pipeline.chunking.schemas import DocumentMetadata, ProcessedDocument
+from ingestion_pipeline.errors import DlqCategory, PipelineError
 
 
-class ChunkError(Exception):
+class ChunkError(PipelineError):
     """Custom exception for chunking failures."""
+
+    category = DlqCategory.CHUNKING_FAILED
+    retryable = True
 
 
 class ChunkStrategy(ABC):
