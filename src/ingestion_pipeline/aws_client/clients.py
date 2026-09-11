@@ -1,7 +1,5 @@
 """AWS Client Configuration for Ingestion Pipeline."""
 
-import os
-
 import boto3
 from textractor import Textractor
 
@@ -42,34 +40,28 @@ def get_s3_client():
 def get_textractor_instance():
     """Creates a Textractor instance with AWS credentials from settings.
 
-    Temporarily sets AWS credential environment variables from settings to instantiate
-    the Textractor client, then restores original environment variables. This is required
-    because Textractor reads credentials from environment variables.
+    Builds an explicitly-credentialed boto3 session and injects its Textract and S3
+    clients into the Textractor instance. This avoids mutating process-wide environment
+    variables (Textractor otherwise resolves credentials from the boto3 default chain,
+    which reads ``AWS_*`` env vars), making this factory safe to call from any thread.
 
     Returns:
         Textractor: Configured Textractor client instance for the specified AWS region.
-
-    Warning:
-        Modifies process-wide environment variables. Use with caution in multi-threaded
-        or multi-process environments.
     """
-    # Store original values
-    original_env = {
-        "AWS_ACCESS_KEY_ID": os.environ.get("AWS_ACCESS_KEY_ID"),
-        "AWS_SECRET_ACCESS_KEY": os.environ.get("AWS_SECRET_ACCESS_KEY"),
-        "AWS_SESSION_TOKEN": os.environ.get("AWS_SESSION_TOKEN"),
-    }
-    try:
-        os.environ["AWS_ACCESS_KEY_ID"] = settings.AWS_MOD_PLATFORM_ACCESS_KEY_ID
-        os.environ["AWS_SECRET_ACCESS_KEY"] = settings.AWS_MOD_PLATFORM_SECRET_ACCESS_KEY
-        os.environ["AWS_SESSION_TOKEN"] = settings.AWS_MOD_PLATFORM_SESSION_TOKEN
-        return Textractor(region_name=settings.AWS_REGION)
-    finally:
-        for key, value in original_env.items():
-            if value is None:
-                os.environ.pop(key, None)
-            else:
-                os.environ[key] = value
+    session = boto3.Session(
+        aws_access_key_id=settings.AWS_MOD_PLATFORM_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_MOD_PLATFORM_SECRET_ACCESS_KEY,
+        aws_session_token=getattr(settings, "AWS_MOD_PLATFORM_SESSION_TOKEN", None),
+        region_name=settings.AWS_REGION,
+    )
+    textractor = Textractor(region_name=settings.AWS_REGION)
+    # Replace the internally-created session/clients (which rely on ambient credentials)
+    # with our explicitly-credentialed ones. These attributes are part of Textractor's
+    # construction contract; see tests for the guard against a library change.
+    textractor.session = session
+    textractor.textract_client = session.client("textract", region_name=settings.AWS_REGION)
+    textractor.s3_client = session.client("s3", region_name=settings.AWS_REGION)
+    return textractor
 
 
 def get_textract_client():

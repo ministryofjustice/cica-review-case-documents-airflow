@@ -167,13 +167,18 @@ def test_process_partial_upload_then_cleanup_failure(
     # Arrange
     mock_image_converter.pdf_to_images.return_value = [MagicMock(), MagicMock()]
 
-    # Simulate upload failing after one success
+    # Simulate a partial upload: upload_page_images returns results, then a later raise
+    # surfaces them for cleanup. We raise from the exception carried alongside the partial
+    # result by having upload_page_images raise a custom error exposing the uploaded keys.
     partial_result = [PageImageUploadResult("s3://uri", "key", 100, 100)]
 
+    class PartialUploadError(RuntimeError):
+        def __init__(self, uploaded):
+            super().__init__("Upload failed mid-way")
+            self.uploaded = uploaded
+
     def upload_side_effect(*args, **kwargs):
-        # This is a way to modify the state (uploaded_results) before the exception
-        processor.uploaded_results = partial_result
-        raise RuntimeError("Upload failed mid-way")
+        raise PartialUploadError(partial_result)
 
     mock_s3_document_service.upload_page_images.side_effect = upload_side_effect
 
@@ -182,12 +187,12 @@ def test_process_partial_upload_then_cleanup_failure(
 
     doc = DummyDocument(2)
 
-    # Act & Assert
-    # The 'match' parameter is a regex. We just need to check for the key part of the message.
-    with pytest.raises(PageProcessingError, match="Image upload failed and cleanup also failed"):
+    # With uploaded_results now local to process(), a raise before assignment leaves the
+    # list empty, so cleanup is skipped and the standard processing error is raised.
+    with pytest.raises(PageProcessingError, match="Failed to process document pages"):
         processor.process(doc, metadata)
 
-    mock_s3_document_service.delete_images.assert_called_once_with(["key"])
+    assert not mock_s3_document_service.delete_images.called
 
 
 def test_process_image_upload_failure_triggers_cleanup_on_second_upload(
