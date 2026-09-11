@@ -12,7 +12,13 @@ the exceptions simply carry the information both will need.
 """
 
 from enum import Enum
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    # Import for type-checking only. Keeping it out of runtime preserves this
+    # module's zero-dependency property (see module docstring), so any component
+    # can import errors without risking an import cycle.
+    from ingestion_pipeline.chunking.schemas import DocumentMetadata
 
 
 class DlqCategory(str, Enum):
@@ -76,6 +82,54 @@ class PipelineError(Exception):
         self.source_doc_id = source_doc_id
         self.case_ref = case_ref
         self.s3_uri = s3_uri
+
+    @classmethod
+    def from_metadata(
+        cls,
+        message: str,
+        metadata: "DocumentMetadata",
+        **kwargs,
+    ) -> "PipelineError":
+        """Build an error, sourcing document context from a metadata object.
+
+        Convenience constructor for raise sites that hold a ``DocumentMetadata``.
+        Avoids repeating the field-by-field mapping (source_doc_id, case_ref,
+        s3_uri) at every call site.
+
+        Args:
+            message (str): Human-readable description of the failure.
+            metadata (DocumentMetadata): The document's metadata to draw context from.
+            **kwargs: Any additional keyword arguments accepted by ``__init__``.
+
+        Returns:
+            PipelineError: An instance of the concrete subclass with document
+                context populated from ``metadata``.
+        """
+        return cls(
+            message,
+            source_doc_id=metadata.source_doc_id,
+            case_ref=metadata.case_ref,
+            s3_uri=metadata.source_file_s3_uri,
+            **kwargs,
+        )
+
+    def enrich_from_metadata(self, metadata: "DocumentMetadata") -> None:
+        """Backfill any missing document context from a metadata object, in place.
+
+        Most errors are raised deep in the pipeline with only a message, so they
+        reach the orchestrator with no document context. This fills the gaps from
+        ``metadata`` without overwriting any value the error already carries (a
+        terminal error that set its own context is left untouched).
+
+        Args:
+            metadata (DocumentMetadata): The document's metadata to draw context from.
+        """
+        if self.source_doc_id is None:
+            self.source_doc_id = metadata.source_doc_id
+        if self.case_ref is None:
+            self.case_ref = metadata.case_ref
+        if self.s3_uri is None:
+            self.s3_uri = metadata.source_file_s3_uri
 
     def failure_context(self) -> dict:
         """Return a serialisable summary of the failure for logging or a sink.

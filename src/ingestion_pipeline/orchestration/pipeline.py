@@ -89,11 +89,9 @@ class Pipeline:
                 # Terminal: no document means nothing can be indexed. Raise so the
                 # runner does not acknowledge the job and cleanup runs (a no-op here,
                 # but keeps the contract uniform).
-                raise EmptyTextractResponseError(
+                raise EmptyTextractResponseError.from_metadata(
                     "Textract returned no document; nothing to index.",
-                    source_doc_id=source_doc_id,
-                    case_ref=case_ref,
-                    s3_uri=s3_uri,
+                    document_metadata,
                 )
 
             updated_metadata = document_metadata.model_copy(update={"page_count": document.num_pages})
@@ -103,11 +101,9 @@ class Pipeline:
             # avoids indexing page records only to immediately delete them.
             processed_data = self.chunker.chunk(document, updated_metadata)
             if not processed_data.chunks:
-                raise ZeroChunksError(
+                raise ZeroChunksError.from_metadata(
                     "Chunking produced no chunks for the whole document; nothing searchable to index.",
-                    source_doc_id=source_doc_id,
-                    case_ref=case_ref,
-                    s3_uri=s3_uri,
+                    document_metadata,
                 )
 
             # Create page metadata records (images uploaded, DocumentPage objects constructed)
@@ -131,17 +127,22 @@ class Pipeline:
             # Single, centralised failure path: log, undo every side effect for this
             # document, then re-raise for the runner to classify (redrive / DLQ /
             # metadata index) using the exception's failure_context().
+            #
+            # Most errors are raised in lower-level components with only a message,
+            # so they arrive here with source_doc_id/case_ref/s3_uri unset. Backfill
+            # any missing document context (without overwriting values a terminal
+            # error already supplied) so failure_context() is fully populated for
+            # downstream sinks.
+            e.enrich_from_metadata(document_metadata)
             logger.critical(f"Pipeline failed for document: {e}", exc_info=True)
             self._cleanup_document(source_doc_id, case_ref)
             raise
         except Exception as e:
             logger.critical(f"An unexpected error occurred in the pipeline for document: {e}", exc_info=True)
             self._cleanup_document(source_doc_id, case_ref)
-            raise PipelineError(
+            raise PipelineError.from_metadata(
                 f"Unexpected pipeline failure: {str(e)}",
-                source_doc_id=source_doc_id,
-                case_ref=case_ref,
-                s3_uri=s3_uri,
+                document_metadata,
             ) from e
 
     def _cleanup_document(self, source_doc_id: str, case_ref: str) -> None:

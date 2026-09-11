@@ -438,6 +438,109 @@ def test_chunk_indexing_error_triggers_cleanup(
     mock_page_indexer.index_documents.assert_not_called()
 
 
+def test_bare_lower_level_error_is_enriched_with_document_context(
+    pipeline,
+    document_metadata,
+    mock_textract_processor,
+    mock_chunker,
+    mock_embedding_generator,
+    mock_chunk_indexer,
+    mock_page_indexer,
+    mock_page_processor,
+):
+    """A lower-level error raised with only a message gets document context backfilled.
+
+    Most errors (IndexingError, ChunkError, EmbeddingError, ...) are raised deep in
+    the pipeline with no document context. The orchestrator must populate
+    source_doc_id/case_ref/s3_uri before re-raising so failure_context() is complete.
+    """
+    mock_document = mock.Mock()
+    mock_document.num_pages = 1
+    mock_textract_processor.process_document.return_value = mock_document
+
+    chunk = mock.Mock()
+    chunk.page_number = 1
+    chunk.page_contains_handwriting = False
+    chunk.chunk_id = "chunk-1"
+    chunk.source_doc_id = "doc-123-test"
+    processed_data = mock.Mock()
+    processed_data.chunks = [chunk]
+    mock_chunker.chunk.return_value = processed_data
+    mock_embedding_generator.generate_embedding.return_value = [0.1]
+
+    page_doc = mock.Mock()
+    page_doc.page_num = 1
+    page_doc.page_contains_handwriting = False
+    mock_page_processor.process.return_value = [page_doc]
+
+    # Raised with only a message: context fields default to None.
+    mock_chunk_indexer.index_documents.side_effect = IndexingError("index failed")
+
+    with pytest.raises(IndexingError) as excinfo:
+        pipeline.process_document(document_metadata)
+
+    err = excinfo.value
+    assert err.source_doc_id == document_metadata.source_doc_id
+    assert err.case_ref == document_metadata.case_ref
+    assert err.s3_uri == document_metadata.source_file_s3_uri
+
+    context = err.failure_context()
+    assert context["source_doc_id"] == document_metadata.source_doc_id
+    assert context["case_ref"] == document_metadata.case_ref
+    assert context["s3_uri"] == document_metadata.source_file_s3_uri
+
+
+def test_existing_error_context_is_preserved_not_overwritten(
+    pipeline,
+    document_metadata,
+    mock_textract_processor,
+    mock_chunker,
+    mock_embedding_generator,
+    mock_chunk_indexer,
+    mock_page_indexer,
+    mock_page_processor,
+):
+    """Context already supplied by a terminal error is preserved, not overwritten.
+
+    When an error carries its own document context, the orchestrator must not clobber
+    it with the current document's metadata.
+    """
+    mock_document = mock.Mock()
+    mock_document.num_pages = 1
+    mock_textract_processor.process_document.return_value = mock_document
+
+    chunk = mock.Mock()
+    chunk.page_number = 1
+    chunk.page_contains_handwriting = False
+    chunk.chunk_id = "chunk-1"
+    chunk.source_doc_id = "doc-123-test"
+    processed_data = mock.Mock()
+    processed_data.chunks = [chunk]
+    mock_chunker.chunk.return_value = processed_data
+    mock_embedding_generator.generate_embedding.return_value = [0.1]
+
+    page_doc = mock.Mock()
+    page_doc.page_num = 1
+    page_doc.page_contains_handwriting = False
+    mock_page_processor.process.return_value = [page_doc]
+
+    # Error already carries context that differs from the current document.
+    mock_chunk_indexer.index_documents.side_effect = IndexingError(
+        "index failed",
+        source_doc_id="other-doc",
+        case_ref="99-999999",
+        s3_uri="s3://other/file.pdf",
+    )
+
+    with pytest.raises(IndexingError) as excinfo:
+        pipeline.process_document(document_metadata)
+
+    err = excinfo.value
+    assert err.source_doc_id == "other-doc"
+    assert err.case_ref == "99-999999"
+    assert err.s3_uri == "s3://other/file.pdf"
+
+
 def test_chunks_not_modified_by_propagation(
     pipeline,
     document_metadata,
