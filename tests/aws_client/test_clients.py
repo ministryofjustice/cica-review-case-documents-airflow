@@ -33,6 +33,7 @@ def test_get_s3_client_production(monkeypatch, mock_settings):
         aws_secret_access_key="real-secret",
         aws_session_token="mock-seesion-token",
         region_name="eu-west-2",
+        config=clients.S3_RETRY_CONFIG,
     )
 
 
@@ -57,6 +58,7 @@ def test_get_s3_client_local(monkeypatch):
         aws_access_key_id="test",
         aws_secret_access_key="test",
         region_name="eu-west-2",
+        config=clients.S3_RETRY_CONFIG,
     )
 
 
@@ -81,6 +83,7 @@ def test_get_s3_client_local_string(monkeypatch):
         aws_access_key_id="test",
         aws_secret_access_key="test",
         region_name="eu-west-2",
+        config=clients.S3_RETRY_CONFIG,
     )
 
 
@@ -95,6 +98,7 @@ def test_get_textract_client(monkeypatch, mock_settings):
         aws_secret_access_key="mod-secret",
         aws_session_token="mod-token",
         region_name="eu-west-2",
+        config=clients.AWS_RETRY_CONFIG,
     )
 
 
@@ -121,8 +125,8 @@ def test_get_textractor_instance_uses_explicit_session_credentials(monkeypatch, 
     assert result.session is session
     assert result.textract_client is session.client.return_value
     assert result.s3_client is session.client.return_value
-    session.client.assert_any_call("textract", region_name="eu-west-2")
-    session.client.assert_any_call("s3", region_name="eu-west-2")
+    session.client.assert_any_call("textract", region_name="eu-west-2", config=clients.AWS_RETRY_CONFIG)
+    session.client.assert_any_call("s3", region_name="eu-west-2", config=clients.AWS_RETRY_CONFIG)
 
 
 def test_get_textractor_instance_does_not_mutate_environment(monkeypatch, mock_settings):

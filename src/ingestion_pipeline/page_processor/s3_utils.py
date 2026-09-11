@@ -138,12 +138,15 @@ def delete_prefix_from_s3(s3_client, bucket, prefix):
         prefix (str): The key prefix whose objects should be deleted.
 
     Returns:
-        int: The number of objects deleted.
+        int: The number of objects successfully deleted.
 
     Raises:
         ClientError: If listing or deleting objects fails.
+        RuntimeError: If S3 reports per-key errors in the DeleteObjects response,
+            meaning some objects could not be deleted and orphaned images remain.
     """
     deleted = 0
+    errors = []
     paginator = s3_client.get_paginator("list_objects_v2")
     for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
         objects = [{"Key": item["Key"]} for item in page.get("Contents", [])]
@@ -151,7 +154,23 @@ def delete_prefix_from_s3(s3_client, bucket, prefix):
             continue
         # delete_objects accepts up to 1000 keys per call; a single list page never
         # exceeds that, so one call per page is safe.
-        s3_client.delete_objects(Bucket=bucket, Delete={"Objects": objects})
-        deleted += len(objects)
+        response = s3_client.delete_objects(Bucket=bucket, Delete={"Objects": objects})
+        # DeleteObjects can return HTTP 200 while reporting per-key failures in
+        # "Errors". Only count keys S3 confirms in "Deleted"; surface the rest so a
+        # partial cleanup is not reported as success (which would leave orphaned
+        # page images without triggering the pipeline's cleanup warning).
+        deleted += len(response.get("Deleted", []))
+        for error in response.get("Errors", []):
+            logger.error(
+                f"Failed to delete '{error.get('Key')}' from bucket {bucket}: "
+                f"{error.get('Code')} - {error.get('Message')}"
+            )
+            errors.append(error)
+    if errors:
+        failed_keys = [error.get("Key") for error in errors]
+        raise RuntimeError(
+            f"Deleted {deleted} object(s) under prefix '{prefix}' from bucket {bucket}, "
+            f"but {len(errors)} object(s) could not be deleted: {failed_keys}."
+        )
     logger.info(f"Deleted {deleted} object(s) under prefix '{prefix}' from bucket {bucket}.")
     return deleted
