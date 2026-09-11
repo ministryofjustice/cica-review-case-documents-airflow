@@ -1,5 +1,7 @@
 import datetime
 import logging
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from unittest import mock
 
 import pytest
@@ -176,6 +178,100 @@ def test_run_batch_processes_all_and_acknowledges_only_successes():
     # Only the successful job is acknowledged.
     source.acknowledge.assert_called_once()
     assert source.acknowledge.call_args.args[0] is good
+
+
+def test_run_batch_caps_workers_at_max_concurrent_documents(patch_settings):
+    """The pool is sized at min(MAX_CONCURRENT_DOCUMENTS, len(jobs)).
+
+    With more jobs than the configured limit, the pool must be capped at the
+    limit (not at the job count). Guards against a wrong worker-count regression
+    that the small-batch tests would not catch.
+    """
+    patch_settings.MAX_CONCURRENT_DOCUMENTS = 3
+    pipeline = mock.Mock()
+    pipeline.process_document.return_value = None
+    source = mock.Mock()
+
+    jobs = [_make_job(s3_uri=f"s3://test-kta-documents-bucket/26-711111/doc{i}.pdf") for i in range(10)]
+
+    captured_max_workers: list[int] = []
+    real_executor = ThreadPoolExecutor
+
+    def _recording_executor(max_workers, *args, **kwargs):
+        captured_max_workers.append(max_workers)
+        return real_executor(max_workers=max_workers, *args, **kwargs)
+
+    with mock.patch("ingestion_pipeline.runner.ThreadPoolExecutor", side_effect=_recording_executor):
+        results = run_batch(jobs, pipeline, source)
+
+    assert len(results) == 10
+    # min(3, 10) == 3: capped at the limit, not the job count.
+    assert captured_max_workers == [3]
+
+
+def test_run_batch_caps_workers_at_job_count_when_fewer_jobs(patch_settings):
+    """When jobs are fewer than the limit, the pool is sized to the job count."""
+    patch_settings.MAX_CONCURRENT_DOCUMENTS = 8
+    pipeline = mock.Mock()
+    pipeline.process_document.return_value = None
+    source = mock.Mock()
+
+    jobs = [_make_job(s3_uri=f"s3://test-kta-documents-bucket/26-711111/doc{i}.pdf") for i in range(2)]
+
+    captured_max_workers: list[int] = []
+    real_executor = ThreadPoolExecutor
+
+    def _recording_executor(max_workers, *args, **kwargs):
+        captured_max_workers.append(max_workers)
+        return real_executor(max_workers=max_workers, *args, **kwargs)
+
+    with mock.patch("ingestion_pipeline.runner.ThreadPoolExecutor", side_effect=_recording_executor):
+        run_batch(jobs, pipeline, source)
+
+    # min(8, 2) == 2: capped at the job count.
+    assert captured_max_workers == [2]
+
+
+def test_run_batch_executes_documents_concurrently(patch_settings):
+    """Workers run in parallel: MAX_CONCURRENT_DOCUMENTS documents overlap in time.
+
+    Each ``process_document`` call blocks on a barrier sized to the limit. If the
+    runner processed documents serially the barrier would never be satisfied and
+    the calls would time out, so this asserts genuine concurrency rather than a
+    serial loop that happens to return the right results.
+    """
+    limit = 4
+    patch_settings.MAX_CONCURRENT_DOCUMENTS = limit
+
+    # A barrier that only releases once `limit` threads have arrived. A serial
+    # implementation would deadlock here and trip the timeout below.
+    barrier = threading.Barrier(limit, timeout=5)
+    max_observed_concurrency = 0
+    concurrency_lock = threading.Lock()
+    current_concurrency = 0
+
+    def _blocking_process(*_args, **_kwargs):
+        nonlocal max_observed_concurrency, current_concurrency
+        with concurrency_lock:
+            current_concurrency += 1
+            max_observed_concurrency = max(max_observed_concurrency, current_concurrency)
+        # Wait until `limit` workers are running at once; raises BrokenBarrierError
+        # (failing the test) if they never all arrive within the timeout.
+        barrier.wait()
+        with concurrency_lock:
+            current_concurrency -= 1
+
+    pipeline = mock.Mock()
+    pipeline.process_document.side_effect = _blocking_process
+    source = mock.Mock()
+
+    jobs = [_make_job(s3_uri=f"s3://test-kta-documents-bucket/26-711111/doc{i}.pdf") for i in range(limit)]
+
+    results = run_batch(jobs, pipeline, source)
+
+    assert len(results) == limit
+    assert all(r.success for r in results)
+    assert max_observed_concurrency == limit
 
 
 @pytest.mark.parametrize(
