@@ -98,40 +98,40 @@ def test_get_textract_client(monkeypatch, mock_settings):
     )
 
 
-def test_get_textractor_instance(monkeypatch, mock_settings):
-    mock_textractor = MagicMock()
-    monkeypatch.setattr(clients, "Textractor", mock_textractor)
+def test_get_textractor_instance_uses_explicit_session_credentials(monkeypatch, mock_settings):
+    mock_textractor_cls = MagicMock()
+    mock_boto3 = MagicMock()
+    monkeypatch.setattr(clients, "Textractor", mock_textractor_cls)
+    monkeypatch.setattr(clients, "boto3", mock_boto3)
 
-    # Save and clear env vars to test restoration
-    orig_env = os.environ.copy()
-    os.environ.pop("AWS_ACCESS_KEY_ID", None)
-    os.environ.pop("AWS_SECRET_ACCESS_KEY", None)
-    os.environ.pop("AWS_SESSION_TOKEN", None)
+    result = clients.get_textractor_instance()
 
+    # A session is built with the MOD-platform credentials, not the ambient environment.
+    mock_boto3.Session.assert_called_once_with(
+        aws_access_key_id="mod-key",
+        aws_secret_access_key="mod-secret",
+        aws_session_token="mod-token",
+        region_name="eu-west-2",
+    )
+    # Textractor is still constructed for the correct region.
+    mock_textractor_cls.assert_called_once_with(region_name="eu-west-2")
+
+    # The returned instance has its session and clients replaced by the credentialed ones.
+    session = mock_boto3.Session.return_value
+    assert result.session is session
+    assert result.textract_client is session.client.return_value
+    assert result.s3_client is session.client.return_value
+    session.client.assert_any_call("textract", region_name="eu-west-2")
+    session.client.assert_any_call("s3", region_name="eu-west-2")
+
+
+def test_get_textractor_instance_does_not_mutate_environment(monkeypatch, mock_settings):
+    mock_textractor_cls = MagicMock()
+    mock_boto3 = MagicMock()
+    monkeypatch.setattr(clients, "Textractor", mock_textractor_cls)
+    monkeypatch.setattr(clients, "boto3", mock_boto3)
+
+    before = os.environ.copy()
     clients.get_textractor_instance()
-    mock_textractor.assert_called_once_with(region_name="eu-west-2")
-
-    # Ensure environment variables are restored
-    assert os.environ.get("AWS_ACCESS_KEY_ID") is None
-    assert os.environ.get("AWS_SECRET_ACCESS_KEY") is None
-    assert os.environ.get("AWS_SESSION_TOKEN") is None
-
-    # Restore original env
-    os.environ.clear()
-    os.environ.update(orig_env)
-
-
-def test_get_textractor_instance_restores_existing_env_vars(monkeypatch, mock_settings):
-    mock_textractor = MagicMock()
-    monkeypatch.setattr(clients, "Textractor", mock_textractor)
-
-    # Set a pre-existing environment variable
-    os.environ["AWS_ACCESS_KEY_ID"] = "original_key"
-
-    try:
-        clients.get_textractor_instance()
-        # Check that the environment variable was correctly restored
-        assert os.environ["AWS_ACCESS_KEY_ID"] == "original_key"
-    finally:
-        # Clean up the environment variable after the test
-        os.environ.pop("AWS_ACCESS_KEY_ID", None)
+    # No AWS credential env vars are set or left behind by the factory.
+    assert os.environ == before
