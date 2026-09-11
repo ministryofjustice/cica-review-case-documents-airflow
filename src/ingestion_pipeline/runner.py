@@ -18,7 +18,7 @@ from ingestion_pipeline.config import settings
 from ingestion_pipeline.custom_logging.log_context import setup_logging, source_doc_id_context
 from ingestion_pipeline.indexing.healthcheck import check_opensearch_health
 from ingestion_pipeline.orchestration.document_source import DocumentJob, DocumentSource, SqsDocumentSource
-from ingestion_pipeline.orchestration.pipeline import Pipeline
+from ingestion_pipeline.orchestration.pipeline import Pipeline, ProcessingOutcome
 from ingestion_pipeline.pipeline_builder import build_pipeline
 from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
 
@@ -28,11 +28,18 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class DocumentResult:
-    """Outcome of processing a single document in the batch."""
+    """Outcome of processing a single document in the batch.
+
+    ``success`` reflects whether the job should be acknowledged (removed from the
+    source). It is True only when the pipeline indexed searchable chunks
+    (``INDEXED``); outcomes that indexed no chunks (``NO_DOCUMENT``, ``NO_CHUNKS``)
+    are not successes and require investigation.
+    """
 
     job: DocumentJob
     source_doc_id: str
     success: bool
+    outcome: ProcessingOutcome | None = None
     error: Exception | None = None
 
 
@@ -116,9 +123,21 @@ def process_document_job(job: DocumentJob, pipeline: Pipeline) -> DocumentResult
         document_metadata = build_document_metadata(job, source_doc_id)
         logger.info(f"Document metadata prepared: file={document_metadata.source_file_name}, case_ref={job.case_ref}")
 
-        pipeline.process_document(document_metadata=document_metadata)
-        logger.info(f"Finished processing document {job.source_file_s3_uri}")
-        return DocumentResult(job=job, source_doc_id=source_doc_id, success=True)
+        outcome = pipeline.process_document(document_metadata=document_metadata)
+
+        if not outcome.indexed_chunks:
+            # No searchable chunks were indexed for this document (Textract returned
+            # nothing, or the document produced no chunks). Both cases warrant
+            # investigation, so do not acknowledge the job as a success: leave it for
+            # the source to redrive/surface rather than silently dropping it.
+            logger.error(
+                f"Document {job.source_file_s3_uri} produced no indexed chunks (outcome={outcome.value}); "
+                f"this requires investigation. Not acknowledging this job."
+            )
+            return DocumentResult(job=job, source_doc_id=source_doc_id, success=False, outcome=outcome)
+
+        logger.info(f"Finished processing document {job.source_file_s3_uri} (outcome={outcome.value})")
+        return DocumentResult(job=job, source_doc_id=source_doc_id, success=True, outcome=outcome)
     except Exception as exc:
         logger.critical(
             f"Pipeline runner encountered a fatal error for source_doc_id={source_doc_id}, "

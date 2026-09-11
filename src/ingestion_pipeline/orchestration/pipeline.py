@@ -1,6 +1,7 @@
 """Orchestration pipeline for chunking and indexing documents."""
 
 import logging
+from enum import Enum
 from typing import List
 
 from ingestion_pipeline.chunking.chunk_strategy import ChunkError, ChunkStrategy
@@ -23,6 +24,30 @@ JOB_TIMEOUT_SECONDS = settings.TEXTRACT_API_JOB_TIMEOUT_SECONDS
 
 class PipelineError(Exception):
     """Base exception for pipeline failures."""
+
+
+class ProcessingOutcome(Enum):
+    """The outcome of running the pipeline for a single document.
+
+    Distinguishes a genuinely successful ingestion (chunks indexed) from paths
+    that complete without producing indexed chunk data, so callers can decide
+    whether to acknowledge the source job.
+
+    Attributes:
+        INDEXED: Chunks were generated and indexed into OpenSearch.
+        NO_DOCUMENT: Textract returned no document; no downstream work ran.
+        NO_CHUNKS: A document was processed but produced no chunks; only page
+            metadata was indexed.
+    """
+
+    INDEXED = "indexed"
+    NO_DOCUMENT = "no_document"
+    NO_CHUNKS = "no_chunks"
+
+    @property
+    def indexed_chunks(self) -> bool:
+        """Return True when the outcome indexed chunk data."""
+        return self is ProcessingOutcome.INDEXED
 
 
 class Pipeline:
@@ -54,7 +79,7 @@ class Pipeline:
         self.page_indexer = page_indexer
         self.page_processor = page_processor
 
-    def process_document(self, document_metadata: DocumentMetadata):
+    def process_document(self, document_metadata: DocumentMetadata) -> ProcessingOutcome:
         """Runs the full pipeline for a single document.
 
         Orchestrates the complete document processing workflow including Textract analysis,
@@ -63,6 +88,12 @@ class Pipeline:
         Args:
             document_metadata (DocumentMetadata): Metadata of the document to process including
                 source file location, case reference, and correspondence type.
+
+        Returns:
+            ProcessingOutcome: The outcome of processing. ``INDEXED`` when chunks were
+                indexed, ``NO_DOCUMENT`` when Textract returned no document (nothing was
+                indexed and downstream work was skipped), or ``NO_CHUNKS`` when a document
+                was processed but produced no chunks (only page metadata was indexed).
 
         Raises:
             TextractProcessingError: If Textract analysis fails.
@@ -77,7 +108,7 @@ class Pipeline:
             document = self.textract_processor.process_document(document_metadata.source_file_s3_uri)
             if not document:
                 logger.warning("Textract did not return a document. Skipping rest of pipeline.")
-                return
+                return ProcessingOutcome.NO_DOCUMENT
 
             updated_metadata = document_metadata.model_copy(update={"page_count": document.num_pages})
 
@@ -90,7 +121,7 @@ class Pipeline:
                 logger.warning("No chunks were generated. Indexing page metadata with defaults.")
                 self.chunk_indexer.delete_documents_by_source_doc_id(source_doc_id)
                 self.page_indexer.index_documents(page_documents, id_field="page_id")
-                return
+                return ProcessingOutcome.NO_CHUNKS
 
             # Propagate handwriting flags from chunks to page metadata
             self._propagate_handwriting_flags(page_documents, processed_data.chunks)
@@ -105,6 +136,7 @@ class Pipeline:
             self.chunk_indexer.index_documents(processed_data.chunks)
             self.page_indexer.index_documents(page_documents, id_field="page_id")
             logger.info("Successfully finished processing document")
+            return ProcessingOutcome.INDEXED
 
         except (TextractProcessingError, EmbeddingError, IndexingError, ChunkError, PipelineError) as e:
             logger.critical(f"Pipeline failed for document: {e}", exc_info=True)

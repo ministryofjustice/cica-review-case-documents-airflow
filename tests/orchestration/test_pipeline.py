@@ -8,7 +8,7 @@ from ingestion_pipeline.chunking.schemas import DocumentMetadata
 from ingestion_pipeline.chunking.strategies.layout.layout_chunk_handler import ChunkError
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingError
 from ingestion_pipeline.indexing.indexer import IndexingError
-from ingestion_pipeline.orchestration.pipeline import Pipeline, PipelineError
+from ingestion_pipeline.orchestration.pipeline import Pipeline, PipelineError, ProcessingOutcome
 from ingestion_pipeline.textract.textract_processor import TextractProcessingError
 
 
@@ -111,8 +111,10 @@ def test_process_document_success(
     mock_page_processor.process.return_value = page_documents
     mock_page_indexer.index_documents.return_value = None
 
-    pipeline.process_document(document_metadata)
+    outcome = pipeline.process_document(document_metadata)
 
+    assert outcome is ProcessingOutcome.INDEXED
+    assert outcome.indexed_chunks is True
     mock_textract_processor.process_document.assert_called_once_with(document_metadata.source_file_s3_uri)
     mock_page_processor.process.assert_called_once_with(mock_document, mock.ANY)
     mock_chunker.chunk.assert_called_once()
@@ -131,7 +133,9 @@ def test_process_document_no_document(
     mock_chunk_indexer,
 ):
     mock_textract_processor.process_document.return_value = None
-    pipeline.process_document(document_metadata)
+    outcome = pipeline.process_document(document_metadata)
+    assert outcome is ProcessingOutcome.NO_DOCUMENT
+    assert outcome.indexed_chunks is False
     mock_textract_processor.process_document.assert_called_once_with(document_metadata.source_file_s3_uri)
     mock_page_processor.process.assert_not_called()
     mock_page_indexer.index_documents.assert_not_called()
@@ -160,7 +164,9 @@ def test_process_document_no_chunks(
     mock_page_processor.process.return_value = page_documents
     mock_page_indexer.index_documents.return_value = None
 
-    pipeline.process_document(document_metadata)
+    outcome = pipeline.process_document(document_metadata)
+    assert outcome is ProcessingOutcome.NO_CHUNKS
+    assert outcome.indexed_chunks is False
     mock_chunker.chunk.assert_called_once()
     mock_chunk_indexer.index_documents.assert_not_called()
     mock_page_indexer.index_documents.assert_called_once_with(page_documents, id_field="page_id")

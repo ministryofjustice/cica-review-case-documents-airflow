@@ -6,6 +6,7 @@ import pytest
 
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
 from ingestion_pipeline.orchestration.document_source import DocumentJob
+from ingestion_pipeline.orchestration.pipeline import ProcessingOutcome
 from ingestion_pipeline.runner import main, process_document_job, run_batch
 
 """Tests for the pipeline runner module."""
@@ -42,11 +43,13 @@ def _make_job(
 def test_process_document_job_success_builds_metadata_and_runs_pipeline():
     """A valid job runs the pipeline and returns a successful result."""
     pipeline = mock.Mock()
+    pipeline.process_document.return_value = ProcessingOutcome.INDEXED
     job = _make_job()
 
     result = process_document_job(job, pipeline)
 
     assert result.success is True
+    assert result.outcome is ProcessingOutcome.INDEXED
     assert result.error is None
     assert result.source_doc_id
     pipeline.process_document.assert_called_once()
@@ -93,6 +96,37 @@ def test_process_document_job_contains_pipeline_exception(caplog):
     assert critical_records[-1].exc_info[0] is RuntimeError
 
 
+def test_process_document_job_no_document_is_not_success(caplog):
+    """A NO_DOCUMENT outcome indexed nothing, so it is not reported as a success."""
+    pipeline = mock.Mock()
+    pipeline.process_document.return_value = ProcessingOutcome.NO_DOCUMENT
+    job = _make_job()
+
+    with caplog.at_level(logging.ERROR, logger="ingestion_pipeline.runner"):
+        result = process_document_job(job, pipeline)
+
+    assert result.success is False
+    assert result.outcome is ProcessingOutcome.NO_DOCUMENT
+    assert result.error is None
+    pipeline.process_document.assert_called_once()
+    assert any("produced no indexed chunks" in record.getMessage() for record in caplog.records)
+
+
+def test_process_document_job_no_chunks_is_not_success(caplog):
+    """A NO_CHUNKS outcome indexed no searchable chunks, so it is not a success."""
+    pipeline = mock.Mock()
+    pipeline.process_document.return_value = ProcessingOutcome.NO_CHUNKS
+    job = _make_job()
+
+    with caplog.at_level(logging.ERROR, logger="ingestion_pipeline.runner"):
+        result = process_document_job(job, pipeline)
+
+    assert result.success is False
+    assert result.outcome is ProcessingOutcome.NO_CHUNKS
+    assert result.error is None
+    assert any("produced no indexed chunks" in record.getMessage() for record in caplog.records)
+
+
 def test_process_document_job_resets_log_context():
     """The source_doc_id context is reset after processing (no leak across threads)."""
     from ingestion_pipeline.custom_logging.log_context import source_doc_id_context
@@ -135,6 +169,38 @@ def test_run_batch_processes_all_and_acknowledges_only_successes():
     # Only the successful job is acknowledged.
     source.acknowledge.assert_called_once()
     assert source.acknowledge.call_args.args[0] is good
+
+
+def test_run_batch_does_not_acknowledge_no_document_outcome():
+    """A NO_DOCUMENT outcome indexed nothing and must not be acknowledged."""
+    pipeline = mock.Mock()
+    pipeline.process_document.return_value = ProcessingOutcome.NO_DOCUMENT
+    source = mock.Mock()
+
+    job = _make_job()
+
+    results = run_batch([job], pipeline, source)
+
+    assert len(results) == 1
+    assert results[0].success is False
+    assert results[0].outcome is ProcessingOutcome.NO_DOCUMENT
+    source.acknowledge.assert_not_called()
+
+
+def test_run_batch_does_not_acknowledge_no_chunks_outcome():
+    """A NO_CHUNKS outcome indexed no searchable chunks and must not be acknowledged."""
+    pipeline = mock.Mock()
+    pipeline.process_document.return_value = ProcessingOutcome.NO_CHUNKS
+    source = mock.Mock()
+
+    job = _make_job()
+
+    results = run_batch([job], pipeline, source)
+
+    assert len(results) == 1
+    assert results[0].success is False
+    assert results[0].outcome is ProcessingOutcome.NO_CHUNKS
+    source.acknowledge.assert_not_called()
 
 
 # --- main -----------------------------------------------------------------
