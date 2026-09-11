@@ -84,11 +84,9 @@ class PageProcessor:
         s3_uri = metadata.source_file_s3_uri
         page_count = metadata.page_count if metadata.page_count is not None else 0
         if page_count == 0:
-            raise PageProcessingError(
+            raise PageProcessingError.from_metadata(
                 f"Page count is zero for document {source_doc_id} (case_ref={case_ref}).",
-                source_doc_id=source_doc_id,
-                case_ref=case_ref,
-                s3_uri=s3_uri,
+                metadata,
             )
 
         try:
@@ -96,21 +94,17 @@ class PageProcessor:
             images = self.image_converter.pdf_to_images(pdf_bytes)
             uploaded_results = self.s3_document_service.upload_page_images(images, case_ref, source_doc_id)
         except Exception as e:
-            raise PageProcessingError(
+            raise PageProcessingError.from_metadata(
                 f"Failed to process document pages for source_doc_id={source_doc_id}, "
                 f"case_ref={case_ref}, s3_uri={s3_uri}",
-                source_doc_id=source_doc_id,
-                case_ref=case_ref,
-                s3_uri=s3_uri,
+                metadata,
             ) from e
 
         if len(doc.pages) != len(uploaded_results):
-            raise PageProcessingError(
+            raise PageProcessingError.from_metadata(
                 f"Mismatch between Textract pages ({len(doc.pages)}) and generated images "
                 f"({len(uploaded_results)}) for document {source_doc_id} (case_ref={case_ref}).",
-                source_doc_id=source_doc_id,
-                case_ref=case_ref,
-                s3_uri=s3_uri,
+                metadata,
             )
         pages = []
         for idx, page in enumerate(doc.pages):
