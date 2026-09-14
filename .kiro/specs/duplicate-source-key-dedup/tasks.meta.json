@@ -1,0 +1,229 @@
+{
+  "pbtResults": {
+    "1. Write bug condition exploration test": {
+      "status": "passed",
+      "failingExample": "Bug condition confirmed on UNFIXED run_batch. Batch repeating one natural key (s3://test-kta-documents-bucket/26-711111/dup.pdf, correspondence_type \"TC19 - ADDITIONAL INFO REQUEST\", case_ref 26-711111 -> source_doc_id 67d7f94e-a707-5c9f-a6ed-38cc6e4863d5), N=2 jobs: process_document invoked 2x for the single source_doc_id (assert 2 <= 1 failed); the two invocations were concurrently inside process_document (observed_concurrent_collision=True) and overlapped in time; with a forced failure the same id was processed 2x so one unit's cleanup can corrupt the other in-flight unit. Scoped hypothesis property (key repeated N in 2..5) reproduces deterministically.",
+      "lastRunTimestamp": 1789377873924
+    }
+  },
+  "executionHistory": {
+    "1. Write bug condition exploration test": [
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789377647255
+      },
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789377662129
+      },
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789377910461
+      }
+    ],
+    "2. Write preservation property tests (BEFORE implementing fix)": [
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789377648569
+      },
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789377915797
+      },
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789378086950
+      }
+    ],
+    "3.1 Extract `compute_source_doc_id` helper and refactor `process_document_job`": [
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789377649344
+      },
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789378093734
+      },
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789378156863
+      }
+    ],
+    "3.2 Add order-preserving grouping in `run_batch`": [
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789377650047
+      },
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789378160275
+      },
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789378281370
+      }
+    ],
+    "3.3 Implement the duplicate acknowledgement policy": [
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789377650899
+      },
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789378169604
+      },
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789378282799
+      }
+    ],
+    "3.4 Return one DocumentResult per owner; preserve distinct-key and empty-batch behavior": [
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789377651669
+      },
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789378170917
+      },
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789378283806
+      }
+    ],
+    "3.5 Verify bug condition exploration test now passes": [
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789377652221
+      },
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789378318525
+      },
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789378365413
+      }
+    ],
+    "3.6 Verify preservation tests still pass": [
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789377652724
+      },
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789378370129
+      },
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789378433163
+      }
+    ],
+    "4.1 Unit tests for `compute_source_doc_id` and `run_batch`": [
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789377653422
+      },
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789378444023
+      },
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789378708777
+      }
+    ],
+    "4.2 Property-based tests (hypothesis)": [
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789377654012
+      },
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789378445655
+      },
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789378710311
+      }
+    ],
+    "4.3 Integration tests with a fake pipeline + recording DocumentSource": [
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789377654561
+      },
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789378446271
+      },
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789378711408
+      }
+    ],
+    "5. Checkpoint - Ensure all tests pass and quality gates are met": [
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789377655073
+      },
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789378716004
+      },
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789378839373
+      }
+    ],
+    "3. Fix for duplicate source_doc_id racing in run_batch": [
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789378433661
+      }
+    ],
+    "4. Add unit, property-based, and integration tests": [
+      {
+        "executionId": "c2d00dfd-1e4b-42c0-b10d-36eec86fd1d4",
+        "chatSessionId": "sess_9b9c8316-ac6e-49f8-a8c0-412d89024768",
+        "timestamp": 1789378711879
+      }
+    ]
+  }
+}
