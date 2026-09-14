@@ -77,6 +77,41 @@ def get_textractor_instance():
     return textractor
 
 
+def get_sqs_client():
+    """Creates a boto3 SQS client configured for local or AWS environments.
+
+    In LOCAL_DEVELOPMENT_MODE, connects to LocalStack at localhost:4566 with test
+    credentials. Otherwise, connects to AWS SQS using the MOD Platform credentials and
+    region from settings. In both cases the client uses botocore's "standard" retry mode
+    for broader transient-error coverage.
+
+    Returns:
+        boto3.client: Configured SQS client instance for the appropriate environment.
+    """
+    local_mode = getattr(settings, "LOCAL_DEVELOPMENT_MODE", False)
+    if isinstance(local_mode, str):
+        local_mode = local_mode.lower() == "true"
+
+    if local_mode:
+        return boto3.client(
+            "sqs",
+            endpoint_url="http://localhost:4566",
+            aws_access_key_id="test",
+            aws_secret_access_key="test",
+            region_name=settings.AWS_REGION,
+            config=AWS_RETRY_CONFIG,
+        )
+    else:
+        return boto3.client(
+            "sqs",
+            aws_access_key_id=settings.AWS_MOD_PLATFORM_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_MOD_PLATFORM_SECRET_ACCESS_KEY,
+            aws_session_token=getattr(settings, "AWS_MOD_PLATFORM_SESSION_TOKEN", None),
+            region_name=settings.AWS_REGION,
+            config=AWS_RETRY_CONFIG,
+        )
+
+
 def get_textract_client():
     """Creates a boto3 Textract client configured with credentials from settings.
 

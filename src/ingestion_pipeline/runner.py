@@ -10,6 +10,7 @@ per-document log lines remain correctly attributed.
 import datetime
 import logging
 import re
+import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 
@@ -18,7 +19,12 @@ from ingestion_pipeline.config import settings
 from ingestion_pipeline.custom_logging.log_context import setup_logging, source_doc_id_context
 from ingestion_pipeline.errors import DlqCategory, PipelineError
 from ingestion_pipeline.indexing.healthcheck import check_opensearch_health
-from ingestion_pipeline.orchestration.document_source import DocumentJob, DocumentSource, SqsDocumentSource
+from ingestion_pipeline.orchestration.document_source import (
+    DocumentJob,
+    DocumentSource,
+    QueueResolutionError,
+    SqsDocumentSource,
+)
 from ingestion_pipeline.orchestration.pipeline import Pipeline
 from ingestion_pipeline.pipeline_builder import build_pipeline
 from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
@@ -84,13 +90,21 @@ def build_document_metadata(job: DocumentJob, source_doc_id: str) -> DocumentMet
     Returns:
         DocumentMetadata: Metadata ready to feed into the pipeline.
     """
+    # Prefer the producer-supplied received_date when present; otherwise fall back to
+    # the current time (message receipt time), stored naive-UTC to match the schema.
+    received_date = job.received_date
+    if received_date is None:
+        received_date = datetime.datetime.now(datetime.timezone.utc)
+    if received_date.tzinfo is not None:
+        received_date = received_date.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+
     return DocumentMetadata(
         source_doc_id=source_doc_id,
         source_file_name=job.source_file_name,
         source_file_s3_uri=job.source_file_s3_uri,
         page_count=None,
         case_ref=job.case_ref,
-        received_date=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+        received_date=received_date,
         correspondence_type=job.correspondence_type,
     )
 
@@ -223,8 +237,15 @@ def main():
     # clients are safe to call concurrently.
     pipeline = build_pipeline()
 
-    # Fetch the batch of documents to process from the (stubbed) SQS source.
-    source: DocumentSource = SqsDocumentSource()
+    # Connect to the SQS document queue. An unresolvable queue is fatal: log and exit
+    # non-zero rather than proceeding with no source of work.
+    try:
+        source: DocumentSource = SqsDocumentSource()
+    except QueueResolutionError as exc:
+        logger.critical(f"Could not connect to the SQS document queue; exiting: {exc}")
+        sys.exit(1)
+
+    # Fetch a batch of documents from the queue and process them.
     jobs = source.fetch_batch()
 
     run_batch(jobs, pipeline, source)

@@ -366,3 +366,51 @@ def test_main_creates_correct_document_metadata(mock_check_opensearch_health, mo
     assert metadata.case_ref == "26-711111"
     assert metadata.correspondence_type == "TC19 - ADDITIONAL INFO REQUEST"
     assert metadata.page_count is None
+
+
+def test_build_document_metadata_prefers_producer_received_date():
+    """A producer-supplied received_date is used verbatim (naive UTC)."""
+    from ingestion_pipeline.runner import build_document_metadata
+
+    supplied = datetime.datetime(2026, 1, 15, 9, 30, 0)
+    job = DocumentJob(
+        source_file_s3_uri="s3://test-kta-documents-bucket/26-711111/case1.pdf",
+        correspondence_type="TC19",
+        case_ref="26-711111",
+        received_date=supplied,
+    )
+    metadata = build_document_metadata(job, "doc-id")
+    assert metadata.received_date == supplied
+
+
+def test_build_document_metadata_converts_tzaware_received_date_to_naive_utc():
+    """A tz-aware received_date is normalised to naive UTC to match the schema."""
+    from ingestion_pipeline.runner import build_document_metadata
+
+    aware = datetime.datetime(2026, 1, 15, 9, 30, 0, tzinfo=datetime.timezone.utc)
+    job = DocumentJob(
+        source_file_s3_uri="s3://test-kta-documents-bucket/26-711111/case1.pdf",
+        correspondence_type="TC19",
+        case_ref="26-711111",
+        received_date=aware,
+    )
+    metadata = build_document_metadata(job, "doc-id")
+    assert metadata.received_date == datetime.datetime(2026, 1, 15, 9, 30, 0)
+    assert metadata.received_date.tzinfo is None
+
+
+@mock.patch("ingestion_pipeline.runner.SqsDocumentSource")
+@mock.patch("ingestion_pipeline.runner.build_pipeline")
+@mock.patch("ingestion_pipeline.runner.check_opensearch_health")
+def test_main_exits_when_queue_unresolvable(mock_check_opensearch_health, mock_build_pipeline, mock_source_cls):
+    """An unresolvable queue is fatal: main exits non-zero and processes nothing."""
+    from ingestion_pipeline.orchestration.document_source import QueueResolutionError
+
+    mock_check_opensearch_health.return_value = True
+    mock_build_pipeline.return_value = mock.Mock()
+    mock_source_cls.side_effect = QueueResolutionError("no queue")
+
+    with pytest.raises(SystemExit) as exc_info:
+        main()
+
+    assert exc_info.value.code == 1

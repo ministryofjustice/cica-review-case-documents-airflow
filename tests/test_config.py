@@ -114,3 +114,42 @@ def test_timeout_greater_than_poll_validation(poll, timeout):
             Settings(TEXTRACT_API_POLL_INTERVAL_SECONDS=poll, TEXTRACT_API_JOB_TIMEOUT_SECONDS=timeout)
     else:
         Settings(TEXTRACT_API_POLL_INTERVAL_SECONDS=poll, TEXTRACT_API_JOB_TIMEOUT_SECONDS=timeout)
+
+
+# --- SQS settings -----------------------------------------------------------
+
+
+def test_sqs_settings_defaults(settings_without_env_file):
+    """SQS settings expose the documented defaults."""
+    settings = settings_without_env_file
+    assert settings.SQS_DOCUMENT_QUEUE == "cica-document-search-queue"
+    assert settings.SQS_POLL_WAIT_TIME_SECONDS == 20
+    assert settings.SQS_MAX_MESSAGES_PER_POLL == 10
+    assert settings.SQS_VISIBILITY_TIMEOUT_SECONDS == 300
+
+
+@pytest.mark.parametrize("wait_time", [-1, 0, 10, 20, 21])
+def test_sqs_poll_wait_time_validation(wait_time):
+    if not 0 <= wait_time <= 20:
+        with pytest.raises(ValueError):
+            Settings(SQS_POLL_WAIT_TIME_SECONDS=wait_time)
+    else:
+        Settings(SQS_POLL_WAIT_TIME_SECONDS=wait_time)
+
+
+@pytest.mark.parametrize("max_messages", [0, 1, 5, 10, 11])
+def test_sqs_max_messages_per_poll_validation(max_messages):
+    if not 1 <= max_messages <= 10:
+        with pytest.raises(ValueError):
+            Settings(SQS_MAX_MESSAGES_PER_POLL=max_messages)
+    else:
+        Settings(SQS_MAX_MESSAGES_PER_POLL=max_messages)
+
+
+@pytest.mark.parametrize("visibility", [-1, 0, 1, 300])
+def test_sqs_visibility_timeout_validation(visibility):
+    if visibility <= 0:
+        with pytest.raises(ValueError):
+            Settings(SQS_VISIBILITY_TIMEOUT_SECONDS=visibility)
+    else:
+        Settings(SQS_VISIBILITY_TIMEOUT_SECONDS=visibility)

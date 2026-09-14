@@ -146,7 +146,26 @@ class Settings(BaseSettings):  # type: ignore
     # Maximum number of documents processed concurrently by the runner's thread pool.
     # The pipeline is IO/wait-bound (Textract polling, S3, Bedrock, OpenSearch), so
     # thread-based concurrency is effective here.
+    #
+    # NOTE: This is the single concurrency knob for the runner's thread pool. The SQS
+    # spec referred to a separate ``SQS_MAX_CONCURRENCY``; we intentionally reuse this
+    # existing setting instead of introducing a duplicate. Revisit when the SQS
+    # concurrency story (parallel batch dispatch) is picked up.
     MAX_CONCURRENT_DOCUMENTS: int = 4
+
+    # -- SQS Document Queue --
+    # The SQS queue from which document-processing requests are consumed. Messages are
+    # produced by an external system; the consumer reads them, processes each document,
+    # and manages the message lifecycle (delete on success, redrive/DLQ on failure).
+    SQS_DOCUMENT_QUEUE: str = "cica-document-search-queue"
+    # Long-poll wait time for a receive request (seconds). SQS allows 0-20; a positive
+    # value avoids busy-waiting by letting the receive block until a message arrives.
+    SQS_POLL_WAIT_TIME_SECONDS: int = 20
+    # Maximum messages requested per receive call. SQS allows 1-10.
+    SQS_MAX_MESSAGES_PER_POLL: int = 10
+    # Per-message visibility timeout (seconds): how long a received message is hidden
+    # from other receives while it is being processed.
+    SQS_VISIBILITY_TIMEOUT_SECONDS: int = 300
 
     DEBUG_PAGE_NUMBERS: set[int] = {1}
 
@@ -178,6 +197,7 @@ class Settings(BaseSettings):  # type: ignore
         "WORDSTREAM_CHUNKER_FORWARD_LOOKAHEAD_WORDS",
         "WORDSTREAM_CHUNKER_BACKWARD_SCAN_WORDS",
         "MAX_CONCURRENT_DOCUMENTS",
+        "SQS_VISIBILITY_TIMEOUT_SECONDS",
     )
     @classmethod
     def validate_positive_int(cls, v: int) -> int:
@@ -253,6 +273,42 @@ class Settings(BaseSettings):  # type: ignore
         """
         if v <= 0:
             raise ValueError("TEXTRACT_API_POLL_INTERVAL_SECONDS must be a positive integer")
+        return v
+
+    @field_validator("SQS_POLL_WAIT_TIME_SECONDS")
+    @classmethod
+    def validate_sqs_poll_wait_time(cls, v: int) -> int:
+        """Ensure the SQS long-poll wait time is within the SQS-permitted range.
+
+        Args:
+            v (int): The long-poll wait time in seconds.
+
+        Returns:
+            int: The validated wait time.
+
+        Raises:
+            ValueError: If the value is outside the inclusive range 0 to 20.
+        """
+        if not 0 <= v <= 20:
+            raise ValueError("SQS_POLL_WAIT_TIME_SECONDS must be between 0 and 20 inclusive")
+        return v
+
+    @field_validator("SQS_MAX_MESSAGES_PER_POLL")
+    @classmethod
+    def validate_sqs_max_messages_per_poll(cls, v: int) -> int:
+        """Ensure the SQS max-messages-per-poll is within the SQS-permitted range.
+
+        Args:
+            v (int): The maximum number of messages requested per receive call.
+
+        Returns:
+            int: The validated maximum.
+
+        Raises:
+            ValueError: If the value is outside the inclusive range 1 to 10.
+        """
+        if not 1 <= v <= 10:
+            raise ValueError("SQS_MAX_MESSAGES_PER_POLL must be between 1 and 10 inclusive")
         return v
 
     @model_validator(mode="after")
