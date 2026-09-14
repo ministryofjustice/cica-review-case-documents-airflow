@@ -53,8 +53,15 @@ This starts:
 | Container | Port | Purpose |
 |-----------|------|---------|
 | `opensearch` | 9200 | OpenSearch instance |
-| `localstack-main` | 4566 | S3 buckets + test documents |
+| `localstack-main` | 4566 | S3 buckets + SQS queue + test documents |
 | `opensearch-dashboards` | 5601 | Dashboards UI |
+| `sqs-admin` | 3999 | Dev-only web UI for the local SQS queue |
+
+> **SQS queue GUI:** browse the local `cica-document-search-queue` at
+> http://localhost:3999 — view, send, and purge messages. This is a
+> development-only aid ([pacovk/sqs-admin](https://github.com/PacoVK/sqs-admin))
+> and is not part of any deployed environment. To enqueue a contract-valid test
+> message from the CLI instead, use `bin/send_test_message.sh`.
 
 The init scripts run automatically during composition and:
 
