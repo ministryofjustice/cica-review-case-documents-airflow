@@ -18,7 +18,7 @@
 | Module | Responsibility |
 |--------|---------------|
 | `main.py` | Entrypoint — sets up logging |
-| `runner.py` | Orchestrates single-document pipeline execution |
+| `runner.py` | Thin application entry point (`main`): health check, build pipeline, run batch |
 | `pipeline_builder.py` | Constructs the pipeline with all dependencies |
 | `config.py` | Pydantic Settings configuration (env vars + .env) |
 | `aws_client/` | AWS client factories (S3, Textract, Bedrock) |
@@ -26,11 +26,12 @@
 | `custom_logging/` | Structured logging setup and context |
 | `data_models/` | Shared data models |
 | `date_extraction/` | Date parsing from document text |
+| `document_identity/` | Deterministic source_doc_id and document metadata construction |
 | `embedding/` | Bedrock embedding generation |
 | `indexing/` | OpenSearch indexing and health checks |
-| `orchestration/` | Pipeline orchestration logic |
+| `orchestration/` | Pipeline orchestration and parallel batch processing (`batch_processing/`) |
 | `page_processor/` | Per-page processing (OCR + image) |
-| `s3_file_downloader/` | S3 document retrieval |
+| `s3_utils/` | S3 URI validation and document download |
 | `textract/` | AWS Textract integration |
 | `uuid_generators/` | Deterministic UUID generation for documents |
 

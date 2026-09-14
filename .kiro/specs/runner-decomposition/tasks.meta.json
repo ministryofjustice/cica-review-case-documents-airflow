@@ -1,0 +1,210 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Create the `s3_utils` package and move the downloader verbatim": [
+      {
+        "executionId": "3fa2e8ff-288e-48a9-bebd-e72b2d3c34f8",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789383566105
+      },
+      {
+        "executionId": "3fa2e8ff-288e-48a9-bebd-e72b2d3c34f8",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789384288622
+      }
+    ],
+    "1.2 Create `s3_uri.py` with `validate_s3_uri` moved verbatim": [
+      {
+        "executionId": "3fa2e8ff-288e-48a9-bebd-e72b2d3c34f8",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789383567433
+      },
+      {
+        "executionId": "3fa2e8ff-288e-48a9-bebd-e72b2d3c34f8",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789384289885
+      }
+    ],
+    "1.3 Update `runner.py` to import `validate_s3_uri` from the new location (interim)": [
+      {
+        "executionId": "3fa2e8ff-288e-48a9-bebd-e72b2d3c34f8",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789384294467
+      }
+    ],
+    "1.4 Rename the test directory and update the downloader test import": [
+      {
+        "executionId": "3fa2e8ff-288e-48a9-bebd-e72b2d3c34f8",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789384295594
+      }
+    ],
+    "1.5 Add `tests/s3_utils/test_s3_uri.py` for `validate_s3_uri`": [
+      {
+        "executionId": "3fa2e8ff-288e-48a9-bebd-e72b2d3c34f8",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789384296881
+      }
+    ],
+    "1.6 Verify step 1": [
+      {
+        "executionId": "3fa2e8ff-288e-48a9-bebd-e72b2d3c34f8",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789384297616
+      }
+    ],
+    "1. Rename `s3_file_downloader/` to `s3_utils/` and split S3 URI validation": [
+      {
+        "executionId": "3fa2e8ff-288e-48a9-bebd-e72b2d3c34f8",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789384298397
+      }
+    ],
+    "2.1 Create the package and move identity functions verbatim": [
+      {
+        "executionId": "44adfc91-d04e-4552-848f-a6e61bf1ea3a",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789384398673
+      },
+      {
+        "executionId": "44adfc91-d04e-4552-848f-a6e61bf1ea3a",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789384659607
+      }
+    ],
+    "2.2 Update `runner.py` imports to reference the new location (interim)": [
+      {
+        "executionId": "44adfc91-d04e-4552-848f-a6e61bf1ea3a",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789384664459
+      }
+    ],
+    "2.3 Add `tests/document_identity/test_identity.py`": [
+      {
+        "executionId": "44adfc91-d04e-4552-848f-a6e61bf1ea3a",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789384665379
+      }
+    ],
+    "2.4 Verify step 2": [
+      {
+        "executionId": "44adfc91-d04e-4552-848f-a6e61bf1ea3a",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789384666454
+      }
+    ],
+    "2. Extract the `document_identity/` package": [
+      {
+        "executionId": "44adfc91-d04e-4552-848f-a6e61bf1ea3a",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789384667013
+      }
+    ],
+    "3.1 Create the `batch_processing` package and move `DocumentResult` verbatim": [
+      {
+        "executionId": "68034494-4b41-4d9f-81f2-65d51baae6db",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789384717102
+      },
+      {
+        "executionId": "68034494-4b41-4d9f-81f2-65d51baae6db",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789385053671
+      }
+    ],
+    "3.3 Add `tests/orchestration/batch_processing/test_document_result.py`": [
+      {
+        "executionId": "68034494-4b41-4d9f-81f2-65d51baae6db",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789385057713
+      }
+    ],
+    "3.2 Update `runner.py` import (interim)": [
+      {
+        "executionId": "68034494-4b41-4d9f-81f2-65d51baae6db",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789385058660
+      }
+    ],
+    "3.4 Verify step 3": [
+      {
+        "executionId": "68034494-4b41-4d9f-81f2-65d51baae6db",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789385059762
+      }
+    ],
+    "3. Extract `DocumentResult` into `orchestration/batch_processing/document_result.py`": [
+      {
+        "executionId": "68034494-4b41-4d9f-81f2-65d51baae6db",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789385060426
+      }
+    ],
+    "4.1 Move `process_document_job` and `run_batch` verbatim into `batch_runner.py`": [
+      {
+        "executionId": "1ed088bd-3c18-4d4a-ae31-c4d16ab2a6a8",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789385214506
+      }
+    ],
+    "5.1 Reduce `runner.py` to a thin entry point and delete `extract_case_ref`": [
+      {
+        "executionId": "4d137b64-da61-4d16-baad-6b47d1564162",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789386149623
+      },
+      {
+        "executionId": "4d137b64-da61-4d16-baad-6b47d1564162",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789386286622
+      }
+    ],
+    "5.2 Trim `tests/test_runner.py` to the three `main` wiring tests": [
+      {
+        "executionId": "4d137b64-da61-4d16-baad-6b47d1564162",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789386290578
+      }
+    ],
+    "5.3 Verify step 5": [
+      {
+        "executionId": "4d137b64-da61-4d16-baad-6b47d1564162",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789386291363
+      }
+    ],
+    "5. Slim `runner.py` and delete dead code": [
+      {
+        "executionId": "4d137b64-da61-4d16-baad-6b47d1564162",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789386291958
+      }
+    ],
+    "6.1 Update `.kiro/steering/structure.md`": [
+      {
+        "executionId": "85ee0b26-f09d-42ae-93c4-39d2e536c3a4",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789386325161
+      },
+      {
+        "executionId": "85ee0b26-f09d-42ae-93c4-39d2e536c3a4",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789386458637
+      }
+    ],
+    "6.2 Run the full quality gates and fix any violations": [
+      {
+        "executionId": "85ee0b26-f09d-42ae-93c4-39d2e536c3a4",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789386462041
+      }
+    ],
+    "6. Update steering docs and run full verification": [
+      {
+        "executionId": "85ee0b26-f09d-42ae-93c4-39d2e536c3a4",
+        "chatSessionId": "sess_097afbf0-2ffc-4676-bb2d-2b3b77ab224a",
+        "timestamp": 1789386462405
+      }
+    ]
+  }
+}
