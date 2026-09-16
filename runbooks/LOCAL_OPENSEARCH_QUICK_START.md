@@ -50,12 +50,12 @@ docker compose up -d --force-recreate
 
 This starts:
 
-| Container | Port | Purpose |
-|-----------|------|---------|
-| `opensearch` | 9200 | OpenSearch instance |
-| `localstack-main` | 4566 | S3 buckets + SQS queue + test documents |
-| `opensearch-dashboards` | 5601 | Dashboards UI |
-| `sqs-admin` | 3999 | Dev-only web UI for the local SQS queue |
+| Container | Port | Purpose | Healthcheck |
+|-----------|------|---------|-------------|
+| `opensearch` | 9200 | OpenSearch instance | Yes — reports `healthy` |
+| `localstack-main` | 4566 | S3 buckets + SQS queue + test documents | Yes — reports `healthy` |
+| `opensearch-dashboards` | 5601 | Dashboards UI | No — only shows `Up`/`running` |
+| `sqs-admin` | 3999 | Dev-only web UI for the local SQS queue | No — only shows `Up`/`running` |
 
 > **SQS queue GUI:** browse the local `cica-document-search-queue` at
 > http://localhost:3999 — view, send, and purge messages. This is a
@@ -69,13 +69,18 @@ The init scripts run automatically during composition and:
 2. Create OpenSearch index templates and indexes (`page_chunks`, `page_metadata`)
 3. Set up the Bedrock connector for neural search
 
-Wait for all containers to report **healthy** before proceeding:
+Before proceeding, wait for the two health-checked services — `opensearch` and
+`localstack-main` — to report **healthy**:
 
 ```bash
 docker compose ps
 ```
 
-All three containers should show `healthy` status. LocalStack can take several minutes.
+Only `opensearch` and `localstack-main` have healthchecks, so only they show a
+`healthy` status; `localstack-main` in particular can take several minutes as it runs
+the init scripts. The other two services (`opensearch-dashboards`, `sqs-admin`) have no
+healthcheck and will simply show `Up`/`running` — that is expected and does not indicate
+a problem.
 
 ## 4. Configure the root `.env`
 
