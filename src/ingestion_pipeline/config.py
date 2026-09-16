@@ -218,7 +218,6 @@ class Settings(BaseSettings):  # type: ignore
         "WORDSTREAM_CHUNKER_FORWARD_LOOKAHEAD_WORDS",
         "WORDSTREAM_CHUNKER_BACKWARD_SCAN_WORDS",
         "MAX_CONCURRENT_DOCUMENTS",
-        "SQS_VISIBILITY_TIMEOUT_SECONDS",
     )
     @classmethod
     def validate_positive_int(cls, v: int) -> int:
@@ -330,6 +329,31 @@ class Settings(BaseSettings):  # type: ignore
         """
         if not 1 <= v <= 10:
             raise ValueError("SQS_MAX_MESSAGES_PER_POLL must be between 1 and 10 inclusive")
+        return v
+
+    @field_validator("SQS_VISIBILITY_TIMEOUT_SECONDS")
+    @classmethod
+    def validate_sqs_visibility_timeout(cls, v: int) -> int:
+        """Ensure the SQS visibility timeout is within the SQS-permitted range.
+
+        SQS accepts a per-message visibility timeout from 0 to 43200 seconds (12 hours);
+        values above that are rejected at ``ReceiveMessage`` time with
+        ``InvalidParameterValue``. We require a positive value (a zero timeout would make
+        a message immediately visible again) up to the service maximum, so bad
+        configuration fails at startup rather than on the first poll. The lower bound is
+        further constrained by :meth:`validate_visibility_covers_processing`.
+
+        Args:
+            v (int): The visibility timeout in seconds.
+
+        Returns:
+            int: The validated visibility timeout.
+
+        Raises:
+            ValueError: If the value is outside the range 1 to 43200 inclusive.
+        """
+        if not 1 <= v <= 43200:
+            raise ValueError("SQS_VISIBILITY_TIMEOUT_SECONDS must be between 1 and 43200 inclusive")
         return v
 
     @model_validator(mode="after")

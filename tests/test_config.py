@@ -149,11 +149,29 @@ def test_sqs_max_messages_per_poll_validation(max_messages):
         Settings(SQS_MAX_MESSAGES_PER_POLL=max_messages)
 
 
-@pytest.mark.parametrize("visibility", [-1, 0])
-def test_sqs_visibility_timeout_must_be_positive(visibility):
-    """Non-positive visibility timeouts are rejected by the positive-int validator."""
-    with pytest.raises(ValueError):
-        Settings(SQS_VISIBILITY_TIMEOUT_SECONDS=visibility)
+@pytest.mark.parametrize(
+    "visibility,valid",
+    [
+        (-1, False),  # below range
+        (0, False),  # zero: message would be immediately visible again
+        (2, True),  # minimum that also satisfies the cross-field lower bound below
+        (43200, True),  # SQS service maximum (12 hours)
+        (43201, False),  # above the SQS service maximum
+    ],
+)
+def test_sqs_visibility_timeout_range(visibility, valid):
+    """Visibility timeout must be within the SQS-permitted 1..43200 range.
+
+    Low Textract timeouts (poll=1, job=2) are supplied so the cross-field lower-bound
+    validator (visibility >= job timeout) and the poll<timeout validator are both
+    satisfied for the valid cases, isolating the SQS range check.
+    """
+    textract_kwargs = {"TEXTRACT_API_POLL_INTERVAL_SECONDS": 1, "TEXTRACT_API_JOB_TIMEOUT_SECONDS": 2}
+    if valid:
+        Settings(SQS_VISIBILITY_TIMEOUT_SECONDS=visibility, **textract_kwargs)
+    else:
+        with pytest.raises(ValueError, match="SQS_VISIBILITY_TIMEOUT_SECONDS"):
+            Settings(SQS_VISIBILITY_TIMEOUT_SECONDS=visibility, **textract_kwargs)
 
 
 @pytest.mark.parametrize(
