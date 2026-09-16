@@ -20,7 +20,7 @@ import datetime
 import logging
 from typing import List, Optional, Protocol
 
-from botocore.exceptions import ClientError, ConnectionError, EndpointConnectionError
+from botocore.exceptions import ClientError, ConnectionError, EndpointConnectionError, HTTPClientError
 from pydantic import BaseModel, ConfigDict, Field
 
 from ingestion_pipeline.config import settings
@@ -61,7 +61,12 @@ def _is_transient_receive_error(exc: Exception) -> bool:
     Returns:
         bool: True if the error is a known transient condition.
     """
-    if isinstance(exc, (EndpointConnectionError, ConnectionError)):
+    # Transport-level botocore failures raised after the SDK's own retries are
+    # exhausted. ConnectionError covers connection-establishment failures (e.g.
+    # EndpointConnectionError); HTTPClientError covers in-flight transport failures
+    # (e.g. ReadTimeoutError, ConnectionClosedError) which do NOT derive from
+    # ConnectionError and would otherwise be misclassified as permanent.
+    if isinstance(exc, (ConnectionError, EndpointConnectionError, HTTPClientError)):
         return True
     if isinstance(exc, ClientError):
         code = exc.response.get("Error", {}).get("Code", "")

@@ -3,7 +3,7 @@ from unittest import mock
 
 import boto3
 import pytest
-from botocore.exceptions import ClientError, EndpointConnectionError
+from botocore.exceptions import ClientError, ConnectionClosedError, EndpointConnectionError, ReadTimeoutError
 from moto import mock_aws
 
 from ingestion_pipeline.orchestration.document_source import (
@@ -149,6 +149,10 @@ def test_fetch_batch_deletes_malformed_and_continues():
         _client_error("ServiceUnavailable"),
         _client_error("InternalError"),
         EndpointConnectionError(endpoint_url="http://localhost:4566"),
+        # HTTPClientError subclasses (do NOT derive from ConnectionError) - common
+        # transport failures raised after the SDK exhausts its own retries.
+        ReadTimeoutError(endpoint_url="http://localhost:4566"),
+        ConnectionClosedError(endpoint_url="http://localhost:4566"),
     ],
 )
 def test_fetch_batch_transient_receive_error_returns_empty_list(error):
