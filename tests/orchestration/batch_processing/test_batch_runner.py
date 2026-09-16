@@ -446,7 +446,7 @@ def _acknowledgement_outcome_defined(job: DocumentJob, source: _RecordingSource,
     for the owner / dropped_as_duplicate for its duplicates). On owner failure every
     such job is left unacknowledged (left_for_redrive).
     """
-    was_acked = any(acked is job or acked == job for acked in source.acknowledged)
+    was_acked = any(acked is job for acked in source.acknowledged)
     if owner_succeeded:
         return was_acked
     return not was_acked
@@ -1491,3 +1491,32 @@ def test_integration_distinct_batch_matches_prefix_baseline(patch_settings):
     assert failing_job.receipt_handle not in acked_handles
     assert acked_handles == {"handle-0", "handle-1", "handle-3"}
     assert len(source.acknowledged) == 3
+
+
+@hyp_settings(max_examples=25, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
+@given(n=st.integers(min_value=2, max_value=6))
+def test_property_same_key_distinct_handles_each_acked_once(patch_settings, n):
+    """Property 1: duplicates with distinct receipt handles are each acknowledged once.
+
+    N jobs share one natural key (the bug condition) but carry distinct SQS receipt
+    handles (the redelivery shape). On owner success every message must be
+    acknowledged by its own handle exactly once — distinguishing duplicates by a
+    real field, not Python object identity. Guards against a regression that acks a
+    single job repeatedly (or conflates duplicates by value equality) rather than
+    acking each distinct message.
+
+    Validates: Requirements 2.1, 2.5, 3.2
+    """
+    patch_settings.MAX_CONCURRENT_DOCUMENTS = 4
+    jobs = [_make_dup_job_with_handle(f"handle-{i}") for i in range(n)]
+    assert len({_expected_source_doc_id(j) for j in jobs}) == 1  # bug condition
+
+    pipeline = _RecordingPipeline()
+    source = _RecordingSource()
+
+    run_batch(jobs, pipeline, source)
+
+    acked_handles = [job.receipt_handle for job in source.acknowledged]
+    # Each distinct message acknowledged exactly once (owner + N-1 duplicates).
+    assert sorted(acked_handles) == sorted(f"handle-{i}" for i in range(n))
+    assert len(set(acked_handles)) == n
