@@ -156,24 +156,30 @@ Or browse via OpenSearch Dashboards at http://localhost:5601.
 
 ## Rebuilding indexes (without full Docker rebuild)
 
-If you need to wipe and recreate the indexes without restarting everything:
+If you need to wipe and recreate the indexes without restarting everything.
+
+> **Run the `docker compose` commands below from `local-dev-environment`**, where the
+> Compose file lives. From the repository root they cannot find
+> `local-dev-environment/docker-compose.yml` and will fail.
 
 ```bash
+cd local-dev-environment
 docker compose exec -e CONFIRM_OVERWRITE=true localstack \
   bash /etc/localstack/init/ready.d/02-create-opensearch-resources.sh
 ```
 
-Then re-run the Bedrock connector setup:
+Then re-run the Bedrock connector setup (still from `local-dev-environment`):
 
 ```bash
 docker compose exec localstack \
   bash /etc/localstack/init/ready.d/03-setup-bedrock-connector-neural.sh
 ```
 
-Then re-enqueue a message and re-ingest from the project root (the consumer needs a
+Then re-enqueue a message and re-ingest from the repository root (the consumer needs a
 message on the queue; rebuilding indexes does not enqueue one):
 
 ```bash
+cd ..
 bin/send_test_message.sh
 bash run_locally_with_dot_env.sh
 ```
@@ -229,9 +235,12 @@ docker compose up -d --force-recreate
 
 **Cause:** The `03-setup-bedrock-connector-neural.sh` script failed (check logs for the specific error).
 
-**Fix:** After resolving the root cause, re-run manually:
+**Fix:** After resolving the root cause, re-run manually **from `local-dev-environment`**
+(the `docker compose` command needs the Compose file there and fails from the repository
+root):
 
 ```bash
+cd local-dev-environment
 docker compose exec localstack \
   bash /etc/localstack/init/ready.d/03-setup-bedrock-connector-neural.sh
 ```
