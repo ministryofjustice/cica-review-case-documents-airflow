@@ -115,13 +115,26 @@ AWS_CICA_AWS_SESSION_TOKEN=test
 
 ## 5. Ingest documents
 
-From the repository root:
+The consumer reads document-processing requests from the SQS queue. The init script
+creates the queue and copies the sample document into S3, but it does **not** enqueue a
+request — so you must put a message on the queue first, otherwise the consumer just
+long-polls an empty queue and processes nothing.
+
+From the repository root, enqueue a contract-valid message for the sample document:
+
+```bash
+bin/send_test_message.sh
+```
+
+(You can also send messages from the sqs-admin UI at http://localhost:3999.)
+
+Then start the consumer:
 
 ```bash
 bash run_locally_with_dot_env.sh
 ```
 
-The default configuration processes:
+`bin/send_test_message.sh` defaults to the sample document, so the run processes:
 
 ```
 Case: 26-700001
@@ -157,9 +170,11 @@ docker compose exec localstack \
   bash /etc/localstack/init/ready.d/03-setup-bedrock-connector-neural.sh
 ```
 
-Then re-ingest documents from the project root:
+Then re-enqueue a message and re-ingest from the project root (the consumer needs a
+message on the queue; rebuilding indexes does not enqueue one):
 
 ```bash
+bin/send_test_message.sh
 bash run_locally_with_dot_env.sh
 ```
 
