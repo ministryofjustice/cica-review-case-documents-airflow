@@ -162,10 +162,31 @@ class Settings(BaseSettings):  # type: ignore
     # value avoids busy-waiting by letting the receive block until a message arrives.
     SQS_POLL_WAIT_TIME_SECONDS: int = 20
     # Maximum messages requested per receive call. SQS allows 1-10.
-    SQS_MAX_MESSAGES_PER_POLL: int = 10
+    #
+    # Kept in line with MAX_CONCURRENT_DOCUMENTS on purpose. The SQS visibility clock
+    # starts for every received message at once, but only MAX_CONCURRENT_DOCUMENTS are
+    # processed at a time; fetching many more than that leaves the surplus queued in the
+    # thread pool with their visibility timers already running, inflating worst-case
+    # message residence time and the risk of premature redelivery. Raise this only if
+    # the visibility timeout is raised to match (and ideally once per-message visibility
+    # heartbeats exist - see SQS_VISIBILITY_TIMEOUT_SECONDS).
+    SQS_MAX_MESSAGES_PER_POLL: int = 4
     # Per-message visibility timeout (seconds): how long a received message is hidden
     # from other receives while it is being processed.
-    SQS_VISIBILITY_TIMEOUT_SECONDS: int = 300
+    #
+    # This MUST cover the worst-case time a message spends received-but-not-yet-deleted:
+    # the time it waits queued in the thread pool PLUS its own processing time. If it
+    # expires first, SQS makes the message visible again and the document can be ingested
+    # a second time. A single document's Textract step alone can run up to
+    # TEXTRACT_API_JOB_TIMEOUT_SECONDS, so the default is set comfortably above that to
+    # absorb pool queueing (batch size / worker count "waves") plus page processing,
+    # embedding and indexing. A model validator enforces the lower bound.
+    #
+    # NOTE: a static timeout is a stop-gap. The robust fix is a per-message visibility
+    # heartbeat (periodic ChangeMessageVisibility while a job is in flight), which
+    # belongs with the concurrency/dispatch work (SQS stories 5/7) and is not in this
+    # change.
+    SQS_VISIBILITY_TIMEOUT_SECONDS: int = 1800
 
     DEBUG_PAGE_NUMBERS: set[int] = {1}
 
@@ -323,6 +344,33 @@ class Settings(BaseSettings):  # type: ignore
         """
         if self.TEXTRACT_API_JOB_TIMEOUT_SECONDS <= self.TEXTRACT_API_POLL_INTERVAL_SECONDS:
             raise ValueError("TEXTRACT_API_JOB_TIMEOUT_SECONDS must be greater than TEXTRACT_API_POLL_INTERVAL_SECONDS")
+        return self
+
+    @model_validator(mode="after")
+    def validate_visibility_covers_processing(self) -> "Settings":
+        """Ensure the SQS visibility timeout covers worst-case document processing.
+
+        The visibility timeout must be at least the maximum time a single document can
+        take to process; otherwise a message can become visible again and be ingested
+        by another consumer while the original attempt is still running. A single
+        document's Textract step alone can run up to TEXTRACT_API_JOB_TIMEOUT_SECONDS,
+        so that is the enforced lower bound. This does not account for time spent queued
+        in the worker pool - the default is set well above the bound for that headroom -
+        but it fails fast on the clearly-broken case where the visibility window cannot
+        even cover one document.
+
+        Returns:
+            Settings: The validated settings object.
+
+        Raises:
+            ValueError: If the visibility timeout is below the Textract job timeout.
+        """
+        if self.SQS_VISIBILITY_TIMEOUT_SECONDS < self.TEXTRACT_API_JOB_TIMEOUT_SECONDS:
+            raise ValueError(
+                f"SQS_VISIBILITY_TIMEOUT_SECONDS ({self.SQS_VISIBILITY_TIMEOUT_SECONDS}) must be at least "
+                f"TEXTRACT_API_JOB_TIMEOUT_SECONDS ({self.TEXTRACT_API_JOB_TIMEOUT_SECONDS}) so a received "
+                "message stays hidden for at least the worst-case processing time of a single document."
+            )
         return self
 
     @model_validator(mode="after")

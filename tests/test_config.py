@@ -124,8 +124,11 @@ def test_sqs_settings_defaults(settings_without_env_file):
     settings = settings_without_env_file
     assert settings.SQS_DOCUMENT_QUEUE == "cica-document-search-queue"
     assert settings.SQS_POLL_WAIT_TIME_SECONDS == 20
-    assert settings.SQS_MAX_MESSAGES_PER_POLL == 10
-    assert settings.SQS_VISIBILITY_TIMEOUT_SECONDS == 300
+    assert settings.SQS_MAX_MESSAGES_PER_POLL == 4
+    assert settings.SQS_VISIBILITY_TIMEOUT_SECONDS == 1800
+    # The default visibility timeout must cover the worst-case single-document
+    # processing ceiling (the Textract job timeout).
+    assert settings.SQS_VISIBILITY_TIMEOUT_SECONDS >= settings.TEXTRACT_API_JOB_TIMEOUT_SECONDS
 
 
 @pytest.mark.parametrize("wait_time", [-1, 0, 10, 20, 21])
@@ -146,10 +149,32 @@ def test_sqs_max_messages_per_poll_validation(max_messages):
         Settings(SQS_MAX_MESSAGES_PER_POLL=max_messages)
 
 
-@pytest.mark.parametrize("visibility", [-1, 0, 1, 300])
-def test_sqs_visibility_timeout_validation(visibility):
-    if visibility <= 0:
-        with pytest.raises(ValueError):
-            Settings(SQS_VISIBILITY_TIMEOUT_SECONDS=visibility)
-    else:
+@pytest.mark.parametrize("visibility", [-1, 0])
+def test_sqs_visibility_timeout_must_be_positive(visibility):
+    """Non-positive visibility timeouts are rejected by the positive-int validator."""
+    with pytest.raises(ValueError):
         Settings(SQS_VISIBILITY_TIMEOUT_SECONDS=visibility)
+
+
+@pytest.mark.parametrize(
+    "visibility,textract_timeout,valid",
+    [
+        (600, 600, True),  # equal: allowed (>=)
+        (1800, 600, True),  # comfortably above
+        (599, 600, False),  # just below the job timeout
+        (300, 600, False),  # the old default, now rejected
+    ],
+)
+def test_sqs_visibility_must_cover_textract_timeout(visibility, textract_timeout, valid):
+    """The visibility timeout must be >= the worst-case single-document processing time."""
+    if valid:
+        Settings(
+            SQS_VISIBILITY_TIMEOUT_SECONDS=visibility,
+            TEXTRACT_API_JOB_TIMEOUT_SECONDS=textract_timeout,
+        )
+    else:
+        with pytest.raises(ValueError, match="SQS_VISIBILITY_TIMEOUT_SECONDS"):
+            Settings(
+                SQS_VISIBILITY_TIMEOUT_SECONDS=visibility,
+                TEXTRACT_API_JOB_TIMEOUT_SECONDS=textract_timeout,
+            )
