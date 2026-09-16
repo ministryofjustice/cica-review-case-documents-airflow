@@ -3,6 +3,7 @@ from unittest import mock
 
 import boto3
 import pytest
+from botocore.exceptions import ClientError, EndpointConnectionError
 from moto import mock_aws
 
 from ingestion_pipeline.orchestration.document_source import (
@@ -10,6 +11,11 @@ from ingestion_pipeline.orchestration.document_source import (
     QueueResolutionError,
     SqsDocumentSource,
 )
+
+
+def _client_error(code: str, operation: str = "ReceiveMessage") -> ClientError:
+    return ClientError({"Error": {"Code": code, "Message": code}}, operation)
+
 
 QUEUE_URL = "https://sqs.eu-west-2.amazonaws.com/123456789012/cica-document-search-queue"
 VALID_URI = "s3://cica-bucket/26-711111/case1.pdf"
@@ -135,11 +141,41 @@ def test_fetch_batch_deletes_malformed_and_continues():
     sqs_client.delete_message.assert_called_once_with(QueueUrl=QUEUE_URL, ReceiptHandle="rh-bad")
 
 
-def test_fetch_batch_receive_error_returns_empty_list_without_raising():
+@pytest.mark.parametrize(
+    "error",
+    [
+        _client_error("RequestThrottled"),
+        _client_error("ThrottlingException"),
+        _client_error("ServiceUnavailable"),
+        _client_error("InternalError"),
+        EndpointConnectionError(endpoint_url="http://localhost:4566"),
+    ],
+)
+def test_fetch_batch_transient_receive_error_returns_empty_list(error):
+    """Transient receive failures are swallowed as an empty poll for retry."""
     sqs_client = mock.Mock()
     source = _make_source(sqs_client)
-    sqs_client.receive_message.side_effect = Exception("network blip")
+    sqs_client.receive_message.side_effect = error
     assert source.fetch_batch() == []
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        _client_error("AccessDenied"),
+        _client_error("QueueDoesNotExist"),
+        _client_error("InvalidAddress"),
+        _client_error("SomeUnknownCode"),
+        Exception("unexpected non-client error"),
+    ],
+)
+def test_fetch_batch_permanent_receive_error_propagates(error):
+    """Permanent or unknown receive failures propagate so the run fails visibly."""
+    sqs_client = mock.Mock()
+    source = _make_source(sqs_client)
+    sqs_client.receive_message.side_effect = error
+    with pytest.raises(type(error)):
+        source.fetch_batch()
 
 
 # --- acknowledge ------------------------------------------------------------

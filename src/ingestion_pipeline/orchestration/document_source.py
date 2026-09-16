@@ -18,11 +18,53 @@ import datetime
 import logging
 from typing import List, Optional, Protocol
 
+from botocore.exceptions import ClientError, ConnectionError, EndpointConnectionError
 from pydantic import BaseModel, ConfigDict, Field
 
 from ingestion_pipeline.config import settings
 
 logger = logging.getLogger(__name__)
+
+# SQS/botocore error codes that represent transient conditions worth retrying on the
+# next poll. Anything not listed here (auth, validation, bad endpoint, unknown) is
+# treated as permanent and propagated so the run fails visibly rather than silently
+# reporting "no work".
+_TRANSIENT_SQS_ERROR_CODES = frozenset(
+    {
+        "RequestThrottled",
+        "ThrottlingException",
+        "Throttling",
+        "RequestTimeout",
+        "RequestTimeoutException",
+        "ServiceUnavailable",
+        "InternalError",
+        "InternalFailure",
+        "ServiceError",
+        "KMS.ThrottlingException",
+    }
+)
+
+
+def _is_transient_receive_error(exc: Exception) -> bool:
+    """Return True if a receive_message failure is transient and safe to skip.
+
+    Transient failures (throttling, temporary service errors, connection blips) are
+    treated as an empty poll so the caller can retry. Permanent or unknown failures
+    (e.g. AccessDenied, invalid endpoint, malformed request) return False so they
+    propagate and fail the run rather than masquerading as a drained queue.
+
+    Args:
+        exc (Exception): The exception raised by ``receive_message``.
+
+    Returns:
+        bool: True if the error is a known transient condition.
+    """
+    if isinstance(exc, (EndpointConnectionError, ConnectionError)):
+        return True
+    if isinstance(exc, ClientError):
+        code = exc.response.get("Error", {}).get("Code", "")
+        return code in _TRANSIENT_SQS_ERROR_CODES
+    return False
 
 
 class DocumentJob(BaseModel):
@@ -157,8 +199,15 @@ class SqsDocumentSource:
 
         Performs a single long-poll receive, parses each message into a
         :class:`DocumentJob`, and deletes malformed messages so they are routed for
-        dead-letter handling without blocking the queue. A receive error is logged
-        and treated as an empty batch so the caller can decide whether to retry.
+        dead-letter handling without blocking the queue. A *transient* receive error
+        (throttling, temporary service error, connection blip) is logged and treated
+        as an empty batch so the caller can retry; a permanent or unknown receive
+        error is logged and re-raised so the run fails rather than silently reporting
+        no work.
+
+        Raises:
+            Exception: Re-raises any non-transient error from ``receive_message``
+                (e.g. AccessDenied, invalid endpoint, malformed request).
 
         Returns:
             List[DocumentJob]: The valid jobs from this receive (possibly empty).
@@ -175,8 +224,25 @@ class SqsDocumentSource:
                 VisibilityTimeout=self.visibility_timeout_seconds,
             )
         except Exception as exc:
-            logger.error("Error receiving messages from queue '%s': %s", self.queue_name, exc, exc_info=True)
-            return []
+            # Only known transient failures (throttling, temporary service errors,
+            # connection blips) are swallowed as an empty poll for the caller to retry.
+            # Permanent or unknown failures (AccessDenied, invalid endpoint, malformed
+            # request, etc.) must propagate: otherwise an empty batch would look like a
+            # drained queue and the run would report success while unable to read work.
+            if _is_transient_receive_error(exc):
+                logger.warning(
+                    "Transient error receiving messages from queue '%s'; treating as empty poll: %s",
+                    self.queue_name,
+                    exc,
+                )
+                return []
+            logger.critical(
+                "Permanent/unknown error receiving messages from queue '%s'; failing the run: %s",
+                self.queue_name,
+                exc,
+                exc_info=True,
+            )
+            raise
 
         messages = response.get("Messages", [])
         jobs: List[DocumentJob] = []
