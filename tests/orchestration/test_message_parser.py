@@ -117,6 +117,42 @@ def test_parse_message_uri_failing_case_path_raises_malformed():
     assert exc_info.value.field == "source_file_s3_uri"
 
 
+def test_parse_message_case_ref_not_matching_uri_case_folder_raises_malformed():
+    # case_ref and the URI's case folder are each individually valid but disagree.
+    # This must be rejected: otherwise the document would be downloaded from one case
+    # but identified/indexed under another.
+    body = (
+        '{"correspondence_type": "TC19", "case_ref": "26-700001", '
+        '"source_file_s3_uri": "s3://cica-bucket/26-800040/case1.pdf"}'
+    )
+    with pytest.raises(MalformedMessageError) as exc_info:
+        parse_message(body)
+    assert exc_info.value.field == "case_ref"
+    assert "26-700001" in str(exc_info.value)
+    assert "26-800040" in str(exc_info.value)
+
+
+def test_parse_message_case_ref_not_matching_component_case_prefix_raises_malformed():
+    # Same mismatch via the component-built URI: case_ref disagrees with case_prefix.
+    body = (
+        '{"correspondence_type": "TC19", "case_ref": "26-700001", '
+        '"bucket": "cica-bucket", "case_prefix": "26-800040", "filename": "case1.pdf"}'
+    )
+    with pytest.raises(MalformedMessageError) as exc_info:
+        parse_message(body)
+    assert exc_info.value.field == "case_ref"
+
+
+def test_parse_message_case_ref_matching_uri_case_folder_is_accepted():
+    # Sanity check the happy path still passes with matching case references.
+    body = (
+        '{"correspondence_type": "TC19", "case_ref": "26-700001", '
+        '"source_file_s3_uri": "s3://cica-bucket/26-700001/case1.pdf"}'
+    )
+    job = parse_message(body)
+    assert job.case_ref == "26-700001"
+
+
 # --- DocumentRequest direct -------------------------------------------------
 
 

@@ -34,8 +34,10 @@ logger = logging.getLogger(__name__)
 # (e.g. ``26-711111``). Shared by the case_ref field and the S3 URI path check.
 CASE_REF_PATTERN = r"^\d{2}-[78]\d{5}$"
 # Resolved S3 URI must place the document under a case-reference folder, e.g.
-# ``s3://some-bucket/26-711111/file.pdf``.
-S3_URI_CASE_PATH_PATTERN = r"^s3://[^/]+/\d{2}-[78]\d{5}/"
+# ``s3://some-bucket/26-711111/file.pdf``. The case segment is captured so it can be
+# checked for equality against the message's case_ref (they must match, otherwise a
+# document would be fetched from one case but identified/indexed under another).
+S3_URI_CASE_PATH_PATTERN = r"^s3://[^/]+/(\d{2}-[78]\d{5})/"
 
 
 class MalformedMessageError(Exception):
@@ -161,10 +163,23 @@ def parse_message(body: str, *, message_id: Optional[str] = None) -> DocumentJob
         ) from exc
 
     s3_uri = request.resolved_s3_uri()
-    if not re.match(S3_URI_CASE_PATH_PATTERN, s3_uri):
+    match = re.match(S3_URI_CASE_PATH_PATTERN, s3_uri)
+    if not match:
         raise MalformedMessageError(
             f"resolved source_file_s3_uri does not match the required case path{id_suffix}: {s3_uri}",
             field="source_file_s3_uri",
+        )
+
+    # The URI's case-folder segment must match the message's case_ref. Otherwise the
+    # runner would download the object from one case's folder while deriving the
+    # source_doc_id and indexed metadata from a different case reference, silently
+    # associating the document with the wrong case.
+    uri_case_ref = match.group(1)
+    if uri_case_ref != request.case_ref:
+        raise MalformedMessageError(
+            f"case_ref '{request.case_ref}' does not match the case folder '{uri_case_ref}' "
+            f"in source_file_s3_uri{id_suffix}: {s3_uri}",
+            field="case_ref",
         )
 
     return DocumentJob(
