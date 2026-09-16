@@ -72,7 +72,10 @@ services:
     mem_limit: 128m
     restart: unless-stopped
     ports:
-      - "3999:3999" # SQS-Admin UI -> http://localhost:3999
+      # Bound to loopback only (like the LocalStack gateway above): this UI is
+      # unauthenticated and can create/send/purge queues, so it must not be reachable
+      # from other machines on the network. The documented endpoint is localhost-only.
+      - "127.0.0.1:3999:3999" # SQS-Admin UI -> http://localhost:3999
     environment:
       - SQS_ENDPOINT_URL=http://${LOCALSTACK_DOCKER_NAME:-localstack-main}:4566
       - SQS_AWS_REGION=${AWS_REGION:-eu-west-2}
