@@ -36,11 +36,14 @@ logger = logging.getLogger(__name__)
 # Case reference pattern: two digits, a hyphen, then 7 or 8 followed by five digits
 # (e.g. ``26-711111``). Shared by the case_ref field and the S3 URI path check.
 CASE_REF_PATTERN = r"^\d{2}-[78]\d{5}$"
-# Resolved S3 URI must place the document under a case-reference folder, e.g.
-# ``s3://some-bucket/26-711111/file.pdf``. The case segment is captured so it can be
-# checked for equality against the message's case_ref (they must match, otherwise a
-# document would be fetched from one case but identified/indexed under another).
-S3_URI_CASE_PATH_PATTERN = r"^s3://[^/]+/(\d{2}-[78]\d{5})/"
+# Resolved S3 URI must place the document under a case-reference folder AND name a
+# non-empty object key, e.g. ``s3://some-bucket/26-711111/file.pdf``. The case segment
+# is captured so it can be checked for equality against the message's case_ref (they
+# must match, otherwise a document would be fetched from one case but identified/indexed
+# under another). The pattern is fully anchored and the ``[^/].*`` tail requires a real
+# object key: a folder-only URI such as ``s3://bucket/26-711111/`` is rejected as
+# malformed rather than being accepted with the case folder mistaken for the file name.
+S3_URI_CASE_PATH_PATTERN = r"^s3://[^/]+/(\d{2}-[78]\d{5})/[^/].*$"
 
 
 class MalformedMessageError(Exception):
@@ -184,11 +187,20 @@ def parse_message(body: str, *, message_id: Optional[str] = None) -> DocumentJob
             field="case_ref",
         )
 
+    # Stamp the receipt-time fallback here, at parse time, rather than later when a
+    # worker starts the document. With more received messages than workers, a job can
+    # sit queued for one or more document-processing times before it runs, so stamping
+    # at worker start would record a time well after the message was actually received.
+    # Normalised to naive UTC to match the DocumentMetadata schema.
+    received_date = request.received_date
+    if received_date is None:
+        received_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+
     return DocumentJob(
         source_file_s3_uri=s3_uri,
         correspondence_type=request.correspondence_type,
         case_ref=request.case_ref,
-        received_date=request.received_date,
+        received_date=received_date,
     )
 
 

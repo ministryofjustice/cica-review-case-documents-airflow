@@ -28,8 +28,21 @@ def test_parse_message_full_uri_builds_job():
     assert job.case_ref == "26-711111"
     assert job.correspondence_type == "TC19 - ADDITIONAL INFO REQUEST"
     assert job.source_file_name == "case1.pdf"
-    assert job.received_date is None
+    # received_date is stamped with the receipt-time fallback (naive UTC) when omitted.
+    assert job.received_date is not None
+    assert job.received_date.tzinfo is None
     assert job.receipt_handle is None
+
+
+def test_parse_message_stamps_receipt_time_when_received_date_omitted():
+    before = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+    job = parse_message(_valid_body_full_uri())
+    after = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+    # The fallback is stamped at parse time, so it falls within the call window and is
+    # naive UTC to match the DocumentMetadata schema.
+    assert job.received_date is not None
+    assert job.received_date.tzinfo is None
+    assert before <= job.received_date <= after
 
 
 def test_parse_message_builds_uri_from_components():
@@ -112,6 +125,23 @@ def test_parse_message_uri_failing_case_path_raises_malformed():
         '{"correspondence_type": "TC19", "case_ref": "26-711111", '
         '"source_file_s3_uri": "s3://cica-bucket/not-a-case/case1.pdf"}'
     )
+    with pytest.raises(MalformedMessageError) as exc_info:
+        parse_message(body)
+    assert exc_info.value.field == "source_file_s3_uri"
+
+
+@pytest.mark.parametrize(
+    "uri",
+    [
+        "s3://cica-bucket/26-711111/",  # folder only, no object key (trailing slash)
+        "s3://cica-bucket/26-711111",  # folder only, no trailing slash / key
+        "s3://cica-bucket/26-711111//case1.pdf",  # empty first key segment
+    ],
+)
+def test_parse_message_uri_without_object_key_raises_malformed(uri):
+    # A case folder with no real object key must be rejected; otherwise the case folder
+    # would be mistaken for the file name and the later S3 lookup would fail instead.
+    body = f'{{"correspondence_type": "TC19", "case_ref": "26-711111", "source_file_s3_uri": "{uri}"}}'
     with pytest.raises(MalformedMessageError) as exc_info:
         parse_message(body)
     assert exc_info.value.field == "source_file_s3_uri"
