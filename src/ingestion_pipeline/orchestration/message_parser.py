@@ -27,7 +27,7 @@ import logging
 import re
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 from ingestion_pipeline.orchestration.document_source import DocumentJob
 
@@ -91,6 +91,30 @@ class DocumentRequest(BaseModel):
     filename: Optional[str] = Field(default=None, min_length=1)
 
     received_date: Optional[datetime.datetime] = None
+
+    @field_validator("correspondence_type")
+    @classmethod
+    def _normalise_correspondence_type(cls, v: str) -> str:
+        """Strip surrounding whitespace and reject whitespace-only values.
+
+        ``min_length=1`` alone lets a value like ``"   "`` through, which would then be
+        used to derive the document UUID and indexed as if it were a real correspondence
+        type. Requiring a non-whitespace character discards such messages as malformed,
+        and stripping keeps the derived UUID stable regardless of incidental padding.
+
+        Args:
+            v (str): The supplied correspondence type.
+
+        Returns:
+            str: The stripped correspondence type.
+
+        Raises:
+            ValueError: If the value is empty or whitespace-only.
+        """
+        stripped = v.strip()
+        if not stripped:
+            raise ValueError("correspondence_type must contain at least one non-whitespace character")
+        return stripped
 
     @model_validator(mode="after")
     def validate_source_location(self) -> "DocumentRequest":
@@ -204,18 +228,24 @@ def parse_message(body: str, *, message_id: Optional[str] = None) -> DocumentJob
     )
 
 
-def _first_error_field(exc: ValidationError) -> Optional[str]:
-    """Return the name of the first field that failed validation, if identifiable.
+def _first_error_field(exc: ValidationError) -> str:
+    """Return the name of the first field that failed validation.
 
     Args:
         exc (ValidationError): The pydantic validation error.
 
     Returns:
-        Optional[str]: The offending field name, or ``None`` for model-level errors
-            with no single field.
+        str: The offending field name. Field-level errors return the field; a
+            model-level error (which pydantic reports with an empty ``loc``) returns
+            ``"source_location"`` - the only model validator on ``DocumentRequest`` -
+            so the malformed-message log names a concrete contract area rather than
+            ``None``.
     """
     for error in exc.errors():
         location = error.get("loc") or ()
         if location:
             return str(location[0])
-    return None
+    # No field-level location: this is a model-level validator failure. The only such
+    # validator is validate_source_location, so attribute it to that contract area
+    # rather than leaving the log as field=None.
+    return "source_location"

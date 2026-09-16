@@ -1,4 +1,5 @@
 import datetime
+import json
 
 import pytest
 
@@ -106,17 +107,42 @@ def test_parse_message_bad_case_ref_pattern_raises_malformed():
     assert exc_info.value.field == "case_ref"
 
 
-def test_parse_message_empty_correspondence_type_raises_malformed():
-    body = f'{{"correspondence_type": "", "case_ref": "26-711111", "source_file_s3_uri": "{VALID_URI}"}}'
+@pytest.mark.parametrize("value", ["", "   ", "\t", "\n  "])
+def test_parse_message_blank_correspondence_type_raises_malformed(value):
+    # Empty and whitespace-only correspondence types must be rejected, not used to
+    # derive a document UUID or indexed as a real correspondence type.
+    body = json.dumps({"correspondence_type": value, "case_ref": "26-711111", "source_file_s3_uri": VALID_URI})
     with pytest.raises(MalformedMessageError) as exc_info:
         parse_message(body)
     assert exc_info.value.field == "correspondence_type"
 
 
+def test_parse_message_strips_correspondence_type_whitespace():
+    # Surrounding whitespace is stripped so the derived UUID is stable regardless of padding.
+    body = (
+        '{"correspondence_type": "  TC19 - ADDITIONAL INFO REQUEST  ", "case_ref": "26-711111", '
+        f'"source_file_s3_uri": "{VALID_URI}"}}'
+    )
+    job = parse_message(body)
+    assert job.correspondence_type == "TC19 - ADDITIONAL INFO REQUEST"
+
+
 def test_parse_message_missing_source_location_raises_malformed():
     body = '{"correspondence_type": "TC19", "case_ref": "26-711111"}'
-    with pytest.raises(MalformedMessageError):
+    with pytest.raises(MalformedMessageError) as exc_info:
         parse_message(body)
+    # Model-level validation failure attributed to a concrete area, not field=None.
+    assert exc_info.value.field == "source_location"
+
+
+def test_parse_message_incomplete_source_components_raises_malformed():
+    # bucket + case_prefix present but filename missing: still a model-level failure.
+    body = (
+        '{"correspondence_type": "TC19", "case_ref": "26-711111", "bucket": "cica-bucket", "case_prefix": "26-711111"}'
+    )
+    with pytest.raises(MalformedMessageError) as exc_info:
+        parse_message(body)
+    assert exc_info.value.field == "source_location"
 
 
 def test_parse_message_uri_failing_case_path_raises_malformed():
