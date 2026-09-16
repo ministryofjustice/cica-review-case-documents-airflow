@@ -177,14 +177,16 @@ def test_sqs_visibility_timeout_range(visibility, valid):
 @pytest.mark.parametrize(
     "visibility,textract_timeout,valid",
     [
+        # With the default batch (4) == concurrency (4), waves = 1, so the bound is the
+        # single-document Textract timeout.
         (600, 600, True),  # equal: allowed (>=)
         (1800, 600, True),  # comfortably above
-        (599, 600, False),  # just below the job timeout
+        (599, 600, False),  # just below the one-wave bound
         (300, 600, False),  # the old default, now rejected
     ],
 )
 def test_sqs_visibility_must_cover_textract_timeout(visibility, textract_timeout, valid):
-    """The visibility timeout must be >= the worst-case single-document processing time."""
+    """With batch == concurrency (one wave) the bound is the single-document timeout."""
     if valid:
         Settings(
             SQS_VISIBILITY_TIMEOUT_SECONDS=visibility,
@@ -196,3 +198,30 @@ def test_sqs_visibility_must_cover_textract_timeout(visibility, textract_timeout
                 SQS_VISIBILITY_TIMEOUT_SECONDS=visibility,
                 TEXTRACT_API_JOB_TIMEOUT_SECONDS=textract_timeout,
             )
+
+
+@pytest.mark.parametrize(
+    "batch,concurrency,visibility,valid",
+    [
+        # 10 messages, 1 worker => 10 waves => min = 10 * 600 = 6000.
+        (10, 1, 6000, True),  # exactly the worst-case residence bound
+        (10, 1, 5999, False),  # Copilot's example: passes the old bound, now rejected
+        (10, 1, 600, False),  # only covers one document, ignores 9 waves of queueing
+        # 10 messages, 4 workers => ceil(10/4) = 3 waves => min = 3 * 600 = 1800.
+        (10, 4, 1800, True),
+        (10, 4, 1799, False),
+    ],
+)
+def test_sqs_visibility_must_cover_queueing_waves(batch, concurrency, visibility, valid):
+    """The bound scales with ceil(batch / concurrency) processing waves, not just one document."""
+    kwargs = {
+        "SQS_MAX_MESSAGES_PER_POLL": batch,
+        "MAX_CONCURRENT_DOCUMENTS": concurrency,
+        "SQS_VISIBILITY_TIMEOUT_SECONDS": visibility,
+        "TEXTRACT_API_JOB_TIMEOUT_SECONDS": 600,
+    }
+    if valid:
+        Settings(**kwargs)
+    else:
+        with pytest.raises(ValueError, match="SQS_VISIBILITY_TIMEOUT_SECONDS"):
+            Settings(**kwargs)

@@ -1,5 +1,6 @@
 """Configuration settings for the airflow pipeline."""
 
+import math
 from pathlib import Path
 
 from pydantic import field_validator, model_validator
@@ -372,28 +373,39 @@ class Settings(BaseSettings):  # type: ignore
 
     @model_validator(mode="after")
     def validate_visibility_covers_processing(self) -> "Settings":
-        """Ensure the SQS visibility timeout covers worst-case document processing.
+        """Ensure the SQS visibility timeout covers worst-case message residence.
 
-        The visibility timeout must be at least the maximum time a single document can
-        take to process; otherwise a message can become visible again and be ingested
-        by another consumer while the original attempt is still running. A single
-        document's Textract step alone can run up to TEXTRACT_API_JOB_TIMEOUT_SECONDS,
-        so that is the enforced lower bound. This does not account for time spent queued
-        in the worker pool - the default is set well above the bound for that headroom -
-        but it fails fast on the clearly-broken case where the visibility window cannot
-        even cover one document.
+        A message stays hidden only for SQS_VISIBILITY_TIMEOUT_SECONDS. If that expires
+        before the message is deleted, SQS makes it visible again and the document can be
+        ingested a second time. The worst case is the message dispatched last in a batch:
+        with more messages per poll than concurrent workers, it waits through
+        ``ceil(SQS_MAX_MESSAGES_PER_POLL / MAX_CONCURRENT_DOCUMENTS)`` processing "waves",
+        each of which can take up to TEXTRACT_API_JOB_TIMEOUT_SECONDS (Textract alone),
+        before it is deleted. The visibility timeout must cover that whole residence, so
+        the enforced lower bound is::
+
+            ceil(batch_size / concurrency) * TEXTRACT_API_JOB_TIMEOUT_SECONDS
+
+        This still ignores non-Textract processing time (page rendering, embedding,
+        indexing), which is why the default is set well above the bound; a per-message
+        visibility heartbeat (ChangeMessageVisibility while queued/in flight) is the
+        robust fix and belongs with the concurrency/dispatch work (SQS stories 5/7).
 
         Returns:
             Settings: The validated settings object.
 
         Raises:
-            ValueError: If the visibility timeout is below the Textract job timeout.
+            ValueError: If the visibility timeout is below the worst-case residence bound.
         """
-        if self.SQS_VISIBILITY_TIMEOUT_SECONDS < self.TEXTRACT_API_JOB_TIMEOUT_SECONDS:
+        waves = math.ceil(self.SQS_MAX_MESSAGES_PER_POLL / self.MAX_CONCURRENT_DOCUMENTS)
+        minimum_visibility = waves * self.TEXTRACT_API_JOB_TIMEOUT_SECONDS
+        if self.SQS_VISIBILITY_TIMEOUT_SECONDS < minimum_visibility:
             raise ValueError(
                 f"SQS_VISIBILITY_TIMEOUT_SECONDS ({self.SQS_VISIBILITY_TIMEOUT_SECONDS}) must be at least "
-                f"TEXTRACT_API_JOB_TIMEOUT_SECONDS ({self.TEXTRACT_API_JOB_TIMEOUT_SECONDS}) so a received "
-                "message stays hidden for at least the worst-case processing time of a single document."
+                f"{minimum_visibility} = ceil(SQS_MAX_MESSAGES_PER_POLL ({self.SQS_MAX_MESSAGES_PER_POLL}) / "
+                f"MAX_CONCURRENT_DOCUMENTS ({self.MAX_CONCURRENT_DOCUMENTS})) * TEXTRACT_API_JOB_TIMEOUT_SECONDS "
+                f"({self.TEXTRACT_API_JOB_TIMEOUT_SECONDS}), so a received message stays hidden for at least the "
+                "worst-case time it can spend queued behind other jobs plus its own processing."
             )
         return self
 
