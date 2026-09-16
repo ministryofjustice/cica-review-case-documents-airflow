@@ -10,8 +10,10 @@ The source is SQS-backed: an upstream system enqueues a message per document
 processes each message, and deletes successfully handled messages from the queue.
 :class:`SqsDocumentSource` implements this against a real boto3 SQS client: it
 resolves the queue URL, long-polls for messages, parses each body into a
-:class:`DocumentJob`, routes malformed messages for dead-letter handling, and
-deletes messages once their document has been processed successfully.
+:class:`DocumentJob`, permanently discards malformed messages (by deleting them),
+and deletes messages once their document has been processed successfully. Note that
+deleting a malformed message does not send it to the DLQ; only processing failures
+(valid messages left undeleted) are redriven to the DLQ by SQS.
 """
 
 import datetime
@@ -122,11 +124,14 @@ class SqsDocumentSource:
     message ``ReceiptHandle``), and manages the message lifecycle:
 
     * Messages that parse and validate become jobs for the runner to process.
-    * Malformed messages are logged and deleted immediately so they neither block
-      the queue nor return after their visibility timeout (routed for dead-letter
-      handling; the DLQ/redrive policy is provisioned in infrastructure).
+    * Malformed messages are logged and deleted immediately so they neither block the
+      queue nor return after their visibility timeout. Deleting removes them for good:
+      it does NOT route them to the DLQ (SQS redrive only fires after repeated receives,
+      which cannot happen once a message is deleted), so a malformed message is
+      permanently discarded and the log line is its only record.
     * :meth:`acknowledge` deletes a message after its document was processed
-      successfully. Jobs that fail are left undeleted so SQS can redrive them.
+      successfully. Jobs that fail processing are left undeleted so SQS can redrive
+      them to the DLQ after the configured max receive count.
 
     The queue URL is resolved from the ``SQS_DOCUMENT_QUEUE`` name at construction;
     an unresolvable name raises :class:`QueueResolutionError`.
@@ -198,8 +203,9 @@ class SqsDocumentSource:
         """Receive one batch of messages and return the valid jobs.
 
         Performs a single long-poll receive, parses each message into a
-        :class:`DocumentJob`, and deletes malformed messages so they are routed for
-        dead-letter handling without blocking the queue. A *transient* receive error
+        :class:`DocumentJob`, and deletes malformed messages (permanently discarding
+        them; deletion does not route them to the DLQ) without blocking the queue. A
+        *transient* receive error
         (throttling, temporary service error, connection blip) is logged and treated
         as an empty batch so the caller can retry; a permanent or unknown receive
         error is logged and re-raised so the run fails rather than silently reporting

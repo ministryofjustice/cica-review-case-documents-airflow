@@ -14,8 +14,11 @@ The message contract distinguishes:
       ignored.
 
 Anything that cannot be parsed or fails validation raises
-:class:`MalformedMessageError`, which the source layer uses to route the message
-for dead-letter handling.
+:class:`MalformedMessageError`. The source layer logs and then **permanently
+discards** such messages by deleting them from the queue. Deleting does not route a
+message to the DLQ (SQS redrive only happens after repeated receives, which cannot
+occur once a message is deleted), so the log entry is the only record of a malformed
+message.
 """
 
 import datetime
@@ -44,8 +47,7 @@ class MalformedMessageError(Exception):
     """Raised when a message cannot be parsed or fails validation.
 
     Carries the failed field name (when known) so the caller can log precisely
-    which part of the contract was violated before routing the message to
-    dead-letter handling.
+    which part of the contract was violated before discarding the message.
 
     Attributes:
         field (Optional[str]): The offending field name, if a specific field caused
