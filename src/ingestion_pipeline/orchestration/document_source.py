@@ -5,12 +5,13 @@ and "how a document is processed". The pipeline runner pulls a batch of
 :class:`DocumentJob` items from a :class:`DocumentSource` and processes them in
 parallel.
 
-The production intent is an SQS-backed source: an upstream system enqueues a
-message per document (containing its S3 location and CICA metadata), the runner
-receives a batch, processes each message, and deletes successfully handled
-messages from the queue. :class:`SqsDocumentSource` is currently a STUB that
-synthesises a batch from configuration so the parallel runner can be developed
-and tested ahead of the real queue integration.
+The source is SQS-backed: an upstream system enqueues a message per document
+(containing its S3 location and CICA metadata), the runner receives a batch,
+processes each message, and deletes successfully handled messages from the queue.
+:class:`SqsDocumentSource` implements this against a real boto3 SQS client: it
+resolves the queue URL, long-polls for messages, parses each body into a
+:class:`DocumentJob`, routes malformed messages for dead-letter handling, and
+deletes messages once their document has been processed successfully.
 """
 
 import datetime
