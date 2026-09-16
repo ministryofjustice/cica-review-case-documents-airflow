@@ -68,7 +68,7 @@ services:
   # not localhost. See: https://github.com/PacoVK/sqs-admin
   sqs-admin:
     container_name: sqs-admin
-    image: pacovk/sqs-admin:latest
+    image: pacovk/sqs-admin:0.9.1
     mem_limit: 128m
     restart: unless-stopped
     ports:
