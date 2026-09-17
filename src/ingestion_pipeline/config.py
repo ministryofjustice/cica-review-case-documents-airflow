@@ -189,6 +189,15 @@ class Settings(BaseSettings):  # type: ignore
     # belongs with the concurrency/dispatch work (SQS stories 5/7) and is not in this
     # change.
     SQS_VISIBILITY_TIMEOUT_SECONDS: int = 1800
+    # Multiplier applied to TEXTRACT_API_JOB_TIMEOUT_SECONDS when computing the minimum
+    # acceptable visibility timeout, to account for a document's non-Textract processing
+    # (chunking, page-image upload, embedding, two indexing calls) that also runs before
+    # the message is deleted. Textract dominates wall-clock time, but it is not the whole
+    # story, so the enforced per-wave cost is TEXTRACT_API_JOB_TIMEOUT_SECONDS * this
+    # factor. This is a coarse, configurable estimate; the exact non-Textract time is not
+    # modelled anywhere, which is why a visibility heartbeat (stories 5/7) is the real
+    # fix. Must be >= 1.0 (1.0 = no headroom, Textract-only).
+    SQS_PROCESSING_OVERHEAD_FACTOR: float = 1.5
 
     DEBUG_PAGE_NUMBERS: set[int] = {1}
 
@@ -295,6 +304,27 @@ class Settings(BaseSettings):  # type: ignore
         """
         if v <= 0:
             raise ValueError("TEXTRACT_API_POLL_INTERVAL_SECONDS must be a positive integer")
+        return v
+
+    @field_validator("SQS_PROCESSING_OVERHEAD_FACTOR")
+    @classmethod
+    def validate_sqs_processing_overhead_factor(cls, v: float) -> float:
+        """Ensure the processing-overhead factor adds headroom rather than removing it.
+
+        A factor below 1.0 would make the enforced visibility bound smaller than the
+        Textract time alone, which is never correct. 1.0 means no non-Textract headroom.
+
+        Args:
+            v (float): The configured overhead factor.
+
+        Returns:
+            float: The validated factor.
+
+        Raises:
+            ValueError: If the factor is less than 1.0.
+        """
+        if v < 1.0:
+            raise ValueError("SQS_PROCESSING_OVERHEAD_FACTOR must be >= 1.0")
         return v
 
     @field_validator("SQS_DOCUMENT_QUEUE")
@@ -411,10 +441,15 @@ class Settings(BaseSettings):  # type: ignore
 
             ceil(batch_size / concurrency) * TEXTRACT_API_JOB_TIMEOUT_SECONDS
 
-        This still ignores non-Textract processing time (page rendering, embedding,
-        indexing), which is why the default is set well above the bound; a per-message
-        visibility heartbeat (ChangeMessageVisibility while queued/in flight) is the
-        robust fix and belongs with the concurrency/dispatch work (SQS stories 5/7).
+        Each wave's cost is not just the Textract timeout: after Textract returns, the
+        document is still chunked, its page images uploaded, every chunk embedded, and
+        two indexing calls made before the message is deleted. That non-Textract time is
+        not modelled by any single setting, so SQS_PROCESSING_OVERHEAD_FACTOR applies a
+        coarse multiplier to approximate it, making the per-wave cost
+        ``TEXTRACT_API_JOB_TIMEOUT_SECONDS * SQS_PROCESSING_OVERHEAD_FACTOR``. This is
+        still an estimate; a per-message visibility heartbeat (ChangeMessageVisibility
+        while queued/in flight) is the robust fix and belongs with the
+        concurrency/dispatch work (SQS stories 5/7).
 
         Returns:
             Settings: The validated settings object.
@@ -423,14 +458,17 @@ class Settings(BaseSettings):  # type: ignore
             ValueError: If the visibility timeout is below the worst-case residence bound.
         """
         waves = math.ceil(self.SQS_MAX_MESSAGES_PER_POLL / self.MAX_CONCURRENT_DOCUMENTS)
-        minimum_visibility = waves * self.TEXTRACT_API_JOB_TIMEOUT_SECONDS
+        per_document_cost = self.TEXTRACT_API_JOB_TIMEOUT_SECONDS * self.SQS_PROCESSING_OVERHEAD_FACTOR
+        minimum_visibility = math.ceil(waves * per_document_cost)
         if self.SQS_VISIBILITY_TIMEOUT_SECONDS < minimum_visibility:
             raise ValueError(
                 f"SQS_VISIBILITY_TIMEOUT_SECONDS ({self.SQS_VISIBILITY_TIMEOUT_SECONDS}) must be at least "
-                f"{minimum_visibility} = ceil(SQS_MAX_MESSAGES_PER_POLL ({self.SQS_MAX_MESSAGES_PER_POLL}) / "
+                f"{minimum_visibility} = ceil(ceil(SQS_MAX_MESSAGES_PER_POLL ({self.SQS_MAX_MESSAGES_PER_POLL}) / "
                 f"MAX_CONCURRENT_DOCUMENTS ({self.MAX_CONCURRENT_DOCUMENTS})) * TEXTRACT_API_JOB_TIMEOUT_SECONDS "
-                f"({self.TEXTRACT_API_JOB_TIMEOUT_SECONDS}), so a received message stays hidden for at least the "
-                "worst-case time it can spend queued behind other jobs plus its own processing."
+                f"({self.TEXTRACT_API_JOB_TIMEOUT_SECONDS}) * SQS_PROCESSING_OVERHEAD_FACTOR "
+                f"({self.SQS_PROCESSING_OVERHEAD_FACTOR})), so a received message stays hidden for at least the "
+                "worst-case time it can spend queued behind other jobs plus its own full (Textract + "
+                "chunking/embedding/indexing) processing."
             )
         return self
 

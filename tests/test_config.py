@@ -168,7 +168,9 @@ def test_sqs_max_messages_per_poll_validation(max_messages):
         with pytest.raises(ValueError):
             Settings(SQS_MAX_MESSAGES_PER_POLL=max_messages)
     else:
-        Settings(SQS_MAX_MESSAGES_PER_POLL=max_messages)
+        # A generous visibility timeout keeps the residence-bound validator satisfied for
+        # larger batches, isolating the 1..10 range check here.
+        Settings(SQS_MAX_MESSAGES_PER_POLL=max_messages, SQS_VISIBILITY_TIMEOUT_SECONDS=43200)
 
 
 @pytest.mark.parametrize(
@@ -188,7 +190,12 @@ def test_sqs_visibility_timeout_range(visibility, valid):
     validator (visibility >= job timeout) and the poll<timeout validator are both
     satisfied for the valid cases, isolating the SQS range check.
     """
-    textract_kwargs = {"TEXTRACT_API_POLL_INTERVAL_SECONDS": 1, "TEXTRACT_API_JOB_TIMEOUT_SECONDS": 2}
+    # factor=1.0 (no non-Textract headroom) keeps the residence bound at job timeout.
+    textract_kwargs = {
+        "TEXTRACT_API_POLL_INTERVAL_SECONDS": 1,
+        "TEXTRACT_API_JOB_TIMEOUT_SECONDS": 2,
+        "SQS_PROCESSING_OVERHEAD_FACTOR": 1.0,
+    }
     if valid:
         Settings(SQS_VISIBILITY_TIMEOUT_SECONDS=visibility, **textract_kwargs)
     else:
@@ -208,17 +215,19 @@ def test_sqs_visibility_timeout_range(visibility, valid):
     ],
 )
 def test_sqs_visibility_must_cover_textract_timeout(visibility, textract_timeout, valid):
-    """With batch == concurrency (one wave) the bound is the single-document timeout."""
+    """With batch == concurrency (one wave) and factor 1.0 the bound is the job timeout."""
     if valid:
         Settings(
             SQS_VISIBILITY_TIMEOUT_SECONDS=visibility,
             TEXTRACT_API_JOB_TIMEOUT_SECONDS=textract_timeout,
+            SQS_PROCESSING_OVERHEAD_FACTOR=1.0,
         )
     else:
         with pytest.raises(ValueError, match="SQS_VISIBILITY_TIMEOUT_SECONDS"):
             Settings(
                 SQS_VISIBILITY_TIMEOUT_SECONDS=visibility,
                 TEXTRACT_API_JOB_TIMEOUT_SECONDS=textract_timeout,
+                SQS_PROCESSING_OVERHEAD_FACTOR=1.0,
             )
 
 
@@ -235,15 +244,56 @@ def test_sqs_visibility_must_cover_textract_timeout(visibility, textract_timeout
     ],
 )
 def test_sqs_visibility_must_cover_queueing_waves(batch, concurrency, visibility, valid):
-    """The bound scales with ceil(batch / concurrency) processing waves, not just one document."""
+    """The bound scales with ceil(batch / concurrency) processing waves, not just one document.
+
+    Uses factor 1.0 so the per-wave cost is exactly the Textract timeout, isolating the
+    wave arithmetic from the non-Textract overhead multiplier.
+    """
     kwargs = {
         "SQS_MAX_MESSAGES_PER_POLL": batch,
         "MAX_CONCURRENT_DOCUMENTS": concurrency,
         "SQS_VISIBILITY_TIMEOUT_SECONDS": visibility,
         "TEXTRACT_API_JOB_TIMEOUT_SECONDS": 600,
+        "SQS_PROCESSING_OVERHEAD_FACTOR": 1.0,
     }
     if valid:
         Settings(**kwargs)
     else:
         with pytest.raises(ValueError, match="SQS_VISIBILITY_TIMEOUT_SECONDS"):
             Settings(**kwargs)
+
+
+@pytest.mark.parametrize(
+    "factor,visibility,valid",
+    [
+        # 1 wave, Textract 600: min = ceil(600 * factor).
+        (1.0, 600, True),  # no headroom: bound is exactly the Textract timeout
+        (1.5, 900, True),  # 50% headroom: min = 900
+        (1.5, 899, False),  # just below the headroom-inclusive bound
+        (2.0, 1200, True),  # 100% headroom: min = 1200
+        (2.0, 1199, False),
+    ],
+)
+def test_sqs_visibility_overhead_factor_widens_bound(factor, visibility, valid):
+    """The overhead factor scales the per-wave cost to cover non-Textract processing."""
+    kwargs = {
+        "SQS_MAX_MESSAGES_PER_POLL": 4,
+        "MAX_CONCURRENT_DOCUMENTS": 4,  # 1 wave
+        "TEXTRACT_API_JOB_TIMEOUT_SECONDS": 600,
+        "SQS_PROCESSING_OVERHEAD_FACTOR": factor,
+        "SQS_VISIBILITY_TIMEOUT_SECONDS": visibility,
+    }
+    if valid:
+        Settings(**kwargs)
+    else:
+        with pytest.raises(ValueError, match="SQS_VISIBILITY_TIMEOUT_SECONDS"):
+            Settings(**kwargs)
+
+
+@pytest.mark.parametrize("factor,valid", [(0.9, False), (0.0, False), (1.0, True), (1.5, True), (3.0, True)])
+def test_sqs_processing_overhead_factor_must_be_at_least_one(factor, valid):
+    if valid:
+        Settings(SQS_PROCESSING_OVERHEAD_FACTOR=factor)
+    else:
+        with pytest.raises(ValueError, match="SQS_PROCESSING_OVERHEAD_FACTOR"):
+            Settings(SQS_PROCESSING_OVERHEAD_FACTOR=factor)
