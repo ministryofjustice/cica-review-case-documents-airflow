@@ -65,6 +65,27 @@ Note: `opensearch_templates.inc` and `bedrock_connector_common.inc` are shared b
     docker compose up -d --force-recreate
 ```
 
+This starts:
+
+| Container | Port | Purpose | Healthcheck |
+|-----------|------|---------|-------------|
+| `opensearch` | 9200 | OpenSearch instance | Yes — reports `healthy` |
+| `localstack-main` | 4566 | S3 buckets + SQS queue + test documents | Yes — reports `healthy` |
+| `opensearch-dashboards` | 5601 | Dashboards UI | No — only shows `Up`/`running` |
+| `sqs-admin` | 3999 | Dev-only web UI for the local SQS queue | No — only shows `Up`/`running` |
+
+The init scripts run automatically during composition and create the S3 buckets, copy the sample documents into LocalStack, create the OpenSearch indexes, and set up the Bedrock connector.
+
+Wait for the two health-checked services (`opensearch` and `localstack-main`) to report **healthy** before proceeding — `localstack-main` can take several minutes as it runs the init scripts:
+
+```bash
+    docker compose ps
+```
+
+`opensearch-dashboards` and `sqs-admin` have no healthcheck and will simply show `Up`/`running`; that is expected.
+
+> **SQS queue GUI:** browse the local `cica-document-search-queue` at http://localhost:3999 to view, send, and purge messages. This is a development-only aid ([pacovk/sqs-admin](https://github.com/PacoVK/sqs-admin)) and is not part of any deployed environment.
+
 ### Processing redacted documents
 
 #### Configuration and Access Keys
@@ -124,18 +145,42 @@ Note: the following steps ask you to create another `.env` file at the project r
 
 #### Ingesting scanned documents
 
-From the project root directory run this [script](/run_locally_with_dot_env.sh) to run the python code and process documents.
+The pipeline is an SQS consumer: it reads document-processing requests from the
+`cica-document-search-queue` and processes each one. The local init script creates the
+queue and copies the sample documents into S3, but it does **not** enqueue a request, so
+you must put a message on the queue first — otherwise the consumer long-polls an empty
+queue and processes nothing.
 
-```bash
-bash run_locally_with_dot_env.sh
-```
+1. From the project root, enqueue a contract-valid message for the sample document:
 
-**Example**: The default project root .env configuration will process this document.
+    ```bash
+    local-dev-environment/send_test_message.sh
+    ```
 
-```bash
-AWS_CICA_S3_SOURCE_DOCUMENT_CASE_PREFIX=26-700001
-AWS_CICA_S3_SOURCE_DOCUMENT_FILENAME=Case1_TC19_50_pages_brain_injury.pdf
-```
+    (You can also send a message from the sqs-admin UI at http://localhost:3999.)
+
+2. Run the [runner](/run_locally_with_dot_env.sh) to consume the queue and process the document:
+
+    ```bash
+    bash run_locally_with_dot_env.sh
+    ```
+
+    `send_test_message.sh` defaults to the sample document configured in the project root
+    `.env`:
+
+    ```bash
+    AWS_CICA_S3_SOURCE_DOCUMENT_CASE_PREFIX=26-700001
+    AWS_CICA_S3_SOURCE_DOCUMENT_FILENAME=Case1_TC19_50_pages_brain_injury.pdf
+    ```
+
+3. Verify the document was indexed:
+
+    ```bash
+    curl -s http://localhost:9200/page_chunks/_count | jq
+    curl -s http://localhost:9200/page_metadata/_count | jq
+    ```
+
+    Or browse via OpenSearch Dashboards at http://localhost:5601.
 
 When a document is processed, the following actions occur:
 - the document is retrieved, via _CASE_PREFIX and _DOCUMENT_FILENAME from a localstack S3 bucket 
@@ -162,6 +207,82 @@ When a document is processed, the following actions occur:
     The mapping can be found within the [opensearch template](/local-dev-environment/init-scripts/lib/opensearch_templates.inc).
 
 Note: running the ingestion script again with the same document metadata removes associated entries from the indexes and associated page images, then recreates both index data and page images.
+
+## AWS CLI commands for the local queue
+
+The local development steps use `awslocal` (the AWS CLI pre-wrapped for LocalStack) from
+inside the `localstack-main` container. If you want to run the AWS CLI directly from your
+host against LocalStack, install it and point it at the LocalStack endpoint.
+
+Install the AWS CLI (if not already available):
+
+```bash
+# macOS
+brew install awscli
+# Debian/Ubuntu (WSL)
+sudo apt-get install -y awscli
+```
+
+Run commands against LocalStack by adding `--endpoint-url=http://localhost:4566` (any
+credentials work locally; the region is `eu-west-2`). The examples below use `awslocal`
+inside the container; the host equivalent is
+`aws --endpoint-url=http://localhost:4566 --region eu-west-2 <same args>`.
+
+A few useful queue operations:
+
+```bash
+# Resolve the queue URL (used by the commands below)
+QURL=$(docker exec localstack-main awslocal sqs get-queue-url \
+  --queue-name cica-document-search-queue --output text)
+
+# List all queues
+docker exec localstack-main awslocal sqs list-queues
+
+# How many messages are waiting / in flight
+docker exec localstack-main awslocal sqs get-queue-attributes \
+  --queue-url "$QURL" \
+  --attribute-names ApproximateNumberOfMessages ApproximateNumberOfMessagesNotVisible
+
+# Peek at messages WITHOUT consuming them (0s visibility keeps them visible)
+docker exec localstack-main awslocal sqs receive-message \
+  --queue-url "$QURL" --max-number-of-messages 10 --visibility-timeout 0
+
+# Purge the queue (delete all messages)
+docker exec localstack-main awslocal sqs purge-queue --queue-url "$QURL"
+
+# Send a message (prefer local-dev-environment/send_test_message.sh, which builds a
+# contract-valid body for you)
+docker exec localstack-main awslocal sqs send-message \
+  --queue-url "$QURL" \
+  --message-body '{"correspondence_type":"TC19 - ADDITIONAL INFO REQUEST","case_ref":"26-700001","source_file_s3_uri":"s3://local-kta-documents-bucket/26-700001/Case1_TC19_50_pages_brain_injury.pdf"}'
+```
+
+## Rebuilding indexes (without a full Docker rebuild)
+
+To wipe and recreate the OpenSearch indexes without restarting everything, run the setup
+scripts **from `local-dev-environment`** (the `docker compose` commands need the Compose
+file there):
+
+```bash
+cd local-dev-environment
+docker compose exec -e CONFIRM_OVERWRITE=true localstack \
+  bash /etc/localstack/init/ready.d/02-create-opensearch-resources.sh
+docker compose exec localstack \
+  bash /etc/localstack/init/ready.d/03-setup-bedrock-connector-neural.sh
+```
+
+Then re-enqueue a message and re-ingest from the project root (rebuilding indexes does
+not enqueue one):
+
+```bash
+cd ..
+local-dev-environment/send_test_message.sh
+bash run_locally_with_dot_env.sh
+```
+
+## Troubleshooting
+
+For LocalStack, credential, and ingestion issues, see [/docs/TROUBLESHOOTING.md](/docs/TROUBLESHOOTING.md).
 
 ## Further reading
 
