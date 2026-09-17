@@ -17,11 +17,11 @@
 #   Optional: received_date.
 #   Ignored:  source_doc_id, page_count (derived during ingestion).
 #
-# Usage:
-#   bin/send_test_message.sh                       # send one message using defaults
-#   bin/send_test_message.sh -c 26-700099 -f merged-all.pdf
-#   bin/send_test_message.sh --body '{"correspondence_type":"...","case_ref":"...","source_file_s3_uri":"..."}'
-#   bin/send_test_message.sh --malformed           # send an invalid message to test rejection
+# Usage (paths shown relative to the repository root):
+#   local-dev-environment/send_test_message.sh                       # send one message using defaults
+#   local-dev-environment/send_test_message.sh -c 26-700099 -f merged-all.pdf
+#   local-dev-environment/send_test_message.sh --body '{"correspondence_type":"...","case_ref":"...","source_file_s3_uri":"..."}'
+#   local-dev-environment/send_test_message.sh --malformed           # send an invalid message to test rejection
 #
 # Options:
 #   -q, --queue NAME        SQS queue name        (default: $SQS_DOCUMENT_QUEUE or cica-document-search-queue)

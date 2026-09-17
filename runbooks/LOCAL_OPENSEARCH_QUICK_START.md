@@ -61,7 +61,7 @@ This starts:
 > http://localhost:3999 — view, send, and purge messages. This is a
 > development-only aid ([pacovk/sqs-admin](https://github.com/PacoVK/sqs-admin))
 > and is not part of any deployed environment. To enqueue a contract-valid test
-> message from the CLI instead, use `bin/send_test_message.sh`.
+> message from the CLI instead, use `local-dev-environment/send_test_message.sh`.
 
 The init scripts run automatically during composition and:
 
@@ -123,7 +123,7 @@ long-polls an empty queue and processes nothing.
 From the repository root, enqueue a contract-valid message for the sample document:
 
 ```bash
-bin/send_test_message.sh
+local-dev-environment/send_test_message.sh
 ```
 
 (You can also send messages from the sqs-admin UI at http://localhost:3999.)
@@ -134,7 +134,7 @@ Then start the consumer:
 bash run_locally_with_dot_env.sh
 ```
 
-`bin/send_test_message.sh` defaults to the sample document, so the run processes:
+`local-dev-environment/send_test_message.sh` defaults to the sample document, so the run processes:
 
 ```
 Case: 26-700001
@@ -180,7 +180,7 @@ message on the queue; rebuilding indexes does not enqueue one):
 
 ```bash
 cd ..
-bin/send_test_message.sh
+local-dev-environment/send_test_message.sh
 bash run_locally_with_dot_env.sh
 ```
 
