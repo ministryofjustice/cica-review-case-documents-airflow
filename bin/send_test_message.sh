@@ -84,13 +84,30 @@ elif [[ -n "${RAW_BODY}" ]]; then
   BODY="${RAW_BODY}"
 else
   S3_URI="s3://${BUCKET}/${CASE_REF}/${FILENAME}"
-  if [[ -n "${RECEIVED_DATE}" ]]; then
-    BODY=$(printf '{"correspondence_type":"%s","case_ref":"%s","source_file_s3_uri":"%s","received_date":"%s"}' \
-      "${CORRESPONDENCE_TYPE}" "${CASE_REF}" "${S3_URI}" "${RECEIVED_DATE}")
-  else
-    BODY=$(printf '{"correspondence_type":"%s","case_ref":"%s","source_file_s3_uri":"%s"}' \
-      "${CORRESPONDENCE_TYPE}" "${CASE_REF}" "${S3_URI}")
+  # Build the JSON with Python's json.dumps rather than printf so field values are
+  # correctly escaped: a correspondence type, filename, or date containing a quote,
+  # backslash, or other JSON-special character would otherwise produce an invalid body.
+  # Values are passed via the environment (not interpolated into the code) to keep this
+  # safe against injection.
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "ERROR: python3 is required to build the message body safely." >&2
+    exit 1
   fi
+  BODY=$(
+    CORRESPONDENCE_TYPE="${CORRESPONDENCE_TYPE}" CASE_REF="${CASE_REF}" \
+    S3_URI="${S3_URI}" RECEIVED_DATE="${RECEIVED_DATE}" \
+    python3 -c '
+import json, os
+body = {
+    "correspondence_type": os.environ["CORRESPONDENCE_TYPE"],
+    "case_ref": os.environ["CASE_REF"],
+    "source_file_s3_uri": os.environ["S3_URI"],
+}
+if os.environ.get("RECEIVED_DATE"):
+    body["received_date"] = os.environ["RECEIVED_DATE"]
+print(json.dumps(body))
+'
+  )
 fi
 
 echo "Queue:   ${QUEUE_NAME}"
