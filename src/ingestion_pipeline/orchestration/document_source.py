@@ -36,12 +36,17 @@ _TRANSIENT_SQS_ERROR_CODES = frozenset(
         "RequestThrottled",
         "ThrottlingException",
         "Throttling",
+        # Temporary per-request rate limit SQS can return (notably on short polling).
+        "OverLimit",
         "RequestTimeout",
         "RequestTimeoutException",
         "ServiceUnavailable",
         "InternalError",
         "InternalFailure",
         "ServiceError",
+        # KMS throttling: SQS returns "KmsThrottled"; the dotted spelling is kept too in
+        # case a different surface reports it that way.
+        "KmsThrottled",
         "KMS.ThrottlingException",
     }
 )

@@ -148,6 +148,8 @@ def test_fetch_batch_deletes_malformed_and_continues():
         _client_error("ThrottlingException"),
         _client_error("ServiceUnavailable"),
         _client_error("InternalError"),
+        _client_error("OverLimit"),  # short-poll temporary rate limit
+        _client_error("KmsThrottled"),  # SQS KMS throttling (actual code)
         EndpointConnectionError(endpoint_url="http://localhost:4566"),
         # HTTPClientError subclasses (do NOT derive from ConnectionError) - common
         # transport failures raised after the SDK exhausts its own retries.
