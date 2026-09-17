@@ -139,3 +139,41 @@ def test_get_textractor_instance_does_not_mutate_environment(monkeypatch, mock_s
     clients.get_textractor_instance()
     # No AWS credential env vars are set or left behind by the factory.
     assert os.environ == before
+
+
+def test_get_sqs_client_production(monkeypatch, mock_settings):
+    mock_boto3 = MagicMock()
+    monkeypatch.setattr(clients, "boto3", mock_boto3)
+
+    clients.get_sqs_client()
+    mock_boto3.client.assert_called_once_with(
+        "sqs",
+        aws_access_key_id="mod-key",
+        aws_secret_access_key="mod-secret",
+        aws_session_token="mod-token",
+        region_name="eu-west-2",
+        config=clients.AWS_RETRY_CONFIG,
+    )
+
+
+def test_get_sqs_client_local(monkeypatch):
+    class MockSettings:
+        AWS_REGION = "eu-west-2"
+        AWS_MOD_PLATFORM_ACCESS_KEY_ID = "mod-key"
+        AWS_MOD_PLATFORM_SECRET_ACCESS_KEY = "mod-secret"
+        AWS_MOD_PLATFORM_SESSION_TOKEN = "mod-token"
+        LOCAL_DEVELOPMENT_MODE = True
+
+    monkeypatch.setattr("ingestion_pipeline.aws_client.clients.settings", MockSettings())
+    mock_boto3 = MagicMock()
+    monkeypatch.setattr(clients, "boto3", mock_boto3)
+
+    clients.get_sqs_client()
+    mock_boto3.client.assert_called_once_with(
+        "sqs",
+        endpoint_url="http://localhost:4566",
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
+        region_name="eu-west-2",
+        config=clients.AWS_RETRY_CONFIG,
+    )

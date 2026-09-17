@@ -8,12 +8,17 @@ per-document log lines remain correctly attributed.
 """
 
 import logging
+import sys
 
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.custom_logging.log_context import setup_logging
 from ingestion_pipeline.indexing.healthcheck import check_opensearch_health
 from ingestion_pipeline.orchestration.batch_processing.batch_runner import run_batch
-from ingestion_pipeline.orchestration.document_source import DocumentSource, SqsDocumentSource
+from ingestion_pipeline.orchestration.document_source import (
+    DocumentSource,
+    QueueResolutionError,
+    SqsDocumentSource,
+)
 from ingestion_pipeline.pipeline_builder import build_pipeline
 
 setup_logging()
@@ -39,8 +44,15 @@ def main():
     # clients are safe to call concurrently.
     pipeline = build_pipeline()
 
-    # Fetch the batch of documents to process from the (stubbed) SQS source.
-    source: DocumentSource = SqsDocumentSource()
+    # Connect to the SQS document queue. An unresolvable queue is fatal: log and exit
+    # non-zero rather than proceeding with no source of work.
+    try:
+        source: DocumentSource = SqsDocumentSource()
+    except QueueResolutionError as exc:
+        logger.critical(f"Could not connect to the SQS document queue; exiting: {exc}")
+        sys.exit(1)
+
+    # Fetch a batch of documents from the queue and process them.
     jobs = source.fetch_batch()
 
     run_batch(jobs, pipeline, source)

@@ -114,3 +114,136 @@ def test_timeout_greater_than_poll_validation(poll, timeout):
             Settings(TEXTRACT_API_POLL_INTERVAL_SECONDS=poll, TEXTRACT_API_JOB_TIMEOUT_SECONDS=timeout)
     else:
         Settings(TEXTRACT_API_POLL_INTERVAL_SECONDS=poll, TEXTRACT_API_JOB_TIMEOUT_SECONDS=timeout)
+
+
+# --- SQS settings -----------------------------------------------------------
+
+
+def test_sqs_settings_defaults(settings_without_env_file):
+    """SQS settings expose the documented defaults."""
+    settings = settings_without_env_file
+    assert settings.SQS_DOCUMENT_QUEUE == "cica-document-search-queue"
+    assert settings.SQS_POLL_WAIT_TIME_SECONDS == 20
+    assert settings.SQS_MAX_MESSAGES_PER_POLL == 4
+    assert settings.SQS_VISIBILITY_TIMEOUT_SECONDS == 1800
+    # The default visibility timeout must cover the worst-case single-document
+    # processing ceiling (the Textract job timeout).
+    assert settings.SQS_VISIBILITY_TIMEOUT_SECONDS >= settings.TEXTRACT_API_JOB_TIMEOUT_SECONDS
+
+
+@pytest.mark.parametrize(
+    "name,valid",
+    [
+        ("cica-document-search-queue", True),
+        ("my_queue-1", True),
+        ("a" * 80, True),  # max length
+        ("", False),  # empty
+        ("   ", False),  # whitespace-only
+        ("a" * 81, False),  # too long
+        ("bad name", False),  # space not allowed
+        ("bad.name", False),  # dot not allowed for a standard queue
+        ("bad/name", False),  # slash not allowed
+    ],
+)
+def test_sqs_document_queue_validation(name, valid):
+    if valid:
+        assert Settings(SQS_DOCUMENT_QUEUE=name).SQS_DOCUMENT_QUEUE == name.strip()
+    else:
+        with pytest.raises(ValueError, match="SQS_DOCUMENT_QUEUE"):
+            Settings(SQS_DOCUMENT_QUEUE=name)
+
+
+@pytest.mark.parametrize("wait_time", [-1, 0, 10, 20, 21])
+def test_sqs_poll_wait_time_validation(wait_time):
+    if not 0 <= wait_time <= 20:
+        with pytest.raises(ValueError):
+            Settings(SQS_POLL_WAIT_TIME_SECONDS=wait_time)
+    else:
+        Settings(SQS_POLL_WAIT_TIME_SECONDS=wait_time)
+
+
+@pytest.mark.parametrize("max_messages", [0, 1, 5, 10, 11])
+def test_sqs_max_messages_per_poll_validation(max_messages):
+    if not 1 <= max_messages <= 10:
+        with pytest.raises(ValueError):
+            Settings(SQS_MAX_MESSAGES_PER_POLL=max_messages)
+    else:
+        Settings(SQS_MAX_MESSAGES_PER_POLL=max_messages)
+
+
+@pytest.mark.parametrize(
+    "visibility,valid",
+    [
+        (-1, False),  # below range
+        (0, False),  # zero: message would be immediately visible again
+        (2, True),  # minimum that also satisfies the cross-field lower bound below
+        (43200, True),  # SQS service maximum (12 hours)
+        (43201, False),  # above the SQS service maximum
+    ],
+)
+def test_sqs_visibility_timeout_range(visibility, valid):
+    """Visibility timeout must be within the SQS-permitted 1..43200 range.
+
+    Low Textract timeouts (poll=1, job=2) are supplied so the cross-field lower-bound
+    validator (visibility >= job timeout) and the poll<timeout validator are both
+    satisfied for the valid cases, isolating the SQS range check.
+    """
+    textract_kwargs = {"TEXTRACT_API_POLL_INTERVAL_SECONDS": 1, "TEXTRACT_API_JOB_TIMEOUT_SECONDS": 2}
+    if valid:
+        Settings(SQS_VISIBILITY_TIMEOUT_SECONDS=visibility, **textract_kwargs)
+    else:
+        with pytest.raises(ValueError, match="SQS_VISIBILITY_TIMEOUT_SECONDS"):
+            Settings(SQS_VISIBILITY_TIMEOUT_SECONDS=visibility, **textract_kwargs)
+
+
+@pytest.mark.parametrize(
+    "visibility,textract_timeout,valid",
+    [
+        # With the default batch (4) == concurrency (4), waves = 1, so the bound is the
+        # single-document Textract timeout.
+        (600, 600, True),  # equal: allowed (>=)
+        (1800, 600, True),  # comfortably above
+        (599, 600, False),  # just below the one-wave bound
+        (300, 600, False),  # the old default, now rejected
+    ],
+)
+def test_sqs_visibility_must_cover_textract_timeout(visibility, textract_timeout, valid):
+    """With batch == concurrency (one wave) the bound is the single-document timeout."""
+    if valid:
+        Settings(
+            SQS_VISIBILITY_TIMEOUT_SECONDS=visibility,
+            TEXTRACT_API_JOB_TIMEOUT_SECONDS=textract_timeout,
+        )
+    else:
+        with pytest.raises(ValueError, match="SQS_VISIBILITY_TIMEOUT_SECONDS"):
+            Settings(
+                SQS_VISIBILITY_TIMEOUT_SECONDS=visibility,
+                TEXTRACT_API_JOB_TIMEOUT_SECONDS=textract_timeout,
+            )
+
+
+@pytest.mark.parametrize(
+    "batch,concurrency,visibility,valid",
+    [
+        # 10 messages, 1 worker => 10 waves => min = 10 * 600 = 6000.
+        (10, 1, 6000, True),  # exactly the worst-case residence bound
+        (10, 1, 5999, False),  # Copilot's example: passes the old bound, now rejected
+        (10, 1, 600, False),  # only covers one document, ignores 9 waves of queueing
+        # 10 messages, 4 workers => ceil(10/4) = 3 waves => min = 3 * 600 = 1800.
+        (10, 4, 1800, True),
+        (10, 4, 1799, False),
+    ],
+)
+def test_sqs_visibility_must_cover_queueing_waves(batch, concurrency, visibility, valid):
+    """The bound scales with ceil(batch / concurrency) processing waves, not just one document."""
+    kwargs = {
+        "SQS_MAX_MESSAGES_PER_POLL": batch,
+        "MAX_CONCURRENT_DOCUMENTS": concurrency,
+        "SQS_VISIBILITY_TIMEOUT_SECONDS": visibility,
+        "TEXTRACT_API_JOB_TIMEOUT_SECONDS": 600,
+    }
+    if valid:
+        Settings(**kwargs)
+    else:
+        with pytest.raises(ValueError, match="SQS_VISIBILITY_TIMEOUT_SECONDS"):
+            Settings(**kwargs)

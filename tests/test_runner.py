@@ -119,3 +119,20 @@ def test_main_creates_correct_document_metadata(mock_check_opensearch_health, mo
     assert metadata.case_ref == "26-711111"
     assert metadata.correspondence_type == "TC19 - ADDITIONAL INFO REQUEST"
     assert metadata.page_count is None
+
+
+@mock.patch("ingestion_pipeline.runner.SqsDocumentSource")
+@mock.patch("ingestion_pipeline.runner.build_pipeline")
+@mock.patch("ingestion_pipeline.runner.check_opensearch_health")
+def test_main_exits_when_queue_unresolvable(mock_check_opensearch_health, mock_build_pipeline, mock_source_cls):
+    """An unresolvable queue is fatal: main exits non-zero and processes nothing."""
+    from ingestion_pipeline.orchestration.document_source import QueueResolutionError
+
+    mock_check_opensearch_health.return_value = True
+    mock_build_pipeline.return_value = mock.Mock()
+    mock_source_cls.side_effect = QueueResolutionError("no queue")
+
+    with pytest.raises(SystemExit) as exc_info:
+        main()
+
+    assert exc_info.value.code == 1
