@@ -203,7 +203,7 @@ docker compose logs localstack
 | Log message | Cause | Fix |
 |-------------|-------|-----|
 | `export: '[...]' not a valid identifier` | AWS profile header (e.g. `[957704842145_modernisation-platform-sandbox]`) accidentally pasted into `local-dev-environment/.env` | Remove the `[...]` line. The `.env` file must only contain `KEY=VALUE` pairs and `#` comments. |
-| `AWS credentials not found` | Placeholder values not replaced in `local-dev-environment/.env` | Replace `MOD_AWS_ACCESS_KEY_ID` etc. with real values from the Mod Platform console. |
+| `AWS credentials not found` | Placeholder values not replaced in `local-dev-environment/.env` | Set real values for `AWS_MOD_PLATFORM_ACCESS_KEY_ID`, `AWS_MOD_PLATFORM_SECRET_ACCESS_KEY` and `AWS_MOD_PLATFORM_SESSION_TOKEN` (replacing the `MOD_AWS_*` placeholder values) from the Mod Platform console. |
 | `ExpiredTokenException` or `The security token included in the request is expired` | Mod Platform credentials have expired (they rotate daily) | Get fresh credentials from the Mod Platform console and update both `.env` files. |
 
 After fixing, always do a full rebuild:
