@@ -131,6 +131,28 @@ def test_sqs_settings_defaults(settings_without_env_file):
     assert settings.SQS_VISIBILITY_TIMEOUT_SECONDS >= settings.TEXTRACT_API_JOB_TIMEOUT_SECONDS
 
 
+@pytest.mark.parametrize(
+    "name,valid",
+    [
+        ("cica-document-search-queue", True),
+        ("my_queue-1", True),
+        ("a" * 80, True),  # max length
+        ("", False),  # empty
+        ("   ", False),  # whitespace-only
+        ("a" * 81, False),  # too long
+        ("bad name", False),  # space not allowed
+        ("bad.name", False),  # dot not allowed for a standard queue
+        ("bad/name", False),  # slash not allowed
+    ],
+)
+def test_sqs_document_queue_validation(name, valid):
+    if valid:
+        assert Settings(SQS_DOCUMENT_QUEUE=name).SQS_DOCUMENT_QUEUE == name.strip()
+    else:
+        with pytest.raises(ValueError, match="SQS_DOCUMENT_QUEUE"):
+            Settings(SQS_DOCUMENT_QUEUE=name)
+
+
 @pytest.mark.parametrize("wait_time", [-1, 0, 10, 20, 21])
 def test_sqs_poll_wait_time_validation(wait_time):
     if not 0 <= wait_time <= 20:

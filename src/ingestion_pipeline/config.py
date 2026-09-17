@@ -1,6 +1,7 @@
 """Configuration settings for the airflow pipeline."""
 
 import math
+import re
 from pathlib import Path
 
 from pydantic import field_validator, model_validator
@@ -295,6 +296,30 @@ class Settings(BaseSettings):  # type: ignore
         if v <= 0:
             raise ValueError("TEXTRACT_API_POLL_INTERVAL_SECONDS must be a positive integer")
         return v
+
+    @field_validator("SQS_DOCUMENT_QUEUE")
+    @classmethod
+    def validate_sqs_document_queue(cls, v: str) -> str:
+        """Ensure the SQS queue name is valid so bad config fails at startup.
+
+        AWS standard SQS queue names are 1-80 characters of alphanumerics, hyphens and
+        underscores. Validating here means an empty, whitespace-only, overlong, or
+        otherwise invalid name fails during settings construction rather than only when
+        the first AWS call is made. Surrounding whitespace is stripped first.
+
+        Args:
+            v (str): The configured queue name.
+
+        Returns:
+            str: The validated (stripped) queue name.
+
+        Raises:
+            ValueError: If the name is empty or does not match the SQS naming rules.
+        """
+        stripped = v.strip()
+        if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", stripped):
+            raise ValueError("SQS_DOCUMENT_QUEUE must be 1-80 characters of letters, digits, hyphens or underscores")
+        return stripped
 
     @field_validator("SQS_POLL_WAIT_TIME_SECONDS")
     @classmethod
