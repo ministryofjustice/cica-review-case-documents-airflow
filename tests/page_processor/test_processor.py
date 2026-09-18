@@ -122,94 +122,54 @@ def test_process_page_count_mismatch(processor, mock_image_converter, metadata):
         processor.process(doc, metadata)
 
 
-def test_process_image_upload_failure_triggers_cleanup(
+def test_process_image_upload_failure_raises_page_processing_error(
     processor, mock_s3_document_service, mock_image_converter, metadata
 ):
+    """An upload failure is wrapped in PageProcessingError with document context."""
     mock_image1 = MagicMock()
     mock_image1.size = (100, 200)
     mock_image2 = MagicMock()
     mock_image2.size = (150, 250)
     mock_image_converter.pdf_to_images.return_value = [mock_image1, mock_image2]
-    # Simulate upload_page_images raising an exception
     mock_s3_document_service.upload_page_images.side_effect = Exception("upload failed")
-
-    doc = DummyDocument(2)
-    with pytest.raises(PageProcessingError) as excinfo:
-        processor.process(doc, metadata)
-    assert "Image upload failed" in str(excinfo.value) or "Failed to process document pages" in str(excinfo.value)
-    assert not mock_s3_document_service.delete_images.called
-
-
-def test_process_cleanup_failure_raises_enriched_error(
-    processor, mock_s3_document_service, mock_image_converter, metadata
-):
-    mock_image1 = MagicMock()
-    mock_image1.size = (100, 200)
-    mock_image2 = MagicMock()
-    mock_image2.size = (150, 250)
-    mock_image_converter.pdf_to_images.return_value = [mock_image1, mock_image2]
-    # Simulate upload_page_images raises, and delete_images also raises
-    mock_s3_document_service.upload_page_images.side_effect = Exception("upload failed")
-    mock_s3_document_service.delete_images.side_effect = Exception("cleanup failed")
 
     doc = DummyDocument(2)
     with pytest.raises(PageProcessingError) as excinfo:
         processor.process(doc, metadata)
     assert (
-        "Failed to process document pages for source_doc_id=doc123, case_ref=caseX, s3_uri=s3://bucket/26-711111/file.pdf"
-        in str(excinfo.value)
+        "Failed to process document pages for source_doc_id=doc123, case_ref=caseX, "
+        "s3_uri=s3://bucket/26-711111/file.pdf" in str(excinfo.value)
     )
 
 
-def test_process_partial_upload_then_cleanup_failure(
+def test_process_does_not_clean_up_on_upload_failure(
     processor, mock_s3_document_service, mock_image_converter, metadata
 ):
-    # Arrange
+    """The processor no longer cleans up images itself.
+
+    Cleanup is centralised in the pipeline's top-level failure handler (prefix-delete),
+    so the processor must not call delete_images or delete_page_images on failure.
+    """
     mock_image_converter.pdf_to_images.return_value = [MagicMock(), MagicMock()]
-
-    # Simulate upload failing after one success
-    partial_result = [PageImageUploadResult("s3://uri", "key", 100, 100)]
-
-    def upload_side_effect(*args, **kwargs):
-        # This is a way to modify the state (uploaded_results) before the exception
-        processor.uploaded_results = partial_result
-        raise RuntimeError("Upload failed mid-way")
-
-    mock_s3_document_service.upload_page_images.side_effect = upload_side_effect
-
-    # Simulate cleanup also failing
-    mock_s3_document_service.delete_images.side_effect = RuntimeError("Cleanup failed")
+    mock_s3_document_service.upload_page_images.side_effect = Exception("upload failed")
 
     doc = DummyDocument(2)
-
-    # Act & Assert
-    # The 'match' parameter is a regex. We just need to check for the key part of the message.
-    with pytest.raises(PageProcessingError, match="Image upload failed and cleanup also failed"):
+    with pytest.raises(PageProcessingError, match="Failed to process document pages"):
         processor.process(doc, metadata)
 
-    mock_s3_document_service.delete_images.assert_called_once_with(["key"])
+    assert not mock_s3_document_service.delete_images.called
+    assert not mock_s3_document_service.delete_page_images.called
 
 
-def test_process_image_upload_failure_triggers_cleanup_on_second_upload(
+def test_process_download_failure_raises_page_processing_error(
     processor, mock_s3_document_service, mock_image_converter, metadata
 ):
-    mock_image1 = MagicMock()
-    mock_image1.size = (100, 200)
-    mock_image2 = MagicMock()
-    mock_image2.size = (150, 250)
-    mock_image_converter.pdf_to_images.return_value = [mock_image1, mock_image2]
-
-    # Simulate upload_page_images raises after uploading one image
-    # We'll simulate this by having upload_page_images return a partial list, then raise
-    def upload_page_images_side_effect(images, case_ref, source_doc_id):
-        # Simulate uploading the first image, then fail
-        raise Exception("upload failed")
-
-    mock_s3_document_service.upload_page_images.side_effect = upload_page_images_side_effect
+    """A download failure is wrapped in PageProcessingError and no cleanup is attempted."""
+    mock_s3_document_service.download_pdf.side_effect = RuntimeError("download failed")
 
     doc = DummyDocument(2)
-    with pytest.raises(PageProcessingError) as excinfo:
+    with pytest.raises(PageProcessingError, match="Failed to process document pages"):
         processor.process(doc, metadata)
-    assert "Image upload failed" in str(excinfo.value) or "Failed to process document pages" in str(excinfo.value)
-    # Since upload failed immediately, no images were uploaded, so cleanup should not be called
-    assert not mock_s3_document_service.delete_images.called
+
+    mock_image_converter.pdf_to_images.assert_not_called()
+    assert not mock_s3_document_service.delete_page_images.called

@@ -77,6 +77,10 @@ class Settings(BaseSettings):  # type: ignore
     AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET: str = "local-kta-documents-bucket"
     AWS_CICA_S3_SOURCE_DOCUMENT_CASE_PREFIX: str = "26-711111"
     AWS_CICA_S3_SOURCE_DOCUMENT_FILENAME: str = "Case1_TC19_50_pages_brain_injury.pdf"
+    # Optional: comma-separated list of S3 keys (relative to the root bucket) to process as a batch,
+    # e.g. "26-700030/case30.pdf,26-700029/case29.pdf". The case_ref is derived from each key's
+    # leading folder. When set, this takes precedence over the single CASE_PREFIX/FILENAME above.
+    SRC_S3_KEY: str = ""
 
     AWS_LOCAL_DEV_TEXTRACT_S3_ROOT_BUCKET: str = "mod-platform-sandbox-kta-documents-bucket"
 
@@ -138,6 +142,12 @@ class Settings(BaseSettings):  # type: ignore
 
     LOG_LEVEL: str = "INFO"
 
+    # -- Parallel Processing --
+    # Maximum number of documents processed concurrently by the runner's thread pool.
+    # The pipeline is IO/wait-bound (Textract polling, S3, Bedrock, OpenSearch), so
+    # thread-based concurrency is effective here.
+    MAX_CONCURRENT_DOCUMENTS: int = 4
+
     DEBUG_PAGE_NUMBERS: set[int] = {1}
 
     @field_validator("DEBUG_PAGE_NUMBERS")
@@ -167,6 +177,7 @@ class Settings(BaseSettings):  # type: ignore
         "WORDSTREAM_CHUNKER_MAX_WORDS",
         "WORDSTREAM_CHUNKER_FORWARD_LOOKAHEAD_WORDS",
         "WORDSTREAM_CHUNKER_BACKWARD_SCAN_WORDS",
+        "MAX_CONCURRENT_DOCUMENTS",
     )
     @classmethod
     def validate_positive_int(cls, v: int) -> int:

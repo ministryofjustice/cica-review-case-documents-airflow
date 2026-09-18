@@ -14,6 +14,7 @@ from textractor.entities.document import Document
 from textractor.parsers.response_parser import parse
 
 from ingestion_pipeline.config import settings
+from ingestion_pipeline.errors import DlqCategory, PipelineError
 
 logger = logging.getLogger(__name__)
 # OpenSearch Connection Details
@@ -29,8 +30,15 @@ JOB_TIMEOUT_SECONDS = settings.TEXTRACT_API_JOB_TIMEOUT_SECONDS
 USE_MOD_PLATFORM_MODE = settings.USE_MOD_PLATFORM_MODE
 
 
-class TextractProcessingError(Exception):
-    """Custom exception for Textract processing errors."""
+class TextractProcessingError(PipelineError):
+    """Custom exception for Textract processing errors.
+
+    Textract failures are typically transient (throttling, job failures that may
+    succeed on retry), so this is retryable.
+    """
+
+    category = DlqCategory.TEXTRACT_FAILED
+    retryable = True
 
 
 class TextractProcessor:
