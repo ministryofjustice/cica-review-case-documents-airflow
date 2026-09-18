@@ -4,14 +4,17 @@ An external producer places one message per document on the document queue. This
 module turns a raw SQS message body into a validated :class:`DocumentRequest` and
 then into a :class:`DocumentJob` the runner can process.
 
-The message contract distinguishes:
-    * Producer-supplied fields: ``correspondence_type``, ``case_ref`` and the source
-      document location (either a full ``source_file_s3_uri`` or the
-      ``bucket``/``case_prefix``/``filename`` components used to build it), plus an
-      optional ``received_date``.
-    * Derived fields: ``source_doc_id`` and ``page_count`` are computed during
-      ingestion, never taken from the message. Any values supplied for them are
-      ignored.
+The message contract is deliberately flat and fully specified (no optional fields):
+    * ``correspondence_type`` - must be the single accepted type
+      (``TC19 - ADDITIONAL INFO REQUEST``); any other value is rejected.
+    * ``case_ref`` - must match the CICA case-reference pattern AND match the case
+      folder embedded in ``source_file_s3_uri``.
+    * ``source_file_s3_uri`` - must live in the configured source document root
+      bucket and place the document under its case-reference folder.
+    * ``received_date`` - the producer-supplied receipt/ingestion date.
+
+Derived fields (``source_doc_id``, ``page_count``) are never taken from the message;
+they are computed during ingestion and any values supplied for them are ignored.
 
 Anything that cannot be parsed or fails validation raises
 :class:`MalformedMessageError`. The source layer logs and then **permanently
@@ -27,23 +30,27 @@ import logging
 import re
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
+from ingestion_pipeline.config import settings
 from ingestion_pipeline.orchestration.document_source import DocumentJob
 
 logger = logging.getLogger(__name__)
 
+# The only correspondence type currently accepted. Messages carrying any other type
+# are rejected as malformed rather than ingested.
+ACCEPTED_CORRESPONDENCE_TYPE = "TC19 - ADDITIONAL INFO REQUEST"
+
 # Case reference pattern: two digits, a hyphen, then 7 or 8 followed by five digits
 # (e.g. ``26-711111``). Shared by the case_ref field and the S3 URI path check.
 CASE_REF_PATTERN = r"^\d{2}-[78]\d{5}$"
-# Resolved S3 URI must place the document under a case-reference folder AND name a
-# non-empty object key, e.g. ``s3://some-bucket/26-711111/file.pdf``. The case segment
-# is captured so it can be checked for equality against the message's case_ref (they
-# must match, otherwise a document would be fetched from one case but identified/indexed
-# under another). The pattern is fully anchored and the ``[^/].*`` tail requires a real
-# object key: a folder-only URI such as ``s3://bucket/26-711111/`` is rejected as
-# malformed rather than being accepted with the case folder mistaken for the file name.
-S3_URI_CASE_PATH_PATTERN = r"^s3://[^/]+/(\d{2}-[78]\d{5})/[^/].*$"
+# The S3 URI must name a bucket, then a case-reference folder, then a non-empty object
+# key, e.g. ``s3://some-bucket/26-711111/file.pdf``. The bucket and the case segment are
+# captured so they can be checked against the configured root bucket and the message's
+# case_ref respectively. The ``[^/].*`` tail requires a real object key: a folder-only
+# URI such as ``s3://bucket/26-711111/`` is rejected as malformed rather than accepted
+# with the case folder mistaken for the file name.
+S3_URI_PATTERN = r"^s3://([^/]+)/(\d{2}-[78]\d{5})/[^/].*$"
 
 
 class MalformedMessageError(Exception):
@@ -71,9 +78,8 @@ class MalformedMessageError(Exception):
 class DocumentRequest(BaseModel):
     """Validated in-memory representation of a single SQS message body.
 
-    Holds only producer-supplied fields. The source document location may be given
-    either as a full ``source_file_s3_uri`` or as its component parts; after
-    validation :meth:`resolved_s3_uri` returns the effective URI.
+    Holds only producer-supplied fields, all of which are required. The source
+    document location is always the full ``source_file_s3_uri``.
 
     Derived fields (``source_doc_id``, ``page_count``) are deliberately absent: they
     are computed during ingestion and any values in the message body are ignored.
@@ -83,81 +89,41 @@ class DocumentRequest(BaseModel):
 
     correspondence_type: str = Field(min_length=1)
     case_ref: str = Field(pattern=CASE_REF_PATTERN)
-
-    # Source location: either the full URI, or the components to build it.
-    source_file_s3_uri: Optional[str] = Field(default=None, min_length=1)
-    bucket: Optional[str] = Field(default=None, min_length=1)
-    case_prefix: Optional[str] = Field(default=None, min_length=1)
-    filename: Optional[str] = Field(default=None, min_length=1)
-
-    received_date: Optional[datetime.datetime] = None
+    source_file_s3_uri: str = Field(min_length=1)
+    received_date: datetime.datetime
 
     @field_validator("correspondence_type")
     @classmethod
-    def _normalise_correspondence_type(cls, v: str) -> str:
-        """Strip surrounding whitespace and reject whitespace-only values.
+    def _validate_correspondence_type(cls, v: str) -> str:
+        """Accept only the single supported correspondence type.
 
-        ``min_length=1`` alone lets a value like ``"   "`` through, which would then be
-        used to derive the document UUID and indexed as if it were a real correspondence
-        type. Requiring a non-whitespace character discards such messages as malformed,
-        and stripping keeps the derived UUID stable regardless of incidental padding.
+        The value is stripped of surrounding whitespace and then checked for equality
+        against :data:`ACCEPTED_CORRESPONDENCE_TYPE`. Any other value (including empty
+        or whitespace-only) is rejected so unsupported document types are never
+        ingested.
 
         Args:
             v (str): The supplied correspondence type.
 
         Returns:
-            str: The stripped correspondence type.
+            str: The accepted correspondence type.
 
         Raises:
-            ValueError: If the value is empty or whitespace-only.
+            ValueError: If the value is not the accepted correspondence type.
         """
         stripped = v.strip()
-        if not stripped:
-            raise ValueError("correspondence_type must contain at least one non-whitespace character")
+        if stripped != ACCEPTED_CORRESPONDENCE_TYPE:
+            raise ValueError(f"correspondence_type must be '{ACCEPTED_CORRESPONDENCE_TYPE}'")
         return stripped
-
-    @model_validator(mode="after")
-    def validate_source_location(self) -> "DocumentRequest":
-        """Ensure the source document location is fully specified one way or the other.
-
-        Returns:
-            DocumentRequest: The validated request.
-
-        Raises:
-            ValueError: If neither a full ``source_file_s3_uri`` nor a complete set of
-                ``bucket``/``case_prefix``/``filename`` components was supplied.
-        """
-        if self.source_file_s3_uri:
-            return self
-        if self.bucket and self.case_prefix and self.filename:
-            return self
-        raise ValueError(
-            "source location must be provided as 'source_file_s3_uri' or as "
-            "'bucket', 'case_prefix' and 'filename' components"
-        )
-
-    def resolved_s3_uri(self) -> str:
-        """Return the effective S3 URI for the document.
-
-        Uses ``source_file_s3_uri`` when supplied, otherwise builds it from the
-        component parts.
-
-        Returns:
-            str: The resolved S3 URI.
-        """
-        if self.source_file_s3_uri:
-            return self.source_file_s3_uri
-        prefix = self.case_prefix.strip("/")
-        filename = self.filename.lstrip("/")
-        return f"s3://{self.bucket}/{prefix}/{filename}"
 
 
 def parse_message(body: str, *, message_id: Optional[str] = None) -> DocumentJob:
     """Parse and validate an SQS message body into a :class:`DocumentJob`.
 
     Parses the body as JSON, validates the producer-supplied fields against the
-    message contract, resolves the source S3 URI, and checks it places the document
-    under a valid case-reference path. Derived fields are not read from the message.
+    message contract, and checks that ``source_file_s3_uri`` lives in the configured
+    source document root bucket and places the document under a case-reference folder
+    that matches ``case_ref``. Derived fields are not read from the message.
 
     Args:
         body (str): The raw SQS message body.
@@ -170,7 +136,8 @@ def parse_message(body: str, *, message_id: Optional[str] = None) -> DocumentJob
 
     Raises:
         MalformedMessageError: If the body is not valid JSON, a required field is
-            missing or invalid, or the resolved S3 URI fails the case-path check.
+            missing or invalid, the S3 URI is malformed, its bucket does not match the
+            configured root bucket, or its case folder does not match ``case_ref``.
     """
     id_suffix = f" (message_id={message_id})" if message_id else ""
 
@@ -191,11 +158,25 @@ def parse_message(body: str, *, message_id: Optional[str] = None) -> DocumentJob
             field=field,
         ) from exc
 
-    s3_uri = request.resolved_s3_uri()
-    match = re.match(S3_URI_CASE_PATH_PATTERN, s3_uri)
+    s3_uri = request.source_file_s3_uri
+    match = re.match(S3_URI_PATTERN, s3_uri)
     if not match:
         raise MalformedMessageError(
-            f"resolved source_file_s3_uri does not match the required case path{id_suffix}: {s3_uri}",
+            f"source_file_s3_uri does not match the required case path{id_suffix}: {s3_uri}",
+            field="source_file_s3_uri",
+        )
+
+    uri_bucket = match.group(1)
+    uri_case_ref = match.group(2)
+
+    # The URI's bucket must be the configured source document root bucket. Otherwise the
+    # runner would attempt to fetch the object from a bucket the pipeline is not
+    # configured for (and is not permitted to read).
+    expected_bucket = settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET
+    if uri_bucket != expected_bucket:
+        raise MalformedMessageError(
+            f"source_file_s3_uri bucket '{uri_bucket}' does not match the configured "
+            f"source document root bucket '{expected_bucket}'{id_suffix}: {s3_uri}",
             field="source_file_s3_uri",
         )
 
@@ -203,7 +184,6 @@ def parse_message(body: str, *, message_id: Optional[str] = None) -> DocumentJob
     # runner would download the object from one case's folder while deriving the
     # source_doc_id and indexed metadata from a different case reference, silently
     # associating the document with the wrong case.
-    uri_case_ref = match.group(1)
     if uri_case_ref != request.case_ref:
         raise MalformedMessageError(
             f"case_ref '{request.case_ref}' does not match the case folder '{uri_case_ref}' "
@@ -211,20 +191,11 @@ def parse_message(body: str, *, message_id: Optional[str] = None) -> DocumentJob
             field="case_ref",
         )
 
-    # Stamp the receipt-time fallback here, at parse time, rather than later when a
-    # worker starts the document. With more received messages than workers, a job can
-    # sit queued for one or more document-processing times before it runs, so stamping
-    # at worker start would record a time well after the message was actually received.
-    # Normalised to naive UTC to match the DocumentMetadata schema.
-    received_date = request.received_date
-    if received_date is None:
-        received_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-
     return DocumentJob(
         source_file_s3_uri=s3_uri,
         correspondence_type=request.correspondence_type,
         case_ref=request.case_ref,
-        received_date=received_date,
+        received_date=request.received_date,
     )
 
 
@@ -236,16 +207,12 @@ def _first_error_field(exc: ValidationError) -> str:
 
     Returns:
         str: The offending field name. Field-level errors return the field; a
-            model-level error (which pydantic reports with an empty ``loc``) returns
-            ``"source_location"`` - the only model validator on ``DocumentRequest`` -
-            so the malformed-message log names a concrete contract area rather than
+            whole-model error (which pydantic reports with an empty ``loc``) returns
+            ``"body"`` so the malformed-message log names a concrete area rather than
             ``None``.
     """
     for error in exc.errors():
         location = error.get("loc") or ()
         if location:
             return str(location[0])
-    # No field-level location: this is a model-level validator failure. The only such
-    # validator is validate_source_location, so attribute it to that contract area
-    # rather than leaving the log as field=None.
-    return "source_location"
+    return "body"
