@@ -50,7 +50,11 @@ services:
       - SKIP_SSL_CERT_DOWNLOAD=1
     volumes:
       - ./init-scripts:/etc/localstack/init/ready.d
-      - ${PWD}/.env:/etc/localstack/.env:ro # Use absolute path via ${PWD}
+      # Source resolves relative to THIS compose file's directory (local-dev-environment/),
+      # so the mount is correct no matter where `docker compose` is invoked from. Using
+      # ${PWD} instead makes the source depend on the caller's shell CWD, which can point at
+      # the wrong .env or, if the path is missing, make Docker create a root-owned directory.
+      - ./.env:/etc/localstack/.env:ro
     healthcheck: # Custom healthcheck for LocalStack, ensuring index creation
       test:
         [
