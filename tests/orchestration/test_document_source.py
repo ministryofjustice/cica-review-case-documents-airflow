@@ -68,6 +68,51 @@ def test_document_job_source_file_name_ignores_trailing_slash():
     assert job.source_file_name == "some_file.pdf"
 
 
+def test_document_job_source_doc_id_is_derived_from_natural_key():
+    """source_doc_id equals the DocumentIdentifier UUID for the job's natural key."""
+    from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
+
+    job = DocumentJob(
+        source_file_s3_uri="s3://bucket/26-711111/some_file.pdf",
+        correspondence_type="TC19 - ADDITIONAL INFO REQUEST",
+        case_ref="26-711111",
+    )
+    expected = DocumentIdentifier(
+        source_file_name="some_file.pdf",
+        correspondence_type="TC19 - ADDITIONAL INFO REQUEST",
+        case_ref="26-711111",
+    ).generate_uuid()
+    assert job.source_doc_id == expected
+
+
+def test_document_job_source_doc_id_matches_for_equal_natural_keys():
+    """Two jobs with the same natural key resolve to the same source_doc_id."""
+    job_a = DocumentJob(
+        source_file_s3_uri="s3://bucket-a/26-711111/file.pdf",
+        correspondence_type="TC19 - ADDITIONAL INFO REQUEST",
+        case_ref="26-711111",
+    )
+    # Different bucket, same file name / correspondence_type / case_ref -> same id.
+    job_b = DocumentJob(
+        source_file_s3_uri="s3://bucket-b/26-711111/file.pdf",
+        correspondence_type="TC19 - ADDITIONAL INFO REQUEST",
+        case_ref="26-711111",
+    )
+    assert job_a.source_doc_id == job_b.source_doc_id
+
+
+def test_document_job_source_doc_id_stable_when_receipt_handle_attached():
+    """Attaching a receipt handle via model_copy does not change the computed id."""
+    job = DocumentJob(
+        source_file_s3_uri="s3://bucket/26-711111/file.pdf",
+        correspondence_type="TC19 - ADDITIONAL INFO REQUEST",
+        case_ref="26-711111",
+    )
+    copied = job.model_copy(update={"receipt_handle": "rh-123"})
+    assert copied.receipt_handle == "rh-123"
+    assert copied.source_doc_id == job.source_doc_id
+
+
 # --- queue URL resolution ---------------------------------------------------
 
 

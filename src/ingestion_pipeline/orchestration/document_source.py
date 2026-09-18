@@ -21,9 +21,10 @@ import logging
 from typing import List, Optional, Protocol
 
 from botocore.exceptions import ClientError, ConnectionError, EndpointConnectionError, HTTPClientError
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from ingestion_pipeline.config import settings
+from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
 
 logger = logging.getLogger(__name__)
 
@@ -80,12 +81,16 @@ def _is_transient_receive_error(exc: Exception) -> bool:
 
 
 class DocumentJob(BaseModel):
-    """A single unit of work: one document to ingest.
+    """A single, self-describing unit of work: one document to ingest.
 
-    Carries the natural-key metadata needed to build a ``DocumentMetadata`` and
-    generate the deterministic ``source_doc_id``. When backed by a real queue,
-    ``receipt_handle`` identifies the originating message so it can be deleted
-    after successful processing.
+    A job is complete on construction: it carries the producer-supplied natural-key
+    metadata (``source_file_s3_uri``, ``correspondence_type``, ``case_ref``) and
+    exposes every value derived from it. ``source_file_name`` and the deterministic
+    ``source_doc_id`` are computed fields, not constructor inputs, so they can never
+    disagree with the natural key they are derived from and are resolved identically
+    everywhere the job travels (batch-level deduplication and per-document
+    processing). When backed by a real queue, ``receipt_handle`` identifies the
+    originating message so it can be deleted after successful processing.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -99,10 +104,30 @@ class DocumentJob(BaseModel):
     # Opaque handle used to acknowledge/delete the source message (SQS receipt handle).
     receipt_handle: Optional[str] = None
 
+    @computed_field
     @property
     def source_file_name(self) -> str:
         """Return the file name portion of the S3 URI."""
         return self.source_file_s3_uri.rstrip("/").split("/")[-1]
+
+    @computed_field
+    @property
+    def source_doc_id(self) -> str:
+        """Return the deterministic document identifier derived from the natural key.
+
+        Computed from ``(source_file_name, correspondence_type, case_ref)`` via
+        :class:`DocumentIdentifier`, so the same batch and per-document code paths
+        always resolve the same id for the same document. Because it is derived, a
+        ``model_copy`` that attaches a ``receipt_handle`` leaves it unchanged.
+
+        Returns:
+            str: The deterministic Version 5 UUID for this document.
+        """
+        return DocumentIdentifier(
+            source_file_name=self.source_file_name,
+            correspondence_type=self.correspondence_type,
+            case_ref=self.case_ref,
+        ).generate_uuid()
 
 
 class DocumentSource(Protocol):
@@ -228,9 +253,9 @@ class SqsDocumentSource:
         Returns:
             List[DocumentJob]: The valid jobs from this receive (possibly empty).
         """
-        # Imported here to avoid a module-level import cycle (message_parser imports
+        # Imported here to avoid a module-level import cycle (document_ingress imports
         # DocumentJob from this module).
-        from ingestion_pipeline.orchestration.message_parser import MalformedMessageError, parse_message
+        from ingestion_pipeline.orchestration.document_ingress import MalformedMessageError, parse_message
 
         try:
             response = self.sqs_client.receive_message(

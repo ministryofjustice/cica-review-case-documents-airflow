@@ -4,13 +4,14 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from ingestion_pipeline.orchestration.message_parser import (
+from ingestion_pipeline.orchestration.document_ingress import (
     ACCEPTED_CORRESPONDENCE_TYPE,
     DocumentRequest,
     MalformedMessageError,
     _first_error_field,
     parse_message,
 )
+from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
 
 # The default configured source document root bucket (see config.py). The parser
 # validates the URI bucket against settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET.
@@ -57,8 +58,18 @@ def test_parse_message_strips_correspondence_type_whitespace():
 
 def test_parse_message_ignores_derived_fields():
     job = parse_message(_valid_body(source_doc_id="should-be-ignored", page_count=999))
-    # Derived fields are not carried on the job; source_doc_id is derived later.
-    assert not hasattr(job, "source_doc_id")
+    # A message-supplied source_doc_id is never trusted: the job's source_doc_id is
+    # computed from the natural key, so the "should-be-ignored" value cannot leak in.
+    assert job.source_doc_id != "should-be-ignored"
+    assert (
+        job.source_doc_id
+        == DocumentIdentifier(
+            source_file_name=job.source_file_name,
+            correspondence_type=job.correspondence_type,
+            case_ref=job.case_ref,
+        ).generate_uuid()
+    )
+    # page_count is not part of a DocumentJob at all; it is derived during ingestion.
     assert not hasattr(job, "page_count")
 
 
@@ -178,7 +189,7 @@ def test_parse_message_respects_configured_root_bucket(monkeypatch):
     # Point the parser at a different configured root bucket and confirm a URI in that
     # bucket is accepted while the previous default bucket is rejected.
     monkeypatch.setattr(
-        "ingestion_pipeline.orchestration.message_parser.settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET",
+        "ingestion_pipeline.orchestration.document_ingress.settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET",
         "dev-documentsearch-kta-bucket",
     )
     job = parse_message(_valid_body(source_file_s3_uri=f"s3://dev-documentsearch-kta-bucket/{CASE_REF}/case1.pdf"))
