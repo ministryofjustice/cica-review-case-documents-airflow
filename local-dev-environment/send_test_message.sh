@@ -11,7 +11,7 @@
 # put test work on the local queue without hand-writing the JSON contract each time.
 #
 # The message body matches the contract enforced by
-# src/ingestion_pipeline/orchestration/message_parser.py:
+# src/ingestion_pipeline/orchestration/document_ingress.py:
 #   Required: correspondence_type, case_ref (^\d{2}-[78]\d{5}$), a source location
 #             (a full source_file_s3_uri here), and received_date (ISO-8601).
 #   Ignored:  source_doc_id, page_count (derived during ingestion).

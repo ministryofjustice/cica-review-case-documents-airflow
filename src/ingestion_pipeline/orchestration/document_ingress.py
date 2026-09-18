@@ -1,8 +1,16 @@
-"""Parsing and validation of SQS document-processing messages.
+"""Ingress admission for SQS document-processing messages.
+
+This module is the pipeline's admission boundary: it decides whether an inbound SQS
+message describes a document the pipeline is allowed to ingest, and turns accepted
+messages into complete, self-describing work items.
 
 An external producer places one message per document on the document queue. This
-module turns a raw SQS message body into a validated :class:`DocumentRequest` and
-then into a :class:`DocumentJob` the runner can process.
+module parses a raw SQS message body into a validated :class:`DocumentRequest`,
+enforces the message contract (including cross-checks between ``case_ref``, the S3
+URI's case folder, and the configured root bucket), and then constructs the
+:class:`DocumentJob` the runner can process. The job carries its own derived values
+(``source_file_name`` and the deterministic ``source_doc_id``) as computed fields,
+so a job is complete the moment ingress produces it.
 
 The message contract is deliberately flat and fully specified (no optional fields):
     * ``correspondence_type`` - must be the single accepted type

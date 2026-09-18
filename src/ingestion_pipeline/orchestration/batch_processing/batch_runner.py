@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.custom_logging.log_context import source_doc_id_context
-from ingestion_pipeline.document_identity.identity import build_document_metadata, compute_source_doc_id
+from ingestion_pipeline.document_identity.identity import build_document_metadata
 from ingestion_pipeline.errors import DlqCategory, PipelineError
 from ingestion_pipeline.orchestration.batch_processing.document_result import DocumentResult
 from ingestion_pipeline.orchestration.document_source import DocumentJob, DocumentSource
@@ -37,7 +37,7 @@ def process_document_job(job: DocumentJob, pipeline: Pipeline) -> DocumentResult
     Returns:
         DocumentResult: The outcome for this document.
     """
-    source_doc_id = compute_source_doc_id(job)
+    source_doc_id = job.source_doc_id
     token = source_doc_id_context.set(source_doc_id)
     try:
         logger.info(f"Generated source_doc_id: {source_doc_id} for document: {job.source_file_s3_uri}")
@@ -130,7 +130,7 @@ def run_batch(jobs: list[DocumentJob], pipeline: Pipeline, source: DocumentSourc
     duplicates_by_id: dict[str, list[DocumentJob]] = {}
     owner_by_id: dict[str, DocumentJob] = {}
     for job in jobs:
-        source_doc_id = compute_source_doc_id(job)
+        source_doc_id = job.source_doc_id
         if source_doc_id not in owner_by_id:
             owner_by_id[source_doc_id] = job
             owners.append(job)
