@@ -18,7 +18,10 @@ def _client_error(code: str, operation: str = "ReceiveMessage") -> ClientError:
 
 
 QUEUE_URL = "https://sqs.eu-west-2.amazonaws.com/123456789012/cica-document-search-queue"
-VALID_URI = "s3://cica-bucket/26-711111/case1.pdf"
+# The URI bucket must match the configured source document root bucket
+# (settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET, default local-kta-documents-bucket)
+# for the message parser to accept it.
+VALID_URI = "s3://local-kta-documents-bucket/26-711111/case1.pdf"
 
 
 def _valid_body() -> str:
@@ -27,6 +30,7 @@ def _valid_body() -> str:
             "correspondence_type": "TC19 - ADDITIONAL INFO REQUEST",
             "case_ref": "26-711111",
             "source_file_s3_uri": VALID_URI,
+            "received_date": "2026-01-15T09:30:00",
         }
     )
 
