@@ -1,5 +1,7 @@
 """Configuration settings for the airflow pipeline."""
 
+import math
+import re
 from pathlib import Path
 
 from pydantic import field_validator, model_validator
@@ -146,7 +148,56 @@ class Settings(BaseSettings):  # type: ignore
     # Maximum number of documents processed concurrently by the runner's thread pool.
     # The pipeline is IO/wait-bound (Textract polling, S3, Bedrock, OpenSearch), so
     # thread-based concurrency is effective here.
+    #
+    # NOTE: This is the single concurrency knob for the runner's thread pool. The SQS
+    # spec referred to a separate ``SQS_MAX_CONCURRENCY``; we intentionally reuse this
+    # existing setting instead of introducing a duplicate. Revisit when the SQS
+    # concurrency story (parallel batch dispatch) is picked up.
     MAX_CONCURRENT_DOCUMENTS: int = 4
+
+    # -- SQS Document Queue --
+    # The SQS queue from which document-processing requests are consumed. Messages are
+    # produced by an external system; the consumer reads them, processes each document,
+    # and manages the message lifecycle (delete on success, redrive/DLQ on failure).
+    SQS_DOCUMENT_QUEUE: str = "cica-document-search-queue"
+    # Long-poll wait time for a receive request (seconds). SQS allows 0-20; a positive
+    # value avoids busy-waiting by letting the receive block until a message arrives.
+    SQS_POLL_WAIT_TIME_SECONDS: int = 20
+    # Maximum messages requested per receive call. SQS allows 1-10.
+    #
+    # Kept in line with MAX_CONCURRENT_DOCUMENTS on purpose. The SQS visibility clock
+    # starts for every received message at once, but only MAX_CONCURRENT_DOCUMENTS are
+    # processed at a time; fetching many more than that leaves the surplus queued in the
+    # thread pool with their visibility timers already running, inflating worst-case
+    # message residence time and the risk of premature redelivery. Raise this only if
+    # the visibility timeout is raised to match (and ideally once per-message visibility
+    # heartbeats exist - see SQS_VISIBILITY_TIMEOUT_SECONDS).
+    SQS_MAX_MESSAGES_PER_POLL: int = 4
+    # Per-message visibility timeout (seconds): how long a received message is hidden
+    # from other receives while it is being processed.
+    #
+    # This MUST cover the worst-case time a message spends received-but-not-yet-deleted:
+    # the time it waits queued in the thread pool PLUS its own processing time. If it
+    # expires first, SQS makes the message visible again and the document can be ingested
+    # a second time. A single document's Textract step alone can run up to
+    # TEXTRACT_API_JOB_TIMEOUT_SECONDS, so the default is set comfortably above that to
+    # absorb pool queueing (batch size / worker count "waves") plus page processing,
+    # embedding and indexing. A model validator enforces the lower bound.
+    #
+    # NOTE: a static timeout is a stop-gap. The robust fix is a per-message visibility
+    # heartbeat (periodic ChangeMessageVisibility while a job is in flight), which
+    # belongs with the concurrency/dispatch work (SQS stories 5/7) and is not in this
+    # change.
+    SQS_VISIBILITY_TIMEOUT_SECONDS: int = 1800
+    # Multiplier applied to TEXTRACT_API_JOB_TIMEOUT_SECONDS when computing the minimum
+    # acceptable visibility timeout, to account for a document's non-Textract processing
+    # (chunking, page-image upload, embedding, two indexing calls) that also runs before
+    # the message is deleted. Textract dominates wall-clock time, but it is not the whole
+    # story, so the enforced per-wave cost is TEXTRACT_API_JOB_TIMEOUT_SECONDS * this
+    # factor. This is a coarse, configurable estimate; the exact non-Textract time is not
+    # modelled anywhere, which is why a visibility heartbeat (stories 5/7) is the real
+    # fix. Must be >= 1.0 (1.0 = no headroom, Textract-only).
+    SQS_PROCESSING_OVERHEAD_FACTOR: float = 1.5
 
     DEBUG_PAGE_NUMBERS: set[int] = {1}
 
@@ -255,6 +306,112 @@ class Settings(BaseSettings):  # type: ignore
             raise ValueError("TEXTRACT_API_POLL_INTERVAL_SECONDS must be a positive integer")
         return v
 
+    @field_validator("SQS_PROCESSING_OVERHEAD_FACTOR")
+    @classmethod
+    def validate_sqs_processing_overhead_factor(cls, v: float) -> float:
+        """Ensure the processing-overhead factor adds headroom rather than removing it.
+
+        A factor below 1.0 would make the enforced visibility bound smaller than the
+        Textract time alone, which is never correct. 1.0 means no non-Textract headroom.
+
+        Args:
+            v (float): The configured overhead factor.
+
+        Returns:
+            float: The validated factor.
+
+        Raises:
+            ValueError: If the factor is less than 1.0.
+        """
+        if v < 1.0:
+            raise ValueError("SQS_PROCESSING_OVERHEAD_FACTOR must be >= 1.0")
+        return v
+
+    @field_validator("SQS_DOCUMENT_QUEUE")
+    @classmethod
+    def validate_sqs_document_queue(cls, v: str) -> str:
+        """Ensure the SQS queue name is valid so bad config fails at startup.
+
+        AWS standard SQS queue names are 1-80 characters of alphanumerics, hyphens and
+        underscores. Validating here means an empty, whitespace-only, overlong, or
+        otherwise invalid name fails during settings construction rather than only when
+        the first AWS call is made. Surrounding whitespace is stripped first.
+
+        Args:
+            v (str): The configured queue name.
+
+        Returns:
+            str: The validated (stripped) queue name.
+
+        Raises:
+            ValueError: If the name is empty or does not match the SQS naming rules.
+        """
+        stripped = v.strip()
+        if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", stripped):
+            raise ValueError("SQS_DOCUMENT_QUEUE must be 1-80 characters of letters, digits, hyphens or underscores")
+        return stripped
+
+    @field_validator("SQS_POLL_WAIT_TIME_SECONDS")
+    @classmethod
+    def validate_sqs_poll_wait_time(cls, v: int) -> int:
+        """Ensure the SQS long-poll wait time is within the SQS-permitted range.
+
+        Args:
+            v (int): The long-poll wait time in seconds.
+
+        Returns:
+            int: The validated wait time.
+
+        Raises:
+            ValueError: If the value is outside the inclusive range 0 to 20.
+        """
+        if not 0 <= v <= 20:
+            raise ValueError("SQS_POLL_WAIT_TIME_SECONDS must be between 0 and 20 inclusive")
+        return v
+
+    @field_validator("SQS_MAX_MESSAGES_PER_POLL")
+    @classmethod
+    def validate_sqs_max_messages_per_poll(cls, v: int) -> int:
+        """Ensure the SQS max-messages-per-poll is within the SQS-permitted range.
+
+        Args:
+            v (int): The maximum number of messages requested per receive call.
+
+        Returns:
+            int: The validated maximum.
+
+        Raises:
+            ValueError: If the value is outside the inclusive range 1 to 10.
+        """
+        if not 1 <= v <= 10:
+            raise ValueError("SQS_MAX_MESSAGES_PER_POLL must be between 1 and 10 inclusive")
+        return v
+
+    @field_validator("SQS_VISIBILITY_TIMEOUT_SECONDS")
+    @classmethod
+    def validate_sqs_visibility_timeout(cls, v: int) -> int:
+        """Ensure the SQS visibility timeout is within the SQS-permitted range.
+
+        SQS accepts a per-message visibility timeout from 0 to 43200 seconds (12 hours);
+        values above that are rejected at ``ReceiveMessage`` time with
+        ``InvalidParameterValue``. We require a positive value (a zero timeout would make
+        a message immediately visible again) up to the service maximum, so bad
+        configuration fails at startup rather than on the first poll. The lower bound is
+        further constrained by :meth:`validate_visibility_covers_processing`.
+
+        Args:
+            v (int): The visibility timeout in seconds.
+
+        Returns:
+            int: The validated visibility timeout.
+
+        Raises:
+            ValueError: If the value is outside the range 1 to 43200 inclusive.
+        """
+        if not 1 <= v <= 43200:
+            raise ValueError("SQS_VISIBILITY_TIMEOUT_SECONDS must be between 1 and 43200 inclusive")
+        return v
+
     @model_validator(mode="after")
     def validate_timeout_greater_than_poll(self) -> "Settings":
         """Ensure timeout is greater than poll interval.
@@ -267,6 +424,52 @@ class Settings(BaseSettings):  # type: ignore
         """
         if self.TEXTRACT_API_JOB_TIMEOUT_SECONDS <= self.TEXTRACT_API_POLL_INTERVAL_SECONDS:
             raise ValueError("TEXTRACT_API_JOB_TIMEOUT_SECONDS must be greater than TEXTRACT_API_POLL_INTERVAL_SECONDS")
+        return self
+
+    @model_validator(mode="after")
+    def validate_visibility_covers_processing(self) -> "Settings":
+        """Ensure the SQS visibility timeout covers worst-case message residence.
+
+        A message stays hidden only for SQS_VISIBILITY_TIMEOUT_SECONDS. If that expires
+        before the message is deleted, SQS makes it visible again and the document can be
+        ingested a second time. The worst case is the message dispatched last in a batch:
+        with more messages per poll than concurrent workers, it waits through
+        ``ceil(SQS_MAX_MESSAGES_PER_POLL / MAX_CONCURRENT_DOCUMENTS)`` processing "waves",
+        each of which can take up to TEXTRACT_API_JOB_TIMEOUT_SECONDS (Textract alone),
+        before it is deleted. The visibility timeout must cover that whole residence, so
+        the enforced lower bound is::
+
+            ceil(batch_size / concurrency) * TEXTRACT_API_JOB_TIMEOUT_SECONDS
+
+        Each wave's cost is not just the Textract timeout: after Textract returns, the
+        document is still chunked, its page images uploaded, every chunk embedded, and
+        two indexing calls made before the message is deleted. That non-Textract time is
+        not modelled by any single setting, so SQS_PROCESSING_OVERHEAD_FACTOR applies a
+        coarse multiplier to approximate it, making the per-wave cost
+        ``TEXTRACT_API_JOB_TIMEOUT_SECONDS * SQS_PROCESSING_OVERHEAD_FACTOR``. This is
+        still an estimate; a per-message visibility heartbeat (ChangeMessageVisibility
+        while queued/in flight) is the robust fix and belongs with the
+        concurrency/dispatch work (SQS stories 5/7).
+
+        Returns:
+            Settings: The validated settings object.
+
+        Raises:
+            ValueError: If the visibility timeout is below the worst-case residence bound.
+        """
+        waves = math.ceil(self.SQS_MAX_MESSAGES_PER_POLL / self.MAX_CONCURRENT_DOCUMENTS)
+        per_document_cost = self.TEXTRACT_API_JOB_TIMEOUT_SECONDS * self.SQS_PROCESSING_OVERHEAD_FACTOR
+        minimum_visibility = math.ceil(waves * per_document_cost)
+        if self.SQS_VISIBILITY_TIMEOUT_SECONDS < minimum_visibility:
+            raise ValueError(
+                f"SQS_VISIBILITY_TIMEOUT_SECONDS ({self.SQS_VISIBILITY_TIMEOUT_SECONDS}) must be at least "
+                f"{minimum_visibility} = ceil(ceil(SQS_MAX_MESSAGES_PER_POLL ({self.SQS_MAX_MESSAGES_PER_POLL}) / "
+                f"MAX_CONCURRENT_DOCUMENTS ({self.MAX_CONCURRENT_DOCUMENTS})) * TEXTRACT_API_JOB_TIMEOUT_SECONDS "
+                f"({self.TEXTRACT_API_JOB_TIMEOUT_SECONDS}) * SQS_PROCESSING_OVERHEAD_FACTOR "
+                f"({self.SQS_PROCESSING_OVERHEAD_FACTOR})), so a received message stays hidden for at least the "
+                "worst-case time it can spend queued behind other jobs plus its own full (Textract + "
+                "chunking/embedding/indexing) processing."
+            )
         return self
 
     @model_validator(mode="after")
