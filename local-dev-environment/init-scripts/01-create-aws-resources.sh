@@ -83,6 +83,33 @@ else
   echo "Queue ${SQS_DOCUMENT_QUEUE_NAME} already exists. Skipping creation."
 fi
 
+# --- Create SQS DLQ (idempotent) ---
+# Derive the DLQ name from the main queue name (matches Settings.SQS_DOCUMENT_DLQ default).
+# SQS_DOCUMENT_DLQ is optional in the environment; fall back to the derived name.
+SQS_DOCUMENT_DLQ_NAME="${SQS_DOCUMENT_DLQ:-${SQS_DOCUMENT_QUEUE_NAME}-dlq}"
+echo "Checking/creating SQS DLQ..."
+if ! awslocal sqs get-queue-url --queue-name "${SQS_DOCUMENT_DLQ_NAME}" >/dev/null 2>&1; then
+  echo "Creating DLQ ${SQS_DOCUMENT_DLQ_NAME}..."
+  awslocal sqs create-queue --queue-name "${SQS_DOCUMENT_DLQ_NAME}"
+else
+  echo "DLQ ${SQS_DOCUMENT_DLQ_NAME} already exists. Skipping creation."
+fi
+
+# --- Wire the redrive policy on the main queue ---
+# Applied unconditionally after both queues exist so it takes effect even when the
+# main queue already existed (Req 7.5) and converges to the same wiring on re-run (Req 7.6).
+echo "Wiring RedrivePolicy on ${SQS_DOCUMENT_QUEUE_NAME}..."
+DLQ_URL="$(awslocal sqs get-queue-url --queue-name "${SQS_DOCUMENT_DLQ_NAME}" --query 'QueueUrl' --output text)"
+DLQ_ARN="$(awslocal sqs get-queue-attributes --queue-url "${DLQ_URL}" --attribute-names QueueArn --query 'Attributes.QueueArn' --output text)"
+MAIN_QUEUE_URL="$(awslocal sqs get-queue-url --queue-name "${SQS_DOCUMENT_QUEUE_NAME}" --query 'QueueUrl' --output text)"
+
+# The RedrivePolicy attribute value must itself be a JSON-encoded string (SQS requires the
+# value to be a JSON string, not a nested object). Use python3 to safely JSON-encode it.
+REDRIVE_POLICY="$(printf '{"deadLetterTargetArn":"%s","maxReceiveCount":"3"}' "${DLQ_ARN}")"
+ATTRIBUTES="$(python3 -c 'import json,sys; print(json.dumps({"RedrivePolicy": sys.argv[1]}))' "${REDRIVE_POLICY}")"
+awslocal sqs set-queue-attributes --queue-url "${MAIN_QUEUE_URL}" --attributes "${ATTRIBUTES}"
+echo "Applied RedrivePolicy (maxReceiveCount=3) on ${SQS_DOCUMENT_QUEUE_NAME} targeting ${DLQ_ARN}."
+
 # --- Copy sample document from AWS S3 to LocalStack S3 ---
 
 
