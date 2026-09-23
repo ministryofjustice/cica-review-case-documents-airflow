@@ -155,10 +155,18 @@ class Settings(BaseSettings):  # type: ignore
     # concurrency story (parallel batch dispatch) is picked up.
     MAX_CONCURRENT_DOCUMENTS: int = 4
 
-    # -- Drain loop --
-    # Maximum number of batches a single run may START. A safety ceiling so a large backlog
-    # cannot produce an unbounded run; remaining work is left for the next scheduled run.
-    MAX_BATCHES_PER_RUN: int = 50
+    # -- Poll loop --
+    # The runner is a long-lived worker (a Kubernetes Deployment): it polls the queue
+    # forever, processing batches as they arrive and idling on empty long-polls. There is
+    # no per-run batch ceiling; the process runs until it is signalled to stop or a
+    # permanent error crashes it (so Kubernetes restarts the pod and the fault is visible).
+    #
+    # Backoff applied after a *transient* receive error (throttling, temporary service
+    # error, connection blip) before the next poll. A genuine empty long-poll already
+    # blocked for SQS_POLL_WAIT_TIME_SECONDS, but a transient error returns immediately
+    # (botocore fails fast once its own retries are exhausted), so without this sleep the
+    # loop would spin against a degraded queue. Seconds.
+    SQS_TRANSIENT_ERROR_BACKOFF_SECONDS: float = 5.0
 
     # -- SQS Document Queue --
     # The SQS queue from which document-processing requests are consumed. Messages are
@@ -444,22 +452,23 @@ class Settings(BaseSettings):  # type: ignore
             raise ValueError("SQS_MAX_RECEIVE_COUNT must be >= 1")
         return v
 
-    @field_validator("MAX_BATCHES_PER_RUN")
+    @field_validator("SQS_TRANSIENT_ERROR_BACKOFF_SECONDS")
     @classmethod
-    def validate_max_batches_per_run(cls, v: int) -> int:
-        """Ensure at least one batch can be started per run.
+    def validate_transient_error_backoff(cls, v: float) -> float:
+        """Ensure the transient-error backoff is non-negative.
 
         Args:
-            v (int): The configured maximum number of batches a single run may start.
+            v (float): The configured backoff, in seconds, applied after a transient
+                receive error before the next poll.
 
         Returns:
-            int: The validated maximum number of batches per run.
+            float: The validated backoff in seconds.
 
         Raises:
-            ValueError: If the value is less than 1.
+            ValueError: If the value is negative.
         """
-        if v < 1:
-            raise ValueError("MAX_BATCHES_PER_RUN must be >= 1")
+        if v < 0:
+            raise ValueError("SQS_TRANSIENT_ERROR_BACKOFF_SECONDS must be >= 0")
         return v
 
     @model_validator(mode="after")

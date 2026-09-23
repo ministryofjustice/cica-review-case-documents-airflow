@@ -132,10 +132,10 @@ def test_sqs_settings_defaults(settings_without_env_file):
 
 
 def test_drain_and_dlq_settings_defaults(settings_without_env_file):
-    """Drain-loop and DLQ settings expose the documented defaults."""
+    """Poll-loop and DLQ settings expose the documented defaults."""
     settings = settings_without_env_file
     assert settings.SQS_MAX_RECEIVE_COUNT == 3
-    assert settings.MAX_BATCHES_PER_RUN == 50
+    assert settings.SQS_TRANSIENT_ERROR_BACKOFF_SECONDS == 5.0
 
 
 def test_default_settings_satisfy_visibility_regression():

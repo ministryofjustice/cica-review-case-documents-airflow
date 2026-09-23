@@ -9,7 +9,7 @@ from moto import mock_aws
 from ingestion_pipeline.orchestration.document_source import (
     _MAX_LOGGED_BODY_CHARS,
     DocumentJob,
-    FetchResult,
+    FetchOutcome,
     QueueResolutionError,
     SqsDocumentSource,
     _truncate_body_for_log,
@@ -165,6 +165,7 @@ def test_fetch_batch_returns_jobs_for_valid_messages():
 
     assert len(result.jobs) == 1
     assert result.malformed_discarded == 0
+    assert result.outcome is FetchOutcome.RECEIVED
     job = result.jobs[0]
     assert job.source_file_s3_uri == VALID_URI
     assert job.case_ref == "26-711111"
@@ -186,6 +187,7 @@ def test_fetch_batch_empty_receive_returns_empty_result():
     result = source.fetch_batch()
     assert result.jobs == []
     assert result.malformed_discarded == 0
+    assert result.outcome is FetchOutcome.EMPTY
 
 
 def test_fetch_batch_deletes_malformed_and_continues():
@@ -250,6 +252,8 @@ def test_fetch_batch_all_malformed_returns_no_jobs_with_discard_count():
     assert result.jobs == []
     assert result.malformed_discarded >= 1
     assert result.malformed_discarded == 3
+    # A poll that produced no valid jobs is a genuine EMPTY receive, not a transient error.
+    assert result.outcome is FetchOutcome.EMPTY
     # Every malformed message is deleted.
     assert sqs_client.delete_message.call_count == 3
 
@@ -327,15 +331,20 @@ def test_truncate_body_for_log_clips_and_marks_omitted_chars():
         ConnectionClosedError(endpoint_url="http://localhost:4566"),
     ],
 )
-def test_fetch_batch_transient_receive_error_returns_empty_result(error):
-    """Transient receive failures are swallowed as an empty poll for retry."""
+def test_fetch_batch_transient_receive_error_returns_transient_result(error):
+    """Transient receive failures are swallowed as a TRANSIENT_ERROR poll for retry.
+
+    The result carries no jobs and no discards (like an empty poll) but is tagged
+    TRANSIENT_ERROR so a long-lived caller can back off before retrying rather than
+    mistaking the blip for a drained queue.
+    """
     sqs_client = mock.Mock()
     source = _make_source(sqs_client)
     sqs_client.receive_message.side_effect = error
     result = source.fetch_batch()
-    assert result == FetchResult(jobs=[], malformed_discarded=0)
     assert result.jobs == []
     assert result.malformed_discarded == 0
+    assert result.outcome is FetchOutcome.TRANSIENT_ERROR
 
 
 @pytest.mark.parametrize(

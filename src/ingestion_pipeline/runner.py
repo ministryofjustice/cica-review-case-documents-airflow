@@ -1,16 +1,31 @@
-"""Pipeline runner responsible for creating and running the ingestion pipeline.
+"""Pipeline runner: a long-lived worker that drains the SQS document queue forever.
 
-Processes a batch of documents in parallel. Documents are supplied by a
-:class:`DocumentSource` (an SQS-backed stub for now). A single :class:`Pipeline`
-and its underlying AWS/OpenSearch clients are constructed once in the main thread
-and shared across worker threads; each worker sets its own logging context so
-per-document log lines remain correctly attributed.
+The runner is designed to run as a long-lived Kubernetes Deployment pod. It builds a
+single :class:`Pipeline` and its underlying AWS/OpenSearch clients once in the main
+thread and then loops: fetch a batch from a :class:`DocumentSource` (SQS-backed) and,
+when non-empty, process it in parallel via ``run_batch``. Worker threads set their own
+logging context so per-document log lines stay correctly attributed.
+
+Loop semantics (see :func:`run_forever`):
+
+* **Work available** - process the batch and continue.
+* **Empty poll** - the queue had nothing right now; keep polling. The SQS long-poll
+  already blocked for ``SQS_POLL_WAIT_TIME_SECONDS``, so this does not busy-spin.
+* **Transient receive error** - the source reports it as an empty poll tagged
+  ``TRANSIENT_ERROR``; back off for ``SQS_TRANSIENT_ERROR_BACKOFF_SECONDS`` and retry.
+  A transient blip therefore never masquerades as "queue drained" - there is no
+  terminal "drained" state for a long-lived worker.
+* **Permanent/unknown receive error** - propagates out of ``fetch_batch`` and crashes
+  the process so Kubernetes restarts the pod and the fault is visible.
+* **Signalled to stop** (``SIGTERM``/``SIGINT``) - the loop finishes the in-flight
+  batch (``run_batch`` joins its thread pool before returning), logs a final summary,
+  and returns so the process exits 0 cleanly.
 """
 
 import logging
+import signal
 import sys
-
-from pydantic import BaseModel, ConfigDict
+import threading
 
 from ingestion_pipeline.config import settings
 from ingestion_pipeline.custom_logging.log_context import setup_logging
@@ -18,6 +33,7 @@ from ingestion_pipeline.indexing.healthcheck import check_opensearch_health
 from ingestion_pipeline.orchestration.batch_processing.batch_runner import run_batch
 from ingestion_pipeline.orchestration.document_source import (
     DocumentSource,
+    FetchOutcome,
     QueueResolutionError,
     SqsDocumentSource,
 )
@@ -28,130 +44,184 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-class RunSummary(BaseModel):
-    """Immutable summary of a single drain run.
+class RunTotals:
+    """Mutable cumulative counters for the lifetime of a :func:`run_forever` worker.
 
-    Carries the aggregate counts the operator alerts on plus the reason the drain loop
-    stopped. Frozen so a returned summary cannot be mutated by a caller before it is
-    logged.
+    A long-lived worker has no "end of run" at which to emit a single summary, so it
+    keeps running totals and logs a snapshot after each processed batch (and a final
+    snapshot on shutdown). The counters satisfy the accounting invariant
+    ``messages_received == jobs_processed + messages_discarded`` by construction: every
+    poll moves the three message counters together.
 
     Attributes:
-        batches_processed (int): Number of batches started this run.
-        messages_received (int): Total messages pulled off SQS this run, counting both the
-            valid jobs and the malformed messages discarded (summed over every poll,
-            including the terminating empty poll).
-        messages_discarded (int): Total malformed messages discarded this run, including any
-            discarded on the terminating poll.
-        jobs_processed (int): Total valid jobs received into batches this run.
+        batches_processed (int): Number of non-empty batches processed.
+        messages_received (int): Total messages pulled off SQS, counting both valid jobs
+            and malformed messages discarded, summed over every poll.
+        messages_discarded (int): Total malformed messages discarded.
+        jobs_processed (int): Total valid jobs handed to batches.
         successes (int): Count of ``DocumentResult.success`` being True across all results.
         failures (int): Count of ``DocumentResult.success`` being False across all results.
-        terminal_reason (str): Why the loop stopped: ``"queue drained"`` or
-            ``"hit max-batches ceiling"``.
+        empty_polls (int): Number of genuine empty long-poll receives.
+        transient_errors (int): Number of transient receive errors backed off and retried.
     """
 
-    model_config = ConfigDict(frozen=True)
+    def __init__(self) -> None:
+        """Initialise all counters to zero."""
+        self.batches_processed = 0
+        self.messages_received = 0
+        self.messages_discarded = 0
+        self.jobs_processed = 0
+        self.successes = 0
+        self.failures = 0
+        self.empty_polls = 0
+        self.transient_errors = 0
 
-    batches_processed: int
-    messages_received: int
-    messages_discarded: int
-    jobs_processed: int
-    successes: int
-    failures: int
-    terminal_reason: str
+    def log_summary(self, *, final: bool = False) -> None:
+        """Emit one structured INFO summary carrying the current cumulative totals.
+
+        Args:
+            final (bool): When True, mark the record as the shutdown summary so operators
+                can distinguish the last line before the worker exits from the per-batch
+                progress lines.
+        """
+        prefix = "Pipeline final summary" if final else "Pipeline progress summary"
+        logger.info(
+            "%s: %d batch(es), %d message(s) received, %d discarded, %d job(s) processed, "
+            "%d succeeded, %d failed, %d empty poll(s), %d transient error(s).",
+            prefix,
+            self.batches_processed,
+            self.messages_received,
+            self.messages_discarded,
+            self.jobs_processed,
+            self.successes,
+            self.failures,
+            self.empty_polls,
+            self.transient_errors,
+            extra={
+                "batches_processed": self.batches_processed,
+                "messages_received": self.messages_received,
+                "messages_discarded": self.messages_discarded,
+                "jobs_processed": self.jobs_processed,
+                "successes": self.successes,
+                "failures": self.failures,
+                "empty_polls": self.empty_polls,
+                "transient_errors": self.transient_errors,
+                "final": final,
+            },
+        )
 
 
-def drain_queue(source: DocumentSource, pipeline: Pipeline) -> RunSummary:
-    """Repeatedly fetch and process batches until the queue drains or the ceiling trips.
+def _install_signal_handlers(stop_event: threading.Event) -> None:
+    """Install SIGTERM/SIGINT handlers that request a graceful stop.
 
-    Runs the bounded drain loop: on each iteration it fetches one batch from ``source``
-    and, if non-empty, processes it with ``run_batch``. The loop stops on the first empty
-    poll (the queue is drained) or once ``settings.MAX_BATCHES_PER_RUN`` batches have been
-    started (the ceiling). Termination is evaluated only between batches, so a batch already
-    running is always allowed to finish; ``run_batch``'s ``ThreadPoolExecutor`` performs
-    ``shutdown(wait=True)`` on exit, guaranteeing no jobs are in flight once it returns.
+    Kubernetes sends SIGTERM on pod shutdown (rollout, scale-down). The handler only
+    sets ``stop_event`` so the loop can finish the in-flight batch and exit cleanly
+    rather than being interrupted mid-batch. SIGINT (Ctrl-C) is handled the same way for
+    local runs.
 
-    On the ceiling path the loop's ``else`` clause records the terminal reason and emits a
-    single WARNING; ``drain_queue`` returns normally rather than raising, leaving any work
-    not acknowledged during the run in the queue for a subsequent run. Acknowledgement is
-    delegated entirely to ``run_batch``/``source`` (delete on success, leave unacknowledged
-    on failure); ``drain_queue`` never calls ``source.acknowledge`` itself.
+    Signal handlers can only be installed from the main thread; when the runner is
+    driven from a non-main thread (e.g. some test harnesses) this logs a warning and
+    continues without handlers.
 
-    Every poll is accounted before any ``break``, so the terminating empty poll still
-    contributes its malformed discards to ``messages_received`` and ``messages_discarded``.
-    Each poll adds ``len(jobs) + malformed_discarded`` to ``messages_received``, ``len(jobs)``
-    to ``jobs_processed``, and ``malformed_discarded`` to ``messages_discarded``, so the
-    invariant ``messages_received == jobs_processed + messages_discarded`` holds by
-    construction.
+    Args:
+        stop_event (threading.Event): The event set to request loop termination.
+    """
+
+    def _handle(signum, _frame):
+        logger.info("Received signal %s; finishing in-flight work then shutting down.", signal.Signals(signum).name)
+        stop_event.set()
+
+    try:
+        signal.signal(signal.SIGTERM, _handle)
+        signal.signal(signal.SIGINT, _handle)
+    except ValueError:
+        # Raised when not on the main thread; the worker still runs, just without
+        # cooperative signal handling (the platform's default handlers apply).
+        logger.warning("Could not install signal handlers (not on main thread); running without graceful shutdown.")
+
+
+def run_forever(
+    source: DocumentSource,
+    pipeline: Pipeline,
+    stop_event: threading.Event,
+) -> RunTotals:
+    """Poll the queue and process batches until asked to stop.
+
+    Loops until ``stop_event`` is set (by a signal handler). On each iteration it fetches
+    one batch and dispatches on the fetch outcome:
+
+    * ``RECEIVED`` - process the batch with ``run_batch``, fold its results into the
+      running totals, and log a progress summary.
+    * ``EMPTY`` - a genuine empty long-poll receive; count it and keep polling. No sleep
+      is needed because the receive already blocked for the long-poll wait.
+    * ``TRANSIENT_ERROR`` - the source swallowed a transient receive error; count it and
+      sleep ``settings.SQS_TRANSIENT_ERROR_BACKOFF_SECONDS`` before the next poll so the
+      loop does not spin against a degraded queue. The sleep is interruptible by
+      ``stop_event`` so shutdown stays responsive.
+
+    Permanent or unknown receive errors are not handled here: ``fetch_batch`` re-raises
+    them, so they propagate out of this function and crash the worker (Kubernetes then
+    restarts the pod). ``stop_event`` is re-checked between batches, so a batch already
+    running always finishes; ``run_batch``'s ``ThreadPoolExecutor`` performs
+    ``shutdown(wait=True)`` on exit, guaranteeing no jobs are in flight at that boundary.
+
+    Acknowledgement is delegated entirely to ``run_batch``/``source`` (delete on success,
+    leave unacknowledged on failure so SQS redrives to the DLQ); this loop never calls
+    ``source.acknowledge`` itself.
 
     Args:
         source (DocumentSource): Supplies batches and acknowledges completed jobs.
         pipeline (Pipeline): The shared, thread-safe pipeline instance.
+        stop_event (threading.Event): Set by a signal handler to request a graceful stop.
 
     Returns:
-        RunSummary: Aggregate counts and the terminal reason for the run.
+        RunTotals: The cumulative counters accrued before the worker was stopped.
     """
-    batches_processed = 0
-    messages_received = 0
-    messages_discarded = 0
-    jobs_processed = 0
-    successes = 0
-    failures = 0
-    terminal_reason = "queue drained"
+    totals = RunTotals()
 
-    # Termination is checked only between batches. run_batch blocks until its
+    # stop_event is checked only between batches. run_batch blocks until its
     # ThreadPoolExecutor joins all workers, so no job is in flight at this boundary.
-    while batches_processed < settings.MAX_BATCHES_PER_RUN:
+    while not stop_event.is_set():
         fetch_result = source.fetch_batch()
         jobs = fetch_result.jobs
         malformed_discarded = fetch_result.malformed_discarded
 
-        # Account EVERY poll BEFORE any break so a poll that only discarded malformed
-        # messages (including the terminating empty poll) still lifts the counters. The
-        # conservation invariant holds by construction because the three counters move
-        # together on every poll.
-        messages_received += len(jobs) + malformed_discarded
-        messages_discarded += malformed_discarded
-        jobs_processed += len(jobs)
+        # Account EVERY poll's messages before branching so a poll that only discarded
+        # malformed messages still lifts the counters and the conservation invariant
+        # (received == jobs_processed + discarded) holds by construction.
+        totals.messages_received += len(jobs) + malformed_discarded
+        totals.messages_discarded += malformed_discarded
+        totals.jobs_processed += len(jobs)
+
+        if fetch_result.outcome is FetchOutcome.TRANSIENT_ERROR:
+            # Transient blip: never mistaken for "drained". Back off (interruptibly) and
+            # retry rather than spinning against a throttled/unreachable queue.
+            totals.transient_errors += 1
+            if stop_event.wait(timeout=settings.SQS_TRANSIENT_ERROR_BACKOFF_SECONDS):
+                break
+            continue
 
         if not jobs:
-            # A single empty long-poll receive means the queue is drained. Discards on
-            # this terminating poll are already counted above.
-            terminal_reason = "queue drained"
-            break
+            # Genuine empty long-poll receive: nothing to do right now, keep polling. The
+            # long-poll already blocked, so no extra sleep. A quiet debug line avoids
+            # spamming INFO while the queue idles.
+            totals.empty_polls += 1
+            logger.debug("Empty poll; queue idle, continuing to poll.")
+            continue
 
-        # Increment before run_batch so batch_number is 1-based in start order, and so the
-        # ceiling reflects how many batches this run began.
-        batches_processed += 1
-
-        # Acknowledgement is delegated entirely to run_batch/source; drain_queue never
-        # acknowledges itself, so failed-job messages are left in the queue for redrive.
-        batch_result = run_batch(jobs, pipeline, source, batch_number=batches_processed)
+        # Increment before run_batch so batch_number is 1-based in start order.
+        totals.batches_processed += 1
+        batch_result = run_batch(jobs, pipeline, source, batch_number=totals.batches_processed)
         results = batch_result.results
-        successes += sum(1 for r in results if r.success)
-        failures += sum(1 for r in results if not r.success)
-    else:
-        # The while condition fell through (never hit the empty-poll break): the run
-        # stopped because it reached the batch ceiling.
-        terminal_reason = "hit max-batches ceiling"
-        logger.warning(
-            "Reached MAX_BATCHES_PER_RUN ceiling (%d batches); stopping this run. "
-            "Remaining work is left in the queue for the next run.",
-            settings.MAX_BATCHES_PER_RUN,
-        )
+        totals.successes += sum(1 for r in results if r.success)
+        totals.failures += sum(1 for r in results if not r.success)
+        totals.log_summary()
 
-    return RunSummary(
-        batches_processed=batches_processed,
-        messages_received=messages_received,
-        messages_discarded=messages_discarded,
-        jobs_processed=jobs_processed,
-        successes=successes,
-        failures=failures,
-        terminal_reason=terminal_reason,
-    )
+    return totals
 
 
 def main():
-    """Main entry point for the application runner: health check, build pipeline, drain the queue, log one summary."""
+    """Entry point: health check, build pipeline, then poll the queue forever until stopped."""
     if settings.LOCAL_DEVELOPMENT_MODE:
         logger.warning("Running in LOCAL_DEVELOPMENT_MODE. Ensure your S3 URIs are accessible in LocalStack.")
 
@@ -164,44 +234,28 @@ def main():
         logger.critical("OpenSearch health check failed. Exiting pipeline runner.")
         return
 
-    # Build the pipeline (and all AWS/OpenSearch clients) once and share it across
-    # worker threads. All components are stateless per-document and their underlying
-    # clients are safe to call concurrently.
+    # Build the pipeline (and all AWS/OpenSearch clients) once and share it across worker
+    # threads. All components are stateless per-document and their clients are safe to
+    # call concurrently.
     pipeline = build_pipeline()
 
     # Connect to the SQS document queue. An unresolvable queue is fatal: log and exit
-    # non-zero rather than proceeding with no source of work.
+    # non-zero rather than looping forever with no source of work.
     try:
         source: DocumentSource = SqsDocumentSource()
     except QueueResolutionError as exc:
         logger.critical(f"Could not connect to the SQS document queue; exiting: {exc}")
         sys.exit(1)
 
-    # Drain the queue: fetch and process batches until the queue empties or the ceiling
-    # trips, then emit exactly one structured summary record operators can alert on. The
-    # counts are rendered into the message via %-args so the plain-text formatter shows
-    # them, and are also attached via extra so a structured/JSON sink keeps them as fields.
-    summary = drain_queue(source, pipeline)
-    logger.info(
-        "Pipeline run summary: %d batch(es), %d message(s) received, %d discarded, "
-        "%d job(s) processed, %d succeeded, %d failed; terminal_reason=%s.",
-        summary.batches_processed,
-        summary.messages_received,
-        summary.messages_discarded,
-        summary.jobs_processed,
-        summary.successes,
-        summary.failures,
-        summary.terminal_reason,
-        extra={
-            "batches_processed": summary.batches_processed,
-            "messages_received": summary.messages_received,
-            "messages_discarded": summary.messages_discarded,
-            "jobs_processed": summary.jobs_processed,
-            "successes": summary.successes,
-            "failures": summary.failures,
-            "terminal_reason": summary.terminal_reason,
-        },
-    )
+    # Cooperative shutdown: the signal handlers set this event; run_forever finishes the
+    # in-flight batch and returns so the process exits 0 cleanly.
+    stop_event = threading.Event()
+    _install_signal_handlers(stop_event)
+
+    logger.info("Entering poll loop; will run until signalled to stop.")
+    totals = run_forever(source, pipeline, stop_event)
+    totals.log_summary(final=True)
+    logger.info("Pipeline runner stopped cleanly.")
 
 
 if __name__ == "__main__":

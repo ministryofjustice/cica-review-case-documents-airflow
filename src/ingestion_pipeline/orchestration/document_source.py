@@ -17,6 +17,7 @@ deleting a malformed message does not send it to the DLQ; only processing failur
 """
 
 import datetime
+import enum
 import logging
 from typing import List, Optional, Protocol
 
@@ -153,6 +154,29 @@ class DocumentJob(BaseModel):
         ).generate_uuid()
 
 
+class FetchOutcome(str, enum.Enum):
+    """Why a ``fetch_batch`` poll produced the jobs (if any) it did.
+
+    Distinguishes the two ways a poll can carry no jobs so a long-lived caller can
+    react differently: a genuine empty receive (the queue had nothing right now) versus
+    a swallowed transient receive error (SQS was momentarily throttling/unreachable).
+    The two are otherwise identical (no jobs, no discards) but call for different
+    pacing: a ``RECEIVED`` or ``EMPTY`` poll already blocked for the long-poll wait,
+    whereas a ``TRANSIENT_ERROR`` poll returns immediately (botocore fails fast once its
+    own retries are exhausted) and so the caller should back off before retrying.
+
+    Attributes:
+        RECEIVED: The poll returned at least one valid job.
+        EMPTY: A genuine empty long-poll receive (no messages, no discards).
+        TRANSIENT_ERROR: A transient receive error was swallowed and reported as an
+            empty poll; the caller should back off and retry.
+    """
+
+    RECEIVED = "received"
+    EMPTY = "empty"
+    TRANSIENT_ERROR = "transient_error"
+
+
 class FetchResult(BaseModel):
     """The outcome of a single ``fetch_batch`` poll: valid jobs plus discard count.
 
@@ -160,14 +184,17 @@ class FetchResult(BaseModel):
     malformed messages discarded during that same poll, so callers can account for
     every message received (valid or not). ``malformed_discarded`` equals the number
     of messages received minus the number of valid jobs produced. An empty poll or a
-    transient-error poll carries no jobs and a ``malformed_discarded`` of 0. The model
-    is frozen so a fetch result cannot be mutated after construction.
+    transient-error poll carries no jobs and a ``malformed_discarded`` of 0; the
+    ``outcome`` field distinguishes those two no-job cases from one another and from a
+    populated poll. The model is frozen so a fetch result cannot be mutated after
+    construction.
     """
 
     model_config = ConfigDict(frozen=True)
 
     jobs: list[DocumentJob] = Field(default_factory=list)
     malformed_discarded: int = Field(default=0, ge=0)
+    outcome: FetchOutcome = FetchOutcome.EMPTY
 
 
 class DocumentSource(Protocol):
@@ -292,8 +319,11 @@ class SqsDocumentSource:
 
         Returns:
             FetchResult: The valid jobs from this receive (possibly empty) together
-                with the number of malformed messages discarded during this poll. A
-                transient-error or empty poll carries no jobs and a discard count of 0.
+                with the number of malformed messages discarded during this poll and an
+                ``outcome`` tag. A populated poll is ``RECEIVED``; a genuine empty
+                receive (including a poll that only discarded malformed messages) is
+                ``EMPTY``; a swallowed transient receive error is ``TRANSIENT_ERROR``.
+                Both no-job outcomes carry no jobs and a discard count of 0.
         """
         # Imported here to avoid a module-level import cycle (document_ingress imports
         # DocumentJob from this module).
@@ -318,7 +348,10 @@ class SqsDocumentSource:
                     self.queue_name,
                     exc,
                 )
-                return FetchResult(jobs=[], malformed_discarded=0)
+                # Tagged TRANSIENT_ERROR (not EMPTY) so a long-lived caller can back off
+                # before retrying: this path returns immediately, whereas a genuine empty
+                # receive already spent the long-poll wait.
+                return FetchResult(jobs=[], malformed_discarded=0, outcome=FetchOutcome.TRANSIENT_ERROR)
             logger.critical(
                 "Permanent/unknown error receiving messages from queue '%s'; failing the run: %s",
                 self.queue_name,
@@ -357,7 +390,11 @@ class SqsDocumentSource:
             len(jobs),
         )
         malformed_discarded = len(messages) - len(jobs)
-        return FetchResult(jobs=jobs, malformed_discarded=malformed_discarded)
+        # RECEIVED when this poll produced work, otherwise a genuine EMPTY receive (a
+        # poll that only discarded malformed messages still had no valid jobs to hand
+        # back, so it is EMPTY, not TRANSIENT_ERROR).
+        outcome = FetchOutcome.RECEIVED if jobs else FetchOutcome.EMPTY
+        return FetchResult(jobs=jobs, malformed_discarded=malformed_discarded, outcome=outcome)
 
     def acknowledge(self, job: DocumentJob) -> None:
         """Delete a successfully processed job's message from the queue.
