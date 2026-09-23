@@ -14,7 +14,7 @@ from ingestion_pipeline.config import settings
 from ingestion_pipeline.custom_logging.log_context import source_doc_id_context
 from ingestion_pipeline.document_identity.identity import build_document_metadata
 from ingestion_pipeline.errors import DlqCategory, PipelineError
-from ingestion_pipeline.orchestration.batch_processing.document_result import DocumentResult
+from ingestion_pipeline.orchestration.batch_processing.document_result import BatchResult, BatchSummary, DocumentResult
 from ingestion_pipeline.orchestration.document_source import DocumentJob, DocumentSource
 from ingestion_pipeline.orchestration.pipeline import Pipeline
 from ingestion_pipeline.s3_utils.s3_uri import validate_s3_uri
@@ -93,7 +93,7 @@ def process_document_job(job: DocumentJob, pipeline: Pipeline) -> DocumentResult
         source_doc_id_context.reset(token)
 
 
-def run_batch(jobs: list[DocumentJob], pipeline: Pipeline, source: DocumentSource) -> list[DocumentResult]:
+def run_batch(jobs: list[DocumentJob], pipeline: Pipeline, source: DocumentSource, batch_number: int) -> BatchResult:
     """Process a batch of documents concurrently, collapsing duplicate source_doc_ids.
 
     Jobs are grouped by their deterministic ``source_doc_id`` while preserving input
@@ -111,18 +111,33 @@ def run_batch(jobs: list[DocumentJob], pipeline: Pipeline, source: DocumentSourc
     empty duplicate list, ``max_workers`` is unchanged, and one ``DocumentResult`` is
     returned per job.
 
+    On completion a single structured batch-summary record is emitted with the
+    batch's aggregate counts (both in the message and via the logging ``extra``
+    mechanism).
+
     Args:
         jobs (list[DocumentJob]): Documents to process.
         pipeline (Pipeline): The shared pipeline instance.
         source (DocumentSource): The source used to acknowledge completed jobs.
+        batch_number (int): The 1-based sequence number of this batch within the run.
 
     Returns:
-        list[DocumentResult]: One result per processed owner (at most one per
-            distinct ``source_doc_id``). Duplicate jobs produce no result.
+        BatchResult: The batch summary (aggregate counts) plus one
+            :class:`DocumentResult` per processed owner (at most one per distinct
+            ``source_doc_id``). Duplicate jobs produce no result.
     """
     if not jobs:
         logger.info("No documents to process in this batch.")
-        return []
+        return BatchResult(
+            summary=BatchSummary(
+                batch_number=batch_number,
+                jobs_in_batch=0,
+                succeeded=0,
+                failed=0,
+                duplicates_collapsed=0,
+            ),
+            results=[],
+        )
 
     # Preserve input order while grouping by deterministic source_doc_id. The first
     # job seen for an id is the owner; the rest are duplicates collapsed onto it.
@@ -175,5 +190,28 @@ def run_batch(jobs: list[DocumentJob], pipeline: Pipeline, source: DocumentSourc
 
     succeeded = sum(1 for r in results if r.success)
     failed = len(results) - succeeded
-    logger.info(f"Batch complete: {succeeded} succeeded, {failed} failed (of {len(results)}).")
-    return results
+    duplicates_collapsed = sum(len(dups) for dups in duplicates_by_id.values())
+    jobs_in_batch = len(jobs)  # jobs RECEIVED into the batch, NOT len(owners).
+    summary = BatchSummary(
+        batch_number=batch_number,
+        jobs_in_batch=jobs_in_batch,
+        succeeded=succeeded,
+        failed=failed,
+        duplicates_collapsed=duplicates_collapsed,
+    )
+    logger.info(
+        "Batch %d summary: %d job(s) in batch, %d succeeded, %d failed, %d duplicate(s) collapsed.",
+        summary.batch_number,
+        summary.jobs_in_batch,
+        summary.succeeded,
+        summary.failed,
+        summary.duplicates_collapsed,
+        extra={
+            "batch_number": summary.batch_number,
+            "jobs_in_batch": summary.jobs_in_batch,
+            "succeeded": summary.succeeded,
+            "failed": summary.failed,
+            "duplicates_collapsed": summary.duplicates_collapsed,
+        },
+    )
+    return BatchResult(summary=summary, results=results)

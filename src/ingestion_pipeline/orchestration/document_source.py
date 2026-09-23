@@ -52,6 +52,29 @@ _TRANSIENT_SQS_ERROR_CODES = frozenset(
     }
 )
 
+# Upper bound on the raw message body included in the malformed-message discard log.
+# The body is the only diagnostic record of a discarded message (deletion does not
+# route it to the DLQ), so it is logged to reveal what the upstream system sent. It is
+# truncated to keep a single oversized or malicious payload from flooding the logs.
+_MAX_LOGGED_BODY_CHARS = 2000
+
+
+def _truncate_body_for_log(body: str) -> str:
+    """Return the message body clipped to a safe length for logging.
+
+    Args:
+        body (str): The raw SQS message body.
+
+    Returns:
+        str: The body unchanged if it is within :data:`_MAX_LOGGED_BODY_CHARS`,
+            otherwise the leading slice followed by a marker noting how many characters
+            were omitted.
+    """
+    if len(body) <= _MAX_LOGGED_BODY_CHARS:
+        return body
+    omitted = len(body) - _MAX_LOGGED_BODY_CHARS
+    return f"{body[:_MAX_LOGGED_BODY_CHARS]}... [truncated {omitted} more chars]"
+
 
 def _is_transient_receive_error(exc: Exception) -> bool:
     """Return True if a receive_message failure is transient and safe to skip.
@@ -130,6 +153,23 @@ class DocumentJob(BaseModel):
         ).generate_uuid()
 
 
+class FetchResult(BaseModel):
+    """The outcome of a single ``fetch_batch`` poll: valid jobs plus discard count.
+
+    Carries the jobs parsed from one long-poll receive alongside the number of
+    malformed messages discarded during that same poll, so callers can account for
+    every message received (valid or not). ``malformed_discarded`` equals the number
+    of messages received minus the number of valid jobs produced. An empty poll or a
+    transient-error poll carries no jobs and a ``malformed_discarded`` of 0. The model
+    is frozen so a fetch result cannot be mutated after construction.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    jobs: list[DocumentJob] = Field(default_factory=list)
+    malformed_discarded: int = Field(default=0, ge=0)
+
+
 class DocumentSource(Protocol):
     """Supplies batches of documents to ingest and acknowledges completed work.
 
@@ -138,8 +178,8 @@ class DocumentSource(Protocol):
     :meth:`acknowledge` after a job has been processed successfully.
     """
 
-    def fetch_batch(self) -> List[DocumentJob]:
-        """Return the next batch of documents to process (possibly empty)."""
+    def fetch_batch(self) -> FetchResult:
+        """Return the next batch of documents plus the malformed discard count."""
         ...
 
     def acknowledge(self, job: DocumentJob) -> None:
@@ -234,8 +274,8 @@ class SqsDocumentSource:
             raise QueueResolutionError(f"No QueueUrl returned for queue '{self.queue_name}'")
         return queue_url
 
-    def fetch_batch(self) -> List[DocumentJob]:
-        """Receive one batch of messages and return the valid jobs.
+    def fetch_batch(self) -> FetchResult:
+        """Receive one batch of messages and return the valid jobs and discard count.
 
         Performs a single long-poll receive, parses each message into a
         :class:`DocumentJob`, and deletes malformed messages (permanently discarding
@@ -251,7 +291,9 @@ class SqsDocumentSource:
                 (e.g. AccessDenied, invalid endpoint, malformed request).
 
         Returns:
-            List[DocumentJob]: The valid jobs from this receive (possibly empty).
+            FetchResult: The valid jobs from this receive (possibly empty) together
+                with the number of malformed messages discarded during this poll. A
+                transient-error or empty poll carries no jobs and a discard count of 0.
         """
         # Imported here to avoid a module-level import cycle (document_ingress imports
         # DocumentJob from this module).
@@ -276,7 +318,7 @@ class SqsDocumentSource:
                     self.queue_name,
                     exc,
                 )
-                return []
+                return FetchResult(jobs=[], malformed_discarded=0)
             logger.critical(
                 "Permanent/unknown error receiving messages from queue '%s'; failing the run: %s",
                 self.queue_name,
@@ -290,14 +332,19 @@ class SqsDocumentSource:
         for message in messages:
             message_id = message.get("MessageId")
             receipt_handle = message.get("ReceiptHandle")
+            body = message.get("Body", "")
             try:
-                job = parse_message(message.get("Body", ""), message_id=message_id)
+                job = parse_message(body, message_id=message_id)
             except MalformedMessageError as exc:
+                # The raw body is logged (truncated) because a discarded message is
+                # deleted rather than sent to the DLQ, so this log entry is the only
+                # record of what the upstream system sent.
                 logger.error(
-                    "Discarding malformed message (message_id=%s, field=%s): %s",
+                    "Discarding malformed message (message_id=%s, field=%s): %s | raw body: %s",
                     message_id,
                     exc.field,
                     exc,
+                    _truncate_body_for_log(body),
                 )
                 self._delete_message(receipt_handle, message_id=message_id)
                 continue
@@ -309,7 +356,8 @@ class SqsDocumentSource:
             len(messages),
             len(jobs),
         )
-        return jobs
+        malformed_discarded = len(messages) - len(jobs)
+        return FetchResult(jobs=jobs, malformed_discarded=malformed_discarded)
 
     def acknowledge(self, job: DocumentJob) -> None:
         """Delete a successfully processed job's message from the queue.

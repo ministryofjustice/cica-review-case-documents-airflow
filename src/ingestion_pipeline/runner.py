@@ -37,7 +37,12 @@ class RunSummary(BaseModel):
 
     Attributes:
         batches_processed (int): Number of batches started this run.
-        messages_received (int): Sum of ``len(jobs)`` over each non-empty ``fetch_batch``.
+        messages_received (int): Total messages pulled off SQS this run, counting both the
+            valid jobs and the malformed messages discarded (summed over every poll,
+            including the terminating empty poll).
+        messages_discarded (int): Total malformed messages discarded this run, including any
+            discarded on the terminating poll.
+        jobs_processed (int): Total valid jobs received into batches this run.
         successes (int): Count of ``DocumentResult.success`` being True across all results.
         failures (int): Count of ``DocumentResult.success`` being False across all results.
         terminal_reason (str): Why the loop stopped: ``"queue drained"`` or
@@ -48,6 +53,8 @@ class RunSummary(BaseModel):
 
     batches_processed: int
     messages_received: int
+    messages_discarded: int
+    jobs_processed: int
     successes: int
     failures: int
     terminal_reason: str
@@ -69,6 +76,13 @@ def drain_queue(source: DocumentSource, pipeline: Pipeline) -> RunSummary:
     delegated entirely to ``run_batch``/``source`` (delete on success, leave unacknowledged
     on failure); ``drain_queue`` never calls ``source.acknowledge`` itself.
 
+    Every poll is accounted before any ``break``, so the terminating empty poll still
+    contributes its malformed discards to ``messages_received`` and ``messages_discarded``.
+    Each poll adds ``len(jobs) + malformed_discarded`` to ``messages_received``, ``len(jobs)``
+    to ``jobs_processed``, and ``malformed_discarded`` to ``messages_discarded``, so the
+    invariant ``messages_received == jobs_processed + messages_discarded`` holds by
+    construction.
+
     Args:
         source (DocumentSource): Supplies batches and acknowledges completed jobs.
         pipeline (Pipeline): The shared, thread-safe pipeline instance.
@@ -78,6 +92,8 @@ def drain_queue(source: DocumentSource, pipeline: Pipeline) -> RunSummary:
     """
     batches_processed = 0
     messages_received = 0
+    messages_discarded = 0
+    jobs_processed = 0
     successes = 0
     failures = 0
     terminal_reason = "queue drained"
@@ -85,19 +101,32 @@ def drain_queue(source: DocumentSource, pipeline: Pipeline) -> RunSummary:
     # Termination is checked only between batches. run_batch blocks until its
     # ThreadPoolExecutor joins all workers, so no job is in flight at this boundary.
     while batches_processed < settings.MAX_BATCHES_PER_RUN:
-        jobs = source.fetch_batch()
+        fetch_result = source.fetch_batch()
+        jobs = fetch_result.jobs
+        malformed_discarded = fetch_result.malformed_discarded
+
+        # Account EVERY poll BEFORE any break so a poll that only discarded malformed
+        # messages (including the terminating empty poll) still lifts the counters. The
+        # conservation invariant holds by construction because the three counters move
+        # together on every poll.
+        messages_received += len(jobs) + malformed_discarded
+        messages_discarded += malformed_discarded
+        jobs_processed += len(jobs)
+
         if not jobs:
-            # A single empty long-poll receive means the queue is drained.
+            # A single empty long-poll receive means the queue is drained. Discards on
+            # this terminating poll are already counted above.
             terminal_reason = "queue drained"
             break
 
-        # Count STARTED batches so the ceiling reflects how many batches this run began.
+        # Increment before run_batch so batch_number is 1-based in start order, and so the
+        # ceiling reflects how many batches this run began.
         batches_processed += 1
-        messages_received += len(jobs)
 
         # Acknowledgement is delegated entirely to run_batch/source; drain_queue never
         # acknowledges itself, so failed-job messages are left in the queue for redrive.
-        results = run_batch(jobs, pipeline, source)
+        batch_result = run_batch(jobs, pipeline, source, batch_number=batches_processed)
+        results = batch_result.results
         successes += sum(1 for r in results if r.success)
         failures += sum(1 for r in results if not r.success)
     else:
@@ -113,6 +142,8 @@ def drain_queue(source: DocumentSource, pipeline: Pipeline) -> RunSummary:
     return RunSummary(
         batches_processed=batches_processed,
         messages_received=messages_received,
+        messages_discarded=messages_discarded,
+        jobs_processed=jobs_processed,
         successes=successes,
         failures=failures,
         terminal_reason=terminal_reason,
@@ -152,15 +183,20 @@ def main():
     # them, and are also attached via extra so a structured/JSON sink keeps them as fields.
     summary = drain_queue(source, pipeline)
     logger.info(
-        "Pipeline run summary: %d batch(es), %d message(s), %d succeeded, %d failed; terminal_reason=%s.",
+        "Pipeline run summary: %d batch(es), %d message(s) received, %d discarded, "
+        "%d job(s) processed, %d succeeded, %d failed; terminal_reason=%s.",
         summary.batches_processed,
         summary.messages_received,
+        summary.messages_discarded,
+        summary.jobs_processed,
         summary.successes,
         summary.failures,
         summary.terminal_reason,
         extra={
             "batches_processed": summary.batches_processed,
             "messages_received": summary.messages_received,
+            "messages_discarded": summary.messages_discarded,
+            "jobs_processed": summary.jobs_processed,
             "successes": summary.successes,
             "failures": summary.failures,
             "terminal_reason": summary.terminal_reason,

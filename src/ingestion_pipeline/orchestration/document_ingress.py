@@ -25,11 +25,13 @@ Derived fields (``source_doc_id``, ``page_count``) are never taken from the mess
 they are computed during ingestion and any values supplied for them are ignored.
 
 Anything that cannot be parsed or fails validation raises
-:class:`MalformedMessageError`. The source layer logs and then **permanently
-discards** such messages by deleting them from the queue. Deleting does not route a
-message to the DLQ (SQS redrive only happens after repeated receives, which cannot
-occur once a message is deleted), so the log entry is the only record of a malformed
-message.
+:class:`MalformedMessageError`. The error message names every field that failed the
+contract (not just the first) so a single log entry captures all violations. The
+source layer logs this together with the (truncated) raw message body and then
+**permanently discards** the message by deleting it from the queue. Deleting does not
+route a message to the DLQ (SQS redrive only happens after repeated receives, which
+cannot occur once a message is deleted), so the log entry is the only record of a
+malformed message.
 """
 
 import datetime
@@ -161,8 +163,9 @@ def parse_message(body: str, *, message_id: Optional[str] = None) -> DocumentJob
         request = DocumentRequest.model_validate(payload)
     except ValidationError as exc:
         field = _first_error_field(exc)
+        all_fields = _all_error_fields(exc)
         raise MalformedMessageError(
-            f"message failed validation{id_suffix} (field={field}): {exc}",
+            f"message failed validation{id_suffix} (fields={all_fields}): {exc}",
             field=field,
         ) from exc
 
@@ -224,3 +227,28 @@ def _first_error_field(exc: ValidationError) -> str:
         if location:
             return str(location[0])
     return "body"
+
+
+def _all_error_fields(exc: ValidationError) -> str:
+    """Return a comma-separated list of every field that failed validation.
+
+    Unlike :func:`_first_error_field`, this reports all offending fields so the
+    malformed-message log shows every contract violation in a single message rather
+    than only the first one pydantic encountered. Duplicate fields (a field with more
+    than one error) are collapsed and order of first appearance is preserved.
+
+    Args:
+        exc (ValidationError): The pydantic validation error.
+
+    Returns:
+        str: The offending field names joined by ", ". A whole-model error (which
+            pydantic reports with an empty ``loc``) contributes ``"body"`` so the log
+            names a concrete area rather than an empty string.
+    """
+    fields: list[str] = []
+    for error in exc.errors():
+        location = error.get("loc") or ()
+        field = str(location[0]) if location else "body"
+        if field not in fields:
+            fields.append(field)
+    return ", ".join(fields) if fields else "body"

@@ -7,9 +7,12 @@ from botocore.exceptions import ClientError, ConnectionClosedError, EndpointConn
 from moto import mock_aws
 
 from ingestion_pipeline.orchestration.document_source import (
+    _MAX_LOGGED_BODY_CHARS,
     DocumentJob,
+    FetchResult,
     QueueResolutionError,
     SqsDocumentSource,
+    _truncate_body_for_log,
 )
 
 
@@ -31,6 +34,17 @@ def _valid_body() -> str:
             "case_ref": "26-711111",
             "source_file_s3_uri": VALID_URI,
             "received_date": "2026-01-15T09:30:00",
+        }
+    )
+
+
+def _malformed_body() -> str:
+    """A body the parser rejects: valid JSON but missing the required received_date."""
+    return json.dumps(
+        {
+            "correspondence_type": "TC19 - ADDITIONAL INFO REQUEST",
+            "case_ref": "26-711111",
+            "source_file_s3_uri": VALID_URI,
         }
     )
 
@@ -147,10 +161,11 @@ def test_fetch_batch_returns_jobs_for_valid_messages():
         "Messages": [{"MessageId": "m-1", "ReceiptHandle": "rh-1", "Body": _valid_body()}]
     }
 
-    jobs = source.fetch_batch()
+    result = source.fetch_batch()
 
-    assert len(jobs) == 1
-    job = jobs[0]
+    assert len(result.jobs) == 1
+    assert result.malformed_discarded == 0
+    job = result.jobs[0]
     assert job.source_file_s3_uri == VALID_URI
     assert job.case_ref == "26-711111"
     assert job.receipt_handle == "rh-1"
@@ -164,11 +179,13 @@ def test_fetch_batch_returns_jobs_for_valid_messages():
     sqs_client.delete_message.assert_not_called()
 
 
-def test_fetch_batch_empty_receive_returns_empty_list():
+def test_fetch_batch_empty_receive_returns_empty_result():
     sqs_client = mock.Mock()
     source = _make_source(sqs_client)
     sqs_client.receive_message.return_value = {}
-    assert source.fetch_batch() == []
+    result = source.fetch_batch()
+    assert result.jobs == []
+    assert result.malformed_discarded == 0
 
 
 def test_fetch_batch_deletes_malformed_and_continues():
@@ -181,13 +198,117 @@ def test_fetch_batch_deletes_malformed_and_continues():
         ]
     }
 
-    jobs = source.fetch_batch()
+    result = source.fetch_batch()
 
     # The malformed message is dropped; the valid one is returned.
-    assert len(jobs) == 1
-    assert jobs[0].receipt_handle == "rh-good"
+    assert len(result.jobs) == 1
+    assert result.jobs[0].receipt_handle == "rh-good"
+    assert result.malformed_discarded == 1
     # The malformed message is deleted so it does not reappear after visibility timeout.
     sqs_client.delete_message.assert_called_once_with(QueueUrl=QUEUE_URL, ReceiptHandle="rh-bad")
+
+
+def test_fetch_batch_mixed_valid_and_malformed_accounts_discards():
+    """A mixed poll returns the valid jobs and counts every malformed message."""
+    sqs_client = mock.Mock()
+    source = _make_source(sqs_client)
+    sqs_client.receive_message.return_value = {
+        "Messages": [
+            {"MessageId": "good-1", "ReceiptHandle": "rh-good-1", "Body": _valid_body()},
+            {"MessageId": "bad-json", "ReceiptHandle": "rh-bad-1", "Body": "{not json"},
+            {"MessageId": "good-2", "ReceiptHandle": "rh-good-2", "Body": _valid_body()},
+            {"MessageId": "bad-field", "ReceiptHandle": "rh-bad-2", "Body": _malformed_body()},
+        ]
+    }
+
+    result = source.fetch_batch()
+
+    # Two valid jobs returned; two malformed messages discarded.
+    assert len(result.jobs) == 2
+    assert result.malformed_discarded == 2
+    assert {job.receipt_handle for job in result.jobs} == {"rh-good-1", "rh-good-2"}
+    # Both malformed messages are still deleted so they do not reappear.
+    assert sqs_client.delete_message.call_count == 2
+    deleted_handles = {call.kwargs["ReceiptHandle"] for call in sqs_client.delete_message.call_args_list}
+    assert deleted_handles == {"rh-bad-1", "rh-bad-2"}
+
+
+def test_fetch_batch_all_malformed_returns_no_jobs_with_discard_count():
+    """A poll of only malformed messages returns no jobs and counts them all."""
+    sqs_client = mock.Mock()
+    source = _make_source(sqs_client)
+    sqs_client.receive_message.return_value = {
+        "Messages": [
+            {"MessageId": "bad-1", "ReceiptHandle": "rh-bad-1", "Body": "{not json"},
+            {"MessageId": "bad-2", "ReceiptHandle": "rh-bad-2", "Body": _malformed_body()},
+            {"MessageId": "bad-3", "ReceiptHandle": "rh-bad-3", "Body": "not even json"},
+        ]
+    }
+
+    result = source.fetch_batch()
+
+    assert result.jobs == []
+    assert result.malformed_discarded >= 1
+    assert result.malformed_discarded == 3
+    # Every malformed message is deleted.
+    assert sqs_client.delete_message.call_count == 3
+
+
+def test_fetch_batch_logs_raw_body_when_discarding(caplog):
+    """The discard log includes the raw message body so upstream errors are diagnosable."""
+    sqs_client = mock.Mock()
+    source = _make_source(sqs_client)
+    bad_body = '{"correspondence_type": "WRONG TYPE", "case_ref": "26-711111"}'
+    sqs_client.receive_message.return_value = {
+        "Messages": [
+            {"MessageId": "bad", "ReceiptHandle": "rh-bad", "Body": bad_body},
+        ]
+    }
+
+    with caplog.at_level("ERROR"):
+        result = source.fetch_batch()
+
+    assert result.malformed_discarded == 1
+    # The full raw body appears in the discard log record.
+    assert bad_body in caplog.text
+    assert "raw body:" in caplog.text
+
+
+def test_fetch_batch_truncates_oversized_body_in_log(caplog):
+    """An oversized body is clipped in the log so a single message cannot flood it."""
+    sqs_client = mock.Mock()
+    source = _make_source(sqs_client)
+    # Valid JSON but not an object, so it is rejected without the body being echoed by
+    # the parser; the huge padding forces truncation in the discard log.
+    oversized_body = '"' + ("x" * (_MAX_LOGGED_BODY_CHARS + 500)) + '"'
+    sqs_client.receive_message.return_value = {
+        "Messages": [
+            {"MessageId": "bad", "ReceiptHandle": "rh-bad", "Body": oversized_body},
+        ]
+    }
+
+    with caplog.at_level("ERROR"):
+        result = source.fetch_batch()
+
+    assert result.malformed_discarded == 1
+    assert "truncated" in caplog.text
+    # The untruncated body is longer than what we ever log.
+    assert oversized_body not in caplog.text
+
+
+# --- _truncate_body_for_log -------------------------------------------------
+
+
+def test_truncate_body_for_log_returns_short_body_unchanged():
+    body = "short body"
+    assert _truncate_body_for_log(body) == body
+
+
+def test_truncate_body_for_log_clips_and_marks_omitted_chars():
+    body = "y" * (_MAX_LOGGED_BODY_CHARS + 42)
+    result = _truncate_body_for_log(body)
+    assert result.startswith("y" * _MAX_LOGGED_BODY_CHARS)
+    assert "truncated 42 more chars" in result
 
 
 @pytest.mark.parametrize(
@@ -206,12 +327,15 @@ def test_fetch_batch_deletes_malformed_and_continues():
         ConnectionClosedError(endpoint_url="http://localhost:4566"),
     ],
 )
-def test_fetch_batch_transient_receive_error_returns_empty_list(error):
+def test_fetch_batch_transient_receive_error_returns_empty_result(error):
     """Transient receive failures are swallowed as an empty poll for retry."""
     sqs_client = mock.Mock()
     source = _make_source(sqs_client)
     sqs_client.receive_message.side_effect = error
-    assert source.fetch_batch() == []
+    result = source.fetch_batch()
+    assert result == FetchResult(jobs=[], malformed_discarded=0)
+    assert result.jobs == []
+    assert result.malformed_discarded == 0
 
 
 @pytest.mark.parametrize(
@@ -289,11 +413,12 @@ def test_fetch_batch_and_acknowledge_end_to_end_with_moto():
         queue_name="cica-document-search-queue",
         wait_time_seconds=0,
     )
-    jobs = source.fetch_batch()
-    assert len(jobs) == 1
-    assert jobs[0].source_file_s3_uri == VALID_URI
+    result = source.fetch_batch()
+    assert len(result.jobs) == 1
+    assert result.malformed_discarded == 0
+    assert result.jobs[0].source_file_s3_uri == VALID_URI
 
     # Acknowledge removes it from the queue.
-    source.acknowledge(jobs[0])
+    source.acknowledge(result.jobs[0])
     remaining = sqs.receive_message(QueueUrl=queue_url, WaitTimeSeconds=0)
     assert "Messages" not in remaining or remaining["Messages"] == []
