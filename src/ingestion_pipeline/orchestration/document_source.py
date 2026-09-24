@@ -61,20 +61,42 @@ _MAX_LOGGED_BODY_CHARS = 2000
 
 
 def _truncate_body_for_log(body: str) -> str:
-    """Return the message body clipped to a safe length for logging.
+    """Return the message body clipped and escaped for safe logging.
+
+    The body is producer-controlled, so control characters (e.g. newlines) are
+    escaped with a ``repr``-style encoding before logging. This prevents a
+    malicious or malformed payload from forging additional log lines or
+    corrupting downstream log parsing.
 
     Args:
         body (str): The raw SQS message body.
 
     Returns:
-        str: The body unchanged if it is within :data:`_MAX_LOGGED_BODY_CHARS`,
-            otherwise the leading slice followed by a marker noting how many characters
-            were omitted.
+        str: The escaped body if it is within :data:`_MAX_LOGGED_BODY_CHARS`,
+            otherwise the escaped leading slice followed by a marker noting how many
+            raw characters were omitted.
     """
     if len(body) <= _MAX_LOGGED_BODY_CHARS:
-        return body
+        return _escape_control_chars(body)
     omitted = len(body) - _MAX_LOGGED_BODY_CHARS
-    return f"{body[:_MAX_LOGGED_BODY_CHARS]}... [truncated {omitted} more chars]"
+    escaped = _escape_control_chars(body[:_MAX_LOGGED_BODY_CHARS])
+    return f"{escaped}... [truncated {omitted} more chars]"
+
+
+def _escape_control_chars(text: str) -> str:
+    """Escape control characters so they cannot forge or corrupt log lines.
+
+    Uses a ``repr``-style encoding (via ``unicode_escape``) so newlines, carriage
+    returns, tabs and other control characters are rendered as visible escape
+    sequences rather than affecting the structure of the log output.
+
+    Args:
+        text (str): The text to escape.
+
+    Returns:
+        str: The text with control characters replaced by escape sequences.
+    """
+    return text.encode("unicode_escape").decode("ascii")
 
 
 def _is_transient_receive_error(exc: Exception) -> bool:

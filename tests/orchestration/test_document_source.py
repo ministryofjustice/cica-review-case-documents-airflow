@@ -315,6 +315,20 @@ def test_truncate_body_for_log_clips_and_marks_omitted_chars():
     assert "truncated 42 more chars" in result
 
 
+def test_truncate_body_for_log_escapes_control_characters():
+    """Control characters are escaped so a body cannot forge extra log lines."""
+    body = "a\n2026-01-01 ERROR forged line\r\tb"
+    result = _truncate_body_for_log(body)
+    # No raw newline/carriage-return/tab survives to break the log line.
+    assert "\n" not in result
+    assert "\r" not in result
+    assert "\t" not in result
+    # They are rendered as visible escape sequences instead.
+    assert "\\n" in result
+    assert "\\r" in result
+    assert "\\t" in result
+
+
 @pytest.mark.parametrize(
     "error",
     [
