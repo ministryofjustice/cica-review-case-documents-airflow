@@ -21,7 +21,7 @@ This pipeline feeds data into a UI application (cica-review-case-documents) that
 
 The project is in active private beta. Features and chunking strategies are still evolving.
 
-Each run drains the SQS document queue across multiple batches, up to a configurable ceiling (`MAX_BATCHES_PER_RUN`), stopping when the queue is empty (a single empty long-poll) or the ceiling is reached. Messages that repeatedly fail are redriven to a Dead Letter Queue (DLQ) after `SQS_MAX_RECEIVE_COUNT` (default 3) receives, so poison documents are not retried indefinitely.
+The runner continuously polls the SQS document queue, processing batches as they arrive until it receives SIGTERM/SIGINT; repeatedly failing valid messages are redriven to a Dead Letter Queue after SQS_MAX_RECEIVE_COUNT (default 3) receives.
 
 ## Domain Context
 

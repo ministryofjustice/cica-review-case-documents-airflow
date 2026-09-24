@@ -18,7 +18,7 @@
 | Module | Responsibility |
 |--------|---------------|
 | `main.py` | Entrypoint — sets up logging |
-| `runner.py` | Thin application entry point (`main`): health check, build pipeline, then drain the queue via `drain_queue` (fetch → process batches until empty or `MAX_BATCHES_PER_RUN`) and log a per-run summary |
+| `runner.py` | Long-lived application entry point (`main`): health check, build pipeline, then poll SQS via `run_forever` until a graceful signal and log progress/final summaries |
 | `pipeline_builder.py` | Constructs the pipeline with all dependencies |
 | `config.py` | Pydantic Settings configuration (env vars + .env) |
 | `aws_client/` | AWS client factories (S3, Textract, Bedrock) |
