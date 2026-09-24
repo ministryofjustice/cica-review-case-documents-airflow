@@ -1,0 +1,295 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Add `BatchSummary` and `BatchResult` frozen dataclasses": [
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790065434407
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790065460608
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790065614538
+      }
+    ],
+    "2.1 Add `FetchResult` model and change `fetch_batch` return type": [
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790065437274
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790065461564
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790065615861
+      }
+    ],
+    "2.2 Update `test_document_source.py` for the `FetchResult` return type": [
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790065438891
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790065621546
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790066484484
+      }
+    ],
+    "3.1 Update `run_batch` signature, counts, and batch-summary log record": [
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790065439997
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790065622457
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790065981603
+      }
+    ],
+    "3.2 Update `test_batch_runner.py` call sites to consume `BatchResult`": [
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790065441780
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790065990583
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790066485085
+      }
+    ],
+    "4. Checkpoint — confirm the return-type ripple is fixed": [
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790065443232
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790066492749
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790066524404
+      }
+    ],
+    "5.1 Extend `RunSummary` to the seven-field model": [
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790065445356
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790066525390
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790066666029
+      }
+    ],
+    "5.2 Rework `drain_queue` to aggregate fetch and batch results": [
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790065446491
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790066532008
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790066667856
+      }
+    ],
+    "5.3 Update `main` run-summary log record": [
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790065447398
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790066533079
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790066668745
+      }
+    ],
+    "5.4 Update `test_runner.py` fakes, patches, and constructions": [
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790065448359
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790066670289
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790067142645
+      }
+    ],
+    "6.1 Motivating-bug regression test (malformed-only run)": [
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790065449398
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790067159402
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790068301344
+      }
+    ],
+    "6.2 Exactly-one run-summary record test": [
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790065450501
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790067161174
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790068303017
+      }
+    ],
+    "6.3 `batch_number` sequencing test": [
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790065451629
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790067161795
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790068304093
+      }
+    ],
+    "6.4 Preserved discard / no-direct-ack test": [
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790065452589
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790067162678
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790068304515
+      }
+    ],
+    "7. Final checkpoint — full suite, coverage, and lint": [
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790065453628
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790068441102
+      },
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790068515530
+      }
+    ],
+    "1. Add batch-summary data models in `document_result.py`": [
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790065615358
+      }
+    ],
+    "2. Add `FetchResult` and thread it through the document source": [
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790066485714
+      }
+    ],
+    "3. Change `run_batch` to accept `batch_number` and return `BatchResult`": [
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790066486471
+      }
+    ],
+    "5. Update `runner.py` — `RunSummary`, `drain_queue`, and `main`": [
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790067148569
+      }
+    ],
+    "6. Regression, invariant, and behaviour-preservation tests": [
+      {
+        "executionId": "88917e77-8922-4372-9853-016f5155a17f",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1790068305267
+      }
+    ]
+  }
+}

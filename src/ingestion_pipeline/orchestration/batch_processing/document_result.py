@@ -29,3 +29,41 @@ class DocumentResult:
     error: Exception | None = None
     category: DlqCategory | None = None
     retryable: bool | None = None
+
+
+@dataclass(frozen=True)
+class BatchSummary:
+    """Per-batch aggregate counts for one ``run_batch`` invocation.
+
+    ``jobs_in_batch`` is the number of jobs received into the batch
+    (``len(jobs)``), not the number of owners. ``duplicates_collapsed`` is how
+    many of those jobs were folded onto an earlier owner sharing the same
+    ``source_doc_id``. There is no ``messages_discarded`` field: discards are a
+    source/run concern, not a batch one.
+
+    Attributes:
+        batch_number: The 1-based sequence number of this batch within the run.
+        jobs_in_batch: The number of jobs received into the batch (``len(jobs)``).
+        succeeded: The number of processed owners that succeeded.
+        failed: The number of processed owners that failed.
+        duplicates_collapsed: The number of jobs folded onto an earlier owner.
+    """
+
+    batch_number: int
+    jobs_in_batch: int
+    succeeded: int
+    failed: int
+    duplicates_collapsed: int
+
+
+@dataclass(frozen=True)
+class BatchResult:
+    """A batch outcome: its summary plus one DocumentResult per processed owner.
+
+    Attributes:
+        summary: The aggregate counts for the batch.
+        results: One :class:`DocumentResult` per processed owner.
+    """
+
+    summary: BatchSummary
+    results: list[DocumentResult]

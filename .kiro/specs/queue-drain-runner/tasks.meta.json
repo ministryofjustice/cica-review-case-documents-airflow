@@ -1,0 +1,234 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Add the three settings and their validators": [
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789984683614
+      },
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789984698936
+      },
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789984812088
+      }
+    ],
+    "1.4 Write example/unit tests for defaults and the visibility regression": [
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789984684939
+      },
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789984816448
+      },
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789984935179
+      }
+    ],
+    "2.1 Add the `RunSummary` model": [
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789984685463
+      },
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789984817530
+      },
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789984934144
+      }
+    ],
+    "2.2 Implement the `drain_queue(source, pipeline)` function": [
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789984686043
+      },
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789984948716
+      },
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789985050812
+      }
+    ],
+    "2.6 Write example/unit tests for termination, delegation, and WARNING emission": [
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789984686613
+      },
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789985055782
+      },
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789985247659
+      }
+    ],
+    "3. Checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789984687258
+      },
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789985257251
+      },
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789985333364
+      }
+    ],
+    "4.1 Reduce `main()` to health-check → build → source → drain → summary log": [
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789984688026
+      },
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789985344804
+      },
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789985637571
+      }
+    ],
+    "4.2 Write example/unit tests for `main()` wiring": [
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789984688795
+      },
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789985645851
+      },
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789985904190
+      }
+    ],
+    "6.1 Add idempotent DLQ creation and redrive wiring": [
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789984689497
+      },
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789985346153
+      },
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789985638883
+      }
+    ],
+    "7.1 Update product and structure steering docs": [
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789984690261
+      },
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789985347040
+      },
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789985639748
+      }
+    ],
+    "8.1 Run the production test suite and linters": [
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789984690919
+      },
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789985910792
+      },
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789985950638
+      }
+    ],
+    "1. Add drain-loop and DLQ settings to `config.py`": [
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789984935900
+      }
+    ],
+    "2. Implement `RunSummary` and `drain_queue` in `runner.py`": [
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789985249144
+      }
+    ],
+    "6. Wire the DLQ and redrive policy into the LocalStack init script": [
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789985639319
+      }
+    ],
+    "7. Update steering documentation": [
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789985640274
+      }
+    ],
+    "4. Refactor `main()` to thin wiring in `runner.py`": [
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789985905639
+      }
+    ],
+    "8. Final checkpoint - Verify build, tests, coverage, and lint": [
+      {
+        "executionId": "c5698694-fd56-44d8-b502-1222b9137a8a",
+        "chatSessionId": "sess_5b4c9c70-2796-4e1f-9887-fa5f3e9cf7bf",
+        "timestamp": 1789985951145
+      }
+    ]
+  }
+}

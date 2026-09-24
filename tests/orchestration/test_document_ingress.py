@@ -8,6 +8,7 @@ from ingestion_pipeline.orchestration.document_ingress import (
     ACCEPTED_CORRESPONDENCE_TYPE,
     DocumentRequest,
     MalformedMessageError,
+    _all_error_fields,
     _first_error_field,
     parse_message,
 )
@@ -266,3 +267,63 @@ def test_first_error_field_falls_back_to_body_when_no_location():
         [{"type": "value_error", "loc": (), "input": {}, "ctx": {"error": "bad"}}],
     )
     assert _first_error_field(error) == "body"
+
+
+# --- _all_error_fields ------------------------------------------------------
+
+
+def test_all_error_fields_lists_every_failing_field():
+    try:
+        DocumentRequest(
+            correspondence_type="WRONG",
+            case_ref="bad",
+            source_file_s3_uri=VALID_URI,
+            received_date="not-a-date",
+        )
+    except ValidationError as exc:
+        result = _all_error_fields(exc)
+    else:  # pragma: no cover - guard against silent regression
+        pytest.fail("expected ValidationError")
+
+    fields = {f.strip() for f in result.split(",")}
+    assert fields == {"correspondence_type", "case_ref", "received_date"}
+
+
+def test_all_error_fields_deduplicates_repeated_fields():
+    error = ValidationError.from_exception_data(
+        "DocumentRequest",
+        [
+            {"type": "string_type", "loc": ("case_ref",), "input": 1},
+            {"type": "value_error", "loc": ("case_ref",), "input": 1, "ctx": {"error": "bad"}},
+        ],
+    )
+    assert _all_error_fields(error) == "case_ref"
+
+
+def test_all_error_fields_falls_back_to_body_when_no_location():
+    error = ValidationError.from_exception_data(
+        "DocumentRequest",
+        [{"type": "value_error", "loc": (), "input": {}, "ctx": {"error": "bad"}}],
+    )
+    assert _all_error_fields(error) == "body"
+
+
+def test_parse_message_reports_all_invalid_fields():
+    """A body wrong in several ways names every offending field in the error."""
+    body = json.dumps(
+        {
+            "correspondence_type": "WRONG TYPE",
+            "case_ref": "not-a-ref",
+            "source_file_s3_uri": VALID_URI,
+            "received_date": "not-a-date",
+        }
+    )
+    with pytest.raises(MalformedMessageError) as exc_info:
+        parse_message(body, message_id="m-1")
+
+    message = str(exc_info.value)
+    assert "correspondence_type" in message
+    assert "case_ref" in message
+    assert "received_date" in message
+    # exc.field still carries the first offending field for coarse-grained logging.
+    assert exc_info.value.field == "correspondence_type"

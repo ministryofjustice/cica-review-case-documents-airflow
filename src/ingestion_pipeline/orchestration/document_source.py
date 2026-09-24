@@ -17,6 +17,7 @@ deleting a malformed message does not send it to the DLQ; only processing failur
 """
 
 import datetime
+import enum
 import logging
 from typing import List, Optional, Protocol
 
@@ -51,6 +52,51 @@ _TRANSIENT_SQS_ERROR_CODES = frozenset(
         "KMS.ThrottlingException",
     }
 )
+
+# Upper bound on the raw message body included in the malformed-message discard log.
+# The body is the only diagnostic record of a discarded message (deletion does not
+# route it to the DLQ), so it is logged to reveal what the upstream system sent. It is
+# truncated to keep a single oversized or malicious payload from flooding the logs.
+_MAX_LOGGED_BODY_CHARS = 2000
+
+
+def _truncate_body_for_log(body: str) -> str:
+    """Return the message body clipped and escaped for safe logging.
+
+    The body is producer-controlled, so control characters (e.g. newlines) are
+    escaped with a ``repr``-style encoding before logging. This prevents a
+    malicious or malformed payload from forging additional log lines or
+    corrupting downstream log parsing.
+
+    Args:
+        body (str): The raw SQS message body.
+
+    Returns:
+        str: The escaped body if it is within :data:`_MAX_LOGGED_BODY_CHARS`,
+            otherwise the escaped leading slice followed by a marker noting how many
+            raw characters were omitted.
+    """
+    if len(body) <= _MAX_LOGGED_BODY_CHARS:
+        return _escape_control_chars(body)
+    omitted = len(body) - _MAX_LOGGED_BODY_CHARS
+    escaped = _escape_control_chars(body[:_MAX_LOGGED_BODY_CHARS])
+    return f"{escaped}... [truncated {omitted} more chars]"
+
+
+def _escape_control_chars(text: str) -> str:
+    """Escape control characters so they cannot forge or corrupt log lines.
+
+    Uses a ``repr``-style encoding (via ``unicode_escape``) so newlines, carriage
+    returns, tabs and other control characters are rendered as visible escape
+    sequences rather than affecting the structure of the log output.
+
+    Args:
+        text (str): The text to escape.
+
+    Returns:
+        str: The text with control characters replaced by escape sequences.
+    """
+    return text.encode("unicode_escape").decode("ascii")
 
 
 def _is_transient_receive_error(exc: Exception) -> bool:
@@ -130,6 +176,49 @@ class DocumentJob(BaseModel):
         ).generate_uuid()
 
 
+class FetchOutcome(str, enum.Enum):
+    """Why a ``fetch_batch`` poll produced the jobs (if any) it did.
+
+    Distinguishes the two ways a poll can carry no jobs so a long-lived caller can
+    react differently: a genuine empty receive (the queue had nothing right now) versus
+    a swallowed transient receive error (SQS was momentarily throttling/unreachable).
+    The two are otherwise identical (no jobs, no discards) but call for different
+    pacing: a ``RECEIVED`` or ``EMPTY`` poll already blocked for the long-poll wait,
+    whereas a ``TRANSIENT_ERROR`` poll returns immediately (botocore fails fast once its
+    own retries are exhausted) and so the caller should back off before retrying.
+
+    Attributes:
+        RECEIVED: The poll returned at least one valid job.
+        EMPTY: A genuine empty long-poll receive (no messages, no discards).
+        TRANSIENT_ERROR: A transient receive error was swallowed and reported as an
+            empty poll; the caller should back off and retry.
+    """
+
+    RECEIVED = "received"
+    EMPTY = "empty"
+    TRANSIENT_ERROR = "transient_error"
+
+
+class FetchResult(BaseModel):
+    """The outcome of a single ``fetch_batch`` poll: valid jobs plus discard count.
+
+    Carries the jobs parsed from one long-poll receive alongside the number of
+    malformed messages discarded during that same poll, so callers can account for
+    every message received (valid or not). ``malformed_discarded`` equals the number
+    of messages received minus the number of valid jobs produced. An empty poll or a
+    transient-error poll carries no jobs and a ``malformed_discarded`` of 0; the
+    ``outcome`` field distinguishes those two no-job cases from one another and from a
+    populated poll. The model is frozen so a fetch result cannot be mutated after
+    construction.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    jobs: list[DocumentJob] = Field(default_factory=list)
+    malformed_discarded: int = Field(default=0, ge=0)
+    outcome: FetchOutcome = FetchOutcome.EMPTY
+
+
 class DocumentSource(Protocol):
     """Supplies batches of documents to ingest and acknowledges completed work.
 
@@ -138,8 +227,8 @@ class DocumentSource(Protocol):
     :meth:`acknowledge` after a job has been processed successfully.
     """
 
-    def fetch_batch(self) -> List[DocumentJob]:
-        """Return the next batch of documents to process (possibly empty)."""
+    def fetch_batch(self) -> FetchResult:
+        """Return the next batch of documents plus the malformed discard count."""
         ...
 
     def acknowledge(self, job: DocumentJob) -> None:
@@ -234,8 +323,8 @@ class SqsDocumentSource:
             raise QueueResolutionError(f"No QueueUrl returned for queue '{self.queue_name}'")
         return queue_url
 
-    def fetch_batch(self) -> List[DocumentJob]:
-        """Receive one batch of messages and return the valid jobs.
+    def fetch_batch(self) -> FetchResult:
+        """Receive one batch of messages and return the valid jobs and discard count.
 
         Performs a single long-poll receive, parses each message into a
         :class:`DocumentJob`, and deletes malformed messages (permanently discarding
@@ -251,7 +340,12 @@ class SqsDocumentSource:
                 (e.g. AccessDenied, invalid endpoint, malformed request).
 
         Returns:
-            List[DocumentJob]: The valid jobs from this receive (possibly empty).
+            FetchResult: The valid jobs from this receive (possibly empty) together
+                with the number of malformed messages discarded during this poll and an
+                ``outcome`` tag. A populated poll is ``RECEIVED``; a genuine empty
+                receive (including a poll that only discarded malformed messages) is
+                ``EMPTY``; a swallowed transient receive error is ``TRANSIENT_ERROR``.
+                Both no-job outcomes carry no jobs and a discard count of 0.
         """
         # Imported here to avoid a module-level import cycle (document_ingress imports
         # DocumentJob from this module).
@@ -276,7 +370,10 @@ class SqsDocumentSource:
                     self.queue_name,
                     exc,
                 )
-                return []
+                # Tagged TRANSIENT_ERROR (not EMPTY) so a long-lived caller can back off
+                # before retrying: this path returns immediately, whereas a genuine empty
+                # receive already spent the long-poll wait.
+                return FetchResult(jobs=[], malformed_discarded=0, outcome=FetchOutcome.TRANSIENT_ERROR)
             logger.critical(
                 "Permanent/unknown error receiving messages from queue '%s'; failing the run: %s",
                 self.queue_name,
@@ -290,14 +387,19 @@ class SqsDocumentSource:
         for message in messages:
             message_id = message.get("MessageId")
             receipt_handle = message.get("ReceiptHandle")
+            body = message.get("Body", "")
             try:
-                job = parse_message(message.get("Body", ""), message_id=message_id)
+                job = parse_message(body, message_id=message_id)
             except MalformedMessageError as exc:
+                # The raw body is logged (truncated) because a discarded message is
+                # deleted rather than sent to the DLQ, so this log entry is the only
+                # record of what the upstream system sent.
                 logger.error(
-                    "Discarding malformed message (message_id=%s, field=%s): %s",
+                    "Discarding malformed message (message_id=%s, field=%s): %s | raw body: %s",
                     message_id,
                     exc.field,
                     exc,
+                    _truncate_body_for_log(body),
                 )
                 self._delete_message(receipt_handle, message_id=message_id)
                 continue
@@ -309,7 +411,12 @@ class SqsDocumentSource:
             len(messages),
             len(jobs),
         )
-        return jobs
+        malformed_discarded = len(messages) - len(jobs)
+        # RECEIVED when this poll produced work, otherwise a genuine EMPTY receive (a
+        # poll that only discarded malformed messages still had no valid jobs to hand
+        # back, so it is EMPTY, not TRANSIENT_ERROR).
+        outcome = FetchOutcome.RECEIVED if jobs else FetchOutcome.EMPTY
+        return FetchResult(jobs=jobs, malformed_discarded=malformed_discarded, outcome=outcome)
 
     def acknowledge(self, job: DocumentJob) -> None:
         """Delete a successfully processed job's message from the queue.

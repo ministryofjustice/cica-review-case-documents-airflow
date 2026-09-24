@@ -18,7 +18,7 @@
 | Module | Responsibility |
 |--------|---------------|
 | `main.py` | Entrypoint — sets up logging |
-| `runner.py` | Thin application entry point (`main`): health check, build pipeline, run batch |
+| `runner.py` | Long-lived application entry point (`main`): health check, build pipeline, then poll SQS via `run_forever` until a graceful signal and log progress/final summaries |
 | `pipeline_builder.py` | Constructs the pipeline with all dependencies |
 | `config.py` | Pydantic Settings configuration (env vars + .env) |
 | `aws_client/` | AWS client factories (S3, Textract, Bedrock) |
@@ -29,7 +29,7 @@
 | `document_identity/` | Deterministic source_doc_id and document metadata construction |
 | `embedding/` | Bedrock embedding generation |
 | `indexing/` | OpenSearch indexing and health checks |
-| `orchestration/` | Pipeline orchestration and parallel batch processing (`batch_processing/`) |
+| `orchestration/` | Pipeline orchestration and parallel batch processing (`batch_processing/`); failed documents are left unacknowledged so SQS redrives them to the DLQ after the max receive count |
 | `page_processor/` | Per-page processing (OCR + image) |
 | `s3_utils/` | S3 URI validation and document download |
 | `textract/` | AWS Textract integration |

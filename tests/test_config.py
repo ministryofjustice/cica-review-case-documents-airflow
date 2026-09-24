@@ -131,6 +131,31 @@ def test_sqs_settings_defaults(settings_without_env_file):
     assert settings.SQS_VISIBILITY_TIMEOUT_SECONDS >= settings.TEXTRACT_API_JOB_TIMEOUT_SECONDS
 
 
+def test_drain_and_dlq_settings_defaults(settings_without_env_file):
+    """Poll-loop and DLQ settings expose the documented defaults."""
+    settings = settings_without_env_file
+    assert settings.SQS_MAX_RECEIVE_COUNT == 3
+    assert settings.SQS_TRANSIENT_ERROR_BACKOFF_SECONDS == 5.0
+
+
+def test_default_settings_satisfy_visibility_regression():
+    """Defaults keep validate_visibility_covers_processing passing (1800 >= 900).
+
+    With MAX_CONCURRENT_DOCUMENTS=4 and SQS_MAX_MESSAGES_PER_POLL=4 there is one
+    processing wave, so the bound is ceil(600 * 1.5) = 900, comfortably below the
+    default visibility timeout of 1800. Adding the new drain/DLQ settings must not
+    disturb this, so constructing Settings at these defaults must succeed.
+    """
+    settings = Settings(
+        MAX_CONCURRENT_DOCUMENTS=4,
+        SQS_MAX_MESSAGES_PER_POLL=4,
+        SQS_VISIBILITY_TIMEOUT_SECONDS=1800,
+        TEXTRACT_API_JOB_TIMEOUT_SECONDS=600,
+        SQS_PROCESSING_OVERHEAD_FACTOR=1.5,
+    )
+    assert settings.SQS_VISIBILITY_TIMEOUT_SECONDS == 1800
+
+
 @pytest.mark.parametrize(
     "name,valid",
     [
