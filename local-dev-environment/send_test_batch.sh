@@ -159,6 +159,9 @@ QUEUE_URL=""
 select_aws_mode() {
   if command -v aws >/dev/null 2>&1; then
     AWS_MODE="aws"
+    export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-test}"
+    export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-test}"
+    export AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN:-test}"
   elif command -v docker >/dev/null 2>&1; then
     AWS_MODE="docker"
   else
