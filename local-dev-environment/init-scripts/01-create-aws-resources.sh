@@ -105,10 +105,15 @@ MAIN_QUEUE_URL="$(awslocal sqs get-queue-url --queue-name "${SQS_DOCUMENT_QUEUE_
 
 # The RedrivePolicy attribute value must itself be a JSON-encoded string (SQS requires the
 # value to be a JSON string, not a nested object). Use python3 to safely JSON-encode it.
-REDRIVE_POLICY="$(printf '{"deadLetterTargetArn":"%s","maxReceiveCount":"3"}' "${DLQ_ARN}")"
+SQS_MAX_RECEIVE_COUNT="${SQS_MAX_RECEIVE_COUNT:-3}"
+if ! [[ "${SQS_MAX_RECEIVE_COUNT}" =~ ^[1-9][0-9]*$ ]]; then
+  echo "ERROR: SQS_MAX_RECEIVE_COUNT must be a positive integer." >&2
+  exit 1
+fi
+REDRIVE_POLICY="$(printf '{"deadLetterTargetArn":"%s","maxReceiveCount":"%s"}' "${DLQ_ARN}" "${SQS_MAX_RECEIVE_COUNT}")"
 ATTRIBUTES="$(python3 -c 'import json,sys; print(json.dumps({"RedrivePolicy": sys.argv[1]}))' "${REDRIVE_POLICY}")"
 awslocal sqs set-queue-attributes --queue-url "${MAIN_QUEUE_URL}" --attributes "${ATTRIBUTES}"
-echo "Applied RedrivePolicy (maxReceiveCount=3) on ${SQS_DOCUMENT_QUEUE_NAME} targeting ${DLQ_ARN}."
+echo "Applied RedrivePolicy (maxReceiveCount=${SQS_MAX_RECEIVE_COUNT}) on ${SQS_DOCUMENT_QUEUE_NAME} targeting ${DLQ_ARN}."
 
 # --- Copy sample document from AWS S3 to LocalStack S3 ---
 
