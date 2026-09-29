@@ -125,7 +125,7 @@ def test_sqs_settings_defaults(settings_without_env_file):
     assert settings.SQS_DOCUMENT_QUEUE == "cica-document-search-queue"
     assert settings.SQS_POLL_WAIT_TIME_SECONDS == 20
     assert settings.SQS_MAX_MESSAGES_PER_POLL == 4
-    assert settings.SQS_VISIBILITY_TIMEOUT_SECONDS == 1800
+    assert settings.SQS_VISIBILITY_TIMEOUT_SECONDS == 3600
     # The default visibility timeout must cover the worst-case single-document
     # processing ceiling (the Textract job timeout).
     assert settings.SQS_VISIBILITY_TIMEOUT_SECONDS >= settings.TEXTRACT_API_JOB_TIMEOUT_SECONDS
@@ -139,21 +139,20 @@ def test_drain_and_dlq_settings_defaults(settings_without_env_file):
 
 
 def test_default_settings_satisfy_visibility_regression():
-    """Defaults keep validate_visibility_covers_processing passing (1800 >= 900).
+    """Defaults keep validate_visibility_covers_processing passing (3600 >= 3600).
 
     With MAX_CONCURRENT_DOCUMENTS=4 and SQS_MAX_MESSAGES_PER_POLL=4 there is one
-    processing wave, so the bound is ceil(600 * 1.5) = 900, comfortably below the
-    default visibility timeout of 1800. Adding the new drain/DLQ settings must not
-    disturb this, so constructing Settings at these defaults must succeed.
+    processing wave, so the bound is ceil(2400 * 1.5) = 3600, exactly the default
+    visibility timeout of 3600. Constructing Settings at these defaults must succeed.
     """
     settings = Settings(
         MAX_CONCURRENT_DOCUMENTS=4,
         SQS_MAX_MESSAGES_PER_POLL=4,
-        SQS_VISIBILITY_TIMEOUT_SECONDS=1800,
-        TEXTRACT_API_JOB_TIMEOUT_SECONDS=600,
+        SQS_VISIBILITY_TIMEOUT_SECONDS=3600,
+        TEXTRACT_API_JOB_TIMEOUT_SECONDS=2400,
         SQS_PROCESSING_OVERHEAD_FACTOR=1.5,
     )
-    assert settings.SQS_VISIBILITY_TIMEOUT_SECONDS == 1800
+    assert settings.SQS_VISIBILITY_TIMEOUT_SECONDS == 3600
 
 
 @pytest.mark.parametrize(
@@ -317,8 +316,11 @@ def test_sqs_visibility_overhead_factor_widens_bound(factor, visibility, valid):
 
 @pytest.mark.parametrize("factor,valid", [(0.9, False), (0.0, False), (1.0, True), (1.5, True), (3.0, True)])
 def test_sqs_processing_overhead_factor_must_be_at_least_one(factor, valid):
+    # A generous visibility timeout keeps the residence-bound validator satisfied for
+    # larger factors (e.g. 3.0 => min = ceil(2400 * 3.0) = 7200), isolating the >= 1.0
+    # range check tested here.
     if valid:
-        Settings(SQS_PROCESSING_OVERHEAD_FACTOR=factor)
+        Settings(SQS_PROCESSING_OVERHEAD_FACTOR=factor, SQS_VISIBILITY_TIMEOUT_SECONDS=43200)
     else:
         with pytest.raises(ValueError, match="SQS_PROCESSING_OVERHEAD_FACTOR"):
-            Settings(SQS_PROCESSING_OVERHEAD_FACTOR=factor)
+            Settings(SQS_PROCESSING_OVERHEAD_FACTOR=factor, SQS_VISIBILITY_TIMEOUT_SECONDS=43200)

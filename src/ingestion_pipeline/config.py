@@ -122,7 +122,15 @@ class Settings(BaseSettings):  # type: ignore
     # TODO This should be a UUID that is generated, is stored as a secret? and is kept constant
     SYSTEM_UUID_NAMESPACE: str = "f0e1c2d3-4567-89ab-cdef-fedcba987654"
     TEXTRACT_API_POLL_INTERVAL_SECONDS: int = 5
-    TEXTRACT_API_JOB_TIMEOUT_SECONDS: int = 600
+    # Client-side polling deadline for a single Textract async job (seconds). This is not
+    # an AWS-enforced limit; it bounds how long _poll_for_job_completion waits for a
+    # terminal JobStatus before raising TimeoutError (retryable). Sized off observed
+    # wall-clock: a 1,672-page merged PDF completed in ~18 min (~0.65s/page, since
+    # Textract parallelises server-side). The async API permits up to 3,000 pages, so
+    # 2400s (40 min) covers roughly double the largest observed job while staying well
+    # under the SQS visibility cap. Raising this forces SQS_VISIBILITY_TIMEOUT_SECONDS up
+    # too (see the visibility validator below).
+    TEXTRACT_API_JOB_TIMEOUT_SECONDS: int = 2400
 
     # Leaving this here for reference
     # In case we want to use these buckets
@@ -197,11 +205,16 @@ class Settings(BaseSettings):  # type: ignore
     # absorb pool queueing (batch size / worker count "waves") plus page processing,
     # embedding and indexing. A model validator enforces the lower bound.
     #
+    # With the current defaults the lower bound is
+    # ceil(ceil(4 / 4) * 2400 * 1.5) = 3600, so 3600 sits exactly at that bound (Textract
+    # timeout * overhead factor, one wave). Increase this if you raise the Textract
+    # timeout, batch size, or overhead factor.
+    #
     # NOTE: a static timeout is a stop-gap. The robust fix is a per-message visibility
     # heartbeat (periodic ChangeMessageVisibility while a job is in flight), which
     # belongs with the concurrency/dispatch work (SQS stories 5/7) and is not in this
     # change.
-    SQS_VISIBILITY_TIMEOUT_SECONDS: int = 1800
+    SQS_VISIBILITY_TIMEOUT_SECONDS: int = 3600
     # Multiplier applied to TEXTRACT_API_JOB_TIMEOUT_SECONDS when computing the minimum
     # acceptable visibility timeout, to account for a document's non-Textract processing
     # (chunking, page-image upload, embedding, two indexing calls) that also runs before
