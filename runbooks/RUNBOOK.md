@@ -1,6 +1,13 @@
 # Runbooks
 
-This project is an [Airflow](https://user-guidance.analytical-platform.service.justice.gov.uk/services/airflow/index.html) Python project designed to run on the [Analytical Platform](https://user-guidance.analytical-platform.service.justice.gov.uk/).
+This project was built from the Analytical Platform Airflow Python template and currently targets the [Analytical Platform](https://user-guidance.analytical-platform.service.justice.gov.uk/) via [Airflow](https://user-guidance.analytical-platform.service.justice.gov.uk/services/airflow/index.html).
+
+> **Status (paused):** This project is paused. The planned direction is to retire the
+> Airflow DAG and re-home the ingestion service on the Cloud Platform or Modernisation
+> Platform. The container entrypoint and deployment model (e.g. a long-lived Kubernetes
+> Deployment running `runner.main`) will be finalised as part of that migration. Until
+> then, the image entrypoint (`python src/ingestion_pipeline/main.py`) only configures
+> logging and exits and does not start the SQS polling worker.
 
 The repository includes:
 - an ingestion pipeline for document processing
@@ -35,6 +42,11 @@ See [/docs/DOCS_CONVENTIONS.md](/docs/DOCS_CONVENTIONS.md).
 ## Target Architecture
 
 See the [Architectural proposal](https://dsdmoj.atlassian.net/wiki/spaces/CICAIET/pages/5770674447/Architectural+proposal).
+
+Note: the Airflow-on-Analytical-Platform model described above is expected to change. The
+service is likely to move to the Cloud Platform or Modernisation Platform, with the
+long-lived worker (`runner.main`) run as a Kubernetes Deployment rather than driven by an
+Airflow DAG.
 
 
 

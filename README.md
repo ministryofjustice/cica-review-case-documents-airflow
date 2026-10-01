@@ -11,6 +11,13 @@ This project ingests CICA case documents, performs OCR to extract text, creates 
 
 Note: The project is in active private beta and features are still evolving.
 
+> **Status (paused):** This project is paused. The current `Dockerfile` entrypoint
+> (`python src/ingestion_pipeline/main.py`) only configures logging and exits — it does
+> **not** start the long-lived SQS polling worker in `runner.main`. The intended
+> direction is to retire the Airflow DAG and re-home this service on the Cloud Platform
+> or Modernisation Platform; the container entrypoint will be wired to `runner.main`
+> (or `main.py` will delegate to it) as part of that migration.
+
 ## Quick Start
 
 1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/).
