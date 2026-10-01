@@ -238,7 +238,25 @@ DLQ behaviour, so that project documentation reflects the runner's actual orches
 
 ## Known Risk / TODO (document only, not addressed by this feature)
 
-- `TEXTRACT_API_JOB_TIMEOUT_SECONDS` is 600 seconds (10 minutes), which is below the
-  approximately 20 minutes a roughly 1500-page document can take. The pilot's documents
-  of up to 100 pages are unaffected. This gap requires further analysis and is
-  intentionally not fixed by this feature.
+- `TEXTRACT_API_JOB_TIMEOUT_SECONDS` is 2400 seconds (40 minutes), which is below the
+  time a very large (roughly 1500-page) document can take. The pilot's documents of up
+  to 100 pages are unaffected. This gap requires further analysis and is intentionally
+  not fixed by this feature.
+- **Graceful shutdown can exceed the pod's termination grace period.** The runner's
+  stop event is checked only *between* batches, so on `SIGTERM` the loop must finish the
+  in-flight batch before exiting - up to `TEXTRACT_API_JOB_TIMEOUT_SECONDS` (2400s) for
+  a slow Textract job. If that exceeds Kubernetes `terminationGracePeriodSeconds`
+  (default 30s), the kubelet sends `SIGKILL` and the batch dies mid-flight. This is the
+  same external-kill redelivery path documented in the Assumptions: interrupted jobs are
+  left unacknowledged and SQS redelivers them on a later run (at-least-once), so no data
+  is lost. The accepted costs are (a) wasted/redone work for the interrupted document,
+  and (b) a consumed receive against `SQS_MAX_RECEIVE_COUNT` - so a *healthy* document
+  that reliably outlives the grace period on every rollout could eventually be redriven
+  to the DLQ despite never having a genuine processing failure. Candidate mitigations
+  (not implemented): make the Textract polling loop in `textract/textract_processor.py`
+  honour the stop event so in-flight jobs abandon early, and/or size the deployment's
+  `terminationGracePeriodSeconds` against `TEXTRACT_API_JOB_TIMEOUT_SECONDS` (the
+  deployment manifests live in Analytical Platform IaC, outside this repo). Note the
+  deferred visibility-heartbeat work (SQS "stories 5/7") does **not** mitigate this - it
+  governs SQS-side message visibility, not how long the worker stays busy after
+  `SIGTERM`.

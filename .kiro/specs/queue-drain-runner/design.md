@@ -325,10 +325,10 @@ def derive_sqs_document_dlq(self) -> "Settings":
 
 **`validate_visibility_covers_processing` regression (Requirement 8.7):** the new settings
 do not touch `SQS_MAX_MESSAGES_PER_POLL` (4), `MAX_CONCURRENT_DOCUMENTS` (4),
-`TEXTRACT_API_JOB_TIMEOUT_SECONDS` (600), `SQS_PROCESSING_OVERHEAD_FACTOR` (1.5), or
-`SQS_VISIBILITY_TIMEOUT_SECONDS` (1800). The enforced minimum is
-`ceil(ceil(4/4) * 600 * 1.5) = 900`, and `1800 >= 900`, so the existing validator still
-passes at unchanged defaults. A regression test pins this.
+`TEXTRACT_API_JOB_TIMEOUT_SECONDS` (2400), `SQS_PROCESSING_OVERHEAD_FACTOR` (1.5), or
+`SQS_VISIBILITY_TIMEOUT_SECONDS` (3600). The enforced minimum is
+`ceil(ceil(4/4) * 2400 * 1.5) = 3600`, and `3600 >= 3600`, so the existing validator
+still passes at unchanged defaults. A regression test pins this.
 
 ### 5. LocalStack init script changes (Requirements 6, 7)
 
@@ -584,7 +584,21 @@ documentation changes verified by local re-runs, not Python unit tests. Their *e
 
 ## Known Risk / TODO (document only, not addressed by this feature)
 
-- `TEXTRACT_API_JOB_TIMEOUT_SECONDS` is 600 seconds (10 minutes), below the ~20 minutes a
-  ~1500-page document can take. The pilot's documents of up to 100 pages are unaffected.
-  This gap requires further analysis and is intentionally not fixed here. (Carried forward
+- `TEXTRACT_API_JOB_TIMEOUT_SECONDS` is 2400 seconds (40 minutes), below the time a very
+  large (~1500-page) document can take. The pilot's documents of up to 100 pages are
+  unaffected. This gap requires further analysis and is intentionally not fixed here.
+  (Carried forward from requirements.)
+- **Graceful shutdown can exceed the pod's termination grace period.** The stop event is
+  checked only *between* batches, so on `SIGTERM` the loop finishes the in-flight batch
+  before exiting - up to `TEXTRACT_API_JOB_TIMEOUT_SECONDS` (2400s). If that exceeds
+  Kubernetes `terminationGracePeriodSeconds` (default 30s), `SIGKILL` kills the batch
+  mid-flight. This folds into the external-kill redelivery path (see Assumptions):
+  interrupted jobs stay unacknowledged and SQS redelivers them (at-least-once), so no
+  data is lost, but the interrupted document's work is redone and a receive is consumed
+  against `SQS_MAX_RECEIVE_COUNT` - a healthy-but-slow document killed on every rollout
+  could be redriven to the DLQ. Candidate mitigations (not implemented): a stop-aware
+  Textract polling loop, and/or sizing `terminationGracePeriodSeconds` against
+  `TEXTRACT_API_JOB_TIMEOUT_SECONDS` in the (out-of-repo) deployment manifests. The
+  deferred visibility-heartbeat work (SQS "stories 5/7") does **not** address this; it
+  concerns message visibility, not worker occupancy after `SIGTERM`. (Carried forward
   from requirements.)

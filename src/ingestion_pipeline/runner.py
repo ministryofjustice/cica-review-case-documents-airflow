@@ -19,7 +19,18 @@ Loop semantics (see :func:`run_forever`):
   the process so Kubernetes restarts the pod and the fault is visible.
 * **Signalled to stop** (``SIGTERM``/``SIGINT``) - the loop finishes the in-flight
   batch (``run_batch`` joins its thread pool before returning), logs a final summary,
-  and returns so the process exits 0 cleanly.
+  and returns so the process exits 0 cleanly. The stop event is only checked *between*
+  batches, so shutdown is bounded by how long the in-flight batch takes - up to
+  ``TEXTRACT_API_JOB_TIMEOUT_SECONDS`` (default 2400s) for a slow Textract job. If that
+  exceeds the pod's ``terminationGracePeriodSeconds``, Kubernetes sends ``SIGKILL`` and
+  the batch dies mid-flight. This is a safe, accepted fallback: the interrupted jobs'
+  messages are left unacknowledged and SQS redelivers them on a later run
+  (at-least-once). The cost is wasted/redone work and a consumed receive against
+  ``SQS_MAX_RECEIVE_COUNT``, so a healthy document that reliably outlives the grace
+  period on every shutdown could eventually be redriven to the DLQ. See the
+  "Known Risk / TODO" note in ``.kiro/specs/queue-drain-runner/`` for the deferred
+  mitigations (stop-aware Textract poll loop; sizing ``terminationGracePeriodSeconds``
+  against ``TEXTRACT_API_JOB_TIMEOUT_SECONDS``).
 """
 
 import logging
