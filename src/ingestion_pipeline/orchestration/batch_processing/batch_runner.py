@@ -128,16 +128,30 @@ def run_batch(jobs: list[DocumentJob], pipeline: Pipeline, source: DocumentSourc
     """
     if not jobs:
         logger.info("No documents to process in this batch.")
-        return BatchResult(
-            summary=BatchSummary(
-                batch_number=batch_number,
-                jobs_in_batch=0,
-                succeeded=0,
-                failed=0,
-                duplicates_collapsed=0,
-            ),
-            results=[],
+        empty_summary = BatchSummary(
+            batch_number=batch_number,
+            jobs_in_batch=0,
+            succeeded=0,
+            failed=0,
+            duplicates_collapsed=0,
         )
+        # Honour the one-summary-per-batch logging contract even for empty batches.
+        logger.info(
+            "Batch %d summary: %d job(s) in batch, %d succeeded, %d failed, %d duplicate(s) collapsed.",
+            empty_summary.batch_number,
+            empty_summary.jobs_in_batch,
+            empty_summary.succeeded,
+            empty_summary.failed,
+            empty_summary.duplicates_collapsed,
+            extra={
+                "batch_number": empty_summary.batch_number,
+                "jobs_in_batch": empty_summary.jobs_in_batch,
+                "succeeded": empty_summary.succeeded,
+                "failed": empty_summary.failed,
+                "duplicates_collapsed": empty_summary.duplicates_collapsed,
+            },
+        )
+        return BatchResult(summary=empty_summary, results=[])
 
     # Preserve input order while grouping by deterministic source_doc_id. The first
     # job seen for an id is the owner; the rest are duplicates collapsed onto it.
