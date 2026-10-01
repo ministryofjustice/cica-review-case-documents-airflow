@@ -50,14 +50,20 @@ class RunTotals:
     A long-lived worker has no "end of run" at which to emit a single summary, so it
     keeps running totals and logs a snapshot after each processed batch (and a final
     snapshot on shutdown). The counters satisfy the accounting invariant
-    ``messages_received == jobs_processed + messages_discarded`` by construction: every
+    ``messages_received == jobs_processed + malformed_receives`` by construction: every
     poll moves the three message counters together.
+
+    Note that malformed messages are left on the queue (not deleted) to be redriven to
+    the DLQ, so the same malformed message is re-received on each poll until SQS
+    redrives it. ``malformed_receives`` therefore counts malformed *receives*, not
+    distinct messages, and both it and ``messages_received`` climb once per redelivery.
 
     Attributes:
         batches_processed (int): Number of non-empty batches processed.
         messages_received (int): Total messages pulled off SQS, counting both valid jobs
-            and malformed messages discarded, summed over every poll.
-        messages_discarded (int): Total malformed messages discarded.
+            and malformed receives, summed over every poll.
+        malformed_receives (int): Total malformed-message receives (re-counted on each
+            redelivery until SQS redrives the message to the DLQ).
         jobs_processed (int): Total valid jobs handed to batches.
         successes (int): Count of ``DocumentResult.success`` being True across all results.
         failures (int): Count of ``DocumentResult.success`` being False across all results.
@@ -69,7 +75,7 @@ class RunTotals:
         """Initialise all counters to zero."""
         self.batches_processed = 0
         self.messages_received = 0
-        self.messages_discarded = 0
+        self.malformed_receives = 0
         self.jobs_processed = 0
         self.successes = 0
         self.failures = 0
@@ -86,12 +92,12 @@ class RunTotals:
         """
         prefix = "Pipeline final summary" if final else "Pipeline progress summary"
         logger.info(
-            "%s: %d batch(es), %d message(s) received, %d discarded, %d job(s) processed, "
+            "%s: %d batch(es), %d message(s) received, %d malformed receive(s), %d job(s) processed, "
             "%d succeeded, %d failed, %d empty poll(s), %d transient error(s).",
             prefix,
             self.batches_processed,
             self.messages_received,
-            self.messages_discarded,
+            self.malformed_receives,
             self.jobs_processed,
             self.successes,
             self.failures,
@@ -100,7 +106,7 @@ class RunTotals:
             extra={
                 "batches_processed": self.batches_processed,
                 "messages_received": self.messages_received,
-                "messages_discarded": self.messages_discarded,
+                "malformed_receives": self.malformed_receives,
                 "jobs_processed": self.jobs_processed,
                 "successes": self.successes,
                 "failures": self.failures,
@@ -184,13 +190,15 @@ def run_forever(
     while not stop_event.is_set():
         fetch_result = source.fetch_batch()
         jobs = fetch_result.jobs
-        malformed_discarded = fetch_result.malformed_discarded
+        malformed_received = fetch_result.malformed_received
 
-        # Account EVERY poll's messages before branching so a poll that only discarded
+        # Account EVERY poll's messages before branching so a poll that saw only
         # malformed messages still lifts the counters and the conservation invariant
-        # (received == jobs_processed + discarded) holds by construction.
-        totals.messages_received += len(jobs) + malformed_discarded
-        totals.messages_discarded += malformed_discarded
+        # (received == jobs_processed + malformed_receives) holds by construction.
+        # Malformed messages are left on the queue for DLQ redrive, so a given malformed
+        # message is re-counted on each poll until SQS redrives it.
+        totals.messages_received += len(jobs) + malformed_received
+        totals.malformed_receives += malformed_received
         totals.jobs_processed += len(jobs)
 
         if fetch_result.outcome is FetchOutcome.TRANSIENT_ERROR:

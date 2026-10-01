@@ -56,3 +56,4 @@ Use these conventions when editing project documentation.
 - OpenSearch indexes guide: [/local-dev-environment/OPENSEARCH_INDEXES_README.md](/local-dev-environment/OPENSEARCH_INDEXES_README.md)
 - Troubleshooting: [/docs/TROUBLESHOOTING.md](/docs/TROUBLESHOOTING.md)
 - Vulnerability management: [/docs/VULNERABILITY_MANAGEMENT.md](/docs/VULNERABILITY_MANAGEMENT.md)
+- Malformed message handling: [/docs/MALFORMED_MESSAGE_HANDLING.md](/docs/MALFORMED_MESSAGE_HANDLING.md)

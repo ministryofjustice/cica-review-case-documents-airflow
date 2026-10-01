@@ -27,11 +27,11 @@ they are computed during ingestion and any values supplied for them are ignored.
 Anything that cannot be parsed or fails validation raises
 :class:`MalformedMessageError`. The error message names every field that failed the
 contract (not just the first) so a single log entry captures all violations. The
-source layer logs this together with the (truncated) raw message body and then
-**permanently discards** the message by deleting it from the queue. Deleting does not
-route a message to the DLQ (SQS redrive only happens after repeated receives, which
-cannot occur once a message is deleted), so the log entry is the only record of a
-malformed message.
+source layer logs this together with the (truncated) raw message body and then leaves
+the message on the queue (it is not deleted). SQS therefore redelivers it and, after
+the configured max receive count, redrives it to the DLQ, where the payload can be
+inspected and, if the failure was consumer-side (a schema change or bug), redriven
+once the consumer is fixed.
 """
 
 import datetime
@@ -67,7 +67,8 @@ class MalformedMessageError(Exception):
     """Raised when a message cannot be parsed or fails validation.
 
     Carries the failed field name (when known) so the caller can log precisely
-    which part of the contract was violated before discarding the message.
+    which part of the contract was violated before leaving the message on the queue
+    for SQS to redrive to the DLQ.
 
     Attributes:
         field (Optional[str]): The offending field name, if a specific field caused

@@ -164,7 +164,7 @@ def test_fetch_batch_returns_jobs_for_valid_messages():
     result = source.fetch_batch()
 
     assert len(result.jobs) == 1
-    assert result.malformed_discarded == 0
+    assert result.malformed_received == 0
     assert result.outcome is FetchOutcome.RECEIVED
     job = result.jobs[0]
     assert job.source_file_s3_uri == VALID_URI
@@ -186,11 +186,11 @@ def test_fetch_batch_empty_receive_returns_empty_result():
     sqs_client.receive_message.return_value = {}
     result = source.fetch_batch()
     assert result.jobs == []
-    assert result.malformed_discarded == 0
+    assert result.malformed_received == 0
     assert result.outcome is FetchOutcome.EMPTY
 
 
-def test_fetch_batch_deletes_malformed_and_continues():
+def test_fetch_batch_leaves_malformed_for_dlq_and_continues():
     sqs_client = mock.Mock()
     source = _make_source(sqs_client)
     sqs_client.receive_message.return_value = {
@@ -202,15 +202,16 @@ def test_fetch_batch_deletes_malformed_and_continues():
 
     result = source.fetch_batch()
 
-    # The malformed message is dropped; the valid one is returned.
+    # The malformed message is skipped (not returned as a job); the valid one is returned.
     assert len(result.jobs) == 1
     assert result.jobs[0].receipt_handle == "rh-good"
-    assert result.malformed_discarded == 1
-    # The malformed message is deleted so it does not reappear after visibility timeout.
-    sqs_client.delete_message.assert_called_once_with(QueueUrl=QUEUE_URL, ReceiptHandle="rh-bad")
+    assert result.malformed_received == 1
+    # The malformed message is NOT deleted: it is left on the queue so SQS redelivers it
+    # and ultimately redrives it to the DLQ for inspection/redrive.
+    sqs_client.delete_message.assert_not_called()
 
 
-def test_fetch_batch_mixed_valid_and_malformed_accounts_discards():
+def test_fetch_batch_mixed_valid_and_malformed_accounts_malformed():
     """A mixed poll returns the valid jobs and counts every malformed message."""
     sqs_client = mock.Mock()
     source = _make_source(sqs_client)
@@ -225,17 +226,16 @@ def test_fetch_batch_mixed_valid_and_malformed_accounts_discards():
 
     result = source.fetch_batch()
 
-    # Two valid jobs returned; two malformed messages discarded.
+    # Two valid jobs returned; two malformed messages counted.
     assert len(result.jobs) == 2
-    assert result.malformed_discarded == 2
+    assert result.malformed_received == 2
     assert {job.receipt_handle for job in result.jobs} == {"rh-good-1", "rh-good-2"}
-    # Both malformed messages are still deleted so they do not reappear.
-    assert sqs_client.delete_message.call_count == 2
-    deleted_handles = {call.kwargs["ReceiptHandle"] for call in sqs_client.delete_message.call_args_list}
-    assert deleted_handles == {"rh-bad-1", "rh-bad-2"}
+    # No message is deleted at receive time: valid jobs are deleted on successful
+    # processing, and malformed messages are left for SQS to redrive to the DLQ.
+    sqs_client.delete_message.assert_not_called()
 
 
-def test_fetch_batch_all_malformed_returns_no_jobs_with_discard_count():
+def test_fetch_batch_all_malformed_returns_no_jobs_with_malformed_count():
     """A poll of only malformed messages returns no jobs and counts them all."""
     sqs_client = mock.Mock()
     source = _make_source(sqs_client)
@@ -250,16 +250,15 @@ def test_fetch_batch_all_malformed_returns_no_jobs_with_discard_count():
     result = source.fetch_batch()
 
     assert result.jobs == []
-    assert result.malformed_discarded >= 1
-    assert result.malformed_discarded == 3
+    assert result.malformed_received == 3
     # A poll that produced no valid jobs is a genuine EMPTY receive, not a transient error.
     assert result.outcome is FetchOutcome.EMPTY
-    # Every malformed message is deleted.
-    assert sqs_client.delete_message.call_count == 3
+    # No malformed message is deleted; all are left for SQS to redrive to the DLQ.
+    sqs_client.delete_message.assert_not_called()
 
 
-def test_fetch_batch_logs_raw_body_when_discarding(caplog):
-    """The discard log includes the raw message body so upstream errors are diagnosable."""
+def test_fetch_batch_logs_raw_body_for_malformed(caplog):
+    """The malformed-message log includes the raw body so upstream errors are diagnosable."""
     sqs_client = mock.Mock()
     source = _make_source(sqs_client)
     bad_body = '{"correspondence_type": "WRONG TYPE", "case_ref": "26-711111"}'
@@ -272,8 +271,8 @@ def test_fetch_batch_logs_raw_body_when_discarding(caplog):
     with caplog.at_level("ERROR"):
         result = source.fetch_batch()
 
-    assert result.malformed_discarded == 1
-    # The full raw body appears in the discard log record.
+    assert result.malformed_received == 1
+    # The full raw body appears in the malformed-message log record.
     assert bad_body in caplog.text
     assert "raw body:" in caplog.text
 
@@ -283,7 +282,7 @@ def test_fetch_batch_truncates_oversized_body_in_log(caplog):
     sqs_client = mock.Mock()
     source = _make_source(sqs_client)
     # Valid JSON but not an object, so it is rejected without the body being echoed by
-    # the parser; the huge padding forces truncation in the discard log.
+    # the parser; the huge padding forces truncation in the malformed-message log.
     oversized_body = '"' + ("x" * (_MAX_LOGGED_BODY_CHARS + 500)) + '"'
     sqs_client.receive_message.return_value = {
         "Messages": [
@@ -294,7 +293,7 @@ def test_fetch_batch_truncates_oversized_body_in_log(caplog):
     with caplog.at_level("ERROR"):
         result = source.fetch_batch()
 
-    assert result.malformed_discarded == 1
+    assert result.malformed_received == 1
     assert "truncated" in caplog.text
     # The untruncated body is longer than what we ever log.
     assert oversized_body not in caplog.text
@@ -348,16 +347,16 @@ def test_truncate_body_for_log_escapes_control_characters():
 def test_fetch_batch_transient_receive_error_returns_transient_result(error):
     """Transient receive failures are swallowed as a TRANSIENT_ERROR poll for retry.
 
-    The result carries no jobs and no discards (like an empty poll) but is tagged
-    TRANSIENT_ERROR so a long-lived caller can back off before retrying rather than
-    mistaking the blip for a drained queue.
+    The result carries no jobs and no malformed receives (like an empty poll) but is
+    tagged TRANSIENT_ERROR so a long-lived caller can back off before retrying rather
+    than mistaking the blip for a drained queue.
     """
     sqs_client = mock.Mock()
     source = _make_source(sqs_client)
     sqs_client.receive_message.side_effect = error
     result = source.fetch_batch()
     assert result.jobs == []
-    assert result.malformed_discarded == 0
+    assert result.malformed_received == 0
     assert result.outcome is FetchOutcome.TRANSIENT_ERROR
 
 
@@ -438,7 +437,7 @@ def test_fetch_batch_and_acknowledge_end_to_end_with_moto():
     )
     result = source.fetch_batch()
     assert len(result.jobs) == 1
-    assert result.malformed_discarded == 0
+    assert result.malformed_received == 0
     assert result.jobs[0].source_file_s3_uri == VALID_URI
 
     # Acknowledge removes it from the queue.

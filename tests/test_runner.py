@@ -121,7 +121,7 @@ def test_main_emits_final_summary_log(
     totals = RunTotals()
     totals.batches_processed = 2
     totals.messages_received = 6
-    totals.messages_discarded = 1
+    totals.malformed_receives = 1
     totals.jobs_processed = 5
     totals.successes = 4
     totals.failures = 1
@@ -137,7 +137,7 @@ def test_main_emits_final_summary_log(
     record = final_records[0]
     assert record.batches_processed == 2
     assert record.messages_received == 6
-    assert record.messages_discarded == 1
+    assert record.malformed_receives == 1
     assert record.jobs_processed == 5
     assert record.successes == 4
     assert record.failures == 1
@@ -147,7 +147,7 @@ def test_main_emits_final_summary_log(
     rendered = record.getMessage()
     assert "2 batch" in rendered
     assert "6 message" in rendered
-    assert "1 discarded" in rendered
+    assert "1 malformed receive" in rendered
     assert "5 job" in rendered
     assert "4 succeeded" in rendered
     assert "1 failed" in rendered
@@ -296,25 +296,25 @@ class _StoppingDocumentSource:
             return poll
         # Seeded polls exhausted: ask the loop to stop and return a benign empty poll.
         self._stop_event.set()
-        return FetchResult(jobs=[], malformed_discarded=0, outcome=FetchOutcome.EMPTY)
+        return FetchResult(jobs=[], malformed_received=0, outcome=FetchOutcome.EMPTY)
 
     def acknowledge(self, job):
         self.acknowledge_calls.append(job)
 
 
-def _received(jobs, malformed_discarded=0):
+def _received(jobs, malformed_received=0):
     """Build a RECEIVED FetchResult from a list of jobs."""
-    return FetchResult(jobs=list(jobs), malformed_discarded=malformed_discarded, outcome=FetchOutcome.RECEIVED)
+    return FetchResult(jobs=list(jobs), malformed_received=malformed_received, outcome=FetchOutcome.RECEIVED)
 
 
-def _empty(malformed_discarded=0):
+def _empty(malformed_received=0):
     """Build an EMPTY FetchResult (a genuine empty long-poll receive)."""
-    return FetchResult(jobs=[], malformed_discarded=malformed_discarded, outcome=FetchOutcome.EMPTY)
+    return FetchResult(jobs=[], malformed_received=malformed_received, outcome=FetchOutcome.EMPTY)
 
 
 def _transient():
     """Build a TRANSIENT_ERROR FetchResult (a swallowed transient receive error)."""
-    return FetchResult(jobs=[], malformed_discarded=0, outcome=FetchOutcome.TRANSIENT_ERROR)
+    return FetchResult(jobs=[], malformed_received=0, outcome=FetchOutcome.TRANSIENT_ERROR)
 
 
 def _make_results(jobs, successes):
@@ -358,7 +358,7 @@ def test_run_forever_processes_batches_until_stopped(patch_settings):
     assert isinstance(totals, RunTotals)
     assert totals.batches_processed == 2
     assert totals.messages_received == 3  # 1 + 2 jobs
-    assert totals.messages_discarded == 0
+    assert totals.malformed_receives == 0
     assert totals.jobs_processed == 3
 
     # run_batch was handed each batch in order, with the shared pipeline and source, and
@@ -491,7 +491,7 @@ def test_run_forever_aggregates_successes_and_failures(patch_settings):
     assert totals.failures == 2
     assert totals.messages_received == 3
     assert totals.jobs_processed == 3
-    assert totals.messages_discarded == 0
+    assert totals.malformed_receives == 0
     assert totals.batches_processed == 2
 
 
@@ -512,12 +512,15 @@ def test_run_forever_logs_progress_summary_per_batch(patch_settings, caplog):
     assert len(progress_records) == 2
 
 
-def test_run_forever_preserves_discards_without_acknowledging(patch_settings):
-    """Malformed discards flow through as counts; run_forever never acks or redrives them."""
+def test_run_forever_counts_malformed_receives_without_acknowledging(patch_settings):
+    """Malformed receives flow through as counts; run_forever never acks them.
+
+    The source leaves them on the queue for SQS to redrive to the DLQ.
+    """
     stop_event = threading.Event()
     jobs = [_make_job(case_ref="26-711111"), _make_job(case_ref="26-711112")]
-    # One poll: valid jobs plus two malformed messages discarded, then the source stops.
-    source = _StoppingDocumentSource([_received(jobs, malformed_discarded=2)], stop_event)
+    # One poll: valid jobs plus two malformed messages seen, then the source stops.
+    source = _StoppingDocumentSource([_received(jobs, malformed_received=2)], stop_event)
     pipeline = mock.Mock()
 
     with mock.patch("ingestion_pipeline.runner.run_batch") as mock_run_batch:
@@ -526,7 +529,7 @@ def test_run_forever_preserves_discards_without_acknowledging(patch_settings):
         )
         totals = run_forever(source, pipeline, stop_event)
 
-    assert totals.messages_discarded == 2
+    assert totals.malformed_receives == 2
     assert totals.jobs_processed == len(jobs)
     assert totals.messages_received == len(jobs) + 2
     assert source.acknowledge_calls == []

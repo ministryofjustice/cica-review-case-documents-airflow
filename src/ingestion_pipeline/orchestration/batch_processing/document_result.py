@@ -38,8 +38,9 @@ class BatchSummary:
     ``jobs_in_batch`` is the number of jobs received into the batch
     (``len(jobs)``), not the number of owners. ``duplicates_collapsed`` is how
     many of those jobs were folded onto an earlier owner sharing the same
-    ``source_doc_id``. There is no ``messages_discarded`` field: discards are a
-    source/run concern, not a batch one.
+    ``source_doc_id``. There is no malformed-message count here: malformed messages
+    are a source/run concern (counted as ``malformed_receives`` on the run totals),
+    not a batch one.
 
     Attributes:
         batch_number: The 1-based sequence number of this batch within the run.
