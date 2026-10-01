@@ -232,6 +232,9 @@ class Settings(BaseSettings):  # type: ignore
 
     # The DLQ queue name. Empty by default; the derived value "<SQS_DOCUMENT_QUEUE>-dlq" is
     # filled in by a model validator so it always tracks the main queue name unless overridden.
+    # The derived name must stay within the 80-character SQS limit, so SQS_DOCUMENT_QUEUE must be
+    # at most 76 characters when the DLQ name is derived (append "-dlq"); set this explicitly to
+    # override. See derive_sqs_document_dlq.
     SQS_DOCUMENT_DLQ: str = ""
 
     DEBUG_PAGE_NUMBERS: set[int] = {1}
@@ -577,13 +580,37 @@ class Settings(BaseSettings):  # type: ignore
 
         A field default cannot reference another field, so the derived name is filled in
         here after ``SQS_DOCUMENT_QUEUE`` has been validated and stripped. An explicit
-        ``SQS_DOCUMENT_DLQ`` (env/.env) is preserved.
+        ``SQS_DOCUMENT_DLQ`` (env/.env) is stripped and preserved.
+
+        Both the derived and the explicit name must satisfy the SQS naming rules (1-80
+        characters of letters, digits, hyphens or underscores). ``SQS_DOCUMENT_QUEUE`` is
+        itself allowed to be up to 80 characters, but appending ``-dlq`` to a long name
+        would overflow the 80-character SQS limit; such a derived name is rejected here so
+        the misconfiguration fails at startup rather than when the LocalStack init script
+        or IaC later tries to create the DLQ.
 
         Returns:
             Settings: The validated settings object.
+
+        Raises:
+            ValueError: If an explicit DLQ name is invalid, or if the name derived from
+                ``SQS_DOCUMENT_QUEUE`` exceeds the SQS length limit.
         """
-        if not self.SQS_DOCUMENT_DLQ:
-            self.SQS_DOCUMENT_DLQ = f"{self.SQS_DOCUMENT_QUEUE}-dlq"
+        explicit = self.SQS_DOCUMENT_DLQ.strip()
+        if explicit:
+            if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", explicit):
+                raise ValueError("SQS_DOCUMENT_DLQ must be 1-80 characters of letters, digits, hyphens or underscores")
+            self.SQS_DOCUMENT_DLQ = explicit
+            return self
+
+        derived = f"{self.SQS_DOCUMENT_QUEUE}-dlq"
+        if len(derived) > 80:
+            raise ValueError(
+                f"The DLQ name derived from SQS_DOCUMENT_QUEUE ('{derived}', {len(derived)} characters) exceeds the "
+                "80-character SQS limit. Shorten SQS_DOCUMENT_QUEUE to at most 76 characters or set SQS_DOCUMENT_DLQ "
+                "explicitly to a name of 80 characters or fewer."
+            )
+        self.SQS_DOCUMENT_DLQ = derived
         return self
 
 

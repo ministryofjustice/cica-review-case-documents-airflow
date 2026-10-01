@@ -186,7 +186,10 @@ def test_default_settings_satisfy_visibility_regression():
 )
 def test_sqs_document_queue_validation(name, valid):
     if valid:
-        assert Settings(SQS_DOCUMENT_QUEUE=name).SQS_DOCUMENT_QUEUE == name.strip()
+        # Supply an explicit in-limit DLQ so a long but valid queue name (e.g. 80 chars)
+        # isolates the queue-name check here from the derived-DLQ length check, which is
+        # covered separately.
+        assert Settings(SQS_DOCUMENT_QUEUE=name, SQS_DOCUMENT_DLQ="dlq").SQS_DOCUMENT_QUEUE == name.strip()
     else:
         with pytest.raises(ValueError, match="SQS_DOCUMENT_QUEUE"):
             Settings(SQS_DOCUMENT_QUEUE=name)
@@ -339,3 +342,71 @@ def test_sqs_processing_overhead_factor_must_be_at_least_one(factor, valid):
     else:
         with pytest.raises(ValueError, match="SQS_PROCESSING_OVERHEAD_FACTOR"):
             Settings(SQS_PROCESSING_OVERHEAD_FACTOR=factor, SQS_VISIBILITY_TIMEOUT_SECONDS=43200)
+
+
+# --- SQS DLQ name derivation ------------------------------------------------
+
+
+def test_sqs_dlq_defaults_to_derived_name():
+    """When SQS_DOCUMENT_DLQ is unset the name is derived as <queue>-dlq."""
+    settings = Settings(SQS_DOCUMENT_QUEUE="my-queue")
+    assert settings.SQS_DOCUMENT_DLQ == "my-queue-dlq"
+
+
+def test_sqs_dlq_explicit_override_is_preserved():
+    """An explicit SQS_DOCUMENT_DLQ takes precedence over the derived name."""
+    settings = Settings(SQS_DOCUMENT_QUEUE="my-queue", SQS_DOCUMENT_DLQ="custom-dlq")
+    assert settings.SQS_DOCUMENT_DLQ == "custom-dlq"
+
+
+def test_sqs_dlq_explicit_override_is_stripped():
+    """Surrounding whitespace on an explicit SQS_DOCUMENT_DLQ is stripped."""
+    settings = Settings(SQS_DOCUMENT_QUEUE="my-queue", SQS_DOCUMENT_DLQ="  custom-dlq  ")
+    assert settings.SQS_DOCUMENT_DLQ == "custom-dlq"
+
+
+def test_sqs_dlq_derived_name_at_length_limit_is_accepted():
+    """A 76-char queue derives an 80-char DLQ name, exactly the SQS limit."""
+    queue = "a" * 76
+    settings = Settings(SQS_DOCUMENT_QUEUE=queue)
+    assert settings.SQS_DOCUMENT_DLQ == f"{queue}-dlq"
+    assert len(settings.SQS_DOCUMENT_DLQ) == 80
+
+
+@pytest.mark.parametrize("queue_length", [77, 80])
+def test_sqs_dlq_derived_name_over_length_limit_is_rejected(queue_length):
+    """A queue name that derives an over-80-char DLQ name fails at startup."""
+    queue = "a" * queue_length
+    with pytest.raises(ValueError, match="derived from SQS_DOCUMENT_QUEUE"):
+        Settings(SQS_DOCUMENT_QUEUE=queue)
+
+
+def test_sqs_dlq_over_length_queue_can_be_rescued_by_explicit_dlq():
+    """An explicit, in-limit SQS_DOCUMENT_DLQ bypasses the derived-length check."""
+    queue = "a" * 80
+    settings = Settings(SQS_DOCUMENT_QUEUE=queue, SQS_DOCUMENT_DLQ="short-dlq")
+    assert settings.SQS_DOCUMENT_DLQ == "short-dlq"
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "a" * 81,  # too long
+        "   ",  # whitespace-only -> empty after strip -> falls through to derivation? no, see below
+        "bad name",  # space not allowed
+        "bad.name",  # dot not allowed
+        "bad/name",  # slash not allowed
+    ],
+)
+def test_sqs_dlq_explicit_invalid_name_is_rejected(name):
+    """An explicit SQS_DOCUMENT_DLQ that breaks SQS naming rules is rejected.
+
+    A whitespace-only value strips to empty, so it is treated as unset and the derived
+    name is used instead; that case is covered separately.
+    """
+    if name.strip() == "":
+        settings = Settings(SQS_DOCUMENT_QUEUE="my-queue", SQS_DOCUMENT_DLQ=name)
+        assert settings.SQS_DOCUMENT_DLQ == "my-queue-dlq"
+    else:
+        with pytest.raises(ValueError, match="SQS_DOCUMENT_DLQ"):
+            Settings(SQS_DOCUMENT_QUEUE="my-queue", SQS_DOCUMENT_DLQ=name)
