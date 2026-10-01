@@ -414,7 +414,7 @@ class SqsDocumentSource:
                     "Malformed message left for DLQ redrive (message_id=%s, field=%s): %s | raw body: %s",
                     message_id,
                     exc.field,
-                    exc,
+                    _truncate_body_for_log(str(exc)),
                     _truncate_body_for_log(body),
                 )
                 continue
