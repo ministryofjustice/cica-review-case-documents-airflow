@@ -480,8 +480,8 @@ class Settings(BaseSettings):  # type: ignore
         Raises:
             ValueError: If the value is negative.
         """
-        if v < 0:
-            raise ValueError("SQS_TRANSIENT_ERROR_BACKOFF_SECONDS must be >= 0")
+        if not math.isfinite(v) or v < 0:
+            raise ValueError("SQS_TRANSIENT_ERROR_BACKOFF_SECONDS must be finite and >= 0")
         return v
 
     @model_validator(mode="after")
