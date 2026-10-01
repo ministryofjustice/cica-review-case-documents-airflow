@@ -210,11 +210,13 @@ class FetchResult(BaseModel):
     messages received minus the number of valid jobs produced. Note that malformed
     messages are left on the queue (not deleted) to be redriven to the DLQ, so the same
     malformed message is counted again on each poll until SQS redrives it; this counter
-    therefore reflects malformed *receives*, not distinct messages. An empty poll or a
-    transient-error poll carries no jobs and a ``malformed_received`` of 0; the
-    ``outcome`` field distinguishes those two no-job cases from one another and from a
-    populated poll. The model is frozen so a fetch result cannot be mutated after
-    construction.
+    therefore reflects malformed *receives*, not distinct messages. Both no-job
+    outcomes carry no jobs; an ``EMPTY`` outcome may carry malformed receives (a poll
+    that saw only malformed messages produced no work but still has a non-zero
+    ``malformed_received``), while a ``TRANSIENT_ERROR`` outcome always carries a
+    ``malformed_received`` count of 0. The ``outcome`` field distinguishes those two
+    no-job cases from one another and from a populated poll. The model is frozen so a
+    fetch result cannot be mutated after construction.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -351,7 +353,9 @@ class SqsDocumentSource:
                 ``outcome`` tag. A populated poll is ``RECEIVED``; a genuine empty
                 receive (including a poll that saw only malformed messages) is
                 ``EMPTY``; a swallowed transient receive error is ``TRANSIENT_ERROR``.
-                Both no-job outcomes carry no jobs and a ``malformed_received`` of 0.
+                Both no-job outcomes carry no jobs; an ``EMPTY`` outcome may carry
+                malformed receives, while a ``TRANSIENT_ERROR`` outcome always carries a
+                ``malformed_received`` count of 0.
         """
         # Imported here to avoid a module-level import cycle (document_ingress imports
         # DocumentJob from this module).
