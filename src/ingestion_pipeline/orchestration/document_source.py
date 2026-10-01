@@ -449,6 +449,22 @@ class SqsDocumentSource:
         try:
             self.sqs_client.delete_message(QueueUrl=self.queue_url, ReceiptHandle=receipt_handle)
         except Exception as exc:
+            # The failure is logged and swallowed so one failed delete cannot abort the
+            # batch. The tradeoff: the message is NOT removed, so after its visibility
+            # timeout SQS redelivers it and the document is processed AGAIN. Processing
+            # is idempotent on final state (deterministic source_doc_id -> same
+            # OpenSearch doc ids and the same {case_ref}/{source_doc_id}/pages/ S3
+            # prefix), so no duplicate/corrupt data results. But a full reprocess is NOT
+            # free: it re-runs a billed Textract OCR job and billed Bedrock embedding
+            # calls, re-uploads page images (new object versions on a versioned bucket),
+            # and re-emits any OpenSearch/S3 "object created" events that downstream
+            # systems may react to. A *persistently* failing delete is worse: each
+            # redelivery increments the receive count, so a successfully-processed
+            # document can eventually be redriven to the DLQ after SQS_MAX_RECEIVE_COUNT.
+            # The robust fix is to avoid the reprocess when only the delete failed:
+            # retry delete_message here, and/or add a per-message visibility heartbeat
+            # (ChangeMessageVisibility) so a slow-but-healthy message is not redelivered.
+            # That belongs with the concurrency/dispatch work (SQS stories 5/7).
             logger.error(
                 "Failed to delete message (message_id=%s, doc=%s): %s",
                 message_id,
