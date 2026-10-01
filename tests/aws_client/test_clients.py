@@ -117,8 +117,8 @@ def test_get_textractor_instance_uses_explicit_session_credentials(monkeypatch, 
         aws_session_token="mod-token",
         region_name="eu-west-2",
     )
-    # Textractor is still constructed for the correct region.
-    mock_textractor_cls.assert_called_once_with(region_name="eu-west-2")
+    # Textractor is still constructed for the correct region, with the shared retry config.
+    mock_textractor_cls.assert_called_once_with(region_name="eu-west-2", config=clients.AWS_RETRY_CONFIG)
 
     # The returned instance has its session and clients replaced by the credentialed ones.
     session = mock_boto3.Session.return_value
