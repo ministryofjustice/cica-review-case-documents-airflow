@@ -89,6 +89,21 @@ def test_maximum_chunk_size_validation(value):
         Settings(LAYOUT_CHUNKING_MAXIMUM_CHUNK_SIZE=value)
 
 
+@pytest.mark.parametrize("value", [-10, 0, 10])
+def test_max_concurrent_documents_validation(value):
+    """MAX_CONCURRENT_DOCUMENTS must be a positive integer.
+
+    Exercises the shared positive-integer validator directly through this field so a
+    regression that drops MAX_CONCURRENT_DOCUMENTS from the validator is caught. A
+    zero/negative value must raise; a positive value must construct successfully.
+    """
+    if value <= 0:
+        with pytest.raises(ValueError):
+            Settings(MAX_CONCURRENT_DOCUMENTS=value)
+    else:
+        Settings(MAX_CONCURRENT_DOCUMENTS=value)
+
+
 @pytest.mark.parametrize("ratio", [-0.1, 0.5, 1.1])
 def test_y_tolerance_ratio_validation(ratio):
     if not 0.0 <= ratio <= 1.0:
