@@ -83,10 +83,10 @@ def get_textractor_instance():
         aws_session_token=getattr(settings, "AWS_MOD_PLATFORM_SESSION_TOKEN", None),
         region_name=settings.AWS_REGION,
     )
-    # Pass the shared retry config through the constructor so that, even for the brief
-    # window before the clients are reassigned, the internally-created clients are
-    # consistently configured.
-    textractor = Textractor(region_name=settings.AWS_REGION, config=AWS_RETRY_CONFIG)
+    # The pinned Textractor constructor only accepts its own documented arguments and
+    # does not take a botocore Config, so we instantiate it with region alone and apply
+    # AWS_RETRY_CONFIG on the explicitly-credentialed clients assigned below.
+    textractor = Textractor(region_name=settings.AWS_REGION)
     # Overwrite the internally-created session/clients (which rely on the default
     # credential chain) with our explicitly-credentialed ones. These attributes are
     # internal to Textractor; the tests guard against the pinned library changing them.
