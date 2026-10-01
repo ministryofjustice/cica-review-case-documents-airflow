@@ -267,7 +267,7 @@ class Settings(BaseSettings):  # type: ignore
     )
     @classmethod
     def validate_positive_int(cls, v: int) -> int:
-        """Ensure chunk size values are positive integers.
+        """Ensure the setting is a positive integer.
 
         Args:
             v (int): The value to validate.
