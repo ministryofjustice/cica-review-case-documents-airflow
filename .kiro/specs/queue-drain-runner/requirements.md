@@ -1,3 +1,27 @@
+> **⚠️ ARCHIVED — SUPERSEDED. This spec does not describe shipped behaviour.**
+>
+> This spec describes a *bounded* queue-draining runner: a `drain_queue(source,
+> pipeline)` function that stops on the first empty poll (`"queue drained"`) or at a
+> `MAX_BATCHES_PER_RUN` ceiling (`"hit max-batches ceiling"`), returning a `RunSummary`.
+> **That design was not shipped.** During implementation it was replaced by a
+> *long-lived* worker: `run_forever(source, pipeline, stop_event)` in
+> `src/ingestion_pipeline/runner.py` polls SQS continuously, processes batches as they
+> arrive, backs off on transient receive errors, and stops only on `SIGTERM`/`SIGINT`
+> (graceful shutdown). There is no batch ceiling, no `drain_queue`, no `RunSummary`,
+> and no terminal "queue drained" state; progress and a final shutdown summary are
+> emitted from a cumulative `RunTotals`.
+>
+> **Still accurate and shipped** (do not treat these as regressions): the DLQ /
+> redrive-policy design (`SQS_MAX_RECEIVE_COUNT`, derived `SQS_DOCUMENT_DLQ`), the
+> LocalStack init-script wiring, and the "leave failed/malformed messages unacknowledged
+> for DLQ redrive" behaviour all shipped as described in Requirements 6, 7, and 8 (except
+> `MAX_BATCHES_PER_RUN`, which does not exist).
+>
+> The shipped long-lived worker is described in `.kiro/steering/product.md` (Current
+> Status) and `.kiro/steering/structure.md` (the `runner.py` row). Those are the
+> authoritative descriptions of the runner. This document is retained only as a record of
+> the originally-planned design and must not be used to validate the runner as incomplete.
+
 # Requirements Document
 
 ## Introduction

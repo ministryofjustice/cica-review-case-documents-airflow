@@ -1,3 +1,24 @@
+> **⚠️ ARCHIVED — SUPERSEDED / CONTRADICTS SHIPPED BEHAVIOUR. Do not resume or validate against this plan.**
+>
+> Retained as a historical record only. The checkboxes reflect the original plan, not the
+> current codebase:
+>
+> - **Tasks 1 and 3 (batch tier) shipped as written:** `BatchSummary`/`BatchResult` in
+>   `document_result.py` and `run_batch(..., batch_number) -> BatchResult` with one structured
+>   batch-summary record.
+> - **Task 2 (`FetchResult`) shipped with inverted semantics:** the shipped field is
+>   `malformed_received` (malformed messages are left undeleted for DLQ redrive), not
+>   `malformed_discarded` (deleted/never-DLQ'd) as the task states, and `FetchResult` also
+>   carries an `outcome: FetchOutcome`. The task's "leave the malformed-delete path untouched
+>   — malformed messages are still deleted, never DLQ'd" instruction is contrary to the
+>   shipped behaviour.
+> - **The `drain_queue`/`RunSummary`/`main` tasks were superseded** by the long-lived
+>   `run_forever`/`RunTotals` worker in `src/ingestion_pipeline/runner.py`.
+>
+> Authoritative sources: `src/ingestion_pipeline/orchestration/document_source.py`,
+> `.../batch_processing/batch_runner.py`, `src/ingestion_pipeline/runner.py`, and
+> `.kiro/steering/product.md` / `structure.md`.
+
 # Implementation Plan: run-and-batch-summaries
 
 ## Overview

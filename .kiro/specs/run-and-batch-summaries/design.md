@@ -1,3 +1,24 @@
+> **⚠️ ARCHIVED — SUPERSEDED / CONTRADICTS SHIPPED BEHAVIOUR. Do not use as the feature contract.**
+>
+> Retained as a historical record only. Two foundations of this design were inverted or
+> replaced during implementation:
+>
+> 1. **Malformed messages are redriven to the DLQ, not deleted.** The design's "motivating
+>    bug" narrative and the `FetchResult.malformed_discarded` field assume malformed messages
+>    are deleted and never DLQ'd. The shipped `SqsDocumentSource.fetch_batch` leaves them
+>    undeleted for DLQ redrive, and the shipped field is `malformed_received` (plus an
+>    `outcome: FetchOutcome` tag), not `malformed_discarded`. See
+>    `src/ingestion_pipeline/orchestration/document_source.py`.
+> 2. **The runner is `run_forever`/`RunTotals`, not `drain_queue`/`RunSummary`.** The
+>    run-tier of this design (`drain_queue`, `RunSummary.messages_discarded`,
+>    `MAX_BATCHES_PER_RUN`, `terminal_reason`) was not shipped; see the archived
+>    `.kiro/specs/queue-drain-runner/` spec and `src/ingestion_pipeline/runner.py`.
+>
+> **What shipped as designed:** the per-batch tier — `run_batch(..., batch_number)` returning
+> a frozen `BatchResult`/`BatchSummary` and emitting one structured batch-summary record (see
+> `batch_runner.py` and `document_result.py`). Treat the steering docs and the source modules
+> as authoritative for everything else.
+
 # Design Document
 
 ## Overview

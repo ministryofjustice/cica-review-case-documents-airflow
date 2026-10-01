@@ -1,3 +1,41 @@
+> **⚠️ ARCHIVED — SUPERSEDED / CONTRADICTS SHIPPED BEHAVIOUR. Do not use as the feature contract.**
+>
+> This document is retained as a historical record only. Parts of it shipped as written,
+> but two foundational assumptions were inverted or replaced during implementation. The
+> authoritative descriptions of shipped behaviour are the source modules named below and
+> `.kiro/steering/product.md` / `structure.md`.
+>
+> **1. Malformed-message handling is the OPPOSITE of what this spec says.** The spec's
+> premise, glossary (`Malformed_Message`, `Malformed_Discard`), Requirement 1, Requirement
+> 8, Requirement 9.1, and the Out of Scope section all state that malformed messages are
+> *deleted and permanently discarded, never routed to the DLQ*. The shipped
+> `SqsDocumentSource.fetch_batch` (`src/ingestion_pipeline/orchestration/document_source.py`)
+> does the reverse: it **leaves malformed messages undeleted on the queue** so SQS redrives
+> them to the DLQ after `SQS_MAX_RECEIVE_COUNT` receives. Consequently the shipped field is
+> named **`malformed_received`** (counting malformed *re-receives* until redrive), not
+> `malformed_discarded`, and `FetchResult` also carries an `outcome: FetchOutcome`
+> (`RECEIVED`/`EMPTY`/`TRANSIENT_ERROR`) that this spec does not mention.
+>
+> **2. The run-level tier describes the superseded bounded-drain runner.** Requirements 4,
+> 5, 6, 7, and 8 are built on `drain_queue` returning a per-run `RunSummary` with
+> `messages_discarded`, a `MAX_BATCHES_PER_RUN` ceiling, and `terminal_reason`
+> (`"queue drained"` / `"hit max-batches ceiling"`). None of that shipped. The runner is the
+> long-lived `run_forever`/`RunTotals` worker in `src/ingestion_pipeline/runner.py`, which
+> keeps cumulative totals (`messages_received`, `malformed_receives`, `jobs_processed`,
+> `empty_polls`, `transient_errors`, `successes`, `failures`), logs a progress summary per
+> batch and a final summary on shutdown, and has no `drain_queue`, no `RunSummary`, no batch
+> ceiling, and no terminal "drained" state. See the archived
+> `.kiro/specs/queue-drain-runner/` spec for that superseded design.
+>
+> **What DID ship as described (still a valid record):** the per-batch tier — Requirement 2
+> and Requirement 3 — matches the code. `run_batch(..., batch_number)` returns a frozen
+> `BatchResult` (`summary: BatchSummary` + `results: list[DocumentResult]`) and emits exactly
+> one structured batch-summary log record with `batch_number`, `jobs_in_batch`, `succeeded`,
+> `failed`, `duplicates_collapsed` (see
+> `src/ingestion_pipeline/orchestration/batch_processing/batch_runner.py` and
+> `document_result.py`). The duplicate-collapsing acknowledgement behaviour in Requirement
+> 9.2 and 9.3 also shipped as written.
+
 # Requirements Document
 
 ## Introduction

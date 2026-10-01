@@ -1,3 +1,17 @@
+> **⚠️ ARCHIVED — SUPERSEDED. This plan does not describe shipped behaviour.**
+>
+> These tasks build a *bounded* `drain_queue`/`RunSummary` runner with a
+> `MAX_BATCHES_PER_RUN` ceiling. **That design was not shipped.** The checkboxes below
+> reflect the historical plan, not the current codebase: tasks 2 and 4 (the `RunSummary`
+> model, the `drain_queue` function, and the thin `main()` that calls it) were superseded
+> by the long-lived `run_forever`/`RunTotals` worker in
+> `src/ingestion_pipeline/runner.py`. The config/DLQ/init-script tasks (1, 6) and the
+> steering-doc task (7) did ship — except `MAX_BATCHES_PER_RUN`, which does not exist in
+> the shipped code.
+>
+> Do not resume or validate against this plan. The authoritative description of the
+> shipped runner is in `.kiro/steering/product.md` and `.kiro/steering/structure.md`.
+
 # Implementation Plan: Queue Drain Runner
 
 ## Overview
