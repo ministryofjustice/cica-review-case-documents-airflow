@@ -30,7 +30,7 @@
 # LocalStack accepts the dummy "test" credentials configured by the local dev stack.
 #
 # Usage (paths shown relative to the repository root):
-#   local-dev-environment/send_test_batch.sh                         # send the built-in 30-document set
+#   local-dev-environment/send_test_batch.sh                         # send the message set
 #   local-dev-environment/send_test_batch.sh --dry-run               # print bodies, send nothing (no AWS needed)
 #   local-dev-environment/send_test_batch.sh -k "26-700001/a.pdf,26-700002/b.pdf"
 #   local-dev-environment/send_test_batch.sh --keys-file keys.txt    # comma and/or newline separated
@@ -65,7 +65,7 @@ KEYS=""
 KEYS_FILE=""
 DRY_RUN=0
 
-# Built-in example set of 3 documents. 
+# Built-in example set of documents. 
 DEFAULT_KEYS="26-700003/Case3_TC19_with_handwriting_Redacted_white.pdf
 26-700002/Case2_TC19_with_handwriting_Redacted_white.pdf
 26-700001/Case1_TC19_50_pages_brain_injury.pdf"
