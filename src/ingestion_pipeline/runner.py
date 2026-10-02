@@ -1,211 +1,246 @@
-"""Pipeline runner responsible for creating and running the ingestion pipeline.
+"""Pipeline runner: a long-lived worker that drains the SQS document queue forever.
 
-Processes a batch of documents in parallel. Documents are supplied by a
-:class:`DocumentSource` (an SQS-backed stub for now). A single :class:`Pipeline`
-and its underlying AWS/OpenSearch clients are constructed once in the main thread
-and shared across worker threads; each worker sets its own logging context so
-per-document log lines remain correctly attributed.
+The runner is designed to run as a long-lived Kubernetes Deployment pod. It builds a
+single :class:`Pipeline` and its underlying AWS/OpenSearch clients once in the main
+thread and then loops: fetch a batch from a :class:`DocumentSource` (SQS-backed) and,
+when non-empty, process it in parallel via ``run_batch``. Worker threads set their own
+logging context so per-document log lines stay correctly attributed.
+
+Loop semantics (see :func:`run_forever`):
+
+* **Work available** - process the batch and continue.
+* **Empty poll** - the queue had nothing right now; keep polling. The SQS long-poll
+  already blocked for ``SQS_POLL_WAIT_TIME_SECONDS``, so this does not busy-spin.
+* **Transient receive error** - the source reports it as an empty poll tagged
+  ``TRANSIENT_ERROR``; back off for ``SQS_TRANSIENT_ERROR_BACKOFF_SECONDS`` and retry.
+  A transient blip therefore never masquerades as "queue drained" - there is no
+  terminal "drained" state for a long-lived worker.
+* **Permanent/unknown receive error** - propagates out of ``fetch_batch`` and crashes
+  the process so Kubernetes restarts the pod and the fault is visible.
+* **Signalled to stop** (``SIGTERM``/``SIGINT``) - the loop finishes the in-flight
+  batch (``run_batch`` joins its thread pool before returning), logs a final summary,
+  and returns so the process exits 0 cleanly. The stop event is only checked *between*
+  batches, so shutdown is bounded by how long the in-flight batch takes - up to
+  ``TEXTRACT_API_JOB_TIMEOUT_SECONDS`` (default 2400s) for a slow Textract job. If that
+  exceeds the pod's ``terminationGracePeriodSeconds``, Kubernetes sends ``SIGKILL`` and
+  the batch dies mid-flight. This is a safe, accepted fallback: the interrupted jobs'
+  messages are left unacknowledged and SQS redelivers them on a later run
+  (at-least-once). The cost is wasted/redone work and a consumed receive against
+  ``SQS_MAX_RECEIVE_COUNT``, so a healthy document that reliably outlives the grace
+  period on every shutdown could eventually be redriven to the DLQ. See the
+  "Known Risk / TODO" note in ``.kiro/specs/queue-drain-runner/`` for the deferred
+  mitigations (stop-aware Textract poll loop; sizing ``terminationGracePeriodSeconds``
+  against ``TEXTRACT_API_JOB_TIMEOUT_SECONDS``).
 """
 
-import datetime
 import logging
-import re
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass
+import signal
+import sys
+import threading
 
-from ingestion_pipeline.chunking.schemas import DocumentMetadata
 from ingestion_pipeline.config import settings
-from ingestion_pipeline.custom_logging.log_context import setup_logging, source_doc_id_context
-from ingestion_pipeline.errors import DlqCategory, PipelineError
+from ingestion_pipeline.custom_logging.log_context import setup_logging
 from ingestion_pipeline.indexing.healthcheck import check_opensearch_health
-from ingestion_pipeline.orchestration.document_source import DocumentJob, DocumentSource, SqsDocumentSource
+from ingestion_pipeline.orchestration.batch_processing.batch_runner import run_batch
+from ingestion_pipeline.orchestration.document_source import (
+    DocumentSource,
+    FetchOutcome,
+    QueueResolutionError,
+    SqsDocumentSource,
+)
 from ingestion_pipeline.orchestration.pipeline import Pipeline
 from ingestion_pipeline.pipeline_builder import build_pipeline
-from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
 
 setup_logging()
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class DocumentResult:
-    """Outcome of processing a single document in the batch.
+class RunTotals:
+    """Mutable cumulative counters for the lifetime of a :func:`run_forever` worker.
 
-    The pipeline contract is "succeed or raise". ``success`` is True only when
-    ``process_document`` returned without raising, in which case the job is
-    acknowledged (removed from the source). On any failure ``success`` is False,
-    the job is left unacknowledged so SQS can redrive it toward the DLQ, and
-    ``error``/``category``/``retryable`` capture the classification for the future
-    metadata-index / DLQ-enrichment seam.
+    A long-lived worker has no "end of run" at which to emit a single summary, so it
+    keeps running totals and logs a snapshot after each processed batch (and a final
+    snapshot on shutdown). The counters satisfy the accounting invariant
+    ``messages_received == jobs_processed + malformed_receives`` by construction: every
+    poll moves the three message counters together.
+
+    Note that malformed messages are left on the queue (not deleted) to be redriven to
+    the DLQ, so the same malformed message is re-received on each poll until SQS
+    redrives it. ``malformed_receives`` therefore counts malformed *receives*, not
+    distinct messages, and both it and ``messages_received`` climb once per redelivery.
+
+    Attributes:
+        batches_processed (int): Number of non-empty batches processed.
+        messages_received (int): Total messages pulled off SQS, counting both valid jobs
+            and malformed receives, summed over every poll.
+        malformed_receives (int): Total malformed-message receives (re-counted on each
+            redelivery until SQS redrives the message to the DLQ).
+        jobs_processed (int): Total valid jobs handed to batches.
+        successes (int): Count of ``DocumentResult.success`` being True across all results.
+        failures (int): Count of ``DocumentResult.success`` being False across all results.
+        empty_polls (int): Number of genuine empty long-poll receives.
+        transient_errors (int): Number of transient receive errors backed off and retried.
     """
 
-    job: DocumentJob
-    source_doc_id: str
-    success: bool
-    error: Exception | None = None
-    category: DlqCategory | None = None
-    retryable: bool | None = None
+    def __init__(self) -> None:
+        """Initialise all counters to zero."""
+        self.batches_processed = 0
+        self.messages_received = 0
+        self.malformed_receives = 0
+        self.jobs_processed = 0
+        self.successes = 0
+        self.failures = 0
+        self.empty_polls = 0
+        self.transient_errors = 0
+
+    def log_summary(self, *, final: bool = False) -> None:
+        """Emit one structured INFO summary carrying the current cumulative totals.
+
+        Args:
+            final (bool): When True, mark the record as the shutdown summary so operators
+                can distinguish the last line before the worker exits from the per-batch
+                progress lines.
+        """
+        prefix = "Pipeline final summary" if final else "Pipeline progress summary"
+        logger.info(
+            "%s: %d batch(es), %d message(s) received, %d malformed receive(s), %d job(s) processed, "
+            "%d succeeded, %d failed, %d empty poll(s), %d transient error(s).",
+            prefix,
+            self.batches_processed,
+            self.messages_received,
+            self.malformed_receives,
+            self.jobs_processed,
+            self.successes,
+            self.failures,
+            self.empty_polls,
+            self.transient_errors,
+            extra={
+                "batches_processed": self.batches_processed,
+                "messages_received": self.messages_received,
+                "malformed_receives": self.malformed_receives,
+                "jobs_processed": self.jobs_processed,
+                "successes": self.successes,
+                "failures": self.failures,
+                "empty_polls": self.empty_polls,
+                "transient_errors": self.transient_errors,
+                "final": final,
+            },
+        )
 
 
-# /\d{2}[-][78]d{5}/gm
-def extract_case_ref(s3_uri: str) -> str:
-    """Extract the case_ref from the S3 URI (the folder after the bucket)."""
-    # Example: s3://bucket/26-711111/filename.pdf → 26-711111
-    parts = s3_uri.replace("s3://", "").split("/")
-    if len(parts) >= 2:
-        return parts[1]
-    return ""
+def _install_signal_handlers(stop_event: threading.Event) -> None:
+    """Install SIGTERM/SIGINT handlers that request a graceful stop.
 
+    Kubernetes sends SIGTERM on pod shutdown (rollout, scale-down). The handler only
+    sets ``stop_event`` so the loop can finish the in-flight batch and exit cleanly
+    rather than being interrupted mid-batch. SIGINT (Ctrl-C) is handled the same way for
+    local runs.
 
-def validate_s3_uri(s3_uri: str, expected_bucket: str) -> bool:
-    """Validates whether the given S3 URI matches the expected bucket and follows the required path pattern.
+    Signal handlers can only be installed from the main thread; when the runner is
+    driven from a non-main thread (e.g. some test harnesses) this logs a warning and
+    continues without handlers.
 
     Args:
-        s3_uri (str): The S3 URI to validate (e.g., 's3://bucket/26-711111/').
-        expected_bucket (str): The expected S3 bucket name.
-
-    Returns:
-        bool: True if the S3 URI matches the expected bucket and path pattern, False otherwise.
-    Pattern:
-        The S3 URI must start with 's3://{expected_bucket}/', followed by a directory in the format 'NN-NNNNNN/',
-        where 'NN' is any two digits representing the year, and 'NNNNNN' starts with either 7 or 8.
+        stop_event (threading.Event): The event set to request loop termination.
     """
-    pattern = rf"^s3://{re.escape(expected_bucket)}/\d{{2}}-[78]\d{{5}}/"
-    return re.match(pattern, s3_uri) is not None
 
+    def _handle(signum, _frame):
+        logger.info("Received signal %s; finishing in-flight work then shutting down.", signal.Signals(signum).name)
+        stop_event.set()
 
-def build_document_metadata(job: DocumentJob, source_doc_id: str) -> DocumentMetadata:
-    """Build the DocumentMetadata for a job.
-
-    Args:
-        job (DocumentJob): The document work item.
-        source_doc_id (str): The deterministic document UUID.
-
-    Returns:
-        DocumentMetadata: Metadata ready to feed into the pipeline.
-    """
-    return DocumentMetadata(
-        source_doc_id=source_doc_id,
-        source_file_name=job.source_file_name,
-        source_file_s3_uri=job.source_file_s3_uri,
-        page_count=None,
-        case_ref=job.case_ref,
-        received_date=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
-        correspondence_type=job.correspondence_type,
-    )
-
-
-def process_document_job(job: DocumentJob, pipeline: Pipeline) -> DocumentResult:
-    """Process a single document. Runs inside a worker thread.
-
-    Sets the per-document logging context for the duration of the call (ContextVars
-    are not inherited by pool threads, so each worker must set its own), validates
-    the S3 URI, runs the pipeline, and contains any error so one failing document
-    does not abort the batch.
-
-    Args:
-        job (DocumentJob): The document to process.
-        pipeline (Pipeline): The shared, thread-safe pipeline instance.
-
-    Returns:
-        DocumentResult: The outcome for this document.
-    """
-    identifier = DocumentIdentifier(
-        source_file_name=job.source_file_name,
-        correspondence_type=job.correspondence_type,
-        case_ref=job.case_ref,
-    )
-    source_doc_id = identifier.generate_uuid()
-    token = source_doc_id_context.set(source_doc_id)
     try:
-        logger.info(f"Generated source_doc_id: {source_doc_id} for document: {job.source_file_s3_uri}")
-
-        if not validate_s3_uri(job.source_file_s3_uri, settings.AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET):
-            raise ValueError(f"Invalid S3 URI: {job.source_file_s3_uri}")
-
-        logger.info(f"Processing document for case reference: {job.case_ref}")
-        document_metadata = build_document_metadata(job, source_doc_id)
-        logger.info(f"Document metadata prepared: file={document_metadata.source_file_name}, case_ref={job.case_ref}")
-
-        # Succeed-or-raise: a normal return means the document was fully indexed.
-        pipeline.process_document(document_metadata=document_metadata)
-
-        logger.info(f"Finished processing document {job.source_file_s3_uri}")
-        return DocumentResult(job=job, source_doc_id=source_doc_id, success=True)
-    except PipelineError as exc:
-        # Classified pipeline failure. The pipeline has already cleaned up its side
-        # effects; here we only record the outcome. The job is NOT acknowledged, so
-        # SQS will redrive it toward the DLQ.
-        # TODO: write an enriched failure record to the OpenSearch metadata/status
-        #   index using exc.failure_context() (additional to SQS redrive + DLQ).
-        logger.error(
-            f"Document {job.source_file_s3_uri} failed with {type(exc).__name__} "
-            f"(category={exc.category.value}, retryable={exc.retryable}); not acknowledging. Details: {exc}",
-            exc_info=True,
-        )
-        return DocumentResult(
-            job=job,
-            source_doc_id=source_doc_id,
-            success=False,
-            error=exc,
-            category=exc.category,
-            retryable=exc.retryable,
-        )
-    except Exception as exc:
-        # Unclassified/unexpected failure (e.g. invalid S3 URI before the pipeline
-        # runs). Treated as a non-retryable, unexpected failure; not acknowledged.
-        logger.critical(
-            f"Pipeline runner encountered an unexpected error for source_doc_id={source_doc_id}, "
-            f"case_ref={job.case_ref}, s3_uri={job.source_file_s3_uri}: {type(exc).__name__}: {exc}",
-            exc_info=True,
-        )
-        return DocumentResult(
-            job=job,
-            source_doc_id=source_doc_id,
-            success=False,
-            error=exc,
-            category=DlqCategory.UNEXPECTED,
-            retryable=False,
-        )
-    finally:
-        source_doc_id_context.reset(token)
+        signal.signal(signal.SIGTERM, _handle)
+        signal.signal(signal.SIGINT, _handle)
+    except ValueError:
+        # Raised when not on the main thread; the worker still runs, just without
+        # cooperative signal handling (the platform's default handlers apply).
+        logger.warning("Could not install signal handlers (not on main thread); running without graceful shutdown.")
 
 
-def run_batch(jobs: list[DocumentJob], pipeline: Pipeline, source: DocumentSource) -> list[DocumentResult]:
-    """Process a batch of documents concurrently using a thread pool.
+def run_forever(
+    source: DocumentSource,
+    pipeline: Pipeline,
+    stop_event: threading.Event,
+) -> RunTotals:
+    """Poll the queue and process batches until asked to stop.
+
+    Loops until ``stop_event`` is set (by a signal handler). On each iteration it fetches
+    one batch and dispatches on the fetch outcome:
+
+    * ``RECEIVED`` - process the batch with ``run_batch``, fold its results into the
+      running totals, and log a progress summary.
+    * ``EMPTY`` - a genuine empty long-poll receive; count it and keep polling. No sleep
+      is needed because the receive already blocked for the long-poll wait.
+    * ``TRANSIENT_ERROR`` - the source swallowed a transient receive error; count it and
+      sleep ``settings.SQS_TRANSIENT_ERROR_BACKOFF_SECONDS`` before the next poll so the
+      loop does not spin against a degraded queue. The sleep is interruptible by
+      ``stop_event`` so shutdown stays responsive.
+
+    Permanent or unknown receive errors are not handled here: ``fetch_batch`` re-raises
+    them, so they propagate out of this function and crash the worker (Kubernetes then
+    restarts the pod). ``stop_event`` is re-checked between batches, so a batch already
+    running always finishes; ``run_batch``'s ``ThreadPoolExecutor`` performs
+    ``shutdown(wait=True)`` on exit, guaranteeing no jobs are in flight at that boundary.
+
+    Acknowledgement is delegated entirely to ``run_batch``/``source`` (delete on success,
+    leave unacknowledged on failure so SQS redrives to the DLQ); this loop never calls
+    ``source.acknowledge`` itself.
 
     Args:
-        jobs (list[DocumentJob]): Documents to process.
-        pipeline (Pipeline): The shared pipeline instance.
-        source (DocumentSource): The source used to acknowledge completed jobs.
+        source (DocumentSource): Supplies batches and acknowledges completed jobs.
+        pipeline (Pipeline): The shared, thread-safe pipeline instance.
+        stop_event (threading.Event): Set by a signal handler to request a graceful stop.
 
     Returns:
-        list[DocumentResult]: One result per job.
+        RunTotals: The cumulative counters accrued before the worker was stopped.
     """
-    if not jobs:
-        logger.info("No documents to process in this batch.")
-        return []
+    totals = RunTotals()
 
-    max_workers = min(settings.MAX_CONCURRENT_DOCUMENTS, len(jobs))
-    logger.info(f"Processing {len(jobs)} document(s) with up to {max_workers} concurrent worker(s).")
+    # stop_event is checked only between batches. run_batch blocks until its
+    # ThreadPoolExecutor joins all workers, so no job is in flight at this boundary.
+    while not stop_event.is_set():
+        fetch_result = source.fetch_batch()
+        jobs = fetch_result.jobs
+        malformed_received = fetch_result.malformed_received
 
-    results: list[DocumentResult] = []
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_job = {executor.submit(process_document_job, job, pipeline): job for job in jobs}
-        for future in as_completed(future_to_job):
-            result = future.result()
-            results.append(result)
-            if result.success:
-                source.acknowledge(result.job)
+        # Account EVERY poll's messages before branching so a poll that saw only
+        # malformed messages still lifts the counters and the conservation invariant
+        # (received == jobs_processed + malformed_receives) holds by construction.
+        # Malformed messages are left on the queue for DLQ redrive, so a given malformed
+        # message is re-counted on each poll until SQS redrives it.
+        totals.messages_received += len(jobs) + malformed_received
+        totals.malformed_receives += malformed_received
+        totals.jobs_processed += len(jobs)
 
-    succeeded = sum(1 for r in results if r.success)
-    failed = len(results) - succeeded
-    logger.info(f"Batch complete: {succeeded} succeeded, {failed} failed (of {len(results)}).")
-    return results
+        if fetch_result.outcome is FetchOutcome.TRANSIENT_ERROR:
+            # Transient blip: never mistaken for "drained". Back off (interruptibly) and
+            # retry rather than spinning against a throttled/unreachable queue.
+            totals.transient_errors += 1
+            if stop_event.wait(timeout=settings.SQS_TRANSIENT_ERROR_BACKOFF_SECONDS):
+                break
+            continue
+
+        if not jobs:
+            # Genuine empty long-poll receive: nothing to do right now, keep polling. The
+            # long-poll already blocked, so no extra sleep. A quiet debug line avoids
+            # spamming INFO while the queue idles.
+            totals.empty_polls += 1
+            logger.debug("Empty poll; queue idle, continuing to poll.")
+            continue
+
+        # Increment before run_batch so batch_number is 1-based in start order.
+        totals.batches_processed += 1
+        batch_result = run_batch(jobs, pipeline, source, batch_number=totals.batches_processed)
+        results = batch_result.results
+        totals.successes += sum(1 for r in results if r.success)
+        totals.failures += sum(1 for r in results if not r.success)
+        totals.log_summary()
+
+    return totals
 
 
 def main():
-    """Main entry point for the application runner: process a batch of documents in parallel."""
+    """Entry point: health check, build pipeline, then poll the queue forever until stopped."""
     if settings.LOCAL_DEVELOPMENT_MODE:
         logger.warning("Running in LOCAL_DEVELOPMENT_MODE. Ensure your S3 URIs are accessible in LocalStack.")
 
@@ -218,17 +253,28 @@ def main():
         logger.critical("OpenSearch health check failed. Exiting pipeline runner.")
         return
 
-    # Build the pipeline (and all AWS/OpenSearch clients) once and share it across
-    # worker threads. All components are stateless per-document and their underlying
-    # clients are safe to call concurrently.
+    # Build the pipeline (and all AWS/OpenSearch clients) once and share it across worker
+    # threads. All components are stateless per-document and their clients are safe to
+    # call concurrently.
     pipeline = build_pipeline()
 
-    # Fetch the batch of documents to process from the (stubbed) SQS source.
-    source: DocumentSource = SqsDocumentSource()
-    jobs = source.fetch_batch()
+    # Connect to the SQS document queue. An unresolvable queue is fatal: log and exit
+    # non-zero rather than looping forever with no source of work.
+    try:
+        source: DocumentSource = SqsDocumentSource()
+    except QueueResolutionError as exc:
+        logger.critical(f"Could not connect to the SQS document queue; exiting: {exc}")
+        sys.exit(1)
 
-    run_batch(jobs, pipeline, source)
-    logger.info("Pipeline runner finished.")
+    # Cooperative shutdown: the signal handlers set this event; run_forever finishes the
+    # in-flight batch and returns so the process exits 0 cleanly.
+    stop_event = threading.Event()
+    _install_signal_handlers(stop_event)
+
+    logger.info("Entering poll loop; will run until signalled to stop.")
+    totals = run_forever(source, pipeline, stop_event)
+    totals.log_summary(final=True)
+    logger.info("Pipeline runner stopped cleanly.")
 
 
 if __name__ == "__main__":

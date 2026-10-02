@@ -50,7 +50,11 @@ services:
       - SKIP_SSL_CERT_DOWNLOAD=1
     volumes:
       - ./init-scripts:/etc/localstack/init/ready.d
-      - ${PWD}/.env:/etc/localstack/.env:ro # Use absolute path via ${PWD}
+      # Source resolves relative to THIS compose file's directory (local-dev-environment/),
+      # so the mount is correct no matter where `docker compose` is invoked from. Using
+      # ${PWD} instead makes the source depend on the caller's shell CWD, which can point at
+      # the wrong .env or, if the path is missing, make Docker create a root-owned directory.
+      - ./.env:/etc/localstack/.env:ro
     healthcheck: # Custom healthcheck for LocalStack, ensuring index creation
       test:
         [
@@ -61,6 +65,27 @@ services:
       timeout: 5s
       retries: 15
       start_period: 360s # Allow READY init scripts to complete before healthcheck failures count
+
+  # DEV-ONLY: lightweight (~8 MB) web UI for inspecting/creating/purging the local
+  # SQS queue(s). Not part of any deployed environment. It talks to LocalStack over
+  # the compose network (service name "${LOCALSTACK_DOCKER_NAME:-localstack-main}"),
+  # not localhost. See: https://github.com/PacoVK/sqs-admin
+  sqs-admin:
+    container_name: sqs-admin
+    image: pacovk/sqs-admin:0.9.1
+    mem_limit: 128m
+    restart: unless-stopped
+    ports:
+      # Bound to loopback only (like the LocalStack gateway above): this UI is
+      # unauthenticated and can create/send/purge queues, so it must not be reachable
+      # from other machines on the network. The documented endpoint is localhost-only.
+      - "127.0.0.1:3999:3999" # SQS-Admin UI -> http://localhost:3999
+    environment:
+      - SQS_ENDPOINT_URL=http://${LOCALSTACK_DOCKER_NAME:-localstack-main}:4566
+      - SQS_AWS_REGION=${AWS_REGION:-eu-west-2}
+    depends_on:
+      localstack:
+        condition: service_healthy
 
   opensearch-dashboards:
     container_name: opensearch-dashboards

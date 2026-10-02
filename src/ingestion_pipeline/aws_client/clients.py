@@ -51,12 +51,28 @@ def get_s3_client():
 
 
 def get_textractor_instance():
-    """Creates a Textractor instance with AWS credentials from settings.
+    """Creates a Textractor instance backed by explicitly-credentialed boto3 clients.
 
-    Builds an explicitly-credentialed boto3 session and injects its Textract and S3
-    clients into the Textractor instance. This avoids mutating process-wide environment
-    variables (Textractor otherwise resolves credentials from the boto3 default chain,
-    which reads ``AWS_*`` env vars), making this factory safe to call from any thread.
+    Builds a boto3 session from the credentials in settings and overwrites the
+    session and Textract/S3 clients that ``Textractor`` creates for itself, so that
+    subsequent API calls use those explicit credentials rather than the boto3 default
+    chain (which reads ``AWS_*`` env vars).
+
+    Known limitation: the pinned ``textractor`` release has no public API for injecting
+    an explicit session or credentials. Its ``__init__`` eagerly builds a session and
+    Textract/S3 clients from the default credential chain before we reassign them below,
+    and that reassignment relies on undocumented internal attributes
+    (``session``/``textract_client``/``s3_client``). Because the default-chain session is
+    process-wide mutable state, this does not fully satisfy a thread-safe
+    explicit-credential construction contract. boto3 client creation is lazy and does not
+    resolve credentials until the first API call, so construction itself does not fail
+    when ambient credentials are absent, but the current pipeline relies on credentials
+    being present locally. A proper fix (subclassing/vendoring Textractor or an upstream
+    injection API) is deferred while the project is paused.
+
+    # TODO(paused-project): revisit once work resumes and the deployment moves off
+    #   locally-supplied AWS credentials. Replace the internal-attribute reassignment with
+    #   a supported explicit-credential construction path for Textractor.
 
     Returns:
         Textractor: Configured Textractor client instance for the specified AWS region.
@@ -67,14 +83,52 @@ def get_textractor_instance():
         aws_session_token=getattr(settings, "AWS_MOD_PLATFORM_SESSION_TOKEN", None),
         region_name=settings.AWS_REGION,
     )
+    # The pinned Textractor constructor only accepts its own documented arguments and
+    # does not take a botocore Config, so we instantiate it with region alone and apply
+    # AWS_RETRY_CONFIG on the explicitly-credentialed clients assigned below.
     textractor = Textractor(region_name=settings.AWS_REGION)
-    # Replace the internally-created session/clients (which rely on ambient credentials)
-    # with our explicitly-credentialed ones. These attributes are part of Textractor's
-    # construction contract; see tests for the guard against a library change.
+    # Overwrite the internally-created session/clients (which rely on the default
+    # credential chain) with our explicitly-credentialed ones. These attributes are
+    # internal to Textractor; the tests guard against the pinned library changing them.
     textractor.session = session
     textractor.textract_client = session.client("textract", region_name=settings.AWS_REGION, config=AWS_RETRY_CONFIG)
     textractor.s3_client = session.client("s3", region_name=settings.AWS_REGION, config=AWS_RETRY_CONFIG)
     return textractor
+
+
+def get_sqs_client():
+    """Creates a boto3 SQS client configured for local or AWS environments.
+
+    In LOCAL_DEVELOPMENT_MODE, connects to LocalStack at localhost:4566 with test
+    credentials. Otherwise, connects to AWS SQS using the MOD Platform credentials and
+    region from settings. In both cases the client uses botocore's "standard" retry mode
+    for broader transient-error coverage.
+
+    Returns:
+        boto3.client: Configured SQS client instance for the appropriate environment.
+    """
+    local_mode = getattr(settings, "LOCAL_DEVELOPMENT_MODE", False)
+    if isinstance(local_mode, str):
+        local_mode = local_mode.lower() == "true"
+
+    if local_mode:
+        return boto3.client(
+            "sqs",
+            endpoint_url="http://localhost:4566",
+            aws_access_key_id="test",
+            aws_secret_access_key="test",
+            region_name=settings.AWS_REGION,
+            config=AWS_RETRY_CONFIG,
+        )
+    else:
+        return boto3.client(
+            "sqs",
+            aws_access_key_id=settings.AWS_MOD_PLATFORM_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_MOD_PLATFORM_SECRET_ACCESS_KEY,
+            aws_session_token=getattr(settings, "AWS_MOD_PLATFORM_SESSION_TOKEN", None),
+            region_name=settings.AWS_REGION,
+            config=AWS_RETRY_CONFIG,
+        )
 
 
 def get_textract_client():

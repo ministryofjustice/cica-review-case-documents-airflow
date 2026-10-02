@@ -11,6 +11,10 @@ dependencies = [
     "pydantic>=2.13.4,<3.0.0",
     "amazon-textract-textractor>=1.10.0,<2.0.0",
     "boto3>=1.43.72,<2.0.0",
+    # Imported directly for its exception types (ClientError, EndpointConnectionError)
+    # used to classify SQS receive failures. Ships with boto3 but declared explicitly
+    # since we import from it directly.
+    "botocore>=1.43.72,<2.0.0",
     "amazon-textract-caller>=0.2.4,<0.3.0",
     "pdf2image>=1.17.0",
 ]
@@ -22,7 +26,11 @@ test = [
     "pytest-cov>=6.2.1,<8",
     "moto>=5.2.2,<6",
 ]
-dev = ["deptry>=0.23.1,<0.26", "pre-commit>=4.6.2,<5"]
+dev = [
+    "deptry>=0.23.1,<0.26",
+    "hypothesis>=6.168.0",
+    "pre-commit>=4.6.2,<5",
+]
 
 # Evaluation suite dependencies are declared as optional dependencies.
 # They are intentionally separate from [project.dependencies] to avoid being

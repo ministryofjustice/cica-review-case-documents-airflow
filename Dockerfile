@@ -47,5 +47,9 @@ USER root
 RUN rm -f /bin/uv
 USER ${CONTAINER_UID}
 
-# Run the application as the non-root user
+# Run the application as the non-root user.
+# NOTE (project paused): main.py only configures logging and exits; it does NOT start the
+# long-lived SQS polling worker, which lives in ingestion_pipeline.runner.main. When this
+# service is re-homed on the Cloud Platform or Modernisation Platform, point the entrypoint
+# at runner.main (or have main.py delegate to it). See README.md / runbooks/RUNBOOK.md.
 CMD ["python", "src/ingestion_pipeline/main.py"]

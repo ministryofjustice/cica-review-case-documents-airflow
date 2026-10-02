@@ -21,6 +21,8 @@ This pipeline feeds data into a UI application (cica-review-case-documents) that
 
 The project is in active private beta. Features and chunking strategies are still evolving.
 
+The runner continuously polls the SQS document queue, processing batches as they arrive until it receives SIGTERM/SIGINT; repeatedly failing valid messages are redriven to a Dead Letter Queue after SQS_MAX_RECEIVE_COUNT (default 3) receives.
+
 ## Domain Context
 
 - Documents are associated with case references matching the pattern `NN-[7|8]NNNNN` (e.g., `26-711111`)

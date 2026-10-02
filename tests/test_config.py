@@ -89,6 +89,21 @@ def test_maximum_chunk_size_validation(value):
         Settings(LAYOUT_CHUNKING_MAXIMUM_CHUNK_SIZE=value)
 
 
+@pytest.mark.parametrize("value", [-10, 0, 10])
+def test_max_concurrent_documents_validation(value):
+    """MAX_CONCURRENT_DOCUMENTS must be a positive integer.
+
+    Exercises the shared positive-integer validator directly through this field so a
+    regression that drops MAX_CONCURRENT_DOCUMENTS from the validator is caught. A
+    zero/negative value must raise; a positive value must construct successfully.
+    """
+    if value <= 0:
+        with pytest.raises(ValueError):
+            Settings(MAX_CONCURRENT_DOCUMENTS=value)
+    else:
+        Settings(MAX_CONCURRENT_DOCUMENTS=value)
+
+
 @pytest.mark.parametrize("ratio", [-0.1, 0.5, 1.1])
 def test_y_tolerance_ratio_validation(ratio):
     if not 0.0 <= ratio <= 1.0:
@@ -114,3 +129,284 @@ def test_timeout_greater_than_poll_validation(poll, timeout):
             Settings(TEXTRACT_API_POLL_INTERVAL_SECONDS=poll, TEXTRACT_API_JOB_TIMEOUT_SECONDS=timeout)
     else:
         Settings(TEXTRACT_API_POLL_INTERVAL_SECONDS=poll, TEXTRACT_API_JOB_TIMEOUT_SECONDS=timeout)
+
+
+# --- SQS settings -----------------------------------------------------------
+
+
+def test_sqs_settings_defaults(settings_without_env_file):
+    """SQS settings expose the documented defaults."""
+    settings = settings_without_env_file
+    assert settings.SQS_DOCUMENT_QUEUE == "cica-document-search-queue"
+    assert settings.SQS_POLL_WAIT_TIME_SECONDS == 20
+    assert settings.SQS_MAX_MESSAGES_PER_POLL == 4
+    assert settings.SQS_VISIBILITY_TIMEOUT_SECONDS == 3600
+    # The default visibility timeout must cover the worst-case single-document
+    # processing ceiling (the Textract job timeout).
+    assert settings.SQS_VISIBILITY_TIMEOUT_SECONDS >= settings.TEXTRACT_API_JOB_TIMEOUT_SECONDS
+
+
+def test_drain_and_dlq_settings_defaults(settings_without_env_file):
+    """Poll-loop and DLQ settings expose the documented defaults."""
+    settings = settings_without_env_file
+    assert settings.SQS_MAX_RECEIVE_COUNT == 3
+    assert settings.SQS_TRANSIENT_ERROR_BACKOFF_SECONDS == 5.0
+
+
+def test_default_settings_satisfy_visibility_regression():
+    """Defaults keep validate_visibility_covers_processing passing (3600 >= 3600).
+
+    With MAX_CONCURRENT_DOCUMENTS=4 and SQS_MAX_MESSAGES_PER_POLL=4 there is one
+    processing wave, so the bound is ceil(2400 * 1.5) = 3600, exactly the default
+    visibility timeout of 3600. Constructing Settings at these defaults must succeed.
+    """
+    settings = Settings(
+        MAX_CONCURRENT_DOCUMENTS=4,
+        SQS_MAX_MESSAGES_PER_POLL=4,
+        SQS_VISIBILITY_TIMEOUT_SECONDS=3600,
+        TEXTRACT_API_JOB_TIMEOUT_SECONDS=2400,
+        SQS_PROCESSING_OVERHEAD_FACTOR=1.5,
+    )
+    assert settings.SQS_VISIBILITY_TIMEOUT_SECONDS == 3600
+
+
+@pytest.mark.parametrize(
+    "name,valid",
+    [
+        ("cica-document-search-queue", True),
+        ("my_queue-1", True),
+        ("a" * 80, True),  # max length
+        ("", False),  # empty
+        ("   ", False),  # whitespace-only
+        ("a" * 81, False),  # too long
+        ("bad name", False),  # space not allowed
+        ("bad.name", False),  # dot not allowed for a standard queue
+        ("bad/name", False),  # slash not allowed
+    ],
+)
+def test_sqs_document_queue_validation(name, valid):
+    if valid:
+        # Supply an explicit in-limit DLQ so a long but valid queue name (e.g. 80 chars)
+        # isolates the queue-name check here from the derived-DLQ length check, which is
+        # covered separately.
+        assert Settings(SQS_DOCUMENT_QUEUE=name, SQS_DOCUMENT_DLQ="dlq").SQS_DOCUMENT_QUEUE == name.strip()
+    else:
+        with pytest.raises(ValueError, match="SQS_DOCUMENT_QUEUE"):
+            Settings(SQS_DOCUMENT_QUEUE=name)
+
+
+@pytest.mark.parametrize("wait_time", [-1, 0, 10, 20, 21])
+def test_sqs_poll_wait_time_validation(wait_time):
+    if not 0 <= wait_time <= 20:
+        with pytest.raises(ValueError):
+            Settings(SQS_POLL_WAIT_TIME_SECONDS=wait_time)
+    else:
+        Settings(SQS_POLL_WAIT_TIME_SECONDS=wait_time)
+
+
+@pytest.mark.parametrize("max_messages", [0, 1, 5, 10, 11])
+def test_sqs_max_messages_per_poll_validation(max_messages):
+    if not 1 <= max_messages <= 10:
+        with pytest.raises(ValueError):
+            Settings(SQS_MAX_MESSAGES_PER_POLL=max_messages)
+    else:
+        # A generous visibility timeout keeps the residence-bound validator satisfied for
+        # larger batches, isolating the 1..10 range check here.
+        Settings(SQS_MAX_MESSAGES_PER_POLL=max_messages, SQS_VISIBILITY_TIMEOUT_SECONDS=43200)
+
+
+@pytest.mark.parametrize(
+    "visibility,valid",
+    [
+        (-1, False),  # below range
+        (0, False),  # zero: message would be immediately visible again
+        (2, True),  # minimum that also satisfies the cross-field lower bound below
+        (43200, True),  # SQS service maximum (12 hours)
+        (43201, False),  # above the SQS service maximum
+    ],
+)
+def test_sqs_visibility_timeout_range(visibility, valid):
+    """Visibility timeout must be within the SQS-permitted 1..43200 range.
+
+    Low Textract timeouts (poll=1, job=2) are supplied so the cross-field lower-bound
+    validator (visibility >= job timeout) and the poll<timeout validator are both
+    satisfied for the valid cases, isolating the SQS range check.
+    """
+    # factor=1.0 (no non-Textract headroom) keeps the residence bound at job timeout.
+    textract_kwargs = {
+        "TEXTRACT_API_POLL_INTERVAL_SECONDS": 1,
+        "TEXTRACT_API_JOB_TIMEOUT_SECONDS": 2,
+        "SQS_PROCESSING_OVERHEAD_FACTOR": 1.0,
+    }
+    if valid:
+        Settings(SQS_VISIBILITY_TIMEOUT_SECONDS=visibility, **textract_kwargs)
+    else:
+        with pytest.raises(ValueError, match="SQS_VISIBILITY_TIMEOUT_SECONDS"):
+            Settings(SQS_VISIBILITY_TIMEOUT_SECONDS=visibility, **textract_kwargs)
+
+
+@pytest.mark.parametrize(
+    "visibility,textract_timeout,valid",
+    [
+        # With the default batch (4) == concurrency (4), waves = 1, so the bound is the
+        # single-document Textract timeout.
+        (600, 600, True),  # equal: allowed (>=)
+        (1800, 600, True),  # comfortably above
+        (599, 600, False),  # just below the one-wave bound
+        (300, 600, False),  # the old default, now rejected
+    ],
+)
+def test_sqs_visibility_must_cover_textract_timeout(visibility, textract_timeout, valid):
+    """With batch == concurrency (one wave) and factor 1.0 the bound is the job timeout."""
+    if valid:
+        Settings(
+            SQS_VISIBILITY_TIMEOUT_SECONDS=visibility,
+            TEXTRACT_API_JOB_TIMEOUT_SECONDS=textract_timeout,
+            SQS_PROCESSING_OVERHEAD_FACTOR=1.0,
+        )
+    else:
+        with pytest.raises(ValueError, match="SQS_VISIBILITY_TIMEOUT_SECONDS"):
+            Settings(
+                SQS_VISIBILITY_TIMEOUT_SECONDS=visibility,
+                TEXTRACT_API_JOB_TIMEOUT_SECONDS=textract_timeout,
+                SQS_PROCESSING_OVERHEAD_FACTOR=1.0,
+            )
+
+
+@pytest.mark.parametrize(
+    "batch,concurrency,visibility,valid",
+    [
+        # 10 messages, 1 worker => 10 waves => min = 10 * 600 = 6000.
+        (10, 1, 6000, True),  # exactly the worst-case residence bound
+        (10, 1, 5999, False),  # Copilot's example: passes the old bound, now rejected
+        (10, 1, 600, False),  # only covers one document, ignores 9 waves of queueing
+        # 10 messages, 4 workers => ceil(10/4) = 3 waves => min = 3 * 600 = 1800.
+        (10, 4, 1800, True),
+        (10, 4, 1799, False),
+    ],
+)
+def test_sqs_visibility_must_cover_queueing_waves(batch, concurrency, visibility, valid):
+    """The bound scales with ceil(batch / concurrency) processing waves, not just one document.
+
+    Uses factor 1.0 so the per-wave cost is exactly the Textract timeout, isolating the
+    wave arithmetic from the non-Textract overhead multiplier.
+    """
+    kwargs = {
+        "SQS_MAX_MESSAGES_PER_POLL": batch,
+        "MAX_CONCURRENT_DOCUMENTS": concurrency,
+        "SQS_VISIBILITY_TIMEOUT_SECONDS": visibility,
+        "TEXTRACT_API_JOB_TIMEOUT_SECONDS": 600,
+        "SQS_PROCESSING_OVERHEAD_FACTOR": 1.0,
+    }
+    if valid:
+        Settings(**kwargs)
+    else:
+        with pytest.raises(ValueError, match="SQS_VISIBILITY_TIMEOUT_SECONDS"):
+            Settings(**kwargs)
+
+
+@pytest.mark.parametrize(
+    "factor,visibility,valid",
+    [
+        # 1 wave, Textract 600: min = ceil(600 * factor).
+        (1.0, 600, True),  # no headroom: bound is exactly the Textract timeout
+        (1.5, 900, True),  # 50% headroom: min = 900
+        (1.5, 899, False),  # just below the headroom-inclusive bound
+        (2.0, 1200, True),  # 100% headroom: min = 1200
+        (2.0, 1199, False),
+    ],
+)
+def test_sqs_visibility_overhead_factor_widens_bound(factor, visibility, valid):
+    """The overhead factor scales the per-wave cost to cover non-Textract processing."""
+    kwargs = {
+        "SQS_MAX_MESSAGES_PER_POLL": 4,
+        "MAX_CONCURRENT_DOCUMENTS": 4,  # 1 wave
+        "TEXTRACT_API_JOB_TIMEOUT_SECONDS": 600,
+        "SQS_PROCESSING_OVERHEAD_FACTOR": factor,
+        "SQS_VISIBILITY_TIMEOUT_SECONDS": visibility,
+    }
+    if valid:
+        Settings(**kwargs)
+    else:
+        with pytest.raises(ValueError, match="SQS_VISIBILITY_TIMEOUT_SECONDS"):
+            Settings(**kwargs)
+
+
+@pytest.mark.parametrize("factor,valid", [(0.9, False), (0.0, False), (1.0, True), (1.5, True), (3.0, True)])
+def test_sqs_processing_overhead_factor_must_be_at_least_one(factor, valid):
+    # A generous visibility timeout keeps the residence-bound validator satisfied for
+    # larger factors (e.g. 3.0 => min = ceil(2400 * 3.0) = 7200), isolating the >= 1.0
+    # range check tested here.
+    if valid:
+        Settings(SQS_PROCESSING_OVERHEAD_FACTOR=factor, SQS_VISIBILITY_TIMEOUT_SECONDS=43200)
+    else:
+        with pytest.raises(ValueError, match="SQS_PROCESSING_OVERHEAD_FACTOR"):
+            Settings(SQS_PROCESSING_OVERHEAD_FACTOR=factor, SQS_VISIBILITY_TIMEOUT_SECONDS=43200)
+
+
+# --- SQS DLQ name derivation ------------------------------------------------
+
+
+def test_sqs_dlq_defaults_to_derived_name():
+    """When SQS_DOCUMENT_DLQ is unset the name is derived as <queue>-dlq."""
+    settings = Settings(SQS_DOCUMENT_QUEUE="my-queue")
+    assert settings.SQS_DOCUMENT_DLQ == "my-queue-dlq"
+
+
+def test_sqs_dlq_explicit_override_is_preserved():
+    """An explicit SQS_DOCUMENT_DLQ takes precedence over the derived name."""
+    settings = Settings(SQS_DOCUMENT_QUEUE="my-queue", SQS_DOCUMENT_DLQ="custom-dlq")
+    assert settings.SQS_DOCUMENT_DLQ == "custom-dlq"
+
+
+def test_sqs_dlq_explicit_override_is_stripped():
+    """Surrounding whitespace on an explicit SQS_DOCUMENT_DLQ is stripped."""
+    settings = Settings(SQS_DOCUMENT_QUEUE="my-queue", SQS_DOCUMENT_DLQ="  custom-dlq  ")
+    assert settings.SQS_DOCUMENT_DLQ == "custom-dlq"
+
+
+def test_sqs_dlq_derived_name_at_length_limit_is_accepted():
+    """A 76-char queue derives an 80-char DLQ name, exactly the SQS limit."""
+    queue = "a" * 76
+    settings = Settings(SQS_DOCUMENT_QUEUE=queue)
+    assert settings.SQS_DOCUMENT_DLQ == f"{queue}-dlq"
+    assert len(settings.SQS_DOCUMENT_DLQ) == 80
+
+
+@pytest.mark.parametrize("queue_length", [77, 80])
+def test_sqs_dlq_derived_name_over_length_limit_is_rejected(queue_length):
+    """A queue name that derives an over-80-char DLQ name fails at startup."""
+    queue = "a" * queue_length
+    with pytest.raises(ValueError, match="derived from SQS_DOCUMENT_QUEUE"):
+        Settings(SQS_DOCUMENT_QUEUE=queue)
+
+
+def test_sqs_dlq_over_length_queue_can_be_rescued_by_explicit_dlq():
+    """An explicit, in-limit SQS_DOCUMENT_DLQ bypasses the derived-length check."""
+    queue = "a" * 80
+    settings = Settings(SQS_DOCUMENT_QUEUE=queue, SQS_DOCUMENT_DLQ="short-dlq")
+    assert settings.SQS_DOCUMENT_DLQ == "short-dlq"
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "a" * 81,  # too long
+        "   ",  # whitespace-only -> empty after strip -> falls through to derivation? no, see below
+        "bad name",  # space not allowed
+        "bad.name",  # dot not allowed
+        "bad/name",  # slash not allowed
+    ],
+)
+def test_sqs_dlq_explicit_invalid_name_is_rejected(name):
+    """An explicit SQS_DOCUMENT_DLQ that breaks SQS naming rules is rejected.
+
+    A whitespace-only value strips to empty, so it is treated as unset and the derived
+    name is used instead; that case is covered separately.
+    """
+    if name.strip() == "":
+        settings = Settings(SQS_DOCUMENT_QUEUE="my-queue", SQS_DOCUMENT_DLQ=name)
+        assert settings.SQS_DOCUMENT_DLQ == "my-queue-dlq"
+    else:
+        with pytest.raises(ValueError, match="SQS_DOCUMENT_DLQ"):
+            Settings(SQS_DOCUMENT_QUEUE="my-queue", SQS_DOCUMENT_DLQ=name)

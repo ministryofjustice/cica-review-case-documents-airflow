@@ -7,6 +7,9 @@ import boto3
 logger = logging.getLogger(__name__)
 
 
+# TODO: `download_pdf_from_s3` is currently unused by `src/` because the pipeline uses
+#   `S3DocumentService`. Consolidating this helper with `S3DocumentService` is deferred
+#   to future work.
 def download_pdf_from_s3(bucket_name: str, file_key: str, download_path: str):
     """Downloads a PDF file from an S3 bucket.
 

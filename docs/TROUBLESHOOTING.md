@@ -163,3 +163,77 @@ Run with optional file logging:
 ```bash
 ./run_locally_with_dot_env.sh --log-to-file
 ```
+
+## LocalStack container is unhealthy
+
+Symptom:
+- `docker compose up` reports `Container localstack-main Error` or `dependency failed to start: container localstack-main is unhealthy`.
+
+Likely cause and fix (check the logs first with `docker compose logs localstack`):
+
+| Log message | Cause | Fix |
+|-------------|-------|-----|
+| `export: '[...]' not a valid identifier` | An AWS profile header (e.g. `[957704842145_modernisation-platform-sandbox]`) was pasted into `local-dev-environment/.env` | Remove the `[...]` line. The `.env` file must contain only `KEY=VALUE` pairs and `#` comments. |
+| `AWS credentials not found` | Placeholder values not replaced in `local-dev-environment/.env` | Set real values for `AWS_MOD_PLATFORM_ACCESS_KEY_ID`, `AWS_MOD_PLATFORM_SECRET_ACCESS_KEY` and `AWS_MOD_PLATFORM_SESSION_TOKEN` (replacing the `MOD_AWS_*` placeholder values) from the Mod Platform console. |
+| `ExpiredTokenException` / `The security token included in the request is expired` | Mod Platform credentials have expired (they rotate daily) | Get fresh credentials from the Mod Platform console and update both `.env` files. |
+
+After fixing, do a full rebuild:
+
+```bash
+cd local-dev-environment
+docker compose down
+docker compose up -d --force-recreate
+```
+
+## `NoSuchBucket` when running the pipeline
+
+Symptom:
+- Pipeline error: `The specified bucket does not exist` for `local-kta-documents-bucket`.
+
+Likely cause:
+- LocalStack did not start properly, so the S3 bucket was never created by the init script. This is a downstream effect of the LocalStack healthcheck failing.
+
+Fix:
+- Resolve the LocalStack issue first (see "LocalStack container is unhealthy" above). Once `localstack-main` is healthy the bucket will exist and the pipeline will work.
+
+## `UnrecognizedClientException` / invalid security token during Textract
+
+Symptom:
+- A Textract call fails with `The security token included in the request is invalid`.
+
+Likely cause:
+- The `AWS_MOD_PLATFORM_*` values in the project root `.env` are expired or incorrect.
+
+Fix:
+- Refresh the credentials in the root `.env` from the Mod Platform console. These are the same values used in `local-dev-environment/.env` and can be copied across.
+
+## `.env` files silently break LocalStack
+
+Symptom:
+- LocalStack init fails to parse the `.env`, or credentials appear unset despite being present.
+
+Likely cause:
+- The `.env` contains something other than plain `KEY=VALUE` pairs (the init scripts source these files directly).
+
+Fix — both `.env` files (`local-dev-environment/.env` and the project root `.env`) must follow these rules:
+- Only `KEY=VALUE` pairs, one per line.
+- Comments start with `#`.
+- No AWS profile section headers such as `[profile-name]`.
+- No quotes around values (unless the value itself contains spaces).
+- No trailing comments on the same line as a value (the init scripts may not strip them correctly).
+
+Correct:
+
+```bash
+# Mod Platform credentials
+AWS_MOD_PLATFORM_ACCESS_KEY_ID=ASIAxxxxxxxxxx
+AWS_MOD_PLATFORM_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxx
+AWS_MOD_PLATFORM_SESSION_TOKEN=xxxxxxxxxxxxxxxx
+```
+
+Incorrect (will break LocalStack):
+
+```bash
+[957704842145_modernisation-platform-sandbox]
+aws_access_key_id=ASIAxxxxxxxxxx
+```
