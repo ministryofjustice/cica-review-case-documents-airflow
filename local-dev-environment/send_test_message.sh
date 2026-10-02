@@ -11,10 +11,9 @@
 # put test work on the local queue without hand-writing the JSON contract each time.
 #
 # The message body matches the contract enforced by
-# src/ingestion_pipeline/orchestration/message_parser.py:
-#   Required: correspondence_type, case_ref (^\d{2}-[78]\d{5}$), and a source
-#             location (a full source_file_s3_uri here).
-#   Optional: received_date.
+# src/ingestion_pipeline/orchestration/document_ingress.py:
+#   Required: correspondence_type, case_ref (^\d{2}-[78]\d{5}$), a source location
+#             (a full source_file_s3_uri here), and received_date (ISO-8601).
 #   Ignored:  source_doc_id, page_count (derived during ingestion).
 #
 # Usage (paths shown relative to the repository root):
@@ -29,7 +28,7 @@
 #   -c, --case-ref REF      Case reference         (default: 26-700001)
 #   -t, --type TYPE         Correspondence type    (default: "TC19 - ADDITIONAL INFO REQUEST")
 #   -f, --filename NAME     Source file name       (default: Case1_TC19_50_pages_brain_injury.pdf)
-#       --received-date DT  Optional received_date (ISO-8601). Omitted if unset.
+#       --received-date DT  received_date (ISO-8601). Defaults to the current UTC time.
 #       --body JSON         Send this raw JSON body verbatim (overrides all field options).
 #       --malformed         Send a deliberately invalid body ("not valid json") to test rejection.
 #   -h, --help              Show this help and exit.
@@ -46,7 +45,7 @@ BUCKET="${AWS_CICA_S3_SOURCE_DOCUMENT_ROOT_BUCKET:-local-kta-documents-bucket}"
 CASE_REF="26-700001"
 CORRESPONDENCE_TYPE="TC19 - ADDITIONAL INFO REQUEST"
 FILENAME="Case1_TC19_50_pages_brain_injury.pdf"
-RECEIVED_DATE=""
+RECEIVED_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 RAW_BODY=""
 MALFORMED=0
 
@@ -102,9 +101,8 @@ body = {
     "correspondence_type": os.environ["CORRESPONDENCE_TYPE"],
     "case_ref": os.environ["CASE_REF"],
     "source_file_s3_uri": os.environ["S3_URI"],
+    "received_date": os.environ["RECEIVED_DATE"],
 }
-if os.environ.get("RECEIVED_DATE"):
-    body["received_date"] = os.environ["RECEIVED_DATE"]
 print(json.dumps(body))
 '
   )

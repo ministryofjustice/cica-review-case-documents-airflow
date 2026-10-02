@@ -18,7 +18,7 @@ Thread-based concurrency via `concurrent.futures.ThreadPoolExecutor`. Justificat
 
 - Textract processing (`textract/textract_processor.py`) is a synchronous polling loop
   that blocks in `time.sleep` for up to `TEXTRACT_API_JOB_TIMEOUT_SECONDS` (default
-  600s) per document.
+  2400s) per document.
 - S3 download/upload, per-chunk Bedrock `invoke_model`, and OpenSearch bulk/delete are
   all blocking network IO.
 - The only meaningfully CPU-bound step (PDF→image via `pdf2image`/poppler) runs largely

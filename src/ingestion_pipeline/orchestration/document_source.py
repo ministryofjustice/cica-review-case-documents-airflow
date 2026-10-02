@@ -10,20 +10,23 @@ The source is SQS-backed: an upstream system enqueues a message per document
 processes each message, and deletes successfully handled messages from the queue.
 :class:`SqsDocumentSource` implements this against a real boto3 SQS client: it
 resolves the queue URL, long-polls for messages, parses each body into a
-:class:`DocumentJob`, permanently discards malformed messages (by deleting them),
-and deletes messages once their document has been processed successfully. Note that
-deleting a malformed message does not send it to the DLQ; only processing failures
-(valid messages left undeleted) are redriven to the DLQ by SQS.
+:class:`DocumentJob`, leaves malformed messages on the queue so SQS redrives them to
+the DLQ, and deletes messages once their document has been processed successfully.
+Both failure classes therefore reach the DLQ via the same mechanism: any message left
+undeleted (whether it failed to parse or failed processing) is redelivered and, after
+``SQS_MAX_RECEIVE_COUNT`` receives, redriven to the DLQ for inspection and redrive.
 """
 
 import datetime
+import enum
 import logging
 from typing import List, Optional, Protocol
 
 from botocore.exceptions import ClientError, ConnectionError, EndpointConnectionError, HTTPClientError
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from ingestion_pipeline.config import settings
+from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +53,51 @@ _TRANSIENT_SQS_ERROR_CODES = frozenset(
         "KMS.ThrottlingException",
     }
 )
+
+# Upper bound on the raw message body included in the malformed-message log. The body
+# is logged to reveal what the upstream system sent so the failure is diagnosable
+# immediately (without waiting for the message to reach the DLQ). It is truncated to
+# keep a single oversized or malicious payload from flooding the logs.
+_MAX_LOGGED_BODY_CHARS = 2000
+
+
+def _truncate_body_for_log(body: str) -> str:
+    """Return the message body clipped and escaped for safe logging.
+
+    The body is producer-controlled, so control characters (e.g. newlines) are
+    escaped with a ``repr``-style encoding before logging. This prevents a
+    malicious or malformed payload from forging additional log lines or
+    corrupting downstream log parsing.
+
+    Args:
+        body (str): The raw SQS message body.
+
+    Returns:
+        str: The escaped body if it is within :data:`_MAX_LOGGED_BODY_CHARS`,
+            otherwise the escaped leading slice followed by a marker noting how many
+            raw characters were omitted.
+    """
+    if len(body) <= _MAX_LOGGED_BODY_CHARS:
+        return _escape_control_chars(body)
+    omitted = len(body) - _MAX_LOGGED_BODY_CHARS
+    escaped = _escape_control_chars(body[:_MAX_LOGGED_BODY_CHARS])
+    return f"{escaped}... [truncated {omitted} more chars]"
+
+
+def _escape_control_chars(text: str) -> str:
+    """Escape control characters so they cannot forge or corrupt log lines.
+
+    Uses a ``repr``-style encoding (via ``unicode_escape``) so newlines, carriage
+    returns, tabs and other control characters are rendered as visible escape
+    sequences rather than affecting the structure of the log output.
+
+    Args:
+        text (str): The text to escape.
+
+    Returns:
+        str: The text with control characters replaced by escape sequences.
+    """
+    return text.encode("unicode_escape").decode("ascii")
 
 
 def _is_transient_receive_error(exc: Exception) -> bool:
@@ -80,12 +128,16 @@ def _is_transient_receive_error(exc: Exception) -> bool:
 
 
 class DocumentJob(BaseModel):
-    """A single unit of work: one document to ingest.
+    """A single, self-describing unit of work: one document to ingest.
 
-    Carries the natural-key metadata needed to build a ``DocumentMetadata`` and
-    generate the deterministic ``source_doc_id``. When backed by a real queue,
-    ``receipt_handle`` identifies the originating message so it can be deleted
-    after successful processing.
+    A job is complete on construction: it carries the producer-supplied natural-key
+    metadata (``source_file_s3_uri``, ``correspondence_type``, ``case_ref``) and
+    exposes every value derived from it. ``source_file_name`` and the deterministic
+    ``source_doc_id`` are computed fields, not constructor inputs, so they can never
+    disagree with the natural key they are derived from and are resolved identically
+    everywhere the job travels (batch-level deduplication and per-document
+    processing). When backed by a real queue, ``receipt_handle`` identifies the
+    originating message so it can be deleted after successful processing.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -99,10 +151,79 @@ class DocumentJob(BaseModel):
     # Opaque handle used to acknowledge/delete the source message (SQS receipt handle).
     receipt_handle: Optional[str] = None
 
+    @computed_field
     @property
     def source_file_name(self) -> str:
         """Return the file name portion of the S3 URI."""
         return self.source_file_s3_uri.rstrip("/").split("/")[-1]
+
+    @computed_field
+    @property
+    def source_doc_id(self) -> str:
+        """Return the deterministic document identifier derived from the natural key.
+
+        Computed from ``(source_file_name, correspondence_type, case_ref)`` via
+        :class:`DocumentIdentifier`, so the same batch and per-document code paths
+        always resolve the same id for the same document. Because it is derived, a
+        ``model_copy`` that attaches a ``receipt_handle`` leaves it unchanged.
+
+        Returns:
+            str: The deterministic Version 5 UUID for this document.
+        """
+        return DocumentIdentifier(
+            source_file_name=self.source_file_name,
+            correspondence_type=self.correspondence_type,
+            case_ref=self.case_ref,
+        ).generate_uuid()
+
+
+class FetchOutcome(str, enum.Enum):
+    """Why a ``fetch_batch`` poll produced the jobs (if any) it did.
+
+    Distinguishes the two ways a poll can carry no jobs so a long-lived caller can
+    react differently: a genuine empty receive (the queue had nothing right now) versus
+    a swallowed transient receive error (SQS was momentarily throttling/unreachable).
+    The two are otherwise identical (no jobs) but call for different
+    pacing: a ``RECEIVED`` or ``EMPTY`` poll already blocked for the long-poll wait,
+    whereas a ``TRANSIENT_ERROR`` poll returns immediately (botocore fails fast once its
+    own retries are exhausted) and so the caller should back off before retrying.
+
+    Attributes:
+        RECEIVED: The poll returned at least one valid job.
+        EMPTY: A genuine empty long-poll receive (no valid jobs; a poll that saw only
+            malformed messages is also EMPTY because it produced no work).
+        TRANSIENT_ERROR: A transient receive error was swallowed and reported as an
+            empty poll; the caller should back off and retry.
+    """
+
+    RECEIVED = "received"
+    EMPTY = "empty"
+    TRANSIENT_ERROR = "transient_error"
+
+
+class FetchResult(BaseModel):
+    """The outcome of a single ``fetch_batch`` poll: valid jobs plus malformed count.
+
+    Carries the jobs parsed from one long-poll receive alongside the number of
+    malformed messages seen during that same poll, so callers can account for every
+    message received (valid or not). ``malformed_received`` equals the number of
+    messages received minus the number of valid jobs produced. Note that malformed
+    messages are left on the queue (not deleted) to be redriven to the DLQ, so the same
+    malformed message is counted again on each poll until SQS redrives it; this counter
+    therefore reflects malformed *receives*, not distinct messages. Both no-job
+    outcomes carry no jobs; an ``EMPTY`` outcome may carry malformed receives (a poll
+    that saw only malformed messages produced no work but still has a non-zero
+    ``malformed_received``), while a ``TRANSIENT_ERROR`` outcome always carries a
+    ``malformed_received`` count of 0. The ``outcome`` field distinguishes those two
+    no-job cases from one another and from a populated poll. The model is frozen so a
+    fetch result cannot be mutated after construction.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    jobs: list[DocumentJob] = Field(default_factory=list)
+    malformed_received: int = Field(default=0, ge=0)
+    outcome: FetchOutcome = FetchOutcome.EMPTY
 
 
 class DocumentSource(Protocol):
@@ -113,8 +234,8 @@ class DocumentSource(Protocol):
     :meth:`acknowledge` after a job has been processed successfully.
     """
 
-    def fetch_batch(self) -> List[DocumentJob]:
-        """Return the next batch of documents to process (possibly empty)."""
+    def fetch_batch(self) -> FetchResult:
+        """Return the next batch of documents plus the malformed-message count."""
         ...
 
     def acknowledge(self, job: DocumentJob) -> None:
@@ -134,11 +255,12 @@ class SqsDocumentSource:
     message ``ReceiptHandle``), and manages the message lifecycle:
 
     * Messages that parse and validate become jobs for the runner to process.
-    * Malformed messages are logged and deleted immediately so they neither block the
-      queue nor return after their visibility timeout. Deleting removes them for good:
-      it does NOT route them to the DLQ (SQS redrive only fires after repeated receives,
-      which cannot happen once a message is deleted), so a malformed message is
-      permanently discarded and the log line is its only record.
+    * Malformed messages are logged and left on the queue (not deleted) so SQS
+      redelivers them and, after the configured max receive count, redrives them to the
+      DLQ for inspection and possible redrive. They are not deleted because a
+      "malformed" classification can be a consumer-side problem (a producer schema
+      change this consumer version has not caught up to, or a consumer bug) rather than
+      a permanently bad payload; deleting would silently discard a document request.
     * :meth:`acknowledge` deletes a message after its document was processed
       successfully. Jobs that fail processing are left undeleted so SQS can redrive
       them to the DLQ after the configured max receive count.
@@ -209,12 +331,12 @@ class SqsDocumentSource:
             raise QueueResolutionError(f"No QueueUrl returned for queue '{self.queue_name}'")
         return queue_url
 
-    def fetch_batch(self) -> List[DocumentJob]:
-        """Receive one batch of messages and return the valid jobs.
+    def fetch_batch(self) -> FetchResult:
+        """Receive one batch of messages and return the valid jobs and malformed count.
 
         Performs a single long-poll receive, parses each message into a
-        :class:`DocumentJob`, and deletes malformed messages (permanently discarding
-        them; deletion does not route them to the DLQ) without blocking the queue. A
+        :class:`DocumentJob`, and leaves malformed messages on the queue so SQS
+        redelivers them and ultimately redrives them to the DLQ. A
         *transient* receive error
         (throttling, temporary service error, connection blip) is logged and treated
         as an empty batch so the caller can retry; a permanent or unknown receive
@@ -226,11 +348,18 @@ class SqsDocumentSource:
                 (e.g. AccessDenied, invalid endpoint, malformed request).
 
         Returns:
-            List[DocumentJob]: The valid jobs from this receive (possibly empty).
+            FetchResult: The valid jobs from this receive (possibly empty) together
+                with the number of malformed messages seen during this poll and an
+                ``outcome`` tag. A populated poll is ``RECEIVED``; a genuine empty
+                receive (including a poll that saw only malformed messages) is
+                ``EMPTY``; a swallowed transient receive error is ``TRANSIENT_ERROR``.
+                Both no-job outcomes carry no jobs; an ``EMPTY`` outcome may carry
+                malformed receives, while a ``TRANSIENT_ERROR`` outcome always carries a
+                ``malformed_received`` count of 0.
         """
-        # Imported here to avoid a module-level import cycle (message_parser imports
+        # Imported here to avoid a module-level import cycle (document_ingress imports
         # DocumentJob from this module).
-        from ingestion_pipeline.orchestration.message_parser import MalformedMessageError, parse_message
+        from ingestion_pipeline.orchestration.document_ingress import MalformedMessageError, parse_message
 
         try:
             response = self.sqs_client.receive_message(
@@ -251,7 +380,10 @@ class SqsDocumentSource:
                     self.queue_name,
                     exc,
                 )
-                return []
+                # Tagged TRANSIENT_ERROR (not EMPTY) so a long-lived caller can back off
+                # before retrying: this path returns immediately, whereas a genuine empty
+                # receive already spent the long-poll wait.
+                return FetchResult(jobs=[], malformed_received=0, outcome=FetchOutcome.TRANSIENT_ERROR)
             logger.critical(
                 "Permanent/unknown error receiving messages from queue '%s'; failing the run: %s",
                 self.queue_name,
@@ -265,16 +397,26 @@ class SqsDocumentSource:
         for message in messages:
             message_id = message.get("MessageId")
             receipt_handle = message.get("ReceiptHandle")
+            body = message.get("Body", "")
             try:
-                job = parse_message(message.get("Body", ""), message_id=message_id)
+                job = parse_message(body, message_id=message_id)
             except MalformedMessageError as exc:
+                # The malformed message is left on the queue (not deleted) so SQS
+                # redelivers it and, after SQS_MAX_RECEIVE_COUNT receives, redrives it
+                # to the DLQ for inspection. We do NOT delete here: deletion would
+                # permanently discard the message, whereas a "malformed" classification
+                # can be transient at the consumer level (a producer schema change this
+                # consumer version has not caught up to, or a consumer bug), in which
+                # case the DLQ message can be redriven once the consumer is fixed. The
+                # raw body is still logged (truncated) so the failure is diagnosable
+                # immediately without waiting for the DLQ.
                 logger.error(
-                    "Discarding malformed message (message_id=%s, field=%s): %s",
+                    "Malformed message left for DLQ redrive (message_id=%s, field=%s): %s | raw body: %s",
                     message_id,
                     exc.field,
-                    exc,
+                    _truncate_body_for_log(str(exc)),
+                    _truncate_body_for_log(body),
                 )
-                self._delete_message(receipt_handle, message_id=message_id)
                 continue
 
             jobs.append(job.model_copy(update={"receipt_handle": receipt_handle}))
@@ -284,7 +426,12 @@ class SqsDocumentSource:
             len(messages),
             len(jobs),
         )
-        return jobs
+        malformed_received = len(messages) - len(jobs)
+        # RECEIVED when this poll produced work, otherwise a genuine EMPTY receive (a
+        # poll that saw only malformed messages still had no valid jobs to hand back, so
+        # it is EMPTY, not TRANSIENT_ERROR).
+        outcome = FetchOutcome.RECEIVED if jobs else FetchOutcome.EMPTY
+        return FetchResult(jobs=jobs, malformed_received=malformed_received, outcome=outcome)
 
     def acknowledge(self, job: DocumentJob) -> None:
         """Delete a successfully processed job's message from the queue.
@@ -317,6 +464,22 @@ class SqsDocumentSource:
         try:
             self.sqs_client.delete_message(QueueUrl=self.queue_url, ReceiptHandle=receipt_handle)
         except Exception as exc:
+            # The failure is logged and swallowed so one failed delete cannot abort the
+            # batch. The tradeoff: the message is NOT removed, so after its visibility
+            # timeout SQS redelivers it and the document is processed AGAIN. Processing
+            # is idempotent on final state (deterministic source_doc_id -> same
+            # OpenSearch doc ids and the same {case_ref}/{source_doc_id}/pages/ S3
+            # prefix), so no duplicate/corrupt data results. But a full reprocess is NOT
+            # free: it re-runs a billed Textract OCR job and billed Bedrock embedding
+            # calls, re-uploads page images (new object versions on a versioned bucket),
+            # and re-emits any OpenSearch/S3 "object created" events that downstream
+            # systems may react to. A *persistently* failing delete is worse: each
+            # redelivery increments the receive count, so a successfully-processed
+            # document can eventually be redriven to the DLQ after SQS_MAX_RECEIVE_COUNT.
+            # The robust fix is to avoid the reprocess when only the delete failed:
+            # retry delete_message here, and/or add a per-message visibility heartbeat
+            # (ChangeMessageVisibility) so a slow-but-healthy message is not redelivered.
+            # That belongs with the concurrency/dispatch work (SQS stories 5/7).
             logger.error(
                 "Failed to delete message (message_id=%s, doc=%s): %s",
                 message_id,

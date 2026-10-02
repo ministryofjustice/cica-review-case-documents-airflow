@@ -10,15 +10,14 @@ import datetime
 
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
 from ingestion_pipeline.orchestration.document_source import DocumentJob
-from ingestion_pipeline.uuid_generators.document_uuid import DocumentIdentifier
 
 
 def compute_source_doc_id(job: DocumentJob) -> str:
-    """Compute the deterministic source_doc_id for a job.
+    """Return the deterministic source_doc_id for a job.
 
-    Single source of truth for the natural-key -> source_doc_id computation, shared
-    by both batch-level deduplication and per-document processing so they resolve
-    the identifier identically.
+    Thin accessor kept for backwards compatibility. The identifier now lives on the
+    job itself as the computed :attr:`DocumentJob.source_doc_id`, so this simply
+    surfaces that value; callers may read ``job.source_doc_id`` directly.
 
     Args:
         job (DocumentJob): The document work item.
@@ -27,11 +26,7 @@ def compute_source_doc_id(job: DocumentJob) -> str:
         str: The deterministic Version 5 UUID derived from the job's natural key
             (source_file_name, correspondence_type, case_ref).
     """
-    return DocumentIdentifier(
-        source_file_name=job.source_file_name,
-        correspondence_type=job.correspondence_type,
-        case_ref=job.case_ref,
-    ).generate_uuid()
+    return job.source_doc_id
 
 
 def build_document_metadata(job: DocumentJob, source_doc_id: str) -> DocumentMetadata:
@@ -39,7 +34,9 @@ def build_document_metadata(job: DocumentJob, source_doc_id: str) -> DocumentMet
 
     Args:
         job (DocumentJob): The document work item.
-        source_doc_id (str): The deterministic document UUID.
+        source_doc_id (str): The deterministic document UUID (equal to
+            ``job.source_doc_id``; accepted as an argument so callers that already
+            hold the id do not recompute it).
 
     Returns:
         DocumentMetadata: Metadata ready to feed into the pipeline.
