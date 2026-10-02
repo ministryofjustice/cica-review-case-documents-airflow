@@ -65,37 +65,8 @@ KEYS=""
 KEYS_FILE=""
 DRY_RUN=0
 
-# Built-in default set of 30 documents. The exact filenames and case order below are
-# intentional (note the mixed casing, e.g. "case30_..." vs "Case29_...", and
-# "Redacted_white.pdf" vs "Redacted_White.pdf"); preserve them verbatim.
-DEFAULT_KEYS="26-700030/case30_TC19_Redacted_White.pdf
-26-700029/Case29_TC19_Redacted_White.pdf
-26-700028/Case28_TC19_Redacted_White.pdf
-26-700027/Case27_TC19_Redacted_White.pdf
-26-700026/Case26_TC19_Redacted_White.pdf
-26-700025/Case25_TC19_Redacted_White.pdf
-26-700024/Case24_TC19_Redacted_White.pdf
-26-700023/Case23_TC19_Redacted_White.pdf
-26-700022/Case22_TC19_Redacted_White.pdf
-26-700021/Case21_TC19_Redacted_White.pdf
-26-700020/Case20_TC19_Redacted_White.pdf
-26-700019/Case19_TC19_Redacted_White.pdf
-26-700018/Case18_TC19_Redacted_White.pdf
-26-700017/Case17_TC19_Redacted_White.pdf
-26-700016/Case16_TC19_Redacted_White.pdf
-26-700015/Case15_TC19_Redacted_White.pdf
-26-700014/Case14_TC19_Redacted_white.pdf
-26-700013/Case13_TC19_Redacted_White.pdf
-26-700012/Case12_TC19_Redacted_White.pdf
-26-700011/Case11_TC19_Redacted_White.pdf
-26-700010/Case10_TC19_Redacted_White.pdf
-26-700009/Case9_TC19_Redacted_White.pdf
-26-700008/Case8_TC19_Redacted_White.pdf
-26-700007/Case7_TC19_Redacted_White.pdf
-26-700006/Case6_TC19_Redacted_White.pdf
-26-700005/Case5_TC19_with_injury_photos_Redacted_White.pdf
-26-700004/Case4_TC19_with_handwriting_Redacted_White.pdf
-26-700003/Case3_TC19_with_handwriting_Redacted_white.pdf
+# Built-in example set of 3 documents. 
+DEFAULT_KEYS="26-700003/Case3_TC19_with_handwriting_Redacted_white.pdf
 26-700002/Case2_TC19_with_handwriting_Redacted_white.pdf
 26-700001/Case1_TC19_50_pages_brain_injury.pdf"
 
