@@ -122,7 +122,15 @@ class Settings(BaseSettings):  # type: ignore
     # TODO This should be a UUID that is generated, is stored as a secret? and is kept constant
     SYSTEM_UUID_NAMESPACE: str = "f0e1c2d3-4567-89ab-cdef-fedcba987654"
     TEXTRACT_API_POLL_INTERVAL_SECONDS: int = 5
-    TEXTRACT_API_JOB_TIMEOUT_SECONDS: int = 600
+    # Client-side polling deadline for a single Textract async job (seconds). This is not
+    # an AWS-enforced limit; it bounds how long _poll_for_job_completion waits for a
+    # terminal JobStatus before raising TimeoutError (retryable). Sized off observed
+    # wall-clock: a 1,672-page merged PDF completed in ~18 min (~0.65s/page, since
+    # Textract parallelises server-side). The async API permits up to 3,000 pages, so
+    # 2400s (40 min) covers roughly double the largest observed job while staying well
+    # under the SQS visibility cap. Raising this forces SQS_VISIBILITY_TIMEOUT_SECONDS up
+    # too (see the visibility validator below).
+    TEXTRACT_API_JOB_TIMEOUT_SECONDS: int = 2400
 
     # Leaving this here for reference
     # In case we want to use these buckets
@@ -155,6 +163,19 @@ class Settings(BaseSettings):  # type: ignore
     # concurrency story (parallel batch dispatch) is picked up.
     MAX_CONCURRENT_DOCUMENTS: int = 4
 
+    # -- Poll loop --
+    # The runner is a long-lived worker (a Kubernetes Deployment): it polls the queue
+    # forever, processing batches as they arrive and idling on empty long-polls. There is
+    # no per-run batch ceiling; the process runs until it is signalled to stop or a
+    # permanent error crashes it (so Kubernetes restarts the pod and the fault is visible).
+    #
+    # Backoff applied after a *transient* receive error (throttling, temporary service
+    # error, connection blip) before the next poll. A genuine empty long-poll already
+    # blocked for SQS_POLL_WAIT_TIME_SECONDS, but a transient error returns immediately
+    # (botocore fails fast once its own retries are exhausted), so without this sleep the
+    # loop would spin against a degraded queue. Seconds.
+    SQS_TRANSIENT_ERROR_BACKOFF_SECONDS: float = 5.0
+
     # -- SQS Document Queue --
     # The SQS queue from which document-processing requests are consumed. Messages are
     # produced by an external system; the consumer reads them, processes each document,
@@ -184,11 +205,16 @@ class Settings(BaseSettings):  # type: ignore
     # absorb pool queueing (batch size / worker count "waves") plus page processing,
     # embedding and indexing. A model validator enforces the lower bound.
     #
+    # With the current defaults the lower bound is
+    # ceil(ceil(4 / 4) * 2400 * 1.5) = 3600, so 3600 sits exactly at that bound (Textract
+    # timeout * overhead factor, one wave). Increase this if you raise the Textract
+    # timeout, batch size, or overhead factor.
+    #
     # NOTE: a static timeout is a stop-gap. The robust fix is a per-message visibility
     # heartbeat (periodic ChangeMessageVisibility while a job is in flight), which
     # belongs with the concurrency/dispatch work (SQS stories 5/7) and is not in this
     # change.
-    SQS_VISIBILITY_TIMEOUT_SECONDS: int = 1800
+    SQS_VISIBILITY_TIMEOUT_SECONDS: int = 3600
     # Multiplier applied to TEXTRACT_API_JOB_TIMEOUT_SECONDS when computing the minimum
     # acceptable visibility timeout, to account for a document's non-Textract processing
     # (chunking, page-image upload, embedding, two indexing calls) that also runs before
@@ -198,6 +224,18 @@ class Settings(BaseSettings):  # type: ignore
     # modelled anywhere, which is why a visibility heartbeat (stories 5/7) is the real
     # fix. Must be >= 1.0 (1.0 = no headroom, Textract-only).
     SQS_PROCESSING_OVERHEAD_FACTOR: float = 1.5
+
+    # -- SQS DLQ / redrive --
+    # Number of times a message may be received without being deleted before SQS redrives it
+    # to the DLQ. Mirrors the RedrivePolicy maxReceiveCount used by the init script / IaC.
+    SQS_MAX_RECEIVE_COUNT: int = 3
+
+    # The DLQ queue name. Empty by default; the derived value "<SQS_DOCUMENT_QUEUE>-dlq" is
+    # filled in by a model validator so it always tracks the main queue name unless overridden.
+    # The derived name must stay within the 80-character SQS limit, so SQS_DOCUMENT_QUEUE must be
+    # at most 76 characters when the DLQ name is derived (append "-dlq"); set this explicitly to
+    # override. See derive_sqs_document_dlq.
+    SQS_DOCUMENT_DLQ: str = ""
 
     DEBUG_PAGE_NUMBERS: set[int] = {1}
 
@@ -232,7 +270,7 @@ class Settings(BaseSettings):  # type: ignore
     )
     @classmethod
     def validate_positive_int(cls, v: int) -> int:
-        """Ensure chunk size values are positive integers.
+        """Ensure the setting is a positive integer.
 
         Args:
             v (int): The value to validate.
@@ -412,6 +450,43 @@ class Settings(BaseSettings):  # type: ignore
             raise ValueError("SQS_VISIBILITY_TIMEOUT_SECONDS must be between 1 and 43200 inclusive")
         return v
 
+    @field_validator("SQS_MAX_RECEIVE_COUNT")
+    @classmethod
+    def validate_sqs_max_receive_count(cls, v: int) -> int:
+        """Ensure the DLQ max receive count is at least 1 so redrive can ever trigger.
+
+        Args:
+            v (int): The configured maximum receive count before redrive to the DLQ.
+
+        Returns:
+            int: The validated maximum receive count.
+
+        Raises:
+            ValueError: If the value is less than 1.
+        """
+        if v < 1:
+            raise ValueError("SQS_MAX_RECEIVE_COUNT must be >= 1")
+        return v
+
+    @field_validator("SQS_TRANSIENT_ERROR_BACKOFF_SECONDS")
+    @classmethod
+    def validate_transient_error_backoff(cls, v: float) -> float:
+        """Ensure the transient-error backoff is non-negative.
+
+        Args:
+            v (float): The configured backoff, in seconds, applied after a transient
+                receive error before the next poll.
+
+        Returns:
+            float: The validated backoff in seconds.
+
+        Raises:
+            ValueError: If the value is negative.
+        """
+        if not math.isfinite(v) or v < 0:
+            raise ValueError("SQS_TRANSIENT_ERROR_BACKOFF_SECONDS must be finite and >= 0")
+        return v
+
     @model_validator(mode="after")
     def validate_timeout_greater_than_poll(self) -> "Settings":
         """Ensure timeout is greater than poll interval.
@@ -497,6 +572,45 @@ class Settings(BaseSettings):  # type: ignore
                 f"WORDSTREAM_CHUNKER_MIN_WORDS ({self.WORDSTREAM_CHUNKER_MIN_WORDS}) must be less than "
                 f"WORDSTREAM_CHUNKER_MAX_WORDS ({self.WORDSTREAM_CHUNKER_MAX_WORDS})"
             )
+        return self
+
+    @model_validator(mode="after")
+    def derive_sqs_document_dlq(self) -> "Settings":
+        """Default the DLQ name to ``<SQS_DOCUMENT_QUEUE>-dlq`` when left unset.
+
+        A field default cannot reference another field, so the derived name is filled in
+        here after ``SQS_DOCUMENT_QUEUE`` has been validated and stripped. An explicit
+        ``SQS_DOCUMENT_DLQ`` (env/.env) is stripped and preserved.
+
+        Both the derived and the explicit name must satisfy the SQS naming rules (1-80
+        characters of letters, digits, hyphens or underscores). ``SQS_DOCUMENT_QUEUE`` is
+        itself allowed to be up to 80 characters, but appending ``-dlq`` to a long name
+        would overflow the 80-character SQS limit; such a derived name is rejected here so
+        the misconfiguration fails at startup rather than when the LocalStack init script
+        or IaC later tries to create the DLQ.
+
+        Returns:
+            Settings: The validated settings object.
+
+        Raises:
+            ValueError: If an explicit DLQ name is invalid, or if the name derived from
+                ``SQS_DOCUMENT_QUEUE`` exceeds the SQS length limit.
+        """
+        explicit = self.SQS_DOCUMENT_DLQ.strip()
+        if explicit:
+            if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", explicit):
+                raise ValueError("SQS_DOCUMENT_DLQ must be 1-80 characters of letters, digits, hyphens or underscores")
+            self.SQS_DOCUMENT_DLQ = explicit
+            return self
+
+        derived = f"{self.SQS_DOCUMENT_QUEUE}-dlq"
+        if len(derived) > 80:
+            raise ValueError(
+                f"The DLQ name derived from SQS_DOCUMENT_QUEUE ('{derived}', {len(derived)} characters) exceeds the "
+                "80-character SQS limit. Shorten SQS_DOCUMENT_QUEUE to at most 76 characters or set SQS_DOCUMENT_DLQ "
+                "explicitly to a name of 80 characters or fewer."
+            )
+        self.SQS_DOCUMENT_DLQ = derived
         return self
 
 

@@ -156,9 +156,11 @@ def test_run_batch_empty_returns_no_results():
     pipeline = mock.Mock()
     source = mock.Mock()
 
-    results = run_batch([], pipeline, source)
+    result = run_batch([], pipeline, source, batch_number=1)
 
-    assert results == []
+    assert result.results == []
+    assert result.summary.jobs_in_batch == 0
+    assert result.summary.batch_number == 1
     pipeline.process_document.assert_not_called()
     source.acknowledge.assert_not_called()
 
@@ -171,7 +173,7 @@ def test_run_batch_processes_all_and_acknowledges_only_successes():
     good = _make_job()
     bad = _make_job(s3_uri="s3://test-kta-documents-bucket/bad/file.pdf", case_ref="bad")
 
-    results = run_batch([good, bad], pipeline, source)
+    results = run_batch([good, bad], pipeline, source, batch_number=1).results
 
     assert len(results) == 2
     successes = [r for r in results if r.success]
@@ -209,7 +211,7 @@ def test_run_batch_caps_workers_at_max_concurrent_documents(patch_settings):
         "ingestion_pipeline.orchestration.batch_processing.batch_runner.ThreadPoolExecutor",
         side_effect=_recording_executor,
     ):
-        results = run_batch(jobs, pipeline, source)
+        results = run_batch(jobs, pipeline, source, batch_number=1).results
 
     assert len(results) == 10
     # min(3, 10) == 3: capped at the limit, not the job count.
@@ -236,7 +238,7 @@ def test_run_batch_caps_workers_at_job_count_when_fewer_jobs(patch_settings):
         "ingestion_pipeline.orchestration.batch_processing.batch_runner.ThreadPoolExecutor",
         side_effect=_recording_executor,
     ):
-        run_batch(jobs, pipeline, source)
+        run_batch(jobs, pipeline, source, batch_number=1)
 
     # min(8, 2) == 2: capped at the job count.
     assert captured_max_workers == [2]
@@ -277,7 +279,7 @@ def test_run_batch_executes_documents_concurrently(patch_settings):
 
     jobs = [_make_job(s3_uri=f"s3://test-kta-documents-bucket/26-711111/doc{i}.pdf") for i in range(limit)]
 
-    results = run_batch(jobs, pipeline, source)
+    results = run_batch(jobs, pipeline, source, batch_number=1).results
 
     assert len(results) == limit
     assert all(r.success for r in results)
@@ -299,7 +301,7 @@ def test_run_batch_does_not_acknowledge_pipeline_failure(exception):
 
     job = _make_job()
 
-    results = run_batch([job], pipeline, source)
+    results = run_batch([job], pipeline, source, batch_number=1).results
 
     assert len(results) == 1
     assert results[0].success is False
@@ -468,7 +470,7 @@ def test_explore_duplicate_key_single_invocation():
     source_doc_id = _expected_source_doc_id(job_a)
     assert _expected_source_doc_id(job_b) == source_doc_id  # confirms the bug condition
 
-    run_batch([job_a, job_b], pipeline, source)
+    run_batch([job_a, job_b], pipeline, source, batch_number=1)
 
     counts = pipeline.invocation_counts()
     assert counts[source_doc_id] <= 1, (
@@ -492,7 +494,7 @@ def test_explore_duplicate_key_no_concurrent_overlap():
     job_b = _make_dup_job()
     source_doc_id = _expected_source_doc_id(job_a)
 
-    run_batch([job_a, job_b], pipeline, source)
+    run_batch([job_a, job_b], pipeline, source, batch_number=1)
 
     assert not pipeline.observed_concurrent_collision, (
         f"two units were inside process_document concurrently for source_doc_id {source_doc_id}"
@@ -519,7 +521,7 @@ def test_explore_duplicate_key_cleanup_isolation_on_failure():
     pipeline = _RecordingPipeline(sleep_seconds=0.3, fail_source_doc_ids={source_doc_id})
     source = _RecordingSource()
 
-    run_batch([job_a, job_b], pipeline, source)
+    run_batch([job_a, job_b], pipeline, source, batch_number=1)
 
     counts = pipeline.invocation_counts()
     assert counts[source_doc_id] <= 1, (
@@ -546,7 +548,7 @@ def test_explore_duplicate_key_both_jobs_acknowledged_on_success():
     job_a = _make_dup_job()
     job_b = _make_dup_job()
 
-    run_batch([job_a, job_b], pipeline, source)
+    run_batch([job_a, job_b], pipeline, source, batch_number=1)
 
     assert _acknowledgement_outcome_defined(job_a, source, owner_succeeded=True), (
         "job_a did not reach a defined acknowledgement outcome on success"
@@ -584,7 +586,7 @@ def test_explore_property_duplicate_key_repeated_n_times(n, case_ref, file_name)
     pipeline = _RecordingPipeline(sleep_seconds=0.05)
     source = _RecordingSource()
 
-    run_batch(jobs, pipeline, source)
+    run_batch(jobs, pipeline, source, batch_number=1)
 
     counts = pipeline.invocation_counts()
     assert counts[source_doc_id] <= 1, (
@@ -683,7 +685,7 @@ def test_preserve_distinct_key_max_workers(patch_settings, size):
         "ingestion_pipeline.orchestration.batch_processing.batch_runner.ThreadPoolExecutor",
         side_effect=_recording_executor,
     ):
-        results = run_batch(jobs, pipeline, source)
+        results = run_batch(jobs, pipeline, source, batch_number=1).results
 
     assert len(results) == size
     assert captured_max_workers == [min(4, size)]
@@ -707,7 +709,7 @@ def test_preserve_distinct_key_success_acknowledged_once(patch_settings, size):
     pipeline.process_document.return_value = None
     source = _RecordingSource()
 
-    results = run_batch(jobs, pipeline, source)
+    results = run_batch(jobs, pipeline, source, batch_number=1).results
 
     assert len(results) == size
     assert all(r.success for r in results)
@@ -741,7 +743,7 @@ def test_preserve_distinct_key_failure_unacknowledged_and_classified(patch_setti
     pipeline = _RecordingPipeline(fail_source_doc_ids={failing_source_doc_id})
     source = _RecordingSource()
 
-    results = run_batch(jobs, pipeline, source)
+    results = run_batch(jobs, pipeline, source, batch_number=1).results
 
     assert len(results) == size
 
@@ -779,7 +781,7 @@ def test_preserve_distinct_key_one_result_per_job_with_stable_ids(patch_settings
     pipeline.process_document.return_value = None
     source = _RecordingSource()
 
-    results = run_batch(jobs, pipeline, source)
+    results = run_batch(jobs, pipeline, source, batch_number=1).results
 
     # Exactly one result per job.
     assert len(results) == size
@@ -805,7 +807,7 @@ def test_preserve_empty_batch_returns_empty_list():
     pipeline = mock.Mock()
     source = _RecordingSource()
 
-    results = run_batch([], pipeline, source)
+    results = run_batch([], pipeline, source, batch_number=1).results
 
     assert results == []
     pipeline.process_document.assert_not_called()
@@ -834,7 +836,7 @@ def test_preserve_distinct_case_refs_success_acknowledged_once(patch_settings, c
     pipeline.process_document.return_value = None
     source = _RecordingSource()
 
-    results = run_batch(jobs, pipeline, source)
+    results = run_batch(jobs, pipeline, source, batch_number=1).results
 
     assert len(results) == len(jobs)
     assert all(r.success for r in results)
@@ -932,7 +934,7 @@ def test_run_batch_duplicate_key_submits_one_owner_per_source_doc_id():
     jobs = [_make_dup_job() for _ in range(3)]
     source_doc_id = _expected_source_doc_id(jobs[0])
 
-    results = run_batch(jobs, pipeline, source)
+    results = run_batch(jobs, pipeline, source, batch_number=1).results
 
     assert pipeline.invocation_counts()[source_doc_id] == 1
     assert len(results) == 1
@@ -950,7 +952,7 @@ def test_run_batch_duplicate_key_acknowledges_all_on_owner_success():
     source = _RecordingSource()
     jobs = [_make_dup_job() for _ in range(3)]
 
-    run_batch(jobs, pipeline, source)
+    run_batch(jobs, pipeline, source, batch_number=1)
 
     acked_ids = Counter(id(job) for job in source.acknowledged)
     # Every input job (owner + duplicates) acknowledged exactly once.
@@ -970,7 +972,7 @@ def test_run_batch_duplicate_key_leaves_all_unacknowledged_on_owner_failure():
     pipeline = _RecordingPipeline(fail_source_doc_ids={source_doc_id})
     source = _RecordingSource()
 
-    results = run_batch(jobs, pipeline, source)
+    results = run_batch(jobs, pipeline, source, batch_number=1).results
 
     # One owner result, failed; nothing acknowledged.
     assert len(results) == 1
@@ -1002,7 +1004,7 @@ def test_run_batch_mixed_keys_one_owner_per_distinct_id():
     pipeline = _RecordingPipeline()
     source = _RecordingSource()
 
-    results = run_batch(jobs, pipeline, source)
+    results = run_batch(jobs, pipeline, source, batch_number=1).results
 
     # Three distinct source_doc_ids -> three owner results.
     assert len(results) == 3
@@ -1033,7 +1035,7 @@ def test_run_batch_distinct_key_one_result_per_job_and_acked(patch_settings):
     pipeline.process_document.return_value = None
     source = _RecordingSource()
 
-    results = run_batch(jobs, pipeline, source)
+    results = run_batch(jobs, pipeline, source, batch_number=1).results
 
     assert len(results) == 3
     assert all(r.success for r in results)
@@ -1053,7 +1055,7 @@ def test_run_batch_distinct_key_failure_unacknowledged(patch_settings):
     pipeline = _RecordingPipeline(fail_source_doc_ids={failing_id})
     source = _RecordingSource()
 
-    results = run_batch(jobs, pipeline, source)
+    results = run_batch(jobs, pipeline, source, batch_number=1).results
 
     assert len(results) == 3
     failing_result = next(r for r in results if r.source_doc_id == failing_id)
@@ -1097,7 +1099,7 @@ def test_run_batch_distinct_key_max_workers(patch_settings, limit, n, expected_w
         "ingestion_pipeline.orchestration.batch_processing.batch_runner.ThreadPoolExecutor",
         side_effect=_recording_executor,
     ):
-        run_batch(jobs, pipeline, source)
+        run_batch(jobs, pipeline, source, batch_number=1)
 
     assert captured_max_workers == [expected_workers]
 
@@ -1135,7 +1137,7 @@ def test_run_batch_duplicate_key_max_workers_counts_owners_not_jobs(patch_settin
         "ingestion_pipeline.orchestration.batch_processing.batch_runner.ThreadPoolExecutor",
         side_effect=_recording_executor,
     ):
-        results = run_batch(jobs, pipeline, source)
+        results = run_batch(jobs, pipeline, source, batch_number=1).results
 
     # min(4, 2 owners) == 2.
     assert captured_max_workers == [2]
@@ -1158,7 +1160,7 @@ def test_run_batch_duplicate_collapse_logs_structured_entry(caplog):
     source_doc_id = _expected_source_doc_id(dup_1)
 
     with caplog.at_level(logging.WARNING, logger="ingestion_pipeline.orchestration.batch_processing.batch_runner"):
-        run_batch([dup_1, dup_2, dup_3], pipeline, source)
+        run_batch([dup_1, dup_2, dup_3], pipeline, source, batch_number=1)
 
     collapse_records = [
         record
@@ -1185,7 +1187,7 @@ def test_run_batch_distinct_key_emits_no_collapse_log(caplog):
     jobs = _distinct_key_batch(3)
 
     with caplog.at_level(logging.WARNING, logger="ingestion_pipeline.orchestration.batch_processing.batch_runner"):
-        run_batch(jobs, pipeline, source)
+        run_batch(jobs, pipeline, source, batch_number=1)
 
     collapse_records = [record for record in caplog.records if "collapsed" in record.getMessage().lower()]
     assert collapse_records == []
@@ -1202,7 +1204,7 @@ def test_run_batch_empty_returns_empty_list_no_side_effects():
     pipeline = _RecordingPipeline()
     source = _RecordingSource()
 
-    results = run_batch([], pipeline, source)
+    results = run_batch([], pipeline, source, batch_number=1).results
 
     assert results == []
     assert pipeline.invocations == []
@@ -1261,7 +1263,7 @@ def test_property_mixed_keys_each_id_processed_once_with_defined_outcome(
     pipeline = _RecordingPipeline(sleep_seconds=0.01)
     source = _RecordingSource()
 
-    results = run_batch(jobs, pipeline, source)
+    results = run_batch(jobs, pipeline, source, batch_number=1).results
 
     distinct_ids = {_expected_source_doc_id(job) for job in jobs}
     # One owner result per distinct source_doc_id.
@@ -1301,7 +1303,7 @@ def test_property_distinct_key_fixed_matches_original_observable_outcome(patch_s
     pipeline.process_document.return_value = None
     source = _RecordingSource()
 
-    results = run_batch(jobs, pipeline, source)
+    results = run_batch(jobs, pipeline, source, batch_number=1).results
 
     # One result per job (empty batch -> []).
     assert len(results) == size
@@ -1335,7 +1337,7 @@ def test_property_same_key_repeated_one_owner_n_minus_1_dropped(patch_settings, 
     pipeline = _RecordingPipeline()
     source = _RecordingSource()
 
-    results = run_batch(jobs, pipeline, source)
+    results = run_batch(jobs, pipeline, source, batch_number=1).results
 
     # Exactly one owner processed.
     assert len(results) == 1
@@ -1422,7 +1424,7 @@ def test_integration_duplicate_batch_single_ownership_and_all_handles_acked(patc
     pipeline = _OwnershipPipeline()
     source = _RecordingSource()
 
-    results = run_batch(jobs, pipeline, source)
+    results = run_batch(jobs, pipeline, source, batch_number=1).results
 
     # Single processing / single ownership of the shared identifiers.
     assert len(results) == 1
@@ -1445,7 +1447,7 @@ def test_integration_duplicate_batch_failing_owner_leaves_all_for_redrive(patch_
     pipeline = _OwnershipPipeline(fail_source_doc_ids={source_doc_id})
     source = _RecordingSource()
 
-    results = run_batch(jobs, pipeline, source)
+    results = run_batch(jobs, pipeline, source, batch_number=1).results
 
     # One owner processed and failed; nothing acknowledged (all left for redrive).
     assert len(results) == 1
@@ -1476,7 +1478,7 @@ def test_integration_distinct_batch_matches_prefix_baseline(patch_settings):
     pipeline = _OwnershipPipeline(fail_source_doc_ids={failing_id})
     source = _RecordingSource()
 
-    results = run_batch(jobs, pipeline, source)
+    results = run_batch(jobs, pipeline, source, batch_number=1).results
 
     # One result per job; distinct ownership of each id / prefix.
     assert len(results) == 4
@@ -1514,9 +1516,121 @@ def test_property_same_key_distinct_handles_each_acked_once(patch_settings, n):
     pipeline = _RecordingPipeline()
     source = _RecordingSource()
 
-    run_batch(jobs, pipeline, source)
+    run_batch(jobs, pipeline, source, batch_number=1)
 
     acked_handles = [job.receipt_handle for job in source.acknowledged]
     # Each distinct message acknowledged exactly once (owner + N-1 duplicates).
     assert sorted(acked_handles) == sorted(f"handle-{i}" for i in range(n))
     assert len(set(acked_handles)) == n
+
+
+# --- run-and-batch-summaries (task 3.2): BatchResult summary + logging contract
+#
+# These cover the structured batch-summary added by task 3.1:
+#   * exactly one batch-summary record per batch, no legacy "Batch complete" line,
+#     with the five counts in both the message and the logging `extra` (Req 3.1, 3.4),
+#   * BatchSummary counts for a distinct-key batch and for a duplicate-collapsing
+#     batch (Req 2.1, 2.2, 2.6, 2.7, 2.8, 2.9).
+
+_BATCH_SUMMARY_LOGGER = "ingestion_pipeline.orchestration.batch_processing.batch_runner"
+
+
+def _batch_summary_records(caplog):
+    """Return INFO records that look like the structured batch-summary line."""
+    return [
+        record
+        for record in caplog.records
+        if record.levelno == logging.INFO
+        and record.getMessage().startswith("Batch ")
+        and "summary:" in record.getMessage()
+    ]
+
+
+def test_run_batch_emits_single_structured_summary_record(caplog):
+    """A completed batch emits exactly one structured batch-summary record.
+
+    The record renders the five counts into the message AND attaches them via
+    `extra`; the legacy "Batch complete" line is gone.
+
+    Validates: Requirements 3.1, 3.4
+    """
+    pipeline = mock.Mock()
+    pipeline.process_document.return_value = None
+    source = mock.Mock()
+
+    good = _make_job()
+    bad = _make_job(s3_uri="s3://test-kta-documents-bucket/bad/file.pdf", case_ref="bad")
+
+    with caplog.at_level(logging.INFO, logger=_BATCH_SUMMARY_LOGGER):
+        result = run_batch([good, bad], pipeline, source, batch_number=2)
+
+    # Exactly one structured batch-summary record.
+    summary_records = _batch_summary_records(caplog)
+    assert len(summary_records) == 1
+    record = summary_records[0]
+
+    # No legacy "Batch complete" line survives (Req 3.4).
+    assert not any("Batch complete" in r.getMessage() for r in caplog.records)
+
+    # The five counts are attached via `extra` with the correct values.
+    assert record.batch_number == 2
+    assert record.jobs_in_batch == 2
+    assert record.succeeded == 1
+    assert record.failed == 1
+    assert record.duplicates_collapsed == 0
+
+    # And they are rendered into the human-readable message.
+    message = record.getMessage()
+    assert "Batch 2 summary" in message
+    assert "2 job(s) in batch" in message
+    assert "1 succeeded" in message
+    assert "1 failed" in message
+    assert "0 duplicate(s) collapsed" in message
+
+    # The returned summary carries the same values.
+    assert result.summary.batch_number == 2
+    assert result.summary.jobs_in_batch == 2
+    assert result.summary.succeeded == 1
+    assert result.summary.failed == 1
+    assert result.summary.duplicates_collapsed == 0
+
+
+def test_run_batch_summary_counts_for_distinct_key_batch():
+    """A distinct-key batch reports jobs_in_batch == succeeded and no duplicates.
+
+    Validates: Requirements 2.2, 2.6, 2.7, 2.9
+    """
+    pipeline = mock.Mock()
+    pipeline.process_document.return_value = None
+    source = _RecordingSource()
+
+    jobs = _distinct_key_batch(3)
+
+    result = run_batch(jobs, pipeline, source, batch_number=1)
+
+    assert result.summary.jobs_in_batch == 3
+    assert result.summary.succeeded == 3
+    assert result.summary.failed == 0
+    assert result.summary.duplicates_collapsed == 0
+    assert len(result.results) == 3
+
+
+def test_run_batch_summary_counts_collapsed_duplicates():
+    """Three jobs sharing one owner report jobs_in_batch=3 with two duplicates collapsed.
+
+    The three jobs collapse onto a single owner, so succeeded + failed == 1 (one
+    owner result) and duplicates_collapsed == 2.
+
+    Validates: Requirements 2.6, 2.8, 2.9
+    """
+    pipeline = _RecordingPipeline()
+    source = _RecordingSource()
+
+    jobs = [_make_dup_job() for _ in range(3)]
+
+    result = run_batch(jobs, pipeline, source, batch_number=1)
+
+    assert result.summary.jobs_in_batch == 3
+    assert result.summary.succeeded + result.summary.failed == 1
+    assert result.summary.duplicates_collapsed == 2
+    assert len(result.results) == 1

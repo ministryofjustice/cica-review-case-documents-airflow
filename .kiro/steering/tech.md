@@ -64,16 +64,27 @@ bash run_locally_with_dot_env.sh
 uv lock
 ```
 
-## Pre-commit Hooks
+## Git Hooks (pre-commit framework)
 
-Configured in `.pre-commit-config.yaml`:
-1. `ruff-format` — auto-format
-2. `ruff` — lint with auto-fix
-3. `gitleaks` — secret scanning
-4. `nbstripout` — strip notebook outputs
-5. `uv-lock` — ensure lock file is up to date
-6. `deptry` — dependency issues
-7. `pytest` — run tests with coverage
+Configured in `.pre-commit-config.yaml`. Fast, file-scoped checks run at
+`pre-commit`; slower, whole-project checks run at `pre-push`.
+
+| Hook | Purpose | Stage(s) |
+|------|---------|----------|
+| `ruff-format` | auto-format | pre-commit |
+| `ruff` | lint with auto-fix | pre-commit, pre-push |
+| `gitleaks` | secret scanning | pre-commit, pre-push |
+| `nbstripout` | strip notebook outputs | pre-commit |
+| `uv-lock` | ensure lock file is up to date | pre-commit |
+| `deptry` | dependency issues | pre-push |
+| `pytest` | run tests with coverage | pre-push |
+
+Install both stages so the push hooks actually fire:
+
+```bash
+uv run pre-commit install                        # pre-commit stage
+uv run pre-commit install --hook-type pre-push   # pre-push stage
+```
 
 ## Container
 

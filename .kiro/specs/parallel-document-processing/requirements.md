@@ -9,7 +9,7 @@ The ingestion pipeline previously processed a single, hardcoded document per run
 that anticipates the production queue integration.
 
 Because the pipeline is overwhelmingly IO/wait-bound (Textract polling can block up
-to 600s per document, plus S3, Bedrock, and OpenSearch calls), thread-based
+to 2400s per document, plus S3, Bedrock, and OpenSearch calls), thread-based
 concurrency is the appropriate mechanism.
 
 The word-stream chunker (`textractor-word-stream`) is the only chunking strategy

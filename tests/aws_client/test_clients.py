@@ -117,7 +117,8 @@ def test_get_textractor_instance_uses_explicit_session_credentials(monkeypatch, 
         aws_session_token="mod-token",
         region_name="eu-west-2",
     )
-    # Textractor is still constructed for the correct region.
+    # Textractor is constructed for the correct region using only its supported arguments
+    # (the pinned release does not accept a botocore Config).
     mock_textractor_cls.assert_called_once_with(region_name="eu-west-2")
 
     # The returned instance has its session and clients replaced by the credentialed ones.
