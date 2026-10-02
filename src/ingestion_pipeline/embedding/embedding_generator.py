@@ -6,14 +6,22 @@ import logging
 import boto3
 
 from ingestion_pipeline.config import settings
+from ingestion_pipeline.errors import DlqCategory, PipelineError
 
 logger = logging.getLogger(__name__)
 # Set the model ID, e.g., Titan Text Embeddings V2.
 model_id = settings.BEDROCK_EMBEDDING_MODEL_ID
 
 
-class EmbeddingError(Exception):
-    """Custom exception for embedding generation failures."""
+class EmbeddingError(PipelineError):
+    """Custom exception for embedding generation failures.
+
+    Embedding failures are typically transient (Bedrock throttling/availability),
+    so this is retryable.
+    """
+
+    category = DlqCategory.EMBEDDING_FAILED
+    retryable = True
 
 
 class EmbeddingGenerator:

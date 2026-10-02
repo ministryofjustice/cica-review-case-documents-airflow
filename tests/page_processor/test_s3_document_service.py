@@ -116,3 +116,26 @@ def test_upload_page_images_handles_upload_failure(service):
     with patch.object(service, "_upload_image", side_effect=RuntimeError("Upload failed")):
         with pytest.raises(RuntimeError, match="Upload failed"):
             service.upload_page_images(images, "case123", "doc456")
+
+
+def test_page_image_prefix_is_deterministic(service):
+    assert service.page_image_prefix("26-711111", "doc456") == "26-711111/doc456/pages/"
+
+
+def test_delete_page_images_deletes_by_prefix(service):
+    with patch("ingestion_pipeline.page_processor.s3_document_service.delete_prefix_from_s3") as mock_delete_prefix:
+        mock_delete_prefix.return_value = 3
+        deleted = service.delete_page_images("26-711111", "doc456")
+
+    assert deleted == 3
+    mock_delete_prefix.assert_called_once_with(service.s3_client, "page-bucket", "26-711111/doc456/pages/")
+
+
+def test_delete_page_images_wraps_failure(service):
+    with patch(
+        "ingestion_pipeline.page_processor.s3_document_service.delete_prefix_from_s3",
+        side_effect=Exception("boom"),
+    ):
+        with pytest.raises(RuntimeError) as excinfo:
+            service.delete_page_images("26-711111", "doc456")
+    assert "Failed to delete page images by prefix" in str(excinfo.value)

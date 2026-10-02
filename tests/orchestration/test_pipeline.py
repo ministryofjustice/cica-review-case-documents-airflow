@@ -7,8 +7,14 @@ import pytest
 from ingestion_pipeline.chunking.schemas import DocumentMetadata
 from ingestion_pipeline.chunking.strategies.layout.layout_chunk_handler import ChunkError
 from ingestion_pipeline.embedding.embedding_generator import EmbeddingError
+from ingestion_pipeline.errors import (
+    DlqCategory,
+    EmptyTextractResponseError,
+    PipelineError,
+    ZeroChunksError,
+)
 from ingestion_pipeline.indexing.indexer import IndexingError
-from ingestion_pipeline.orchestration.pipeline import Pipeline, PipelineError
+from ingestion_pipeline.orchestration.pipeline import Pipeline
 from ingestion_pipeline.textract.textract_processor import TextractProcessingError
 
 
@@ -111,8 +117,10 @@ def test_process_document_success(
     mock_page_processor.process.return_value = page_documents
     mock_page_indexer.index_documents.return_value = None
 
-    pipeline.process_document(document_metadata)
+    result = pipeline.process_document(document_metadata)
 
+    # Succeed-or-raise: a successful run returns None.
+    assert result is None
     mock_textract_processor.process_document.assert_called_once_with(document_metadata.source_file_s3_uri)
     mock_page_processor.process.assert_called_once_with(mock_document, mock.ANY)
     mock_chunker.chunk.assert_called_once()
@@ -121,7 +129,7 @@ def test_process_document_success(
     mock_page_indexer.index_documents.assert_called_once_with(page_documents, id_field="page_id")
 
 
-def test_process_document_no_document(
+def test_process_document_no_document_raises_and_skips_downstream(
     pipeline,
     document_metadata,
     mock_textract_processor,
@@ -130,8 +138,18 @@ def test_process_document_no_document(
     mock_chunker,
     mock_chunk_indexer,
 ):
+    """Textract returning no document raises a terminal EmptyTextractResponseError."""
     mock_textract_processor.process_document.return_value = None
-    pipeline.process_document(document_metadata)
+
+    with pytest.raises(EmptyTextractResponseError) as excinfo:
+        pipeline.process_document(document_metadata)
+
+    err = excinfo.value
+    assert err.category is DlqCategory.EMPTY_TEXTRACT_RESPONSE
+    assert err.retryable is False
+    assert err.source_doc_id == document_metadata.source_doc_id
+    assert err.case_ref == document_metadata.case_ref
+    # Nothing downstream ran.
     mock_textract_processor.process_document.assert_called_once_with(document_metadata.source_file_s3_uri)
     mock_page_processor.process.assert_not_called()
     mock_page_indexer.index_documents.assert_not_called()
@@ -139,7 +157,7 @@ def test_process_document_no_document(
     mock_chunk_indexer.index_documents.assert_not_called()
 
 
-def test_process_document_no_chunks(
+def test_process_document_no_chunks_raises_before_indexing_page_metadata(
     pipeline,
     document_metadata,
     mock_textract_processor,
@@ -148,6 +166,7 @@ def test_process_document_no_chunks(
     mock_page_indexer,
     mock_chunk_indexer,
 ):
+    """A whole-document zero-chunk result raises before any page metadata is indexed."""
     mock_document = mock.Mock()
     mock_document.num_pages = 2
     mock_textract_processor.process_document.return_value = mock_document
@@ -156,14 +175,17 @@ def test_process_document_no_chunks(
     processed_data.chunks = []
     mock_chunker.chunk.return_value = processed_data
 
-    page_documents = [mock.Mock()]
-    mock_page_processor.process.return_value = page_documents
-    mock_page_indexer.index_documents.return_value = None
+    with pytest.raises(ZeroChunksError) as excinfo:
+        pipeline.process_document(document_metadata)
 
-    pipeline.process_document(document_metadata)
+    err = excinfo.value
+    assert err.category is DlqCategory.ZERO_CHUNKS_EXTRACTED_FROM_DOCUMENT
+    assert err.retryable is False
     mock_chunker.chunk.assert_called_once()
+    # Zero-chunk check happens before page processing/indexing, so neither runs.
+    mock_page_processor.process.assert_not_called()
     mock_chunk_indexer.index_documents.assert_not_called()
-    mock_page_indexer.index_documents.assert_called_once_with(page_documents, id_field="page_id")
+    mock_page_indexer.index_documents.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -193,12 +215,14 @@ def test_process_document_unexpected_error(
 ):
     mock_textract_processor.process_document.side_effect = RuntimeError("unexpected")
     cleanup_spy = mock.Mock()
-    pipeline._cleanup_indexed_data = cleanup_spy
+    pipeline._cleanup_document = cleanup_spy
 
-    with pytest.raises(PipelineError):
+    with pytest.raises(PipelineError) as excinfo:
         pipeline.process_document(document_metadata)
 
-    cleanup_spy.assert_called_once_with(document_metadata.source_doc_id)
+    # An unexpected error is wrapped as an UNEXPECTED-category PipelineError.
+    assert excinfo.value.category is DlqCategory.UNEXPECTED
+    cleanup_spy.assert_called_once_with(document_metadata.source_doc_id, document_metadata.case_ref)
 
 
 @pytest.mark.parametrize(
@@ -228,6 +252,28 @@ def test_cleanup_indexed_data_suppresses_traceback_for_connectivity_error(
     mock_page_indexer.delete_documents_by_source_doc_id.assert_not_called()
     assert "Skipping verbose cleanup error log for connectivity issue" in caplog.text
     assert not any(record.levelno >= logging.ERROR for record in caplog.records)
+
+
+def test_cleanup_page_images_prefix_deletes(pipeline, mock_page_processor):
+    """Page-image cleanup prefix-deletes all images for the document."""
+    pipeline._cleanup_page_images("doc-123-test", "25-787878")
+
+    mock_page_processor.s3_document_service.delete_page_images.assert_called_once_with("25-787878", "doc-123-test")
+
+
+def test_cleanup_page_images_swallows_errors(pipeline, mock_page_processor, caplog):
+    """A cleanup failure is logged but never propagated (must not mask the original error)."""
+    caplog.set_level(logging.ERROR)
+    mock_page_processor.s3_document_service.delete_page_images.side_effect = RuntimeError("s3 down")
+
+    # Must not raise.
+    pipeline._cleanup_page_images("doc-123-test", "25-787878")
+
+    assert any(
+        record.levelno == logging.ERROR
+        and "Failed to clean up page images for document doc-123-test" in record.getMessage()
+        for record in caplog.records
+    )
 
 
 def test_cleanup_indexed_data_logs_traceback_for_non_connectivity_error(
@@ -390,6 +436,109 @@ def test_chunk_indexing_error_triggers_cleanup(
     mock_chunk_indexer.delete_documents_by_source_doc_id.assert_called_once_with("doc-123-test")
     mock_page_indexer.delete_documents_by_source_doc_id.assert_called_once_with("doc-123-test")
     mock_page_indexer.index_documents.assert_not_called()
+
+
+def test_bare_lower_level_error_is_enriched_with_document_context(
+    pipeline,
+    document_metadata,
+    mock_textract_processor,
+    mock_chunker,
+    mock_embedding_generator,
+    mock_chunk_indexer,
+    mock_page_indexer,
+    mock_page_processor,
+):
+    """A lower-level error raised with only a message gets document context backfilled.
+
+    Most errors (IndexingError, ChunkError, EmbeddingError, ...) are raised deep in
+    the pipeline with no document context. The orchestrator must populate
+    source_doc_id/case_ref/s3_uri before re-raising so failure_context() is complete.
+    """
+    mock_document = mock.Mock()
+    mock_document.num_pages = 1
+    mock_textract_processor.process_document.return_value = mock_document
+
+    chunk = mock.Mock()
+    chunk.page_number = 1
+    chunk.page_contains_handwriting = False
+    chunk.chunk_id = "chunk-1"
+    chunk.source_doc_id = "doc-123-test"
+    processed_data = mock.Mock()
+    processed_data.chunks = [chunk]
+    mock_chunker.chunk.return_value = processed_data
+    mock_embedding_generator.generate_embedding.return_value = [0.1]
+
+    page_doc = mock.Mock()
+    page_doc.page_num = 1
+    page_doc.page_contains_handwriting = False
+    mock_page_processor.process.return_value = [page_doc]
+
+    # Raised with only a message: context fields default to None.
+    mock_chunk_indexer.index_documents.side_effect = IndexingError("index failed")
+
+    with pytest.raises(IndexingError) as excinfo:
+        pipeline.process_document(document_metadata)
+
+    err = excinfo.value
+    assert err.source_doc_id == document_metadata.source_doc_id
+    assert err.case_ref == document_metadata.case_ref
+    assert err.s3_uri == document_metadata.source_file_s3_uri
+
+    context = err.failure_context()
+    assert context["source_doc_id"] == document_metadata.source_doc_id
+    assert context["case_ref"] == document_metadata.case_ref
+    assert context["s3_uri"] == document_metadata.source_file_s3_uri
+
+
+def test_existing_error_context_is_preserved_not_overwritten(
+    pipeline,
+    document_metadata,
+    mock_textract_processor,
+    mock_chunker,
+    mock_embedding_generator,
+    mock_chunk_indexer,
+    mock_page_indexer,
+    mock_page_processor,
+):
+    """Context already supplied by a terminal error is preserved, not overwritten.
+
+    When an error carries its own document context, the orchestrator must not clobber
+    it with the current document's metadata.
+    """
+    mock_document = mock.Mock()
+    mock_document.num_pages = 1
+    mock_textract_processor.process_document.return_value = mock_document
+
+    chunk = mock.Mock()
+    chunk.page_number = 1
+    chunk.page_contains_handwriting = False
+    chunk.chunk_id = "chunk-1"
+    chunk.source_doc_id = "doc-123-test"
+    processed_data = mock.Mock()
+    processed_data.chunks = [chunk]
+    mock_chunker.chunk.return_value = processed_data
+    mock_embedding_generator.generate_embedding.return_value = [0.1]
+
+    page_doc = mock.Mock()
+    page_doc.page_num = 1
+    page_doc.page_contains_handwriting = False
+    mock_page_processor.process.return_value = [page_doc]
+
+    # Error already carries context that differs from the current document.
+    mock_chunk_indexer.index_documents.side_effect = IndexingError(
+        "index failed",
+        source_doc_id="other-doc",
+        case_ref="99-999999",
+        s3_uri="s3://other/file.pdf",
+    )
+
+    with pytest.raises(IndexingError) as excinfo:
+        pipeline.process_document(document_metadata)
+
+    err = excinfo.value
+    assert err.source_doc_id == "other-doc"
+    assert err.case_ref == "99-999999"
+    assert err.s3_uri == "s3://other/file.pdf"
 
 
 def test_chunks_not_modified_by_propagation(
